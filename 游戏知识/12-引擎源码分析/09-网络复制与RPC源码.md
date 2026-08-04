@@ -19,7 +19,7 @@
 | 知识库文章 | 讲清了什么 | 本篇补充的源码层内容 |
 | --- | --- | --- |
 | 《01 网络架构与复制基础》 | 客户端-服务器架构、权威性、Actor 复制概念、Relevancy、NetConnection 与通道模型 | `UNetDriver::ServerReplicateActors` 主循环、`UActorChannel`、`FRepLayout` |
-| 《02 RPC 与属性同步》 | RPC 三种方向、可靠性、`DOREPLIFETIME` 用法、复制条件、OnRep、Fast Array | `ProcessRemoteFunction` → `SendRPC` → `ProcessBunch` 的调用链、宏展开 |
+| 《02 RPC 与属性同步》 | RPC 三种方向、可靠性、`DOREPLIFETIME` 用法、复制条件、OnRep、Fast Array | `UNetDriver::ProcessRemoteFunction` → `ProcessRemoteFunctionForChannel` → `ProcessBunch` 的调用链、宏展开（5.8） |
 
 建议先读知识库两篇文章建立概念，再读本篇；本篇聚焦"字节从 A 机器到 B 机器"的源码路径。
 
@@ -27,15 +27,15 @@
 
 | 模块 | 文件（Engine/Source/Runtime 下） | 关键符号 | 作用 |
 | --- | --- | --- | --- |
-| Engine | `Engine/Private/NetDriver.cpp` | `UNetDriver::TickFlush`、`ServerReplicateActors`、`ServerReplicateActors_ProcessPriorities` 等静态辅助 | 服务器复制主循环 |
-| Engine | `Engine/Private/ReplicationDriver.cpp`（UE5 位于 Net/ 子目录附近） | `UReplicationDriver`、`CreateDefaultReplicationDriver` | UE5 可替换复制驱动器 |
-| Engine | `Engine/Private/ActorChannel.cpp` | `UActorChannel::ReplicateActor`、`ReceivedBunch`、`ProcessBunch` | 通道级属性复制与 RPC 收发 |
-| Engine | `Engine/Public/Channel.h` | `UChannel::SendBunch`、`FOutBunch`、`FInBunch` | Bunch 数据包结构 |
-| Engine | `Engine/Private/NetConnection.cpp` | `UNetConnection::SendRPC`、`ReceivedPacket`、`FlushNet`、`OpenActorChannel` | 连接级收发与 RPC 出口 |
-| Engine | `Engine/Private/Net/RepLayout.cpp` | `FRepLayout::ReplicateProperties`、`ReceivedProperties`、`CallRepNotifies` | 属性布局：序列化 / 反序列化 / OnRep |
+| Engine | `Engine/Private/NetDriver.cpp` | `UNetDriver::TickFlush`、`ServerReplicateActors`、`ServerReplicateActors_PrioritizeActors`/`ServerReplicateActors_ProcessPrioritizedActors` 等静态辅助 | 服务器复制主循环（5.8：ServerReplicateActors_ProcessPriorities 已更名） |
+| Engine | `Engine/Classes/Engine/ReplicationDriver.h` | `UReplicationDriver`、`CreateReplicationDriver` | UE5 可替换复制驱动器（5.8：CreateDefaultReplicationDriver 已更名，创建逻辑在 NetDriver.cpp 调用链中） |
+| Engine | `Engine/Private/DataChannel.cpp` | `UActorChannel::ReplicateActor`、`ReceivedBunch`、`ProcessBunch` | 通道级属性复制与 RPC 收发（5.8 起 ActorChannel.cpp 并入 DataChannel.cpp） |
+| Engine | `Engine/Classes/Engine/Channel.h`（`UChannel`）、`Engine/Public/Net/DataBunch.h`（`FOutBunch`/`FInBunch`） | `UChannel::SendBunch`、`FOutBunch`、`FInBunch` | Bunch 数据包结构（5.8：FOutBunch/FInBunch 定义于 DataBunch.h） |
+| Engine | `Engine/Private/NetConnection.cpp` | `ReceivedPacket`、`FlushNet`、`CreateChannelByName` | 连接级收发与通道创建（5.8：SendRPC/OpenActorChannel 已移除） |
+| Engine | `Engine/Private/RepLayout.cpp` | `FRepLayout::ReplicateProperties`、`ReceiveProperties`、`CallRepNotifies` | 属性布局：序列化 / 反序列化 / OnRep（5.8：文件不在 Net/ 子目录，ReceivedProperties 已更名 ReceiveProperties） |
 | Engine | `Engine/Public/Net/UnrealNetwork.h` | `DOREPLIFETIME` 系列宏、`FDoRepLifetimeParams` | 属性注册宏 |
-| Engine | `Engine/Classes/Engine/EngineTypes.h` 等 | `ELifetimeCondition`（`COND_*`） | 复制条件枚举 |
-| Engine | `Engine/Private/Actor.cpp` | `AActor::ProcessRemoteFunction`、`GetLifetimeReplicatedProps` 声明 | RPC 出口与属性清单 |
+| CoreUObject | `CoreUObject/Public/UObject/CoreNetTypes.h` | `ELifetimeCondition`（`COND_*`）、`ELifetimeRepNotifyCondition`（`REPNOTIFY_*`） | 复制条件枚举（5.8 已从 EngineTypes.h 移入 CoreUObject） |
+| Engine | `Engine/Private/Actor.cpp`、`Engine/Classes/GameFramework/Actor.h` | `AActor::CallRemoteFunction`（Actor.h）、`UNetDriver::ProcessRemoteFunction`（NetDriver.h）、`GetLifetimeReplicatedProps` | RPC 出口与属性清单（5.8：AActor::ProcessRemoteFunction 已移除） |
 | Engine | `Engine/Private/Components/CharacterMovementComponent.cpp` | `ServerMove`、`ClientAdjustPosition`、`ReplicateMoveToServer`、`ClientUpdatePositionAfterServerUpdate` | 网络移动（客户端预测） |
 
 ## 三、服务器复制主循环
@@ -90,7 +90,7 @@ int32 UNetDriver::ServerReplicateActors(float DeltaSeconds)
 }
 ```
 
-> 版本注：UE5 中 `UReplicationDriver` 已是标准路径（`ReplicationDriver = UReplicationDriver::CreateDefaultReplicationDriver(this)`），把"选哪些 Actor、给哪些连接、按什么顺序"整体替换成自定义策略，是大型项目做带宽优化的正统手段。
+> 版本注：UE5 中 `UReplicationDriver` 已是标准路径（5.8 通过 `UReplicationDriver::CreateReplicationDriver(NetDriver, URL, World)` 创建，旧名 CreateDefaultReplicationDriver 已更名），把"选哪些 Actor、给哪些连接、按什么顺序"整体替换成自定义策略，是大型项目做带宽优化的正统手段。
 
 ### 3.2 相关性与优先级：RelevantActor 选择
 
@@ -101,7 +101,7 @@ virtual bool IsNetRelevantFor(const AActor* RealViewer, const AActor* ViewTarget
 
 virtual float GetNetPriority(const FVector& ViewPos, const FVector& ViewDir,
     AActor* Viewer, AActor* ViewTarget, UActorChannel* InChannel,
-    ENetRole RemoteRole, const FVector& ActorLocation, bool bLowBandwidth) const;
+    float Time, bool bLowBandwidth) const;   // 5.8：ENetRole RemoteRole / ActorLocation 参数已移除
 ```
 
 选择逻辑要点：
@@ -116,8 +116,8 @@ virtual float GetNetPriority(const FVector& ViewPos, const FVector& ViewDir,
 
 每个"相关"的 (Actor, Connection) 对对应一条 `UActorChannel`：
 
-- 首次相关时：`UNetConnection::OpenActorChannel(AActor*, FOutBunch*)` 创建通道；
-- 通道创建后：`UActorChannel::SetChannelActor(Actor)` 绑定 Actor，并执行一次**初始复制**（`bNetInitial = true`，`COND_InitialOnly` 的属性只在此时发送）；
+- 首次相关时：`UNetConnection::CreateChannelByName(NAME_Actor, EChannelCreateFlags, ...)` 创建通道（5.8；OpenActorChannel 已移除）；
+- 通道创建后：`UActorChannel::SetChannelActor(Actor, ESetChannelActorFlags)` 绑定 Actor（5.8 带标志参数），并执行一次**初始复制**（`bNetInitial = true`，`COND_InitialOnly` 的属性只在此时发送）；
 - 通道内通过 `FObjectReplicator` 管理"Actor 本身 + 每个 `bReplicates = true` 的组件"的复制状态。
 
 ### 4.2 UActorChannel::ReplicateActor
@@ -125,23 +125,15 @@ virtual float GetNetPriority(const FVector& ViewPos, const FVector& ViewDir,
 ```cpp
 // Engine/Source/Runtime/Engine/Private/ActorChannel.cpp
 // 结构示意（节选）
-int32 UActorChannel::ReplicateActor(FOutBunch& Bunch, const FReplicationFlags& RepFlags)
+int64 UActorChannel::ReplicateActor()   // 5.8 签名：已改为无参
 {
     // 1) 尚未初始化：写入初始化头（Actor 类名、初始变换、bNetInitial 等）
-    // 2) 遍历本通道的 ObjectReplicators（Actor 本体 + 可复制组件）
-    for (FObjectReplicator* ObjectReplicator : ObjectReplicators)
-    {
-        // 3) 由 FRepLayout 对比"影子状态"找出变化的属性并序列化进 Bunch
-        ObjectReplicator->RepLayout->ReplicateProperties(
-            ObjectReplicator->ChangelistMgr,
-            (uint8*)ObjectReplicator->ObjectPtr,
-            ObjectReplicator->ObjectPtr->GetClass(),
-            this,
-            Bunch,
-            RepFlags);
-        // 4) 把 Actor 上排队的 RPC 一并写入 Bunch
-    }
-    // 5) Bunch 由上层（ServerReplicateActors 路径）统一经 SendBunch 送出
+    // 2) 通过 ActorReplicator（FObjectReplicator，Actor 本体）与 ReplicationMap（可复制子对象）复制属性
+    //    （5.8：ObjectReplicators 数组已移除，见 ActorChannel.h）
+    // 3) 由 FRepLayout 对比"影子状态"找出变化的属性并序列化进 Bunch：
+    //    FRepLayout::ReplicateProperties(FSendingRepState*, FRepChangelistState*, Data, ObjectClass, this, Writer, RepFlags)
+    // 4) 把 Actor 上排队的 RPC 一并写入 Bunch
+    // 5) Bunch 由上层（ServerReplicateActors 路径）统一经 UChannel::SendBunch 送出
     return SentBits;
 }
 ```
@@ -150,21 +142,22 @@ int32 UActorChannel::ReplicateActor(FOutBunch& Bunch, const FReplicationFlags& R
 
 ```cpp
 // Engine/Source/Runtime/Engine/Private/Net/RepLayout.cpp（UE5，真实签名）
-int32 FRepLayout::ReplicateProperties(
+bool FRepLayout::ReplicateProperties(   // 5.8 真实签名
+    FSendingRepState* RESTRICT RepState,
     FRepChangelistState* RESTRICT RepChangelistState,
-    const uint8* RESTRICT Data,
+    const FConstRepObjectDataBuffer Data,
     UClass* ObjectClass,
     UActorChannel* OwningChannel,
-    FOutBunch& Bunch,
-    FReplicationFlags RepFlags)
+    FNetBitWriter& Writer,
+    const FReplicationFlags& RepFlags) const
 ```
 
 内部流程：
 
 1. **变更检测**：拿本帧对象内存（`Data`）与 `FRepChangelistState` 维护的"影子状态"比较（`CompareProperties` 系列），生成需要发送的属性句柄列表（`FRepChangedPropertyTracker`）；
-2. **发送**：`SendProperties` → `SerializeProperties`，逐个属性调用 `FProperty::NetSerializeItem(Ar, Map, Data, MetaData)` 写入 `FOutBunch`；
-3. **引用序列化**：对象 / Actor 引用通过 `UPackageMap` 编码为路径索引（`UActorChannel::ObjectMap`），避免每次发全名；
-4. **写出**：`UChannel::SendBunch(FOutBunch*, bMerge)` 把 Bunch 加入连接发送队列，最终由 `UNetConnection::FlushNet` 打包成 `FOutPacket` 交给 Socket。
+2. **发送**：`SendProperties_r` → `SerializeProperties_r`（5.8 递归版本），逐个属性调用 `FProperty::NetSerializeItem(Ar, Map, Data, MetaData)` 写入 `FNetBitWriter`；
+3. **引用序列化**：对象 / Actor 引用通过 `UPackageMap`/`FNetGUIDCache` 编码为 NetGUID 索引（5.8；`UActorChannel::ObjectMap` 已移除），避免每次发全名；
+4. **写出**：`UChannel::SendBunch(FOutBunch*, bMerge)`（5.8 返回 `FPacketIdRange`）把 Bunch 加入连接发送队列，最终由 `UNetConnection::FlushNet` 发出（5.8：FOutPacket 已移除，由 FDelayedPacket/FOutPacketTraits 代替）。
 
 ```text
 ServerReplicateActors
@@ -197,19 +190,20 @@ void AMyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 
 ```cpp
 // Engine/Source/Runtime/Engine/Public/Net/UnrealNetwork.h（节选）
-#define DOREPLIFETIME_WITH_PARAMS( Class, Property, RepParams ) \
+#define DOREPLIFETIME_WITH_PARAMS(c,v,params) \
     { \
-        static FDoRepLifetimeParams DORepLifetimeParams(RepParams); \
-        DOREPLIFETIME_WITH_PARAMS_IMPL(Class, Property, DORepLifetimeParams); \
-    }
+        static_assert(ValidateReplicatedClassInheritance<c, ThisClass>(), #c "." #v " is not accessible from this class."); \
+        FProperty* ReplicatedProperty = GetReplicatedProperty(StaticClass(), c::StaticClass(), GET_MEMBER_NAME_CHECKED(c,v)); \
+        RegisterReplicatedLifetimeProperty(ReplicatedProperty, OutLifetimeProps, FixupParams<decltype(c::v)>(params)); \
+    }   // 5.8 实际宏体（DOREPLIFETIME_WITH_PARAMS_IMPL 已移除）
 ```
 
 `DOREPLIFETIME` 等价于 `DOREPLIFETIME_WITH_PARAMS` + 默认参数（`COND_None`、`REPNOTIFY_OnChanged`）；`DOREPLIFETIME_CONDITION` 只改条件；`DOREPLIFETIME_CONDITION_NOTIFY` 同时指定条件与 RepNotify 触发方式。
 
-`DOREPLIFETIME_WITH_PARAMS_IMPL` 内部做三件事（示意）：
+5.8 中注册逻辑内联在宏体中（DOREPLIFETIME_WITH_PARAMS_IMPL 已移除），三件事（示意）：
 
-1. 通过 `GetReplicatedProperty(Class, TEXT(#Property))` 反射查找 `FProperty`；
-2. `OutLifetimeProps.AddUnique(ReplicatedProperty)` 加入本类属性清单；
+1. 通过 `GetReplicatedProperty(StaticClass(), c::StaticClass(), GET_MEMBER_NAME_CHECKED(c,v))` 反射查找 `FProperty`（5.8）；
+2. `RegisterReplicatedLifetimeProperty(ReplicatedProperty, OutLifetimeProps, FixupParams(...))` 加入本类属性清单并登记参数（5.8）；
 3. 把 `FDoRepLifetimeParams`（含条件）登记到该属性上，供 `FRepLayout` 构建布局时使用。
 
 ### 5.3 FDoRepLifetimeParams 与 COND_* 条件
@@ -220,12 +214,12 @@ struct FDoRepLifetimeParams
 {
     ELifetimeCondition Condition = COND_None;              // 复制条件
     ELifetimeRepNotifyCondition RepNotifyCondition = REPNOTIFY_OnChanged; // OnRep 触发方式
-    bool bIsPushModel = false;                             // 是否启用 Push Model 标记
+    bool bIsPushBased = false;                            // 是否启用 Push Model（5.8 由 bIsPushModel 更名）
     // ...
 };
 ```
 
-`ELifetimeCondition`（`COND_*`）常用值：
+`ELifetimeCondition`（`COND_*`，5.8 定义于 `CoreUObject/Public/UObject/CoreNetTypes.h`）常用值：
 
 | 条件 | 语义 |
 | --- | --- |
@@ -239,22 +233,22 @@ struct FDoRepLifetimeParams
 | COND_InitialOrOwner | 初始复制或 Owner |
 | COND_ReplayOrOwner / COND_ReplayOnly / COND_SkipReplay | 回放相关 |
 | COND_Never | 永不复制（占位） |
-| COND_ServerOnly / COND_ClientOnly | 仅服务器 / 仅客户端（UE5 新增） |
+| ~~COND_ServerOnly / COND_ClientOnly~~ | 5.8 中不存在（已从枚举移除；完整枚举含 COND_Custom/COND_Dynamic/COND_NetGroup/COND_SimulatedOnlyNoReplay 等） |
 
 ### 5.4 REGISTER_REPLICATED_CLASS 与布局构建
 
 ```cpp
 // UnrealNetwork.h（节选，UE4 时代需要显式书写；UE5 由 UHT 自动生成同类注册）
-#define REGISTER_REPLICATED_CLASS( Class ) \
-    static FReplicationRegistrationImpl<Class> Class##_ReplicationRegistration
+// 版本注记：UE 5.8 中不存在 REGISTER_REPLICATED_CLASS / FReplicationRegistrationImpl，
+// 复制注册由 UHT 生成代码与 FRepLayout::CreateFromClass / InitFromClass（5.8）自动完成
 ```
 
-它生成一个静态 `FReplicationRegistrationImpl<Class>` 对象，其构造函数触发类与复制元数据初始化，保证"属性清单"在首次复制前就绪。
+UE5 由 UHT 自动生成同类注册，保证"属性清单"在首次复制前就绪（5.8 无此宏）。
 
-消费侧：`FRepLayout::InitFromObjectClass` 在通道建立时为该对象构建复制布局：
+消费侧：`FRepLayout::InitFromClass`（5.8；InitFromObjectClass 已更名）在通道建立时为该对象构建复制布局：
 
 ```cpp
-// FRepLayout::InitFromObjectClass（节选，示意）
+// FRepLayout::CreateFromClass / InitFromClass（5.8，节选，示意）
 UObject* CDO = ObjectClass->GetDefaultObject();
 TArray<FLifetimeProperty> LifetimeProps;
 CDO->GetLifetimeReplicatedProps(LifetimeProps);
@@ -301,7 +295,7 @@ void UActorChannel::ProcessBunch(FInBunch& Bunch)
         else
         {
             // ---- 属性复制分支 ----
-            // FRepLayout::ReceivedProperties：按布局把位流反序列化进对象内存
+            // FRepLayout::ReceiveProperties（5.8）：按布局把位流反序列化进对象内存
             // 完成后 FRepLayout::CallRepNotifies：
             //   对比旧值（影子状态），对发生变化的属性调用 OnRep_XXX
         }
@@ -311,7 +305,7 @@ void UActorChannel::ProcessBunch(FInBunch& Bunch)
 
 ### 6.3 OnRep 触发机制
 
-- `FRepLayout::CallRepNotifies(FRepState* RepState, UObject* Object)` 遍历本帧反序列化的属性；
+- `FRepLayout::CallRepNotifies(FReceivingRepState* RepState, UObject* Object)`（5.8 参数类型）遍历本帧反序列化的属性；
 - 每个属性在布局构建时记录了 `RepNotifyFunc`（`OnRep_XXX` 函数名）与 `RepNotifyCondition`：
   - `REPNOTIFY_OnChanged`：新旧值不同才调用（默认）；
   - `REPNOTIFY_Always`：无论是否变化都调用；
@@ -335,8 +329,9 @@ void UActorChannel::ProcessBunch(FInBunch& Bunch)
 
 ```cpp
 // Engine/Source/Runtime/Engine/Public/Actor.h（真实签名）
-bool AActor::ProcessRemoteFunction(class UFunction* Function, void* Parameters,
-    FOutParmRec* OutParms, FFrame* Stack, UObject* SubObject);
+bool AActor::CallRemoteFunction(UFunction* Function, void* Parameters,
+    FOutParmRec* OutParms, FFrame* Stack) override;   // 5.8 真实签名（AActor::ProcessRemoteFunction 已移除）
+// 内部调用：Driver.NetDriver->ProcessRemoteFunction(this, Function, Parameters, OutParms, Stack, SubObject)（NetDriver.h，virtual）
 ```
 
 内部流程（示意）：
@@ -350,25 +345,28 @@ bool AActor::ProcessRemoteFunction(...)
     //    FUNC_NetMulticast → 遍历所有连接（含本机）
     //    FUNC_NetServer    → 客户端调用时发往服务器
     //    FUNC_NetClient    → 发往 Owner 连接
-    // 3) 对每个目标连接调用：
-    //    Connection->SendRPC(this, Function, Parameters, OutParms, Stack, SubObject);
+    // 3) 对每个目标连接调用（NetDriver.h）：
+    //    UNetDriver::ProcessRemoteFunctionForChannel(...)（5.8；SendRPC 已移除）
     // 4) 服务器本地调用 Server RPC 时（自身就是权威）：
-    //    ProcessRemoteFunction 返回 false，继续走本地执行（_Implementation）
+    //    不走网络封包，直接本地执行 _Implementation（5.8）
 }
 ```
 
-### 7.3 UNetConnection::SendRPC：参数序列化
+### 7.3 RPC 发送链路：ProcessRemoteFunctionForChannel（5.8；UNetConnection::SendRPC 已移除）
 
 ```cpp
 // Engine/Source/Runtime/Engine/Public/NetConnection.h（真实签名）
-void UNetConnection::SendRPC(AActor* Actor, UFunction* Function, void* Params,
-    FOutParmRec* OutParms, FFrame* Stack, UObject* SubObject);
+// 版本注记：UNetConnection::SendRPC 已在 5.8 移除，RPC 发送统一走：
+// UNetDriver::ProcessRemoteFunction → ProcessRemoteFunctionForChannel
+//   → 查找/创建 UActorChannel（无通道时可靠 RPC 经 CreateChannelByName(NAME_Actor, ...) 现建）
+//   → 写入 FOutBunch（RPC 标记位 + 函数名 + 参数 NetSerializeItem）
+//   → UChannel::SendBunch(&Bunch, ...) 入队 → FlushNet 发出
 ```
 
 内部流程（示意）：
 
 1. 查找该 Actor 的 `UActorChannel`；
-2. 无通道时：可靠 RPC → `OpenActorChannel` 现建通道（这就是"可靠 RPC 能拉起 Actor 复制"的原因）；不可靠 RPC → 丢弃并警告；
+2. 无通道时：可靠 RPC → `CreateChannelByName(NAME_Actor, ...)` 现建通道（5.8；这就是"可靠 RPC 能拉起 Actor 复制"的原因）；不可靠 RPC → 丢弃并警告；
 3. 构造 `FOutBunch`，写入 RPC 标记位与函数名（`Bunch << Function->GetFName()` 之类）；
 4. 遍历函数参数（`CPF_Parm` 属性），逐个调用 `FProperty::NetSerializeItem` 序列化；
 5. `Ch->SendBunch(&Bunch, ...)` 进入发送队列，随 `FlushNet` 发出。
@@ -397,7 +395,7 @@ DEFINE_FUNCTION(AMyActor::execServerFire)
 
 ### 7.5 CMC 网络移动简述（ServerMove / ClientAdjustPosition）
 
-经典签名（UE5.0 ~ 5.2；UE5.3+ 引入 `FCharacterNetworkMoveData` 打包路径，思想相同）：
+经典签名（5.8 仍声明但已标记废弃 `DEPRECATED_CHARACTER_MOVEMENT_RPC(ServerMove, ServerMovePacked_ClientSend)`；UE5.3+ 主路径为 `ServerMovePacked` 打包）：
 
 ```cpp
 // UCharacterMovementComponent.h（节选）
@@ -410,8 +408,8 @@ void ServerMove(float TimeStamp, FVector_NetQuantize10 InAccel,
 
 流程：
 
-1. **客户端**：`PerformMovement` 每帧移动后调用 `ReplicateMoveToServer(...)`——把本次移动封装为 `FSavedMove_Character`（存进 `SavedMoves` 队列），并调用 `ServerMove` RPC（含时间戳与压缩后的输入）；
-2. **服务器**：`ServerMove_Implementation` → `MoveAutonomous` 用同样的输入重算移动；若客户端时间戳落后太多（`MaxClientError` 超限）或客户端报告位置与服务器计算结果偏差过大，则发送 `ClientAdjustPosition`（`UFUNCTION(Client, Unreliable)`）带权威位置/速度/时间戳；
+1. **客户端**：`PerformMovement` 每帧移动后调用 `ReplicateMoveToServer(...)`/`CallServerMovePacked(...)`（5.8）——把本次移动封装为 `FSavedMove_Character`（存进 `SavedMoves` 队列），并经 `ServerMovePacked_ClientSend()`（5.8 主路径）或经典 `ServerMove` RPC 发送（含时间戳与压缩后的输入）；
+2. **服务器**：5.3+ 主路径为 `ServerMove_ServerReceive` → `ServerMove_ServerHandleMoveData`（经典 `ServerMove_Implementation` 已标记废弃），内部调用 `MoveAutonomous` 重算移动；若 `ServerCheckClientError()` 判定偏差过大（5.8；`MaxClientError` 已移除），则经 `ServerMoveHandleClientError` 发送 `ClientAdjustPosition`（`UFUNCTION(Client, Unreliable)`）带权威位置/速度/时间戳；
 3. **客户端**：收到调整后 `ClientUpdatePositionAfterServerUpdate()` 把角色回滚到服务器认可的位置，**重放** `SavedMoves` 中尚未被确认的移动，再 `SmoothCorrection` 做视觉平滑——这就是"客户端预测 + 回滚重放"的源码骨架。
 
 ## 八、运行流程（Mermaid）
@@ -424,7 +422,7 @@ flowchart TD
     B --> C["按连接 PreProcessReplication"]
     C --> D["收集相关 Actor（IsNetRelevantFor + GetNetPriority 排序）"]
     D --> E{"已有 ActorChannel?"}
-    E -- "否" --> F["OpenActorChannel / SetChannelActor（初始复制 bNetInitial）"]
+    E -- "否" --> F["CreateChannelByName / SetChannelActor（5.8）（初始复制 bNetInitial）"]
     E -- "是" --> G["UActorChannel::ReplicateActor(Bunch, RepFlags)"]
     F --> G
     G --> H["FRepLayout::ReplicateProperties（变更检测 + 序列化）"]
@@ -438,8 +436,8 @@ flowchart TD
 sequenceDiagram
     participant C as 客户端
     participant S as 服务器
-    C->>C: ServerFire()（thunk）→ ProcessEvent → ProcessRemoteFunction
-    C->>S: UNetConnection::SendRPC（序列化参数 → Bunch → FlushNet）
+    C->>C: ServerFire()（thunk）→ ProcessEvent → CallRemoteFunction → UNetDriver::ProcessRemoteFunction
+    C->>S: ProcessRemoteFunctionForChannel（序列化参数 → Bunch → FlushNet）（5.8）
     S->>S: ReceivedPacket → ReceivedBunch → ProcessBunch（RPC 分支）
     S->>S: FindFunction → ProcessEvent → execServerFire → ServerFire_Implementation
     S-->>C: （如需回执）Client RPC 或 ClientAdjustPosition 走同一条链反向发送
@@ -459,7 +457,7 @@ sequenceDiagram
 依次检查：Actor 是否 `bReplicates`（RPC 依赖 Actor 复制通道）；是否在客户端调用（服务器本地调用会直接本地执行）；`IsNetRelevantFor` 是否让该客户端看不到此 Actor；不可靠 RPC 丢包；`WithValidation` 校验失败。
 
 **Q2：OnRep 不触发？**
-属性没标记 `Replicated` 或没进 `GetLifetimeReplicatedProps`；服务器改值后没走复制（Push Model 下没调 `MARK_PROPERTY_DIRTY_FROM_NAME`）；`REPNOTIFY_OnChanged` 且值相同。
+属性没标记 `Replicated` 或没进 `GetLifetimeReplicatedProps`；服务器改值后没走复制（Push Model 下没调 `MARK_PROPERTY_DIRTY_FROM_NAME`，5.8 该宏定义于 `Net/Core/Public/Net/Core/PushModel/PushModel.h`）；`REPNOTIFY_OnChanged` 且值相同。
 
 **Q3：COND_OwnerOnly 属性在非 Owner 客户端为什么是默认值？**
 条件不满足时该属性根本不发送，客户端保留默认/旧值；需要"知道但不更新"的场景请改用 `COND_SkipOwner` + 服务端逻辑。
@@ -468,7 +466,7 @@ sequenceDiagram
 `NetUpdateFrequency` 是上限，实际还受带宽配额、相关性、`GetNetPriority` 竞争影响；服务器负载高时所有频率一起下降。
 
 **Q5：ClientAdjustPosition 频繁触发（角色抖动）？**
-客户端预测与服务器容差（`MaxClientError`、`NetworkSimulatedSmoothLocationTime` 等）参数不匹配；先确认 TimeStamp 同步（`ClientUpdatePositionAfterServerUpdate` 重放逻辑）没有重复回滚。
+客户端预测与服务器容差（5.8 为 `ServerCheckClientError`/`ServerMoveHandleClientError` 判定，`MaxClientError` 已移除）参数不匹配；先确认 TimeStamp 同步（`ClientUpdatePositionAfterServerUpdate` 重放逻辑）没有重复回滚。
 
 **Q6：可靠 RPC 会阻塞吗？**
 可靠 RPC 走可靠通道（带 Ack/重传），发送端不阻塞游戏线程；但大量可靠 RPC 会积压 `OutBunches`，导致延迟与"迟到"的排队执行，应避免高频可靠 RPC。

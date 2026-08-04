@@ -26,11 +26,11 @@
 
 | 文件 | 内容 |
 | --- | --- |
-| `Engine/Classes/GameFramework/GameModeBase.h` / `GameModeBase.cpp` | `AGameModeBase`：登录入口 `Login`、`PostLogin`、`RestartPlayer`、`SpawnDefaultPawnFor` |
-| `Engine/Classes/GameFramework/GameMode.h` / `GameMode.cpp` | `AGameMode`：`PreLogin`、`SetMatchState`、`StartMatch/EndMatch`、MatchState 回调族 |
-| `Engine/Classes/GameFramework/PlayerController.h` / `PlayerController.cpp` | `APlayerController`：`SetPlayer`、`InitPlayerState`、`Possess`、`SetPawn` |
-| `Engine/Classes/GameFramework/Pawn.h` / `Pawn.cpp` | `APawn`：`PossessedBy`、`SetController`、`GetController` |
-| `Engine/Classes/GameFramework/GameStateBase.h` / `GameStateBase.cpp` | `AGameStateBase`：`HandleBeginPlay`、`PlayerArray`、`GameModeClass` |
+| `Engine/Classes/GameFramework/GameModeBase.h` / `Engine/Private/GameModeBase.cpp` | `AGameModeBase`：登录入口 `PreLogin`、`Login`、`PostLogin`、`RestartPlayer`、`SpawnDefaultPawnFor`（5.8 中 `PreLogin`/`ProcessServerTravel` 也在本类） |
+| `Engine/Classes/GameFramework/GameMode.h` / `Engine/Private/GameMode.cpp` | `AGameMode`：`SetMatchState`、`StartMatch/EndMatch`、MatchState 回调族、`PostLogin` 人数统计 |
+| `Engine/Classes/GameFramework/PlayerController.h` / `Engine/Private/PlayerController.cpp` | `APlayerController`：`SetPlayer`、`InitPlayerState`、`OnPossess`、`ClientRestart` |
+| `Engine/Classes/GameFramework/Pawn.h` / `Engine/Private/Pawn.cpp` | `APawn`：`PossessedBy`、`SetController`、`GetController`、`ReceivePossessed` |
+| `Engine/Classes/GameFramework/GameStateBase.h` / `Engine/Private/GameStateBase.cpp` | `AGameStateBase`：`HandleBeginPlay`、`PlayerArray`、`GameModeClass` |
 | `Engine/Classes/GameFramework/PlayerState.h` | `APlayerState`：玩家数据（名字/分数/队伍）复制 |
 | `Engine/Classes/GameFramework/GameSession.h` | `UGameSession`：会话审批（`ApproveLogin`）与踢人 |
 
@@ -70,12 +70,11 @@ flowchart TB
 `UNetDriver` / `UNetConnection` 把登录请求交给当前关卡的 `AGameMode`：
 
 ```cpp
-// GameMode.cpp（UE5，节选/示意）
-void AGameMode::PreLogin(const FString& Options, const FString& Address,
-                         const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
+// GameModeBase.cpp（UE 5.8，节选/示意；5.8 起 PreLogin 定义在 AGameModeBase，AGameMode 不再实现）
+void AGameModeBase::PreLogin(const FString& Options, const FString& Address,
+                             const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
 {
-	// 1) 会话层审批（在线子系统/人数上限/白名单等）
-	UGameSession* GameSession = GetGameSession();
+	// 1) 会话层审批（5.8 会先校验 UniqueId 与服务器期望的类型兼容，再调 ApproveLogin）
 	if (GameSession)
 	{
 		ErrorMessage = GameSession->ApproveLogin(Options);
@@ -95,75 +94,89 @@ void AGameMode::PreLogin(const FString& Options, const FString& Address,
 ### 4.2 Login：生成 PlayerController
 
 ```cpp
-// GameModeBase.cpp（UE5，节选/示意）
-APlayerController* AGameModeBase::Login(UPlayer* NewPlayer,
-                                        EUniqueNetIdRepl UniqueId,
+// GameModeBase.cpp（UE 5.8，节选/示意；5.8 签名已扩展为带 ENetRole/Portal/Options）
+APlayerController* AGameModeBase::Login(UPlayer* NewPlayer, ENetRole InRemoteRole,
+                                        const FString& Portal, const FString& Options,
+                                        const FUniqueNetIdRepl& UniqueId,
                                         FString& ErrorMessage)
 {
-	// 1) 用 PlayerControllerClass 生成控制器（延迟构造：先设角色再完成）
-	APlayerController* NewPlayerController = SpawnPlayerController(ROLE_AutonomousProxy,
-	                                                               /*Options*/);
-	if (NewPlayerController == nullptr)
+	// 1) 会话层审批（PreLogin 已做过一次，这里兜底再校验一次）
+	ErrorMessage = GameSession->ApproveLogin(Options);
+	if (!ErrorMessage.IsEmpty())
 	{
-		ErrorMessage = FString::Printf(TEXT("Couldn't spawn player controller of class %s"),
-		                               *GetNameSafe(PlayerControllerClass));
 		return nullptr;
 	}
 
-	// 2) 关联网络连接（客户端侧由本地 UPlayer 关联）
-	if (!NewPlayerController->IsLocalPlayerController())
+	// 2) 用 PlayerControllerClass 生成控制器（bDeferConstruction：先设角色再 FinishSpawningActor）
+	APlayerController* NewPlayerController = SpawnPlayerController(InRemoteRole, Options);
+	if (NewPlayerController == nullptr)
 	{
-		NewPlayerController->NetConnection = Cast<UNetConnection>(NewPlayer);
+		ErrorMessage = TEXT("Failed to spawn player controller");
+		return nullptr;
 	}
 
-	// 3) 绑定 UPlayer 并初始化 PlayerState
-	NewPlayerController->SetPlayer(NewPlayer);
-	NewPlayerController->InitPlayerState(GameState, UniqueId);
+	// 3) 初始化新玩家：会话注册 / 出生点 / 名字（NetConnection 与 SetPlayer 由引擎 UNetConnection 在 Spawn 后完成）
+	ErrorMessage = InitNewPlayer(NewPlayerController, UniqueId, Options, Portal);
+	if (!ErrorMessage.IsEmpty())
+	{
+		NewPlayerController->Destroy();
+		return nullptr;
+	}
 	return NewPlayerController;
 }
 ```
 
 要点：
 
-- `SpawnPlayerController` 内部用 `bDeferConstruction=true` 生成控制器，先设置
-  `NetConnection` / 角色，再 `FinishSpawning`——保证控制器"带着连接出生"；
-- `InitPlayerState(GameState, UniqueId)`：生成 `APlayerState`（默认
-  `PlayerStateClass`）并写入玩家唯一 ID、初始数据；
+- `SpawnPlayerController` → `SpawnPlayerControllerCommon` 内部用 `bDeferConstruction=true`
+  生成控制器，先设置本地/远程角色，再 `FinishSpawningActor`——保证控制器"带着角色出生"；
+  真正的 `NetConnection` 关联与 `SetPlayer(NewPlayer)` 由引擎（`UNetConnection` 处理登录消息时）
+  在 Spawn 之后完成；
+- `InitPlayerState`：5.8 中为**无参**虚函数（`AController::InitPlayerState()`），由
+  `APlayerController::PostInitializeComponents` 在 Spawn 时调用，内部按 `PlayerStateClass`
+  生成 `APlayerState`；玩家唯一 ID 则由 `InitNewPlayer` → `GameSession->RegisterPlayer` 写入；
 - `GameState` 此时已由 `AGameModeBase::InitGameState` 在 `InitGame` 阶段创建。
 
 ### 4.3 PostLogin 与 HandleStartingNewPlayer
 
 ```cpp
-// GameModeBase.cpp（UE5，节选/示意）
+// GameModeBase.cpp（UE 5.8，节选/示意）
 void AGameModeBase::PostLogin(APlayerController* NewPlayer)
 {
-	// 1) 统计在线人数
-	NumPlayers++;
-	// 2) 广播委托（在线子系统/UI 常监听）
-	OnPostLogin.Broadcast(NewPlayer);
+	// 1) 通用初始化（HUD / 语音 / 流送状态 / 电影模式等）
+	GenericPlayerInitialization(NewPlayer);
+	// 2) 通知"新玩家登录"：5.6 起 OnPostLogin 由委托改为虚函数，
+	//    内部调用 K2_PostLogin 并广播静态事件 FGameModeEvents::GameModePostLoginEvent
+	OnPostLogin(NewPlayer);
 	// 3) 进入"为新玩家安排出生"流程
 	HandleStartingNewPlayer(NewPlayer);
 }
 
 void AGameModeBase::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
 {
-	// 1) 观战者不生成 Pawn
-	if (NewPlayer->PlayerState && NewPlayer->PlayerState->bIsSpectator) { return; }
-	// 2) MustSpectate（如死亡回放等）同样不生成
-	if (MustSpectate(NewPlayer)) { return; }
-	// 3) 重新生成（或首次生成）Pawn
-	RestartPlayer(NewPlayer);
+	// 1) 开局即观战 / MustSpectate（如死亡回放）/ 不可重生（PlayerCanRestart）时都不生成 Pawn
+	if (!bStartPlayersAsSpectators && !MustSpectate(NewPlayer) && PlayerCanRestart(NewPlayer))
+	{
+		// 2) 重新生成（或首次生成）Pawn
+		RestartPlayer(NewPlayer);
+	}
 }
 ```
 
-`AGameMode`（子类）还会在此补一步会话钩子：
+`AGameMode`（子类）会在此补一步人数统计与会话钩子（5.8 中 `AGameModeBase` 不再有
+`NumPlayers` 成员，人数在 `AGameMode::PostLogin` 中按观战/旅行状态分流计数）：
 
 ```cpp
-// GameMode.cpp（UE5，节选/示意）
+// GameMode.cpp（UE 5.8，节选/示意）
 void AGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
-	if (UGameSession* GameSession = GetGameSession())
+	// 按状态分流计数（5.8：MustSpectate → NumSpectators；无缝旅行/已加载世界 → NumPlayers；否则 NumTravellingPlayers）
+	if (MustSpectate(NewPlayer)) { NumSpectators++; }
+	else if (GetWorld()->IsInSeamlessTravel() || NewPlayer->HasClientLoadedCurrentWorld()) { NumPlayers++; }
+	else { NumTravellingPlayers++; }
+
+	if (GameSession)   // 5.8 直接访问受保护成员，GetGameSession() 访问器已移除
 	{
 		GameSession->PostLogin(NewPlayer);   // 会话层钩子（邀请/匹配回调等）
 	}
@@ -174,38 +187,50 @@ void AGameMode::PostLogin(APlayerController* NewPlayer)
 ### 4.4 RestartPlayer：找出生点、生成 Pawn
 
 ```cpp
-// GameModeBase.cpp（UE5，节选/示意）
+// GameModeBase.cpp（UE 5.8，节选/示意）
 void AGameModeBase::RestartPlayer(AController* NewPlayer)
 {
 	if (NewPlayer == nullptr || NewPlayer->IsPendingKillPending()) { return; }
 
 	// 1) 找出生点（PlayerStart；可覆写 FindPlayerStart 自定义规则）
 	AActor* StartSpot = FindPlayerStart(NewPlayer);
+	if (StartSpot == nullptr && NewPlayer->StartSpot != nullptr)
+	{
+		// 2) 找不到时回退到该玩家之前记录的出生点（5.8 行为）
+		StartSpot = NewPlayer->StartSpot.Get();
+	}
+
+	// 3) 由拆分出的 RestartPlayerAtPlayerStart 完成"生成 Pawn + 附身"
+	RestartPlayerAtPlayerStart(NewPlayer, StartSpot);
+}
+
+void AGameModeBase::RestartPlayerAtPlayerStart(AController* NewPlayer, AActor* StartSpot)
+{
 	if (StartSpot == nullptr)
 	{
-		// 找不到时退化为世界原点并告警
-		UE_LOG(LogGameMode, Warning, TEXT("Player start not found, failed to restart player"));
+		UE_LOG(LogGameMode, Warning, TEXT("RestartPlayerAtPlayerStart: Player start not found"));
 		return;
 	}
 
-	// 2) 只取 Yaw，避免 Pawn 带俯仰/翻滚出生
+	// 只取 Yaw，避免 Pawn 带俯仰/翻滚出生
 	FRotator SpawnRotation = StartSpot->GetActorRotation();
-	FVector SpawnLocation = StartSpot->GetActorLocation();
 
-	// 3) 生成默认 Pawn
+	// 生成默认 Pawn（失败时内部会调 AController::FailedToSpawnPawn，蓝图可监听）
 	APawn* NewPawn = SpawnDefaultPawnFor(NewPlayer, StartSpot);
-	if (NewPawn == nullptr)
+	if (IsValid(NewPawn))
 	{
-		NewPlayer->FailedToSpawnPawn();   // 通知控制器（蓝图可监听）
-		return;
+		NewPlayer->SetPawn(NewPawn);
 	}
 
-	// 4) 交给控制器：设置 Pawn → Possess → 客户端切 Pawn
-	NewPlayer->SetPawn(NewPawn);
-	NewPlayer->Possess(NewPawn);
-	// 5) 应用默认值（血量/属性等），通知客户端
-	SetPlayerDefaults(NewPawn);
-	NewPlayer->ClientRestart(NewPawn);
+	if (!IsValid(NewPlayer->GetPawn()))
+	{
+		FailedToRestartPlayer(NewPlayer);   // → NewPlayer->FailedToSpawnPawn()
+	}
+	else
+	{
+		// 5.8：Possess → 对齐控制旋转 → SetPlayerDefaults（血量/属性等）→ K2_OnRestartPlayer
+		FinishRestartPlayer(NewPlayer, SpawnRotation);
+	}
 }
 
 APawn* AGameModeBase::SpawnDefaultPawnFor_Implementation(AController* NewPlayer,
@@ -218,40 +243,49 @@ APawn* AGameModeBase::SpawnDefaultPawnFor_Implementation(AController* NewPlayer,
 }
 ```
 
+> 注：`ClientRestart(NewPawn)` 在 5.8 中**不再由 GameMode 调用**——客户端切 Pawn 由
+> `SetPawn` 的复制链路（`AController::OnRep_Pawn` → `APlayerController::ClientRestart`）触发。
+
 ### 4.5 Possess：控制权交接
 
 ```cpp
-// PlayerController.cpp（UE5，节选/示意）
-void APlayerController::Possess(APawn* InPawn)
+// Controller.cpp / PlayerController.cpp（UE 5.8，节选/示意）
+// AController::Possess 是 final 入口，实际工作在其调用的 OnPossess（APlayerController 有覆写）
+void APlayerController::OnPossess(APawn* PawnToPossess)
 {
-	if (InPawn == nullptr) { return; }
-
 	// 1) 若已控制别的 Pawn，先解除
-	if (GetPawn() && GetPawn() != InPawn)
+	if (GetPawn() && GetPawn() != PawnToPossess)
 	{
 		UnPossess();
 	}
-	// 2) 记录当前 Pawn
-	SetPawn(InPawn);
-	// 3) 通知 Pawn：你被我控制了
-	InPawn->PossessedBy(this);
-	// 4) 本地/远程控制处理、输入绑定、相机初始化等
-	// 5) 客户端同步：ClientRestart
+	// 2) 通知 Pawn：你被我控制了（5.8 中 PossessedBy 先于 SetPawn，与旧版顺序相反）
+	PawnToPossess->PossessedBy(this);
+	// 3) 记录当前 Pawn、对齐控制旋转、网络预测接管等
+	SetPawn(PawnToPossess);
+	SetControlRotation(PawnToPossess->GetActorRotation());
+	// 4) 客户端同步由 SetPawn 的复制（OnRep_Pawn → ClientRestart）链路触发
 }
 
-// Pawn.cpp（UE5，节选/示意）
+// Pawn.cpp（UE 5.8，节选/示意）
 void APawn::PossessedBy(AController* NewController)
 {
-	AController* OldController = Controller;
-	SetController(NewController);          // 记录 Controller（GetController()）
-	// 蓝图事件：Event PossessedBy
-	ReceivePossessedBy(NewController);
-	// 广播委托、处理 AI/玩家接管差异等
+	AController* const OldController = GetController();
+	SetController(NewController);            // 记录 Controller（GetController()）
+	ForceNetUpdate();
+	UpdateOwningNetConnection();
+	if (GetController()->PlayerState) { SetPlayerState(GetController()->PlayerState); }
+	// 蓝图事件：5.8 由 ReceivePossessedBy 更名为 ReceivePossessed
+	if (OldController != NewController)
+	{
+		ReceivePossessed(GetController());
+		NotifyControllerChanged();
+	}
 }
 ```
 
-顺序结论：**`Possess` 先于 `PossessedBy`**；`Possess` 由控制器发起，
-`PossessedBy` 由 Pawn 响应（`ReceivePossessedBy` 是 Pawn 侧蓝图事件）。
+顺序结论：**`Possess`（→ `OnPossess`）先于 `PossessedBy`**；`Possess` 由控制器发起，
+`PossessedBy` 由 Pawn 响应（`ReceivePossessed` 是 Pawn 侧蓝图事件，5.8 由
+`ReceivePossessedBy` 更名）。
 
 ### 4.6 登录全链路时序图
 
@@ -275,8 +309,8 @@ sequenceDiagram
     GM->>GM: RestartPlayer
     GM->>GM: FindPlayerStart → SpawnDefaultPawnFor（生成 Pawn）
     GM->>PC: SetPawn(NewPawn)
-    GM->>PC: Possess(NewPawn)
-    PC->>P: PossessedBy → ReceivePossessedBy
+    GM->>PC: Possess(NewPawn)（→ OnPossess）
+    PC->>P: PossessedBy → ReceivePossessed
     PC->>C: ClientRestart（客户端切 Pawn、绑定输入）
 ```
 
@@ -302,7 +336,7 @@ namespace MatchState
 ### 5.2 状态切换：SetMatchState
 
 ```cpp
-// GameMode.cpp（UE5，节选/示意）
+// GameMode.cpp（UE 5.8，节选/示意）
 void AGameMode::SetMatchState(FName NewState)
 {
 	if (MatchState == NewState)
@@ -312,44 +346,32 @@ void AGameMode::SetMatchState(FName NewState)
 
 	MatchState = NewState;
 
-	// 同步给 GameState（复制属性，客户端会收到 OnRep_MatchState）
-	if (GameState)
+	// 5.8：回调分发在 OnMatchStateSet()（WaitingToStart → HandleMatchIsWaitingToStart 等）
+	OnMatchStateSet();
+
+	// 同步给 GameState（经 AGameState::SetMatchState 写入复制属性，客户端收到 OnRep_MatchState）
+	if (AGameState* FullGameState = GetGameState<AGameState>())
 	{
-		GameState->MatchState = NewState;
+		FullGameState->SetMatchState(NewState);
 	}
 
-	// 分发对应回调
-	if (MatchState == MatchState::WaitingToStart)
-	{
-		HandleMatchIsWaitingToStart();
-	}
-	else if (MatchState == MatchState::InProgress)
-	{
-		HandleMatchHasStarted();
-	}
-	else if (MatchState == MatchState::WaitingPostMatch)
-	{
-		HandleMatchHasEnded();
-	}
-	else if (MatchState == MatchState::LeavingMap)
-	{
-		HandleLeavingMap();
-	}
-	else if (MatchState == MatchState::Aborted)
-	{
-		HandleMatchAborted();
-	}
+	// 蓝图事件（5.8 新增）
+	K2_OnSetMatchState(NewState);
 }
 ```
+
+> 5.8 中 `OnMatchStateSet()` 统一分发：`WaitingToStart` → `HandleMatchIsWaitingToStart()`、
+> `InProgress` → `HandleMatchHasStarted()`、`WaitingPostMatch` → `HandleMatchHasEnded()`、
+> `LeavingMap` → `HandleLeavingMap()`、`Aborted` → `HandleMatchAborted()`。
 
 ### 5.3 常用驱动函数
 
 ```cpp
-// GameMode.cpp（UE5，节选/示意）
+// GameMode.cpp（UE 5.8，节选/示意）
 // 开局：AGameMode::StartMatch() → SetMatchState(MatchState::InProgress)
 // 结束：AGameMode::EndMatch()   → SetMatchState(MatchState::WaitingPostMatch)
 // 中止：AGameMode::AbortMatch() → SetMatchState(MatchState::Aborted)
-// 切图：AGameMode::ProcessServerTravel / UWorld::ServerTravel → LeavingMap
+// 切图：AGameModeBase::ProcessServerTravel（5.8 位于 GameModeBase） / UWorld::ServerTravel → LeavingMap
 
 // 自动开局判定（可在子类覆写）
 bool AGameMode::ReadyToStartMatch_Implementation()
@@ -361,10 +383,12 @@ bool AGameMode::ReadyToEndMatch_Implementation() { /* ... */ return false; }
 
 void AGameMode::HandleMatchHasStarted()
 {
-	// 通知世界进入 InProgress（Actors 可在此响应"比赛开始"）
+	GameSession->HandleMatchHasStarted();
+	// 为尚无 Pawn 的玩家补一次 RestartPlayer
+	//（循环 GetWorld()->GetPlayerControllerIterator()，条件 PlayerCanRestart）
+	// 先 BeginPlay 再通知"比赛开始"（5.8 只调 WorldSettings，UWorld::NotifyMatchStarted 已不在调用链上）
+	GetWorldSettings()->NotifyBeginPlay();
 	GetWorldSettings()->NotifyMatchStarted();
-	GetWorld()->NotifyMatchStarted();
-	// 广播委托等
 }
 ```
 
@@ -487,8 +511,10 @@ GameMode 只存在于服务器（`GetAuthGameMode()`）；客户端通过复制�
 `GameState->GameModeClass` 知道规则类，需要规则数据时放进 GameState。
 
 **Q3：`PostLogin` 里 `NumPlayers` 还没更新？**
-先 `NumPlayers++` 再 `HandleStartingNewPlayer`；若在 `Login` 里读
-`NumPlayers` 会拿到旧值——注意回调顺序。
+5.8 中 `AGameModeBase` 已没有 `NumPlayers` 成员（只剩 `GetNumPlayers()`，由 GameState 统计）；
+计数在 `AGameMode::PostLogin`（`Super::PostLogin` 之后）按状态分流：`MustSpectate` →
+`NumSpectators++`，无缝旅行或已加载世界 → `NumPlayers++`，否则 `NumTravellingPlayers++`。
+随后才走到 `HandleStartingNewPlayer`——所以别在 `Login`/`PostLogin` 早期读人数。
 
 **Q4：`RestartPlayer` 找不到 PlayerStart 会怎样？**
 告警并返回（不生成 Pawn）。多人地图要保证出生点数量/类型足够，或覆写

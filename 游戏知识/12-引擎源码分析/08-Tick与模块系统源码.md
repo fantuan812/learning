@@ -27,16 +27,16 @@
 
 | 模块 | 文件（Engine/Source/Runtime 下） | 关键符号 | 作用 |
 | --- | --- | --- | --- |
-| Engine | `Engine/Public/TickFunction.h` | `FTickFunction`、`FActorTickFunction`、`FActorComponentTickFunction`、`ETickingGroup`、`FTickPrerequisite` | Tick 函数基类、分组与依赖定义 |
-| Engine | `Engine/Public/TickTaskManagerInterface.h` | `FTickTaskManagerInterface`、`FTickTaskSequencer` | 调度器接口与任务序列器声明 |
-| Engine | `Engine/Private/TickTaskManager.cpp` | `FTickTaskManager::Tick`、`AddTickFunction`、`FTickTaskSequencer::StartFrame / QueueTickTask / ReleaseTickGroup / EndFrame`、`FTickTask` | 核心调度实现：分组、并行、依赖 |
-| Engine | `Engine/Private/World.cpp` | `UWorld::Tick` | 每帧 Tick 的总入口 |
+| Engine | `Engine/Classes/Engine/EngineBaseTypes.h` | `FTickFunction`、`FActorTickFunction`、`FActorComponentTickFunction`、`ETickingGroup`、`FTickPrerequisite` | Tick 函数基类、分组与依赖定义（5.8 起 TickFunction.h 已并入本文件） |
+| Engine | `Engine/Public/TickTaskManagerInterface.h` | `FTickTaskManagerInterface` | 调度器接口（5.8 中 FTickTaskSequencer 定义在 TickTaskManager.cpp） |
+| Engine | `Engine/Private/TickTaskManager.cpp` | `FTickTaskManager`（StartFrame/RunTickGroup/EndFrame 实现）、`AddTickFunction`、`FTickTaskSequencer::StartFrame / QueueTickTask / ReleaseTickGroup / EndFrame` | 核心调度实现：分组、并行、依赖（5.8 中 FTickTask 类已移除，任务直接以 FTickFunction 入队） |
+| Engine | `Engine/Private/LevelTick.cpp` | `UWorld::Tick` | 每帧 Tick 的总入口（5.8 实现位于 LevelTick.cpp） |
 | Engine | `Engine/Private/Actor.cpp` | `AActor::TickActor`、`AActor::Tick`、`AddTickPrerequisiteActor / AddTickPrerequisiteComponent` | Actor 级 Tick 与依赖便捷接口 |
 | Engine | `Engine/Private/Components/ActorComponent.cpp` | `UActorComponent::TickComponent`、`SetComponentTickEnabled` | 组件级 Tick |
 | Core | `Core/Public/Modules/ModuleInterface.h` | `IModuleInterface` | 模块接口（StartupModule / ShutdownModule） |
 | Core | `Core/Public/Modules/ModuleManager.h` | `FModuleManager`、`IMPLEMENT_MODULE` 等宏 | 模块管理器声明与注册宏 |
 | Core | `Core/Private/Modules/ModuleManager.cpp` | `LoadModule`、`LoadModuleWithFailureReason`、`UnloadModule` | 模块加载 / 卸载实现 |
-| Core | `Core/Private/Modules/ModuleDescriptor.cpp` | `FModuleDescriptor`、`LoadModulesForPhase` | 模块描述与加载阶段 |
+| Projects | `Projects/Public/ModuleDescriptor.h`、`Projects/Private/ModuleDescriptor.cpp` | `FModuleDescriptor`、`LoadModulesForPhase` | 模块描述与加载阶段（5.8 位于 Projects 模块） |
 | Launch | `Launch/Private/LaunchEngineLoop.cpp` | `FEngineLoop::PreInit` / `Init` | 各 LoadingPhase 的触发点 |
 
 ## 三、Tick 系统源码剖析
@@ -46,7 +46,7 @@
 UE 的 Tick 建立在 TaskGraph（任务图）之上：
 
 - 每个可 Tick 对象（Actor / Component）持有一个 `FTickFunction` 派生实例（`FActorTickFunction` / `FActorComponentTickFunction`）；
-- 注册后，每帧由 `FTickTaskManager` 把它们包装成任务（`FTickTask`）投递给任务图；
+- 注册后，每帧由 `FTickTaskManager` 把它们通过 `FTickTaskSequencer::QueueTickTask` 以 `FTickFunction` 直接入队投递给任务图（5.8 中 `FTickTask` 包装类已移除）；
 - 同一 Tick Group 内的任务可以多线程并行，**组与组之间严格串行**；
 - 默认情况下 `AActor::PrimaryActorTick` 属于 `TG_PrePhysics`，`UActorComponent::PrimaryComponentTick` 属于 `TG_DuringPhysics`（均在构造函数中设置）。
 
@@ -54,7 +54,7 @@ UE 的 Tick 建立在 TaskGraph（任务图）之上：
 
 ```cpp
 // Engine/Source/Runtime/Engine/Public/TickFunction.h（UE5）
-enum class ETickingGroup : int32
+enum ETickingGroup : int   // 5.8：由 enum class 改为普通 enum，定义在 EngineBaseTypes.h
 {
     TG_PrePhysics,      // 物理模拟开始之前（Actor 默认组）
     TG_StartPhysics,    // 物理场景启动
@@ -89,7 +89,14 @@ void UWorld::Tick(ELevelTick TickType, float DeltaSeconds)
     // 所有 Actor / Component 的 Tick 统一交给 TickTaskManager
     if (TickType == LEVELTICK_All)
     {
-        FTickTaskManagerInterface::Get().Tick(DeltaSeconds, bAllowTicking);
+        FTickTaskManagerInterface::Get().StartFrame(this, DeltaSeconds, TickType, LevelsToTick);   // 5.8：排帧
+        RunTickGroup(TG_PrePhysics);
+        RunTickGroup(TG_StartPhysics);
+        RunTickGroup(TG_DuringPhysics, false);   // 不阻塞等待物理
+        RunTickGroup(TG_EndPhysics);
+        RunTickGroup(TG_PostPhysics);
+        RunTickGroup(TG_PostUpdateWork);
+        FTickTaskManagerInterface::Get().EndFrame();   // 5.8：由 LevelTick.cpp 中 UWorld::Tick 调用
     }
 
     // ... GameMode 逻辑、Level Streaming 更新等后续工作 ...
@@ -99,93 +106,65 @@ void UWorld::Tick(ELevelTick TickType, float DeltaSeconds)
 要点：
 
 - `LEVELTICK_All` 是正常游戏帧的 Tick 类型（还有 `LEVELTICK_TimeOnly`、`LEVELTICK_ViewportsOnly` 等）；
-- `FTickTaskManagerInterface` 是引擎启动时注册的单例接口，`UWorld` 构造时会为每个世界分配一个 `FTickTaskManager`（`AllocateTickTaskManager`），所以 **Tick 调度按 World 隔离**（编辑器多 World 并存时互不干扰）。
+- `FTickTaskManagerInterface` 是引擎启动时注册的单例接口（`FTickTaskManagerInterface::Get()`），并按 Level 分配 `FTickTaskLevel`（`AllocateTickTaskLevel`，5.8；旧的 `AllocateTickTaskManager` 已移除），所以 **Tick 调度按 World/Level 隔离**（编辑器多 World 并存时互不干扰）。
 
 ### 3.4 FTickTaskManager::Tick：分组调度核心
 
 ```cpp
 // Engine/Source/Runtime/Engine/Private/TickTaskManager.cpp
-// FTickTaskManager::Tick —— 结构示意（真实实现包含更多细节与优化分支）
-void FTickTaskManager::Tick(float DeltaSeconds, bool bAllowTicking)
-{
-    // 1) 帧开始：清空"上一帧新生成、尚未入队"的 TickFunction 列表
-    TickTaskSequencer.StartFrame();
-
-    // 2) 按 TickGroup 依次推进：组间严格串行
-    for (int32 TickGroupIndex = 0; TickGroupIndex < (int32)TG_MAX; TickGroupIndex++)
-    {
-        const ETickingGroup TickGroup = (ETickingGroup)TickGroupIndex;
-
-        // 把本组已注册的每个 FTickFunction 包装成 FTickTask 投递给任务图；
-        // 依赖（AddPrerequisite 建立的边）会作为任务的 TaskPrerequisites 传入，
-        // 因此依赖方一定在依赖对象执行完之后才执行。
-        for (FTickFunction* TickFunction : TickGroupQueue[TickGroupIndex])
-        {
-            // ... 检查 bCanEverTick / TickInterval / 是否被禁用 ...
-            TickTaskSequencer.QueueTickTask(TickTask);
-        }
-
-        // 3) 释放本组：组内任务开始并行执行；
-        //    本组所有任务完成后（含所有依赖），ReleaseTickGroup 才返回并进入下一组
-        TickTaskSequencer.ReleaseTickGroup(TickGroup);
-    }
-
-    // 4) 帧结束：等待本帧全部 Tick 完成
-    TickTaskSequencer.EndFrame();
-}
+// 5.8 ：FTickTaskManager::Tick 已移除，改由 FTickTaskManagerInterface 的
+// StartFrame / RunTickGroup / EndFrame 接口驱动（UWorld::Tick 在 LevelTick.cpp 中调用）
+FTickTaskManagerInterface::Get().StartFrame(this, DeltaSeconds, TickType, LevelsToTick);   // 1) 排帧：清理并入队本帧所有 TickFunction
+RunTickGroup(TG_PrePhysics);        // 2) 逐组执行（组间严格串行，UWorld::RunTickGroup 转调 FTickTaskManagerInterface::RunTickGroup）
+RunTickGroup(TG_DuringPhysics, false);   //    DuringPhysics 不阻塞等待
+RunTickGroup(TG_PostUpdateWork);
+FTickTaskManagerInterface::Get().EndFrame();    // 3) 帧结束
+// 组内并行：FTickTaskSequencer::QueueTickTask 把 FTickFunction 以任务图任务形式入队，依赖解析为 FGraphEventArray 前置事件；
+// 5.8 中无 FTickTask 类、无 TickGroupQueue 成员（组队列在 FTickTaskLevel 内部）
 ```
 
 `FTickTaskSequencer` 的关键接口（真实存在）：
 
 ```cpp
 // Engine/Source/Runtime/Engine/Private/TickTaskManager.cpp（节选）
-void FTickTaskSequencer::StartFrame()
-{
-    if (bTickNewlySpawned)
-    {
-        NewlySpawnedTickFunctions.Reset();
-    }
-    bTickNewlySpawned = true;
-}
+void FTickTaskSequencer::StartFrame();   // 5.8 真实签名（定义于 TickTaskManager.cpp）
+void FTickTaskSequencer::QueueTickTask(const FGraphEventArray* Prerequisites, FTickFunction* TickFunction, const FTickContext& TickContext);
+void FTickTaskSequencer::ReleaseTickGroup(ETickingGroup WorldTickGroup, bool bBlockTillComplete, TArray<FTickFunction*>& TicksToManualDispatch);
+void FTickTaskSequencer::EndFrame();
+// 注：NewlySpawnedTickFunctions（TSet<FTickFunction*>）仍在，用于当帧新生成 Tick 的延迟处理
 ```
 
-- `QueueTickTask(FTickTask& Task)`：把一个 Tick 任务加入任务图，任务可在任意工作线程上执行（组内并行）；
-- `ReleaseTickGroup(ETickingGroup TickGroup)`：触发本组任务执行，并**阻塞等待本组全部完成**后才返回——这就是"组间串行"的实现；
+- `QueueTickTask(const FGraphEventArray* Prerequisites, FTickFunction* TickFunction, const FTickContext& TickContext)`（5.8 签名）：把一个 TickFunction 入队到任务图，任务可在任意工作线程上执行（组内并行）；
+- `ReleaseTickGroup(ETickingGroup WorldTickGroup, bool bBlockTillComplete, TArray<FTickFunction*>& TicksToManualDispatch)`（5.8 签名）：触发本组任务执行，并**阻塞等待本组全部完成**后才返回——这就是"组间串行"的实现；
 - `EndFrame()`：收尾，等待所有组完成，清空本帧状态。
 
 ### 3.5 FTickFunction：注册 / 注销 / 执行
 
 ```cpp
-// Engine/Source/Runtime/Engine/Public/TickFunction.h（节选，UE5）
+// Engine/Source/Runtime/Engine/Classes/Engine/EngineBaseTypes.h（5.8：TickFunction.h 已并入本文件）
 struct ENGINE_API FTickFunction
 {
     // ---- 分组与调度参数 ----
     ETickingGroup TickGroup;            // 所属组（Actor 默认 TG_PrePhysics）
     ETickingGroup EndTickGroup;         // 结束组（用于标记"跨组"执行）
-    bool bCanEverTick;                  // 是否允许 Tick（构造后不可再改）
-    bool bStartWithTickEnabled;         // 注册后是否默认启用
-    bool bHighPriority;                 // 高优先级（组内优先调度）
-    bool bDisableParallel;              // 禁止并行（强制主线程执行）
+    uint8 bCanEverTick:1;               // 是否允许 Tick
+    uint8 bStartWithTickEnabled:1;      // 注册后是否默认启用
+    uint8 bHighPriority:1;              // 高优先级（组内优先调度）
+    // bDisableParallel 已移除（5.8）；并行性由任务图决定
     float TickInterval;                 // Tick 间隔（秒），0 = 每帧
 
     // ---- 注册 / 注销 ----
-    void RegisterTickFunction(UWorld* World);
+    void RegisterTickFunction(class ULevel* Level);   // 5.8 参数为 ULevel*
     void UnRegisterTickFunction();
     bool IsTickFunctionRegistered() const;
     void SetTickFunctionEnable(bool bInEnabled);
 
-    // ---- 依赖 ----
-    void AddPrerequisite(UObject* TargetObject, struct FStructProperty* Property);
-    void AddPrerequisite(UActorComponent* TargetComponent);
-    void AddPrerequisite(AActor* TargetActor);
-    void AddPrerequisite(FTickFunction& Target);
-    void RemovePrerequisite(UObject* TargetObject, struct FStructProperty* Property);
-    void RemovePrerequisite(UActorComponent* TargetComponent);
-    void RemovePrerequisite(AActor* TargetActor);
-    void RemovePrerequisite(FTickFunction& Target);
+    // ---- 依赖（5.8 只有单一重载）----
+    void AddPrerequisite(UObject* TargetObject, struct FTickFunction& TargetTickFunction);
+    void RemovePrerequisite(UObject* TargetObject, struct FTickFunction& TargetTickFunction);
 
-    // ---- 执行 ----
-    virtual void ExecuteTick(ENamedThreads::Type CurrentThread,
+    // ---- 执行（5.8 签名）----
+    virtual void ExecuteTick(float DeltaTime, ELevelTick TickType, ENamedThreads::Type CurrentThread,
                              const FGraphEventRef& MyCompletionGraphEvent) = 0;
 };
 ```
@@ -200,9 +179,9 @@ void FTickFunction::RegisterTickFunction(UWorld* World)
 {
     // 1) 校验：bCanEverTick 为 true、未重复注册、World 有效
     // 2) 经由 FTickTaskManagerInterface 找到本 World 的 FTickTaskManager
-    // 3) FTickTaskManager::AddTickFunction(this)：
-    //    - 按 TickGroup 放入 TickGroupQueue[TickGroup]
-    //    - 遍历 Prerequisites，把每个依赖解析为任务图前置事件
+// 3) FTickTaskManager::AddTickFunction(Level, this)（5.8 签名）：
+    //    - 按 TickGroup 放入当前 FTickTaskLevel 的组队列
+    //    - 遍历 Prerequisites，把每个依赖解析为任务图前置事件（FGraphEventArray）
     // 4) bRegistered = true
 }
 
@@ -222,7 +201,7 @@ void FTickFunction::UnRegisterTickFunction()
 void FActorTickFunction::ExecuteTick(float DeltaTime, ELevelTick TickType,
     ENamedThreads::Type CurrentThread, const FGraphEventRef& MyCompletionGraphEvent)
 {
-    QUICK_SCOPE_CYCLE_COUNTER(STAT_FActorTickFunction_ExecuteTick);
+// 5.8：STAT_FActorTickFunction_ExecuteTick 已不存在，仅保留 FScopeCycleCounterUObject 范围计时
     if (Target && Target->IsValidLowLevel() && !Target->IsUnreachable())
     {
         FScopeCycleCounterUObject ActorScope(Target);
@@ -240,7 +219,7 @@ void FActorTickFunction::ExecuteTick(float DeltaTime, ELevelTick TickType,
 void FActorComponentTickFunction::ExecuteTick(float DeltaTime, ELevelTick TickType,
     ENamedThreads::Type CurrentThread, const FGraphEventRef& MyCompletionGraphEvent)
 {
-    QUICK_SCOPE_CYCLE_COUNTER(STAT_FActorComponentTickFunction_ExecuteTick);
+// 5.8：改用 TRACE_CPUPROFILER_EVENT_SCOPE(FActorComponentTickFunction::ExecuteTick)
     if (Target && Target->IsValidLowLevel() && !Target->IsUnreachable())
     {
         FScopeCycleCounterUObject ComponentScope(Target);
@@ -264,7 +243,7 @@ void AActor::TickActor(float DeltaSeconds, ELevelTick TickType, FActorTickFuncti
     {
         return;
     }
-    QUICK_SCOPE_CYCLE_COUNTER(STAT_Actor_TickActor);
+// 5.8：STAT_Actor_TickActor 已不存在
     check(!IsPendingKill());
     check(TickType != LEVELTICK_None);
 
@@ -336,7 +315,9 @@ public:
     virtual void StartupModule() {}
 
     // 模块卸载前调用：释放资源、反注册
-    virtual void ShutdownModule() {}
+virtual void ShutdownModule() {}
+    virtual void PreUnloadCallback() {}   // 5.8：卸载前先行回调
+    virtual void PostLoadCallback() {}    // 5.8：加载后回调
 
     // 是否支持编辑器中的动态重载（UnrealEd 热重载）
     virtual bool SupportsDynamicReloading() { return false; }
@@ -354,20 +335,16 @@ public:
 ```cpp
 // Engine/Source/Runtime/Core/Public/Modules/ModuleManager.h
 #define IMPLEMENT_MODULE( ModuleImplClass, ModuleName ) \
-    IMPLEMENT_MODULE_IMPLEMENTATION(ModuleImplClass, ModuleName) \
-    PER_MODULE_BOILERPLATE \
-    DEFINE_STATIC_MAIN_FUNC(ModuleName)
+    static FStaticallyLinkedModuleRegistrant< ModuleImplClass > ModuleRegistrant##ModuleName( TEXT(#ModuleName) ); \
+    extern "C" AUTORTFM_DISABLE void IMPLEMENT_MODULE_##ModuleName() { /* 模块名一致性校验 */ } \
+    PER_MODULE_BOILERPLATE_ANYLINK(ModuleImplClass, ModuleName)
 
-// 核心：导出 InitializeModule，FModuleManager 加载 DLL 后调用它创建模块实例
-#define IMPLEMENT_MODULE_IMPLEMENTATION( ModuleImplClass, ModuleName ) \
-    extern "C" DLLIMPORT IModuleInterface* InitializeModule() \
-    { \
-        return new ModuleImplClass(); \
-    }
+// 非单体（DLL）构建分支导出：Initialize##ModuleName##Module()，
+// FModuleManager 加载 DLL 后调用它创建模块实例（5.8；IMPLEMENT_MODULE_IMPLEMENTATION / DEFINE_STATIC_MAIN_FUNC 已移除）
 ```
 
 - `PER_MODULE_BOILERPLATE`：生成模块的静态样板代码（模块名登记等）；
-- `DEFINE_STATIC_MAIN_FUNC(ModuleName)`：生成名为 `ModuleName_Main` 的静态入口函数占位；
+- 5.8 中 `DEFINE_STATIC_MAIN_FUNC` 已移除；静态链接注册由 `FStaticallyLinkedModuleRegistrant` 完成，DLL 导出入口为 `Initialize##ModuleName##Module()`；
 - `IMPLEMENT_PRIMARY_GAME_MODULE(ModuleImplClass, ModuleName, DEPRECATED_GameName)`：在 `IMPLEMENT_MODULE` 基础上额外把该模块注册为**主游戏模块**（引擎通过它确定 GameName / 默认游戏模块）。项目模块的 .cpp 通常写：
 
 ```cpp
@@ -388,11 +365,12 @@ class FModuleManager
 public:
     static FModuleManager& Get();   // 单例
 
-    IModuleInterface* LoadModule(const FName ModuleName, const bool bWasReloaded = false);
-    IModuleInterface* LoadModuleWithFailureReason(const FName ModuleName, FLoadModuleResult& OutResult);
-    bool UnloadModule(const FName ModuleName, const bool bIsShutdown = false);
-    IModuleInterface* FindModule(const FName ModuleName);   // 只查不加载
-    static bool ModuleExists(const FName ModuleName);
+    IModuleInterface* LoadModule(const FName InModuleName, ELoadModuleFlags InLoadModuleFlags = ELoadModuleFlags::None);
+    IModuleInterface* LoadModuleWithFailureReason(const FName InModuleName, EModuleLoadResult& OutFailureReason, ELoadModuleFlags InLoadModuleFlags = ELoadModuleFlags::None);   // 5.8：FLoadModuleResult 已移除
+    bool UnloadModule(const FName InModuleName, bool bIsShutdown = false, bool bAllowUnloadCode = true);
+    IModuleInterface* GetModule(const FName InModuleName);   // 只查不加载（5.8）
+    ModuleInfoPtr FindModule(FName InModuleName);            // 5.8 返回模块信息，不是 IModuleInterface*
+    bool ModuleExists(const TCHAR* ModuleName, FString* OutModuleFilePath = nullptr) const;   // 5.8 非 static，参数改为 TCHAR*
 };
 ```
 
@@ -407,12 +385,12 @@ IModuleInterface* FModuleManager::LoadModule(const FName ModuleName, const bool 
     IModuleInterface* Module = LoadModuleWithFailureReason(ModuleName, OutResult);
     if (!Module)
     {
-        // 失败：打印错误（OutResult.ErrorReason），并视构建设置弹窗
+    // 失败：根据 EModuleLoadResult 打印错误（并视构建设置弹窗）
     }
     return Module;
 }
 
-IModuleInterface* FModuleManager::LoadModuleWithFailureReason(const FName ModuleName, FLoadModuleResult& OutResult)
+IModuleInterface* FModuleManager::LoadModuleWithFailureReason(const FName InModuleName, EModuleLoadResult& OutFailureReason, ELoadModuleFlags InLoadModuleFlags)   // 5.8
 {
     // 1) 已加载：直接从 Modules 表返回
     // 2) 正在加载：等待加载完成（多线程安全）
@@ -422,16 +400,16 @@ IModuleInterface* FModuleManager::LoadModuleWithFailureReason(const FName Module
     //    - 插件目录（.uplugin 声明的模块）
     // 4) 找到后内部加载：
     //    a. FPlatformProcess::GetDllHandle(文件名) 加载 DLL
-    //    b. 取导出函数 InitializeModule() 并调用 → new 出 IModuleInterface 实例
+//    b. 取导出函数 Initialize##ModuleName##Module() 并调用 → new 出 IModuleInterface 实例（5.8）
     //    c. 登记进 Modules 表（标记已加载）
     //    d. 调用 Module->StartupModule()     ← 开发者初始化逻辑在这里执行
-    // 5) 任一步失败：填充 OutResult.ErrorReason 并返回 nullptr
+// 5) 任一步失败：填充 EModuleLoadResult 并返回 nullptr（5.8）
 }
 ```
 
 ```cpp
 // 语义说明（示意）
-bool FModuleManager::UnloadModule(const FName ModuleName, const bool bIsShutdown)
+bool FModuleManager::UnloadModule(const FName InModuleName, bool bIsShutdown, bool bAllowUnloadCode)   // 5.8 新增 bAllowUnloadCode
 {
     // 1) 查找模块；未加载直接返回 false
     // 2) 若 !bIsShutdown 且模块 SupportsDynamicReloading() == false：
@@ -446,7 +424,7 @@ bool FModuleManager::UnloadModule(const FName ModuleName, const bool bIsShutdown
 ### 4.4 FModuleDescriptor：模块描述与加载阶段
 
 ```cpp
-// Engine/Source/Runtime/Core/Public/Modules/ModuleDescriptor.h（节选）
+// Engine/Source/Runtime/Projects/Public/ModuleDescriptor.h（5.8 位于 Projects 模块）
 struct FModuleDescriptor
 {
     FName Name;                         // 模块名
@@ -454,13 +432,11 @@ struct FModuleDescriptor
     ELoadingPhase::Type LoadingPhase;   // 加载阶段
     TArray<FString> PlatformAllowList;  // 仅这些平台加载（空 = 全部）
     TArray<FString> PlatformDenyList;   // 这些平台不加载
-    TArray<FName> AdditionalDependencies; // 额外依赖：影响加载顺序排序
+    TArray<FString> AdditionalDependencies; // 额外依赖（TArray<FName> 是 UE4 旧签名，5.8 为 FString）
 
-    // 按阶段加载一批模块（.uproject / .uplugin 解析后调用）
+    // 按阶段加载一批模块（5.8 签名已简化）
     static void LoadModulesForPhase(ELoadingPhase::Type LoadingPhase,
-        const TArray<FModuleDescriptor>& Modules, TArray<FModuleStatus>& ModuleStatuses,
-        FModuleManager& ModuleManager, bool bIsGameModule, const FName& ProjectName,
-        bool bLoadModules);
+        const TArray<FModuleDescriptor>& Modules, TMap<FName, EModuleLoadResult>& ModuleLoadErrors);
 };
 ```
 
@@ -471,7 +447,7 @@ struct FModuleDescriptor
 | EarliestPossible | 引擎初始化最早期 | Core、Trace 等最基础模块 |
 | PostConfigInit | 配置系统初始化后 | 依赖 GConfig 的模块 |
 | PostSplashScreen | 启动画面之后 | 加载画面相关 |
-| PreLoadingScreen / PreEngineInit | 引擎初始化前 | 早期工具模块 |
+| PreLoadingScreen | 启动画面之后、引擎初始化前 | 早期工具模块（5.8 无 PreEngineInit 阶段） |
 | PostEngineInit | GEngine 创建后 | UnrealEd 等编辑器模块 |
 | PreDefault / Default | 默认阶段 | 绝大多数游戏模块（不写即 Default） |
 | PostDefault | 最后 | 依赖其他游戏模块的收尾模块 |
@@ -488,16 +464,16 @@ struct FModuleDescriptor
 
 ```text
 FEngineLoop::PreInit / Init
-  └─ FModuleManager::Get().LoadModulesForPhase(ELoadingPhase::xxx, ...)
+  └─ 项目/插件管理器驱动 FModuleDescriptor::LoadModulesForPhase(ELoadingPhase::xxx, ...)（5.8）
        └─ FModuleManager::LoadModule(ModuleName)
             ├─ GetDllHandle() 加载 DLL
-            ├─ InitializeModule() → new 模块类          （模块实例诞生）
+ ├─ Initialize##ModuleName##Module() → new 模块类   （模块实例诞生，5.8）
             └─ Module->StartupModule()                  ← 你的初始化代码
 ```
 
 两个容易混淆的点：
 
-1. **构造函数 ≠ StartupModule**：模块类构造函数在 `InitializeModule()` 时执行，此时模块尚未登记，不要在里面查询其他模块；初始化逻辑放 `StartupModule()`；
+1. **构造函数 ≠ StartupModule**：模块类构造函数在 `Initialize##ModuleName##Module()`（5.8）时执行，此时模块尚未登记，不要在里面查询其他模块；初始化逻辑放 `StartupModule()`；
 2. **StartupModule 里不要假定其他模块已加载**：若依赖其他模块，应在 `StartupModule()` 开头用 `LoadModuleChecked<...>(...)` 显式加载（该模板函数在失败时直接触发断言 / 日志）。
 
 ## 五、运行流程（Mermaid）
@@ -506,24 +482,23 @@ FEngineLoop::PreInit / Init
 
 ```mermaid
 flowchart TD
-    A["UGameEngine::Tick"] --> B["UWorld::Tick(LEVELTICK_All)"]
-    B --> C["FTickTaskManagerInterface::Get().Tick(DeltaSeconds, bAllowTicking)"]
-    C --> D["FTickTaskSequencer::StartFrame()"]
-    D --> E["ReleaseTickGroup(TG_PrePhysics)"]
-    E --> F["FTickTask 并行执行（组内）"]
-    F --> G["FActorTickFunction::ExecuteTick → AActor::TickActor → AActor::Tick"]
-    E --> H["ReleaseTickGroup(TG_DuringPhysics)（含组件 Tick）"]
-    H --> I["FActorComponentTickFunction::ExecuteTick → TickComponent"]
-    H --> J["ReleaseTickGroup(TG_PostPhysics) / (TG_PostUpdateWork)"]
-    J --> K["FTickTaskSequencer::EndFrame()"]
-    F -. "AddTickPrerequisite 依赖边" .-> G
+    A["UGameEngine::Tick"] --> B["UWorld::Tick(LEVELTICK_All)（LevelTick.cpp）"]
+    B --> C["FTickTaskManagerInterface::Get().StartFrame(World, DeltaSeconds, TickType, LevelsToTick)（5.8）"]
+    C --> D["RunTickGroup(TG_PrePhysics) → FTickTaskManagerInterface::RunTickGroup"]
+    D --> E["FTickFunction 并行执行（组内，FTickTaskSequencer::QueueTickTask）"]
+    E --> F["FActorTickFunction::ExecuteTick → AActor::TickActor → AActor::Tick"]
+    D --> G["RunTickGroup(TG_DuringPhysics, false)（含组件 Tick，不阻塞）"]
+    G --> H["FActorComponentTickFunction::ExecuteTick → TickComponent"]
+    G --> I["RunTickGroup(TG_PostPhysics) / (TG_PostUpdateWork)"]
+    I --> J["FTickTaskManagerInterface::EndFrame()"]
+    E -. "AddTickPrerequisite 依赖边" .-> F
 ```
 
 ### 5.2 模块加载时序
 
 ```mermaid
 flowchart LR
-    A["FEngineLoop::PreInit / Init"] --> B["FModuleManager::Get().LoadModulesForPhase(ELoadingPhase::xxx)"]
+ A["FEngineLoop::PreInit / Init"] --> B["FModuleDescriptor::LoadModulesForPhase(ELoadingPhase::xxx)（5.8：由 ProjectManager/PluginManager 驱动）"]
     B --> C["FModuleDescriptor::LoadModulesForPhase（按依赖排序）"]
     C --> D["FModuleManager::LoadModule(ModuleName)"]
     D --> E["LoadModuleWithFailureReason"]
@@ -531,7 +506,7 @@ flowchart LR
     F --> G["导出函数 InitializeModule() → new 模块类"]
     G --> H["登记进 Modules 表"]
     H --> I["Module->StartupModule()"]
-    E --> J["失败 → 填充 FLoadModuleResult.ErrorReason"]
+ E --> J["失败 → 填充 EModuleLoadResult（5.8）"]
 ```
 
 ## 六、与业务关联

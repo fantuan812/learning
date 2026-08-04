@@ -27,10 +27,10 @@
 | 文件 | 内容 |
 | --- | --- |
 | `Engine/Classes/GameFramework/Actor.h` / `Engine/Private/Actor.cpp` | `AActor` 生命周期、`DispatchBeginPlay`、`TickActor`、`IncrementalRegisterComponents` |
-| `Engine/Classes/GameFramework/ActorComponent.h` / `Engine/Private/ActorComponent.cpp` | `UActorComponent` 注册、初始化、Tick、销毁 |
-| `Engine/Classes/Engine/World.h` / `Engine/Private/World.cpp` | `UWorld::SpawnActor`、`BeginPlay`、`NotifyBeginPlay`、`DestroyActor` |
+| `Engine/Classes/Components/ActorComponent.h` / `Engine/Private/Components/ActorComponent.cpp` | `UActorComponent` 注册、初始化、Tick、销毁（UE5.8 起位于 `Components/` 目录） |
+| `Engine/Classes/Engine/World.h` / `Engine/Private/World.cpp` | `UWorld` 的 `BeginPlay` 等；`UWorld::SpawnActor` / `DestroyActor` 的实现在 UE5.8 位于 `Engine/Private/LevelActor.cpp` |
 | `Engine/Classes/Engine/Level.h` / `Level.cpp` | `ULevel` 的 Actor 列表与流送 |
-| `Engine/Public/TickFunction.h` | `FTickFunction`、`FActorTickFunction`、`FActorComponentTickFunction` |
+| `Engine/Classes/Engine/EngineBaseTypes.h` | `FTickFunction`、`FActorTickFunction`、`FActorComponentTickFunction`（UE5.8 起定义于此，原 `Engine/Public/TickFunction.h` 已不存在） |
 | `Engine/Private/TickTaskManager.cpp` | `FTickTaskManager`、`FTickTaskSequencer`、`FTickTaskLevel` |
 | `Engine/Classes/GameFramework/GameModeBase.h` / `GameModeBase.cpp` | `StartPlay`（BeginPlay 的触发源） |
 
@@ -62,11 +62,12 @@ struct FActorSpawnParameters
 ### 3.2 SpawnActor 内部顺序
 
 ```cpp
-// World.cpp（UE5，节选/示意）
+// LevelActor.cpp（UE5.8，节选/示意；5.8 起 UWorld::SpawnActor 实现在此文件）
 AActor* UWorld::SpawnActor(AActor* Actor, FTransform const* Transform,
                            const FActorSpawnParameters& SpawnParameters)
 {
-	// 0) 校验（类、关卡、WorldSettings）与广播 PreActorSpawn 委托
+	// 0) 校验（类、关卡、WorldSettings）与广播 OnActorPreSpawnInitialization 委托
+	//    （UE5.8 命名，原 PreActorSpawn 委托）
 
 	// 1) 对象级创建：StaticConstructObject_Internal → 构造函数
 	//    （构造函数里 CreateDefaultSubobject 创建默认组件）
@@ -80,11 +81,16 @@ AActor* UWorld::SpawnActor(AActor* Actor, FTransform const* Transform,
 	// 3) 非延迟构造：FinishSpawning → ExecuteConstruction（蓝图构造脚本）
 	if (!SpawnParameters.bDeferConstruction)
 	{
-		Actor->FinishSpawning(*Transform, SpawnParameters.bIsDefaultTransform,
-			SpawnParameters.Owner ? &SpawnParameters.Owner->GetComponentInstanceDataCache() : nullptr);
+		// UE5.8：bIsDefaultTransform 是 FinishSpawning 的参数而非 FActorSpawnParameters 成员；
+		// GetComponentInstanceDataCache() 已移除（缓存类 FComponentInstanceDataCache 仍在，
+		// 由调用方按需构造后传入）
+		Actor->FinishSpawning(*Transform, /*bIsDefaultTransform=*/false,
+			/*InstanceDataCache=*/nullptr, /*TransformScaleMethod=*/ESpawnActorScaleMethod::MultiplyWithRoot);
 	}
 
-	// 4) 加入关卡 Actor 列表（ULevel::Actors），广播 PostActorSpawn 委托
+	// 4) 加入关卡 Actor 列表（ULevel::Actors），广播 OnActorSpawned 委托
+	//    （UE5.8 命名，原 PostActorSpawn 委托；自 5.6 起 OnActorSpawned 默认延迟到
+	//     FinishSpawning 之后广播，CVar：s.DelayOnActorSpawnedUntilFinishedSpawning）
 	// 5) 若世界已 BeginPlay，立即补调 DispatchBeginPlay（流送/动态生成场景）
 	return Actor;
 }
@@ -188,7 +194,7 @@ sequenceDiagram
 BeginPlay **不由 SpawnActor 直接调用**，而是等 `UWorld::BeginPlay()` 统一广播：
 
 ```cpp
-// World.cpp（UE5，节选/示意）
+// World.cpp（UE5.8，节选/示意）
 void UWorld::BeginPlay()
 {
 	// 通知 GameMode：进入 Play 阶段
@@ -197,44 +203,45 @@ void UWorld::BeginPlay()
 	{
 		GameMode->StartPlay();
 	}
-	// ...（GameMode::StartPlay 内部会走到本函数的 NotifyBeginPlay）
+	// ...（GameMode::StartPlay → GameState->HandleBeginPlay → AWorldSettings::NotifyBeginPlay，
+	//      UE5.8 中 UWorld::NotifyBeginPlay 已移除，统一改由 WorldSettings 分发）
 }
 
-void UWorld::NotifyBeginPlay()
+// UE5.8：UWorld::NotifyBeginPlay 已移除，补发逻辑在 AWorldSettings::NotifyBeginPlay()
+//（WorldSettings.cpp：OnWorldPreBeginPlay.Broadcast() 后遍历 FActorIterator 逐个 DispatchBeginPlay）
+void AWorldSettings::NotifyBeginPlay()
 {
 	// 遍历本世界所有 Actor，逐个补发 BeginPlay
-	for (TActorIterator<AActor> It(this); It; ++It)
+	for (FActorIterator It(World); It; ++It)
 	{
 		AActor* Actor = *It;
-		if (!Actor->HasActorBegunPlay() && !Actor->IsUnreachable())
-		{
-			Actor->DispatchBeginPlay();
-		}
+		Actor->DispatchBeginPlay(/*bFromLevelLoad=*/true);
 	}
+	World->SetBegunPlay(true);
 }
 ```
 
 触发链路（[GameModeBase.cpp](../01-引擎基础/03-Gameplay框架与游戏模式.md) 详见 04 篇）：
 
 ```cpp
-// GameModeBase.cpp（UE5，节选/示意）
+// GameModeBase.cpp / GameStateBase.cpp（UE5.8，节选/示意）
 void AGameModeBase::StartPlay()
 {
-	GameState->HandleBeginPlay();   // → 最终调用 UWorld::NotifyBeginPlay()
-	GetWorldSettings()->NotifyBeginPlay();
-	GetWorld()->NotifyBeginPlay();
+	GameState->HandleBeginPlay();   // → GetWorldSettings()->NotifyBeginPlay()（分发 BeginPlay）
+	// 注：GetWorld()->NotifyBeginPlay() 在 UE5.8 中不存在
 }
 ```
 
 ### 4.2 DispatchBeginPlay：组件先于 Actor
 
 ```cpp
-// Actor.cpp（UE5，节选/示意）
-void AActor::DispatchBeginPlay()
+// Actor.cpp（UE5.8，节选/示意）
+void AActor::DispatchBeginPlay(bool bFromLevelStreaming)
 {
-	if (!bHasActorBegunPlay)
+	// UE5.8：bHasActorBegunPlay 已移除，改用 EActorBeginPlayState 枚举成员 ActorHasBegunPlay
+	if (ActorHasBegunPlay == EActorBeginPlayState::HasNotBegunPlay)
 	{
-		bHasActorBegunPlay = true;      // 幂等：保证只执行一次
+		ActorHasBegunPlay = EActorBeginPlayState::BeginningPlay;   // 幂等：保证只执行一次
 
 		// 1) 先让所有已注册且未 BeginPlay 的组件 BeginPlay
 		TInlineComponentArray<UActorComponent*> Components(this);
@@ -255,7 +262,8 @@ void AActor::BeginPlay()
 {
 	// 蓝图事件：蓝图里覆写 Event BeginPlay 即实现它
 	ReceiveBeginPlay();
-	// 广播 OnActorBeginPlay 委托
+	// 注：UE5.8 已移除 OnActorBeginPlay 委托（AActor::BeginPlay 不再广播；
+	// 由 ActorHasBegunPlay 状态 + ReceiveBeginPlay 承担；EndPlay 侧的 OnEndPlay 委托仍存在）
 }
 ```
 
@@ -270,8 +278,10 @@ void AActor::BeginPlay()
 ### 4.3 流送关卡与延迟 BeginPlay
 
 - 流送（Level Streaming）加载的 Actor 在 `ULevel` 被激活时补调
-  `DispatchBeginPlay`（`ULevel::NotifyBeginPlay` 类似逻辑）；
-- `bHasActorBegunPlay` / `HasActorBegunPlay()` 保证无论走哪条路径，
+  `DispatchBeginPlay(bFromLevelStreaming)`（UE5.8 中 `ULevel::NotifyBeginPlay` 不存在，
+  补调发生在 `Level.cpp` 的流送注册路径，见 `Actor->DispatchBeginPlay(bFromLevelStreaming)`）；
+- `ActorHasBegunPlay`（`EActorBeginPlayState`，原 `bHasActorBegunPlay`）/
+  `HasActorBegunPlay()` 保证无论走哪条路径，
   BeginPlay 都**恰好执行一次**。
 
 ---
@@ -354,17 +364,17 @@ class UActorComponent
 	                           FActorComponentTickFunction* ThisTickFunction);
 };
 
-// TickFunction.h（UE5，节选）
+// EngineBaseTypes.h（UE5.8，节选；原 Engine/Public/TickFunction.h 已不存在）
 class ENGINE_API FTickFunction
 {
 public:
-	ETickingGroup TickGroup;          // 帧内执行阶段（TG_PrePhysics ...）
-	bool bCanEverTick;                // 是否可能 Tick（关闭可省注册开销）
-	bool bStartWithTickEnabled;
-	bool bTickEvenWhenPaused;
-	bool bHighPriority;
+	TEnumAsByte<enum ETickingGroup> TickGroup;  // 帧内执行阶段（TG_PrePhysics ...）
+	uint8 bCanEverTick:1;                       // 是否可能 Tick（关闭可省注册开销）
+	uint8 bStartWithTickEnabled:1;
+	uint8 bTickEvenWhenPaused:1;
+	uint8 bHighPriority:1;
 	// 注册 / 注销 / 查询
-	void RegisterTickFunction(ETickingGroup TickGroup);
+	void RegisterTickFunction(class ULevel* Level);  // UE5.8 参数为 ULevel*
 	void UnRegisterTickFunction();
 	bool IsTickFunctionRegistered() const;
 };
@@ -453,7 +463,7 @@ class AActor
 ### 7.2 Actor 销毁
 
 ```cpp
-// Actor.cpp / World.cpp（UE5，节选/示意）
+// Actor.cpp / LevelActor.cpp（UE5.8，节选/示意；UWorld::DestroyActor 实现在 LevelActor.cpp）
 bool AActor::Destroy(bool bNetForce, bool bShouldModifyLevel)
 {
 	// 1) 广播 OnDestroyed 委托
@@ -465,7 +475,8 @@ bool AActor::Destroy(bool bNetForce, bool bShouldModifyLevel)
 	// 3) 内存由 GC 最终释放（FinishDestroy）
 }
 
-// 蓝图节点：DestroyActor（UGameplayStatics::DestroyActor）
+// 蓝图节点：DestroyActor（UE5.8 由 AActor::K2_DestroyActor 提供，
+// 原 UGameplayStatics::DestroyActor 已移除）
 ```
 
 ### 7.3 组件销毁
@@ -511,7 +522,8 @@ flowchart LR
 ## 九、常见问题 FAQ
 
 **Q1：为什么 `ReceiveBeginPlay` 里访问另一个 Actor 可能为空？**
-世界 `NotifyBeginPlay` 按任意顺序遍历 Actor，**BeginPlay 不保证跨 Actor 顺序**。
+世界 `AWorldSettings::NotifyBeginPlay`（UE5.8 命名，原 `UWorld::NotifyBeginPlay`）按任意顺序
+遍历 Actor，**BeginPlay 不保证跨 Actor 顺序**。
 需要依赖别的 Actor 时用 `PostInitializeComponents` 缓存引用，或在 BeginPlay 里
 延迟一帧（`GetWorld()->GetTimerManager().SetTimerForNextTick`）。
 

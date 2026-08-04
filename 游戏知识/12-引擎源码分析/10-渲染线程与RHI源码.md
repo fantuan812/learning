@@ -18,7 +18,7 @@
 
 | 知识库文章 | 讲清了什么 | 本篇补充的源码层内容 |
 | --- | --- | --- |
-| 《01 渲染管线概览》 | Game / Render / RHI 三线程 + GPU 的协作模型、延迟着色各 Pass 概念、性能工具 | `ENQUEUE_RENDER_COMMAND`、`FSceneRenderer::Render`、`FRHICommandList` 的实现 |
+| 《01 渲染管线概览》 | Game / Render / RHI 三线程 + GPU 的协作模型、延迟着色各 Pass 概念、性能工具 | `ENQUEUE_RENDER_COMMAND`、`FDeferredShadingSceneRenderer::Render`、`FRHICommandList` 的实现（5.8） |
 
 建议先读知识库文章建立"一帧从逻辑到像素"的全局观，再读本篇看每一环的源码落点。
 
@@ -26,15 +26,15 @@
 
 | 模块 | 文件（Engine/Source/Runtime 下） | 关键符号 | 作用 |
 | --- | --- | --- | --- |
-| RenderCore | `RenderCore/Public/RenderingThread.h` | `ENQUEUE_RENDER_COMMAND`、`EnqueueUniqueRenderCommand`、`FlushRenderingCommands`、`IsInRenderingThread` | 命令投递与线程判定 |
-| RenderCore | `RenderCore/Private/RenderingThread.cpp` | `StartRenderingThread`、`StopRenderingThread`、`FRenderingThread::Run`、`InitRenderingThread` | 渲染线程创建与主循环 |
-| RenderCore | `RenderCore/Public/RenderCommandFence.h` | `FRenderCommandFence`（`BeginFence` / `Wait` / `IsFenceComplete`） | 栅栏同步 |
-| Renderer | `Renderer/Private/SceneRendering.cpp` | `FSceneRenderer::Render` | 渲染器基类主流程 |
-| Renderer | `Renderer/Private/DeferredShadingSceneRenderer.cpp` | `FDeferredShadingSceneRenderer::Render`、`InitViews`、`RenderPrePass`、`RenderBasePass`、`RenderLights`、`RenderPostProcessing` | 延迟着色主路径 |
-| Renderer | `Renderer/Private/RendererModule.cpp` | `FRendererModule::BeginRenderingViewFamily` | 游戏线程侧渲染入口 |
-| RHI | `RHI/Public/RHICommandList.h` | `FRHICommandList`、`FRHICommandListImmediate`、`FRHICommand` | 命令列表与命令基类 |
-| RHI | `RHI/Public/DynamicRHI.h` | `FDynamicRHI`（`RHIBeginFrame`、`RHICreateVertexBuffer`、`RHICreateGraphicsPipelineState` 等） | RHI 抽象接口 |
-| RHI | `RHI/Public/RHIContext.h` 等 | `FD3D12CommandContext` / `FOpenGLContext` 等平台实现 | 绘制命令的平台落点 |
+| RenderCore | `RenderCore/Public/RenderingThread.h` | `ENQUEUE_RENDER_COMMAND`、`FRenderCommandDispatcher::Enqueue`、`FlushRenderingCommands`、`IsInRenderingThread` | 命令投递与线程判定（5.8：EnqueueUniqueRenderCommand 已移除） |
+| RenderCore | `RenderCore/Private/RenderingThread.cpp` | `StartRenderingThread`、`StopRenderingThread`、`FRenderingThread::Run`（RHI 线程 Runnable）、`RenderingThreadMain`（渲染线程主循环）、`InitRenderingThread` | 渲染线程创建与主循环（5.8） |
+| RenderCore | `RenderCore/Public/RenderCommandFence.h` | `FRenderCommandFence`（`BeginFence(ESyncDepth)` / `Wait` / `IsFenceComplete`） | 栅栏同步 |
+| Renderer | `Renderer/Private/SceneRendering.cpp` | `FRendererModule::BeginRenderingViewFamily`、`FSceneRenderer`（Render 纯虚声明于 SceneRendering.h） | 渲染入口与基类（5.8：RendererModule.cpp 已并入本文件） |
+| Renderer | `Renderer/Private/DeferredShadingRenderer.cpp` | `FDeferredShadingSceneRenderer::Render`（FRDGBuilder 签名）、`BeginInitViews`（SceneVisibility.cpp）、`RenderPrePass`（DepthRendering.cpp）、`RenderBasePass`（BasePassRendering.cpp）、`RenderLights`（LightRendering.cpp）、`AddPostProcessingPasses`（PostProcess/PostProcessing.cpp） | 延迟着色主路径（5.8：DeferredShadingSceneRenderer.cpp 已更名） |
+| Renderer | `Renderer/Private/SceneRendering.cpp`（声明见 `Renderer/Private/RendererModule.h`） | `FRendererModule::BeginRenderingViewFamily` | 游戏线程侧渲染入口（5.8：RendererModule.cpp 已不存在） |
+| RHI | `RHI/Public/RHICommandList.h` | `FRHICommandList`、`FRHICommandListImmediate`、`FRHICommandBase` | 命令列表与命令基类（5.8：FRHICommand 已更名 FRHICommandBase） |
+| RHI | `RHI/Public/DynamicRHI.h` | `FDynamicRHI`（`RHICreateBufferInitializer`、`RHICreateTextureInitializer`、`RHICreateGraphicsPipelineState`、`RHIEndFrame` 等，5.8） | RHI 抽象接口（5.8：RHIBeginFrame/RHICreateVertexBuffer 已移除） |
+| RHI | `RHI/Public/RHIContext.h`（FRHICommandContext 基类）、`D3D12RHI/Private/D3D12CommandContext.h` | `FD3D12CommandContext`、`FOpenGLDynamicRHI`（OpenGLDrv）等平台实现 | 绘制命令的平台落点（5.8：FOpenGLContext 不存在） |
 
 ## 三、渲染线程模型
 
@@ -47,11 +47,10 @@ void StartRenderingThread()
     check(GIsThreadedRendering);
     check(!IsInRenderingThread());
 
-    // 记录主线程（游戏线程）ID，供 IsInGameThread() 等判定使用
-    GGameThreadId = FPlatformTLS::GetCurrentThreadId();
+    // 5.8：GGameThreadId 已由 Core 管理（ThreadingBase.cpp），此处不再设置
 
-    // 创建渲染线程（FRunnableThread 包装 FRenderingThread::Run 主循环）
-    RenderingThread = FRunnableThread::Create(new FRenderingThread, TEXT("RenderingThread"));
+    // 5.8：FRenderingThread 为 RHI 线程 Runnable；渲染线程主循环为 RenderingThreadMain()；
+    // 实际按 FRHIThread::TargetMode / ERHIThreadMode（r.RHIThread.Enable）决定线程布局
 
     // 等待渲染线程完成初始化后再返回
     // ...
@@ -63,26 +62,14 @@ void StartRenderingThread()
 ```cpp
 // Engine/Source/Runtime/RenderCore/Private/RenderingThread.cpp
 // FRenderingThread::Run —— 结构示意
-uint32 FRenderingThread::Run()
-{
-    // 渲染线程初始化：线程局部缓存、RenderThread 命名线程注册等
-    InitRenderingThread();
-
-    // 主循环：反复处理投递到 ENamedThreads::RenderThread 的任务
-    while (!bExitRequested)
-    {
-        // 执行任务图中所有渲染线程任务（含 ENQUEUE_RENDER_COMMAND 投递的）
-        FTaskGraphInterface::Get().ProcessThreadUntilIdle(ENamedThreads::RenderThread);
-
-        // 无任务时短暂休眠，避免忙等
-        if (FTaskGraphInterface::Get().IsThreadProcessingTasks(ENamedThreads::RenderThread) == false)
-        {
-            FPlatformProcess::Sleep(0.001f);
-        }
-    }
-    // ... 清理 ...
-    return 0;
-}
+// 5.8：渲染线程与 RHI 线程的主循环分离（结构示意）
+// ① RHI 线程：FRenderingThread::Run
+//    → FTaskGraphInterface::Get().AttachToThread(ENamedThreads::RHIThread);
+//      FTaskGraphInterface::Get().ProcessThreadUntilRequestReturn(ENamedThreads::RHIThread);
+// ② 渲染线程：RenderingThreadMain()
+//    → AttachToThread(ENamedThreads::ActualRenderingThread) + ProcessThreadUntilRequestReturn
+//    从任务图中取出 ENQUEUE_RENDER_COMMAND 投递的任务执行；
+//    旧版 bExitRequested / ProcessThreadUntilIdle 主循环已不存在
 ```
 
 关键结论：**渲染命令不是"队列"，而是任务图上的任务**——`ENQUEUE_RENDER_COMMAND` 的本质是把 lambda 包装成以 `ENamedThreads::RenderThread` 为目标线程的 `TGraphTask`。
@@ -91,12 +78,9 @@ uint32 FRenderingThread::Run()
 
 ```cpp
 // Engine/Source/Runtime/RenderCore/Public/RenderingThread.h（真实定义）
-#define ENQUEUE_RENDER_COMMAND( CommandDesc ) \
-    struct CommandDesc##_Local \
-    { \
-        static const char* GetTypeName() { return #CommandDesc; } \
-    }; \
-    EnqueueUniqueRenderCommand<CommandDesc##_Local>
+#define ENQUEUE_RENDER_COMMAND(Type, ...) \
+    DECLARE_RENDER_COMMAND_TAG(UE_JOIN(FRenderCommandTag_, Type, __LINE__), Type, __VA_ARGS__) \
+    FRenderCommandDispatcher::Enqueue<UE_JOIN(FRenderCommandTag_, Type, __LINE__)>   // 5.8 真实定义
 ```
 
 用法：
@@ -114,26 +98,15 @@ ENQUEUE_RENDER_COMMAND(FUpdateTextureCommand)(
 
 ```cpp
 // RenderCore/Public/RenderingThread.h（结构示意）
-template<typename TSTR>
-void EnqueueUniqueRenderCommand(TFunction<void()>&& InFunction)
-{
-    if (FTaskGraphInterface::IsRunning() && !IsInRenderingThread())
-    {
-        // 包装成任务图任务，目标线程 = ENamedThreads::RenderThread
-        TGraphTask<TEnqueueUniqueRenderCommandType<TSTR>>::CreateTask()
-            .ConstructAndDispatchWhenReady(MoveTemp(InFunction));
-    }
-    else
-    {
-        // 已经位于渲染线程（或任务图未启动）：直接内联执行，避免死锁
-        InFunction();
-    }
-}
+// 5.8：EnqueueUniqueRenderCommand 已移除，改由 FRenderCommandDispatcher::Enqueue 完成（结构示意）
+//   FRenderCommandDispatcher::Enqueue<FRenderCommandTag_...>()：
+//     未在渲染线程且任务图已启动 → 包装成任务图任务（目标线程 = ENamedThreads::RenderThread）；
+//     已在渲染线程 / 任务图未启动 → 直接内联执行，避免死锁
 ```
 
 要点：
 
-- 命令以 `TFunction<void()>`（lambda）形式捕获参数，`TEnqueueUniqueRenderCommandType` 负责在渲染线程上调用它并传入 `FRHICommandListImmediate&`；
+- 命令以 lambda 捕获参数，由 `FRenderCommandDispatcher` 在渲染线程上调用并传入 `FRHICommandListImmediate&`（5.8；TEnqueueUniqueRenderCommandType 已移除）；
 - 参数必须**按值捕获**（或拷贝安全），因为 lambda 会被跨线程执行；捕获引用/指针时要保证生命周期（常见崩溃根源）；
 - 在渲染线程内再 `ENQUEUE_RENDER_COMMAND` 会直接内联执行，不会排队。
 
@@ -147,14 +120,14 @@ public:
     FRenderCommandFence();
     ~FRenderCommandFence();
 
-    // 在渲染命令流末尾插入一个"栅栏"
-    void BeginFence();
+    // 在渲染命令流末尾插入一个"栅栏"（5.8 可指定 ESyncDepth）
+    void BeginFence(ESyncDepth SyncDepth = ESyncDepth::RenderThread);
 
     // 栅栏是否已被渲染线程执行完
     bool IsFenceComplete() const;
 
     // 阻塞等待栅栏完成
-    void Wait(bool bProcessPreFenceCommands = true) const;
+    void Wait(bool bProcessGameThreadTasks = false) const;   // 5.8 参数更名
 
 private:
     FGraphEventRef CompletionEvent;
@@ -189,49 +162,46 @@ void FlushRenderingCommands()
 
 ```cpp
 // Engine/Source/Runtime/Renderer/Private/RendererModule.cpp（结构示意）
-void FRendererModule::BeginRenderingViewFamily(FCanvas* Canvas, const FSceneViewFamily* ViewFamily)
+void FRendererModule::BeginRenderingViewFamily(FCanvas* Canvas, FSceneViewFamily* ViewFamily)   // 5.8：无 const
 {
-    // 1) 创建场景渲染器（按路径选择延迟 / 前向渲染器）
-    FSceneRenderer* SceneRenderer = FSceneRenderer::CreateSceneRenderer(ViewFamily, HitProxyConsumer);
-
-    // 2) 把"渲染一帧"整体投递给渲染线程执行
-    ENQUEUE_RENDER_COMMAND(FDrawSceneCommand)(
-        [SceneRenderer](FRHICommandListImmediate& RHICmdList)
-        {
-            // 渲染线程：执行整帧渲染
-            SceneRenderer->Render(RHICmdList);
-            // ... 统计、删除渲染器等收尾（延迟到渲染线程销毁，保证安全） ...
-        });
+    BeginRenderingViewFamilies(Canvas, MakeArrayView({ ViewFamily }));
 }
+// 内部流程（结构示意）：
+// 1) 创建场景渲染器：FSceneRenderBuilder(Scene)（5.8，SceneRenderBuilder.cpp）
+//    → CreateLinkedSceneRenderers(ViewFamilies, HitProxyConsumer)
+//    （原 FSceneRenderer::CreateSceneRenderer 已移除）
+// 2) 把"渲染一帧"整体 ENQUEUE_RENDER_COMMAND 投递给渲染线程：
+//    渲染线程调用 SceneRenderer->Render(GraphBuilder, SceneUpdateInputs)（5.8 签名），
+//    并延迟到渲染线程销毁渲染器（保证安全）
 ```
 
 这就是"游戏线程只提交描述，渲染线程执行全部绘制"的分界线。
 
-### 4.2 FSceneRenderer::Render 与 FDeferredShadingSceneRenderer::Render
+### 4.2 场景渲染主流程：FDeferredShadingSceneRenderer::Render（5.8；FSceneRenderer::Render 为纯虚）
 
 ```cpp
 // Engine/Source/Runtime/Renderer/Private/DeferredShadingSceneRenderer.cpp
 // 结构示意（真实 Render 有上千行，含大量条件分支与特性开关）
-void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
+void FDeferredShadingSceneRenderer::Render(FRDGBuilder& GraphBuilder, const FSceneRenderUpdateInputs* SceneUpdateInputs)   // 5.8 签名
 {
-    // 0) 视图初始化：视锥剔除、可见性收集、阴影分配、半透明排序
-    InitViews(RHICmdList);
+    // 0) 视图初始化：视锥剔除、可见性收集等（5.8 拆分为 BeginInitViews 等，SceneVisibility.cpp）
+    BeginInitViews(GraphBuilder, ...);
 
-    // 1) 深度预通道（可选，r.DepthPrepass）：先写深度，减少 BasePass 的 overdraw
-    RenderPrePass(RHICmdList);
+    // 1) 深度预通道（可选，ShouldRenderPrePass / r.DepthPrepass）：先写深度，减少 BasePass 的 overdraw
+    RenderPrePass(GraphBuilder, InViews, SceneDepthTexture, InstanceCullingManager, &FirstStageDepthBuffer);   // DepthRendering.cpp
 
     // 2) BasePass：写入 G-Buffer（延迟）或直接着色（前向路径）
-    RenderBasePass(RHICmdList);
+    RenderBasePass(*this, GraphBuilder, Views, SceneTextures, ...);   // BasePassRendering.cpp
 
     // 3) 光照：阴影贴图渲染 + 延迟光照（Lighting）
-    RenderLights(RHICmdList);
+    RenderLights(GraphBuilder, SceneTextures, LightingChannelsTexture, SortedLightSet);   // LightRendering.cpp
 
-    // 4) 反射 / 天空光（RenderDeferredReflections 系列）
+    // 4) 反射 / 天空光（5.8：RenderDeferredReflectionsAndSkyLighting，IndirectLightRendering.cpp）
     // 5) 半透明物体
-    RenderTranslucency(RHICmdList);
+    RenderTranslucency(*this, GraphBuilder, ...);   // TranslucentRendering.cpp
 
-    // 6) 后处理：TAA、泛光、色调映射、屏幕空间特效
-    RenderPostProcessing(RHICmdList, View, bRenderFinalPostProcess);
+    // 6) 后处理：TAA、泛光、色调映射等（5.8：AddPostProcessingPasses，PostProcess/PostProcessing.cpp）
+    AddPostProcessingPasses(GraphBuilder, View, ...);
 }
 ```
 
@@ -239,12 +209,12 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 
 | 阶段 | 函数 | 产出 | 备注 |
 | --- | --- | --- | --- |
-| 视图初始化 | `InitViews` | 可见性集合、阴影投影分配 | 含 GPU Scene 相关更新 |
-| 深度预通道 | `RenderPrePass` | Depth Buffer | 可关闭（`r.DepthPrepass=0`） |
-| 几何通道 | `RenderBasePass` | G-Buffer（BaseColor/Normal/Metallic 等） | 前向路径在此直接着色 |
-| 光照 | `RenderLights` | 光照累积（LDR/HDR） | 含 Shadow Depth 渲染 |
-| 半透明 | `RenderTranslucency` | 半透明混合层 | 需要单独排序与透射 |
-| 后处理 | `RenderPostProcessing` | 最终画面 | TAA / Bloom / Tonemap 等 |
+| 视图初始化 | `BeginInitViews` 等（5.8） | 可见性集合、阴影投影分配 | 含 GPU Scene 相关更新（SceneVisibility.cpp） |
+| 深度预通道 | `RenderPrePass` | Depth Buffer | 可关闭（`r.DepthPrepass=0`）（DepthRendering.cpp） |
+| 几何通道 | `RenderBasePass` | G-Buffer（BaseColor/Normal/Metallic 等） | 前向路径在此直接着色（BasePassRendering.cpp） |
+| 光照 | `RenderLights` | 光照累积（LDR/HDR） | 含 Shadow Depth 渲染（LightRendering.cpp） |
+| 半透明 | `RenderTranslucency` | 半透明混合层 | 需要单独排序与透射（TranslucentRendering.cpp） |
+| 后处理 | `AddPostProcessingPasses`（5.8） | 最终画面 | TAA / Bloom / Tonemap 等（PostProcess/PostProcessing.cpp） |
 
 > Nanite / Lumen / Virtual Shadow Map 本质是替换上述某个 Pass 的内部实现（如 Nanite 替换 BasePass 的几何光栅化、Lumen 替换反射与 GI），外层 `Render` 框架不变。
 
@@ -252,7 +222,7 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 
 ### 5.1 FRHICommandList：绘制命令的容器
 
-`FRHICommandList`（及其立即版 `FRHICommandListImmediate`）是渲染线程发出的命令集合：每个命令是一个 `FRHICommand` 派生对象（内部以 lambda 捕获参数），记录 `BeginRenderPass`、`SetPipelineState`、`DrawPrimitive` 等操作，统一提交给 RHI 层执行。
+`FRHICommandList`（及其立即版 `FRHICommandListImmediate`）是渲染线程发出的命令集合：每个命令是一个 `FRHICommandBase` 派生对象（5.8 由 FRHICOMMAND_MACRO 生成；FRHICommand 已更名），记录 `BeginRenderPass`、`SetPipelineState`、`DrawPrimitive` 等操作，统一提交给 RHI 层执行。
 
 典型绘制代码（渲染线程内，结构示意）：
 
@@ -273,17 +243,17 @@ RHICmdList.EndRenderPass();
 几个关键 API 的真实语义：
 
 - `BeginRenderPass(const FRHIRenderPassInfo&, const TCHAR* Name)`：开启一个 Render Pass（对应 Vulkan RenderPass / DX12 的绑定目标集合），指定每个 RT 的 Load/Store 行为（`ERenderTargetLoadAction::EClear / ELoad / ENoAction` 等）；
-- `SetGraphicsPipelineState(FRHIGraphicsPipelineState*, uint32 StencilRef)`：绑定图形 PSO（着色器、光栅化状态、混合状态等）；`FGraphicsPipelineStateInitializer` 是 PSO 的"配方"；
+- `SetGraphicsPipelineState(FGraphicsPipelineState*, uint32 StencilRef, bool bApplyAdditionalState)`（5.8 参数为 FGraphicsPipelineState 包装类型）：绑定图形 PSO（着色器、光栅化状态、混合状态等）；`FGraphicsPipelineStateInitializer` 是 PSO 的"配方"；
 - `DrawPrimitive(uint32 BaseVertexIndex, uint32 NumPrimitives, uint32 NumInstances)`：非索引绘制；索引绘制对应 `DrawIndexedPrimitive`；
 - `EndRenderPass()`：结束 Render Pass，触发 Resolve / Store。
 
 ### 5.2 命令提交模型：渲染线程 → RHI 线程
 
 ```text
-渲染线程（FSceneRenderer::Render）
+渲染线程（5.8：FSceneRenderer::Render 为纯虚，由 FDeferredShadingSceneRenderer::Render 实现）
   └─ 把命令写入 FRHICommandListImmediate
        ├─ 无 RHI 线程时：渲染线程内联执行（ImmediateFlush / 同步提交）
-       └─ 有 RHI 线程时（GIsRHIThreadRunning）：
+       └─ 有 RHI 线程时（5.8：IsRHIThreadRunning()/ERHIThreadMode）：
             FRHICommandList 排队 → RHI 线程逐命令 Execute
             （FRHICommandListImmediate::ImmediateFlush(EImmediateFlushType::FlushRHIThread) 强制同步）
 ```
@@ -292,15 +262,15 @@ RHICmdList.EndRenderPass();
 
 ```cpp
 // Engine/Source/Runtime/RHI/Public/RHICommandList.h（结构示意）
-struct FRHICommand
+struct FRHICommandBase   // 5.8：FRHICommand 已更名
 {
     // 每个命令在 RHI 线程（或渲染线程内联）执行
-    virtual void Execute(FRHICommandListBase& CmdList) = 0;
+    virtual void ExecuteAndDestruct(FRHICommandListBase& CmdList) = 0;
     // ...
 };
 ```
 
-当 `GIsRHIThreadRunning == true` 时，渲染线程与 RHI 线程构成流水线：渲染线程持续生成命令，RHI 线程消费并翻译成平台 API 调用（DX12 命令列表 / Vulkan 命令缓冲），GPU 异步执行——这就是"三线程 + GPU"流水线的源码形态。
+当启用 RHI 线程（5.8 由 `ERHIThreadMode`/`FRHIThread::TargetMode` 控制，旧全局量 `GIsRHIThreadRunning` 已移除）时，渲染线程与 RHI 线程构成流水线：渲染线程持续生成命令，RHI 线程消费并翻译成平台 API 调用（DX12 命令列表 / Vulkan 命令缓冲），GPU 异步执行——这就是"三线程 + GPU"流水线的源码形态。
 
 ### 5.3 FDynamicRHI：平台抽象
 
@@ -311,29 +281,25 @@ class FDynamicRHI
 public:
     virtual ~FDynamicRHI() {}
 
-    // ---- 帧级接口 ----
-    virtual void RHIBeginFrame() = 0;
-    virtual void RHIEndFrame() = 0;
-    virtual void RHIEndDrawingViewport(FViewportRHI* Viewport, bool bPresent, bool bLockToVsync) = 0;
+    // ---- 帧级接口（5.8：RHIBeginFrame 已移除）----
+    virtual void RHIEndFrame(const FRHIEndFrameArgs& Args) = 0;
+    virtual void RHIEndDrawingViewport(FRHICommandListImmediate& RHICmdList, FRHIViewport* Viewport, FRHIPresentArgs const& PresentArgs) = 0;
 
-    // ---- 资源创建 ----
-    virtual FVertexBufferRHIRef RHICreateVertexBuffer(uint32 Size,
-        EBufferUsageFlags Usage, FRHIResourceCreateInfo& CreateInfo) = 0;
-    virtual FTexture2DRHIRef RHICreateTexture2D(...) = 0;
-    virtual FShaderResourceViewRHIRef RHICreateShaderResourceView(...) = 0;
+    // ---- 资源创建（5.8 改为 Initializer 描述式）----
+    virtual FRHIBufferInitializer RHICreateBufferInitializer(FRHICommandListBase& RHICmdList, const FRHIBufferCreateDesc& CreateDesc) = 0;
+    virtual FRHITextureInitializer RHICreateTextureInitializer(FRHICommandListBase& RHICmdList, const FRHITextureCreateDesc& CreateDesc) = 0;
+    virtual FShaderResourceViewRHIRef RHICreateShaderResourceView(FRHICommandListBase& RHICmdList, FRHIViewableResource* Resource, FRHIViewDesc const& ViewDesc) = 0;
 
     // ---- PSO ----
     virtual FGraphicsPipelineStateRHIRef RHICreateGraphicsPipelineState(
         const FGraphicsPipelineStateInitializer& Initializer) = 0;
-
-    // ---- 同步 ----
-    virtual void RHIWaitForRHIThreadTasks() = 0;
+    // RHIWaitForRHIThreadTasks 已移除（5.8）
 };
 ```
 
 要点：
 
-- `FDynamicRHI` 是 RHI 模块的纯虚接口，DX12 / Vulkan / Metal / D3D11 各自实现（`FD3D12DynamicRHI`、`FVulkanDynamicRHI` 等），引擎通过 `FDynamicRHI::Get()` 拿到当前平台实现；
+- `FDynamicRHI` 是 RHI 模块的纯虚接口，DX12 / Vulkan / Metal / D3D11 各自实现（`FD3D12DynamicRHI`、`FVulkanDynamicRHI` 等），引擎通过 `GDynamicRHI` / `GetDynamicRHI<FDynamicRHI>()`（5.8）拿到当前平台实现；
 - **UE5 中绘制调用（Draw）不在 `FDynamicRHI` 上**，而是由各平台的命令上下文（如 `FD3D12CommandContext::DrawPrimitive`）在 RHI 线程执行；`FDynamicRHI` 主要负责资源创建、帧级同步与 PSO 创建；
 - 资源句柄（`FVertexBufferRHIRef` 等）是引用计数对象，跨线程传递安全——这是渲染命令能安全捕获资源的关键。
 
@@ -346,8 +312,8 @@ sequenceDiagram
     participant H as RHI线程
     participant GPU
     G->>R: ENQUEUE_RENDER_COMMAND(FDrawSceneCommand)：投递 FSceneRenderer::Render
-    R->>R: FDeferredShadingSceneRenderer::Render(RHICmdList)
-    R->>R: InitViews → RenderPrePass → RenderBasePass → RenderLights → RenderPostProcessing
+    R->>R: FDeferredShadingSceneRenderer::Render(GraphBuilder, SceneUpdateInputs)（5.8）
+    R->>R: BeginInitViews → RenderPrePass → RenderBasePass → RenderLights → AddPostProcessingPasses（5.8）
     R->>H: 命令列表提交（FRHICommandList → RHI 线程队列）
     H->>H: 逐命令 Execute（BeginRenderPass / DrawPrimitive / EndRenderPass）
     H->>GPU: 提交平台命令缓冲（DX12 / Vulkan）
@@ -358,7 +324,7 @@ sequenceDiagram
 ## 七、与业务关联
 
 - **同步点要克制**：`FlushRenderingCommands` 每帧调用会打穿流水线（渲染线程空转等游戏线程），`stat unit` 中 RenderThread 出现"驼峰"往往就是同步点过多；批量修改资源后一次性同步。
-- **资源生命周期**：渲染命令捕获的纹理/网格必须在渲染线程确认不再引用后才能销毁（`BeginRenderResource` / 渲染线程延迟删除）；直接删会导致渲染线程悬垂指针崩溃。
+- **资源生命周期**：渲染命令捕获的纹理/网格必须在渲染线程确认不再引用后才能销毁（`BeginInitResource`（5.8，RenderCore/Public/RenderResource.h）/ 渲染线程延迟删除）；直接删会导致渲染线程悬垂指针崩溃。
 - **线程安全**：游戏线程直接操作渲染资源（`RHIUpdateTexture2D` 等）前应确认该 API 线程安全或走 `ENQUEUE_RENDER_COMMAND`；`FRHITexture` 的 GameThread 接口与 RenderThread 接口是两套。
 - **性能工具**：`stat unit`（三线程耗时）、`profilegpu`（GPU 各 Pass 耗时）、`r.RHICmdBypass`（绕过 RHI 命令队列调试）、`FreezeRendering`（冻结场景调试）。
 - **多视口 / 编辑器**：编辑器每帧可能渲染多个 `FSceneViewFamily`（视口 + 缩略图），每个都走一次 `BeginRenderingViewFamily`，理解命令投递模型有助于排查编辑器卡顿。
@@ -381,7 +347,7 @@ lambda 默认按值捕获（`[var]`）；跨线程执行时按引用捕获的栈
 Render Pass 的 RT 集合、Load/Store 行为必须与平台要求一致；常见于自定义 Pass 与引擎 Pass 混用、MSAA 目标未 Resolve。开启 `r.RHICmdBypass=0` + 图形调试器（RenderDoc）看 API 层报错。
 
 **Q6：RHI 线程存在吗？怎么关？**
-`GIsRHIThreadRunning` 决定是否启用 RHI 线程（多数平台默认启用）；`r.RHICmdBypass` 与 `RHIThread` 相关 cvar 可调；关闭后命令由渲染线程内联执行，便于调试但会降低吞吐。
+5.8 中 `GIsRHIThreadRunning` 已移除，RHI 线程模式由 `ERHIThreadMode`/`FRHIThread::TargetMode` 与 `r.RHIThread.Enable` cvar 控制（多数平台默认启用）；`r.RHICmdBypass` 可调；关闭后命令由渲染线程内联执行，便于调试但会降低吞吐。
 
 ## 九、关联阅读
 

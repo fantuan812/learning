@@ -24,15 +24,15 @@
 
 | 文件 | 内容 |
 | --- | --- |
-| `CoreUObject/Public/UObject/UObjectBase.h` / `UObjectBase.cpp` | `UObjectBase` / `UObjectBaseUtility` 两层类与构造注册 |
-| `CoreUObject/Public/UObject/UObject.h` / `UObject.cpp` | `UObject` 第三层：`PostInitProperties`、`PostLoad`、`ConditionalBeginDestroy` 等 |
-| `CoreUObject/Public/UObject/UObjectGlobals.h` / `UObjectGlobals.cpp` | `NewObject`、`StaticConstructObject_Internal`、`StaticAllocateObject`、`CollectGarbage` |
-| `CoreUObject/Public/UObject/UObjectArray.h` / `UObjectArray.cpp` | `FUObjectArray`、`FUObjectItem`、全局 `GUObjectArray` |
-| `CoreUObject/Public/UObject/UObjectAllocator.h` / `UObjectAllocator.cpp` | `FUObjectAllocator`、全局 `GUObjectAllocator`（对象内存池） |
-| `CoreUObject/Public/UObject/GarbageCollection.h` / `GarbageCollection.cpp` | `FIncrementalMarkAndSweepCollector`、`MarkObjectsAsUnreachable`、`IncrementalPurgeGarbage` |
-| `CoreUObject/Public/UObject/GCReferenceTokenStream.h` | `FGCReferenceTokenStream`：压缩的引用描述流 |
+| `CoreUObject/Public/UObject/UObjectBase.h` / `CoreUObject/Private/UObject/UObjectBase.cpp` | `UObjectBase` / `UObjectBaseUtility` 两层类与构造注册 |
+| `CoreUObject/Public/UObject/Object.h` / `CoreUObject/Private/UObject/Obj.cpp` | `UObject` 第三层：`PostInitProperties`、`PostLoad`、`ConditionalBeginDestroy` 等（UE5.8 命名，原 `UObject.h` / `UObject.cpp`） |
+| `CoreUObject/Public/UObject/UObjectGlobals.h` / `CoreUObject/Private/UObject/UObjectGlobals.cpp` | `NewObject`、`StaticConstructObject_Internal`、`StaticAllocateObject`、`CollectGarbage` |
+| `CoreUObject/Public/UObject/UObjectArray.h` / `CoreUObject/Private/UObject/UObjectArray.cpp` | `FUObjectArray`、`FUObjectItem`、全局 `GUObjectArray` |
+| `CoreUObject/Public/UObject/UObjectAllocator.h` / `CoreUObject/Private/UObject/UObjectAllocator.cpp` | `FUObjectAllocator`、全局 `GUObjectAllocator`（对象内存池） |
+| `CoreUObject/Public/UObject/GarbageCollection.h` / `CoreUObject/Private/UObject/GarbageCollection.cpp` | `CollectGarbage`、`MarkObjectsAsUnreachable`、`IncrementalPurgeGarbage`（UE5.8 的 GC 实现，`FMarkAndSweepCollector` 系已移除） |
+| `CoreUObject/Public/UObject/ReferenceToken.h` | `FReferenceToken`（UE5.8 命名，原 `GCReferenceTokenStream.h` / `FGCReferenceTokenStream` 已重构，见 6.3） |
 | `CoreUObject/Public/UObject/GCObject.h` | `FGCObject` / `TStrongObjectPtr` |
-| `CoreUObject/Public/UObject/WeakObjectPtrTemplates.h` | `TWeakObjectPtr` / `FWeakObjectPtr` |
+| `CoreUObject/Public/UObject/WeakObjectPtr.h` | `TWeakObjectPtr` / `FWeakObjectPtr`（UE5.8 命名，原 `WeakObjectPtrTemplates.h`） |
 | `CoreUObject/Public/UObject/SoftObjectPtr.h` | `TSoftObjectPtr` / `FSoftObjectPath` |
 
 ---
@@ -124,7 +124,8 @@ UObject* StaticConstructObject_Internal(const UClass* Class, UObject* InOuter,
 	UObject* Object = StaticAllocateObject(Class, InOuter, Name, SetFlags,
 	                                       InternalSetFlags, bCanBeTemplate, &InstanceGraph);
 	// 3) 构造：FObjectInitializer 带着 CDO 模板驱动构造函数（含 CreateDefaultSubobject）
-	Object = Class->GetClassWithin() ? ... : ...;
+	//    （UE5.8：GetClassWithin() 函数已移除，改为 TObjectPtr<UClass> 成员 Class->ClassWithin）
+	Object = Class->ClassWithin ? ... : ...;
 	(*Object->GetClass()->ClassConstructor)(FObjectInitializer(Object, Template, ...));
 	// 4) 构造完成后回调：PostInitProperties（含 CDO 属性拷贝、实例化子对象）
 	Object->PostInitProperties();
@@ -144,7 +145,7 @@ UObject* StaticAllocateObject(const UClass* InClass, UObject* InOuter, FName InN
 	UObject* Obj = (UObject*)GUObjectAllocator.AllocateUObject(
 		InClass->GetPropertiesSize(), InClass->GetMinAlignment(), true);
 	// 2) 注册进全局对象数组：分配 FUObjectItem 槽位并登记
-	//    （内部：GUObjectArray.AllocateUObject(Obj, Index, bMergingThreads)）
+	//    （UE5.8：GUObjectArray.AllocateUObjectIndex(Obj, InitialFlags, ...)，bMergingThreads 参数已移除）
 	// 3) 初始化 Class/Name/Outer（UObjectBase 构造函数）
 	return Obj;
 }
@@ -191,7 +192,7 @@ sequenceDiagram
     User->>NewO: NewObject&lt;AMyActor&gt;(Outer, Name, Flags)
     NewO->>SCI: StaticConstructObject_Internal(T::StaticClass(), ...)
     SCI->>Alloc: 分配内存 + 分配对象名
-    Alloc->>Arr: AllocateUObject → FUObjectItem 槽位登记
+    Alloc->>Arr: AllocateUObjectIndex → FUObjectItem 槽位登记
     SCI->>Ctor: FObjectInitializer(Obj, CDO 模板) 调用构造函数
     Ctor->>Ctor: CreateDefaultSubobject 创建子对象
     SCI->>CDO: InitProperties：从 CDO 拷贝属性初值
@@ -205,11 +206,13 @@ sequenceDiagram
 ### 5.1 FUObjectItem：数组的"格子"
 
 ```cpp
-// UObjectArray.h（UE5，节选）
+// UObjectArray.h（UE5.8，节选）
 struct FUObjectItem
 {
-	UObjectBase* Object;         // 对象指针（IndexToObject 返回它）
-	int32 Flags;                 // EInternalObjectFlags（GC 标记位，如 Garbage/Unreachable）
+	// 对象指针（IndexToObject 返回它；5.6 起 Object 字段标记弃用，改用 GetObject()/SetObject()）
+	UObjectBase* Object;
+	// UE5.8：Flags 已并入 int64 FlagsAndRefCount（私有，经 GetFlags()/SetFlags() 访问）
+	//（GC 标记位：EInternalObjectFlags 的 Garbage/Unreachable 等）
 	int32 ClusterRootIndex;      // GC 集群根索引（-1 表示不在集群中）
 	int32 SerialNumber;          // 序号：TWeakObjectPtr 用它检测对象是否已重建
 	// ... 调试统计字段 ...
@@ -219,18 +222,18 @@ struct FUObjectItem
 ### 5.2 注册 / 反查 / 释放
 
 ```cpp
-// UObjectArray.h（UE5，节选/示意）
+// UObjectArray.h（UE5.8，节选/示意）
 class FUObjectArray
 {
 	// 注册：为新对象分配一个槽位（UObjectBase 构造时调用）
-	void AllocateUObject(UObjectBase* Object, int32 Index, bool bMergingThreads = false);
+	// UE5.8 命名：AllocateUObjectIndex(UObjectBase* Object, EInternalObjectFlags InitialFlags,
+	//                                  int32 AlreadyAllocatedIndex = -1, int32 SerialNumber = 0, ...)
 	// 反查：索引 → FUObjectItem（ObjectItems[Index]）
 	FUObjectItem* IndexToObject(int32 Index);
-	// 注销：对象析构时把槽位置空并回收
-	void FreeUObject(UObjectBase* Object);
-	// 启动期优化：关闭"忽略 GC 段"的登记（DisregardForGC 对象不再进 GC 扫描）
-	void OpenForDisregardForGC();  // 启动结束后调用
-	void CloseDisregardedObject(UObjectBase* Object);
+	// 注销：对象析构时把槽位置空并回收（UE5.8 命名：FreeUObjectIndex(UObjectBase* Object)）
+	// 启动期优化：DisregardForGC 对象不再进 GC 扫描（UE5.8 命名）：
+	void OpenDisregardForGC();   // 启动阶段打开忽略池（原 OpenForDisregardForGC）
+	void CloseDisregardForGC();  // 启动结束后关闭忽略池（原 CloseDisregardedObject）
 };
 
 // 全局单例
@@ -244,8 +247,9 @@ extern COREUOBJECT_API FUObjectArray GUObjectArray;
   都建立在它之上；
 - 启动阶段创建的对象（如引擎单例）会被标记为 **DisregardForGC**：它们永远存活，
   GC 不再扫描（这就是"启动期对象 GC 开销为零"的由来）；
-- `AllocateUObject` 即任务锚点所说的"AddUObject"式注册入口（早期 UE 版本名为
-  `AddObject` 等，职责相同：把对象放进全局数组并分配索引）。
+- `AllocateUObjectIndex`（UE5.8 命名，原 `AllocateUObject`）即任务锚点所说的
+  "AddUObject"式注册入口（更早的 UE 版本名为 `AddObject` 等，职责相同：把对象放进
+  全局数组并分配索引）。
 
 ### 5.3 对象索引与 TWeakObjectPtr 的关联
 
@@ -264,32 +268,29 @@ UE4 的 GC 是**同步全量**的：标记（Mark）与清除（Sweep）都占�
 预算时间内的工作，剩余部分下一帧继续。
 
 ```cpp
-// GarbageCollection.h（UE5，节选）
-class FMarkAndSweepCollector
-{
-	// 收集器状态：GC 上下文、根集合、不可达对象列表
-	TArray<FUObjectItem*>& GetUnreachableObjects() { return UnreachableObjects; }
-	...
-};
-
-class FIncrementalMarkAndSweepCollector : public FMarkAndSweepCollector
-{
-	// UE5 增量收集器：支持"分时间片"标记与清除
-	//   PerformReachabilityAnalysis  → 多帧可达性分析
-	//   IncrementalPurgeGarbage       → 多帧清除
-};
+// GarbageCollection.h / ReachabilityAnalysis.h（UE5.8，节选）
+// UE5.8 中 FMarkAndSweepCollector / FIncrementalMarkAndSweepCollector 已移除，
+// GC 主流程重构进 UE::GC 命名空间（GarbageCollection.cpp），增量能力按函数/开关暴露：
+//   SetIncrementalReachabilityAnalysisEnabled(bool)  → 增量可达性分析开关
+//   SetReachabilityAnalysisTimeLimit(float)           → 每帧分析时间预算（秒）
+//   IncrementalPurgeGarbage(bool bUseTimeLimit, double TimeLimit)  → 多帧清除
+// 类/结构参考：FSchemaView / FSchemaOwner（GarbageCollectionSchema.h）、
+// FObjectPurge、TReferenceBatcher（GarbageCollection.cpp 内部）。
 ```
 
-触发源：每帧由 `FGarbageCollectionTicker`（挂在引擎主循环上的 ticker）检查
-是否到达 GC 时间/内存阈值，必要时调用 `CollectGarbage(EInternalObjectFlags::None, bAsync)`
-或直接进入增量流程。手动触发可用 `GEngine->ForceGarbageCollection(true)` 或
-控制台命令 `obj gc`。
+触发源（UE5.8）：每帧由 `UEngine::ConditionalCollectGarbage()`（World tick 驱动，
+`Engine/Private/UnrealEngine.cpp`）按时间/内存预算检查，必要时调用
+`CollectGarbage(EObjectFlags KeepFlags, bool bPerformFullPurge = true)`（UE5.8 签名，
+已无 `bAsync` 参数）或进入增量流程。频率由 `gc.TimeBetweenPurgingPendingKillObjects`、
+`gc.IncrementalGCTimePerFrame` 等控制台变量控制（原 `FGarbageCollectionTicker` 已移除）。
+手动触发可用 `GEngine->ForceGarbageCollection(true)` 或控制台命令 `obj gc`。
 
 ### 6.2 标记阶段：MarkObjectsAsUnreachable + 可达性分析
 
 ```cpp
 // GarbageCollection.cpp（UE5，节选/示意）
 // 第一步：先假定"全部可回收"——把所有对象标记为 Unreachable
+// （UE5.8 真实签名：MarkObjectsAsUnreachable(const EObjectFlags KeepFlags)，见 GarbageCollection.cpp）
 static void MarkObjectsAsUnreachable(TArray<FUObjectItem*>& UnreachableObjects,
                                      const EInternalObjectFlags KeepFlags)
 {
@@ -305,7 +306,7 @@ static void MarkObjectsAsUnreachable(TArray<FUObjectItem*>& UnreachableObjects,
 
 // 第二步：从根集合出发做可达性分析，可达对象清除 Unreachable 标记
 //   根集合 = 常驻根（RF_Root / AddToRoot）+ FGCObject 注册表 + 忽略 GC 段等
-//   遍历依赖 UClass::ReferenceTokenStream（见 6.3）
+//   遍历依赖类的 GC Schema / 引用描述（见 6.3）
 ```
 
 哪些对象是"根"？
@@ -316,18 +317,20 @@ static void MarkObjectsAsUnreachable(TArray<FUObjectItem*>& UnreachableObjects,
 - 忽略 GC 段（DisregardForGC）对象及其引用链；
 - 异步加载/异步处理中的对象（`EInternalObjectFlags::Async` 等）。
 
-### 6.3 引用追踪：FGCReferenceTokenStream
+### 6.3 引用追踪：GC Schema 与 FReferenceToken（原 FGCReferenceTokenStream）
 
-GC 如何知道"从对象 A 出发能到哪些对象"？答案：**编译/加载时预计算的压缩 Token 流**。
+GC 如何知道"从对象 A 出发能到哪些对象"？答案：**编译/加载时预计算的压缩引用描述**。
 
 ```cpp
-// GCReferenceTokenStream.h（UE5，节选）
-// 每个 UClass 保存一条 FGCReferenceTokenStream（UClass::ReferenceTokenStream），
-// 其中是一串定长 Token，描述"类内每个引用属性在对象体中的偏移与类型"。
+// ReferenceToken.h / GarbageCollectionSchema.h（UE5.8，节选）
+// UE5.8 重构：FGCReferenceTokenStream 类与 GCReferenceTokenStream.h 已移除，
+// 引用描述改由 GC Schema 承载：FSchemaView / FSchemaBuilder（GarbageCollectionSchema.h）
+// 与 FReferenceToken（ReferenceToken.h，含 EReferenceTokenType 区分对象/GC 对象/单元格等）；
+// UClass 侧仍保留 AssembleReferenceTokenStream(s)（Class.h / Class.cpp）作为组装入口。
 // 例：Token 序列 ≈ [FProperty 偏移(压缩), 对象引用类型, 偏移, 数组维度, ...]
 
 // 遍历时（示意）：
-//   for (Token in Class->ReferenceTokenStream)
+//   for (Token in Class 的引用描述 / Schema)
 //   {
 //       UObject** RefPtr = (UObject**)((uint8*)Obj + Token.Offset);
 //       MarkAsReachable(*RefPtr);   // 递归标记
@@ -336,7 +339,7 @@ GC 如何知道"从对象 A 出发能到哪些对象"？答案：**编译/加载
 
 为什么用 Token 流而不是运行时遍历 `PropertyLink`？
 
-- 生成 Token 流时**只保留引用类型属性**（`FObjectProperty`、`FArrayProperty` 内
+- 生成引用描述时**只保留引用类型属性**（`FObjectProperty`、`FArrayProperty` 内
   元素等），非引用属性完全不看；
 - 偏移与类型压缩成紧凑 Token，遍历零虚调用、缓存友好——这是 UE GC 快的核心；
 - `FProperty::NextRef` 链表（见 01 篇 5.1）在 `StaticLink` 时被用来构建这条流，
@@ -359,9 +362,9 @@ void IncrementalPurgeGarbage(bool bUseTimeLimit, double TimeLimit)
 
 ```mermaid
 flowchart TB
-    A["每帧 FGarbageCollectionTicker<br/>到达阈值?"] -->|是| B["CollectGarbage / 进入增量流程"]
+    A["每帧 ConditionalCollectGarbage<br/>到达阈值?"] -->|是| B["CollectGarbage / 进入增量流程"]
     B --> C["MarkObjectsAsUnreachable<br/>先把全部对象标记不可达"]
-    C --> D["可达性分析（分帧）<br/>根集合 + FGCReferenceTokenStream 递归标记"]
+    C --> D["可达性分析（分帧）<br/>根集合 + GC Schema/引用描述 递归标记"]
     D --> E["保留: 清除 Unreachable<br/>真正不可达: 留在列表"]
     E --> F["IncrementalPurgeGarbage（分帧）<br/>ConditionalBeginDestroy → BeginDestroy"]
     F --> G["IsReadyForFinishDestroy → FinishDestroy<br/>释放内存、槽位置空、SerialNumber++"]
@@ -419,8 +422,9 @@ if (IsValid(Obj))                       // 空指针 + 不可达 的统一判断
 Obj->MarkAsGarbage();                   // 打上 EInternalObjectFlags::Garbage
 ```
 
-- `UObjectBaseUtility::IsUnreachable()`：查询 `FUObjectItem::Flags` 中的
-  `Unreachable` 位（GC 标记阶段设置）；
+- `UObjectBaseUtility::IsUnreachable()`：查询 `FUObjectItem` 中的
+  `EInternalObjectFlags::Unreachable` 位（UE5.8 经 `GetFlags()` 读取，原 `Flags` 字段
+  已并入 `FlagsAndRefCount`；该位由 GC 标记阶段设置）；
 - `MarkAsGarbage()`：把对象标记为垃圾，等下一次 GC 回收；**不要**把它当
   "立即删除"用——真正的销毁要走 `ConditionalBeginDestroy()` / `AActor::Destroy`。
 
@@ -439,7 +443,7 @@ UE 用 **GC 集群**（`FUObjectCluster`，记录在 `FUObjectItem::ClusterRootI
 ### 8.1 TWeakObjectPtr：不保活，但能感知死亡
 
 ```cpp
-// WeakObjectPtrTemplates.h（UE5，节选/示意）
+// WeakObjectPtr.h（UE5.8，节选/示意；原 WeakObjectPtrTemplates.h）
 class FWeakObjectPtr
 {
 	int32 ObjectIndex;        // GUObjectArray 槽位索引
@@ -497,7 +501,7 @@ if (UStaticMesh* Mesh = MeshRef.LoadSynchronous()) { /* ... */ }
 | 上层知识点 | GC 源码如何支撑它 |
 | --- | --- |
 | Actor/组件销毁（[12-引擎源码分析/03-Actor与Component生命周期源码.md](./03-Actor与Component生命周期源码.md)） | `AActor::Destroy` 最终走 `ConditionalBeginDestroy` → GC 释放 |
-| 对象被回收的排查（[01-引擎基础/01-UObject与反射系统.md](../01-引擎基础/01-UObject与反射系统.md)） | 未加 UPROPERTY 的引用不在 `ReferenceTokenStream` 中 → 提前回收 |
+| 对象被回收的排查（[01-引擎基础/01-UObject与反射系统.md](../01-引擎基础/01-UObject与反射系统.md)） | 未加 UPROPERTY 的引用不在 GC Schema / 引用描述（原 `ReferenceTokenStream`）中 → 提前回收 |
 | 资源/关卡卸载（[07-UI与性能优化](../07-UI与性能优化/README.md)） | 增量 GC 分帧 + 集群 GC 降低卸载卡顿 |
 | 网络属性引用（[06-网络同步/02-RPC与属性同步](../06-网络同步/02-RPC与属性同步.md)） | 复制引用需 UPROPERTY 强引用，否则服务器/客户端对象生命周期不一致 |
 | 存档与软引用配置（[03-游戏玩法编程/03-GameplayTag与数据资产](../03-游戏玩法编程/03-GameplayTag与数据资产.md)） | `TSoftObjectPtr` 路径序列化避免存档里挂死资源 |

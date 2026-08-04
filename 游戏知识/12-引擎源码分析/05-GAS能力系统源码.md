@@ -16,7 +16,7 @@
 | 核心结构 | FGameplayAbilitySpec、FGameplayEffectSpec、FActiveGameplayEffect、FGameplayAttributeData |
 | 阅读主线 | 激活一条线（Ability）、生效一条线（Effect）、数值一条线（Attribute） |
 
-GAS 是 UE 中最复杂的玩法系统之一，但它的**骨架**并不复杂：`UAbilitySystemComponent`（简称 ASC）是挂在 Pawn/Character 上的"能力中枢"，持有能力列表（`FGameplayAbilitySpec` 数组）和生效效果列表（`FActiveGameplayEffectsContainer`）；`UGameplayAbility` 描述"能做什么"，`UGameplayEffect` 描述"造成什么改变"，`UAttributeSet` 描述"角色有什么数值"。本篇将沿着三个主要 .cpp 文件（AbilitySystemComponent.cpp / GameplayAbility.cpp / GameplayEffect.cpp）的主干函数逐行解读，把"点一下按键 → 角色掉血/加 Buff"这条链路彻底打通。
+GAS 是 UE 中最复杂的玩法系统之一，但它的**骨架**并不复杂：`UAbilitySystemComponent`（简称 ASC）是挂在 Pawn/Character 上的"能力中枢"，持有能力列表（`FGameplayAbilitySpec` 数组）和生效效果列表（`FActiveGameplayEffectsContainer`）；`UGameplayAbility` 描述"能做什么"，`UGameplayEffect` 描述"造成什么改变"，`UAttributeSet` 描述"角色有什么数值"。本篇将沿着三个主要 .cpp 文件（AbilitySystemComponent.cpp / AbilitySystemComponent_Abilities.cpp、Abilities/GameplayAbility.cpp、GameplayEffect.cpp，5.8 的路径分布）的主干函数逐行解读，把"点一下按键 → 角色掉血/加 Buff"这条链路彻底打通。
 
 ## 二、源码定位
 
@@ -25,9 +25,10 @@ GAS 是 UE 中最复杂的玩法系统之一，但它的**骨架**并不复杂�
 | 文件路径 | 作用 |
 | --- | --- |
 | `Engine/Plugins/Runtime/GameplayAbilities/Source/GameplayAbilities/Public/AbilitySystemComponent.h` | ASC 声明：激活接口、Spec 管理、Effect 容器、输入绑定、Cue 接口 |
-| `Engine/Plugins/Runtime/GameplayAbilities/Source/GameplayAbilities/Private/AbilitySystemComponent.cpp` | 激活流程、GiveAbility、输入处理、网络预测实现 |
-| `Engine/Plugins/Runtime/GameplayAbilities/Source/GameplayAbilities/Public/GameplayAbility.h` | UGameplayAbility 声明：ActivateAbility / CommitAbility / EndAbility / 实例化策略 |
-| `Engine/Plugins/Runtime/GameplayAbilities/Source/GameplayAbilities/Private/GameplayAbility.cpp` | 能力生命周期实现、GE 的创建与施加 |
+| `Engine/Plugins/Runtime/GameplayAbilities/Source/GameplayAbilities/Private/AbilitySystemComponent.cpp` | ASC 基础实现（复制、容器、调试等） |
+| `Engine/Plugins/Runtime/GameplayAbilities/Source/GameplayAbilities/Private/AbilitySystemComponent_Abilities.cpp` | 激活流程（TryActivateAbility 等）、GiveAbility、输入处理、网络预测实现（5.8 拆分的子文件） |
+| `Engine/Plugins/Runtime/GameplayAbilities/Source/GameplayAbilities/Public/Abilities/GameplayAbility.h` | UGameplayAbility 声明：ActivateAbility / CommitAbility / EndAbility / 实例化策略（5.8 位于 Abilities 子目录） |
+| `Engine/Plugins/Runtime/GameplayAbilities/Source/GameplayAbilities/Private/Abilities/GameplayAbility.cpp` | 能力生命周期实现、GE 的创建与施加 |
 | `Engine/Plugins/Runtime/GameplayAbilities/Source/GameplayAbilities/Public/GameplayEffect.h` | UGameplayEffect 定义、FGameplayEffectSpec、FActiveGameplayEffect |
 | `Engine/Plugins/Runtime/GameplayAbilities/Source/GameplayAbilities/Private/GameplayEffect.cpp` | 效果实例化、容器执行、Modifier 计算 |
 | `Engine/Plugins/Runtime/GameplayAbilities/Source/GameplayAbilities/Public/AttributeSet.h` | UAttributeSet、FGameplayAttribute、FGameplayAttributeData |
@@ -41,7 +42,7 @@ GAS 是 UE 中最复杂的玩法系统之一，但它的**骨架**并不复杂�
 
 ### 3.1 入口：TryActivateAbility
 
-技能激活的最常见入口是 ASC 的 `TryActivateAbility`，蓝图节点"Try Activate Ability by Handle"、输入绑定、GameplayEvent 触发最终都会汇聚到这里。源码（AbilitySystemComponent.cpp，有删节、保留真实 API）：
+技能激活的最常见入口是 ASC 的 `TryActivateAbility`，蓝图节点"Try Activate Ability by Handle"、输入绑定、GameplayEvent 触发最终都会汇聚到这里。源码（AbilitySystemComponent_Abilities.cpp，5.8 拆分文件；有删节、保留真实 API）：
 
 ```cpp
 bool UAbilitySystemComponent::TryActivateAbility(FGameplayAbilitySpecHandle AbilityToActivate, bool bAllowRemoteActivation)
@@ -53,52 +54,68 @@ bool UAbilitySystemComponent::TryActivateAbility(FGameplayAbilitySpecHandle Abil
 		return false;
 	}
 
-	UAbilitySystemComponent* OwningComponent = Spec->GetAbilitySystemComponent();
-	if (!OwningComponent || !OwningComponent->IsOwnerActorAuthoritative())
+	// 等待移除中的技能不再激活
+	if (Spec->PendingRemove || Spec->RemoveAfterActivation)
 	{
-		ABILITY_LOG(Warning, TEXT("TryActivateAbility called on non-authoritative AbilitySystemComponent"));
 		return false;
 	}
 
-	// 如果当前正在预测同一个技能（网络预测中），不再重复激活
-	if (OwningComponent->GetPredictingAbilitySpec() == Spec)
+	UGameplayAbility* Ability = Spec->Ability;
+	const FGameplayAbilityActorInfo* ActorInfo = AbilityActorInfo.Get();
+	if (!Ability || !ActorInfo || !ActorInfo->OwnerActor.IsValid() || !ActorInfo->AvatarActor.IsValid())
 	{
+		return false;
+	}
+
+	// 5.8 按网络执行策略（EGameplayAbilityNetExecutionPolicy）放行：
+	// 模拟端（ROLE_SimulatedProxy）直接拒绝；本地/服务端限定技能在非本端调用时
+	// 依 bAllowRemoteActivation 走远程激活（ClientTryActivateAbility / CallServerTryActivateAbility）
+	if (!AbilityActorInfo->IsLocallyControlled() &&
+		(Ability->GetNetExecutionPolicy() == EGameplayAbilityNetExecutionPolicy::LocalOnly ||
+		 Ability->GetNetExecutionPolicy() == EGameplayAbilityNetExecutionPolicy::LocalPredicted))
+	{
+		if (bAllowRemoteActivation)
+		{
+			ClientTryActivateAbility(AbilityToActivate);
+			return true;
+		}
 		return false;
 	}
 
 	// 冷却与 Tag 阻塞等基础检查交给 InternalTryActivateAbility
-	return InternalTryActivateAbility(AbilityToActivate, FPredictionKey(), nullptr, nullptr, nullptr);
+	return InternalTryActivateAbility(AbilityToActivate);
 }
 ```
 
 逐行解读：
 
-1. `FindAbilitySpecFromHandle`：把 `FGameplayAbilitySpecHandle`（内部封装了 `FPrimaryAssetId` 的句柄）换算成 ASC 中 `FGameplayAbilitySpec` 数组里的具体项；找不到直接返回 `false`——这是"激活一个不存在的技能"的标准失败路径。
-2. `IsOwnerActorAuthoritative()`：GAS 是**服务端授权**模型，客户端 ASC 直接调用激活会被拒绝（除非走预测/本地能力）。
-3. `GetPredictingAbilitySpec() == Spec`：防止同一个技能在预测期被重复触发（例如连点导致同帧两次激活）。
-4. 末尾把参数包一层再转给 `InternalTryActivateAbility`：`FPredictionKey()` 表示"本端没有预测键，由内部决定是否生成"。
+1. `FindAbilitySpecFromHandle`：把 `FGameplayAbilitySpecHandle`（5.8 中为全局递增的 `int32` 句柄，`GenerateNewHandle()` 签发，不再是 4.26 的 `FPrimaryAssetId`）换算成 ASC 中 `FGameplayAbilitySpec` 数组里的具体项；找不到直接返回 `false`——这是"激活一个不存在的技能"的标准失败路径。
+2. 5.8 以 `EGameplayAbilityNetExecutionPolicy`（LocalOnly / LocalPredicted / ServerOnly / ServerInitiated）为网络闸门：模拟端直接拒绝，非本端调用本地限定技能时按 `bAllowRemoteActivation` 走 `ClientTryActivateAbility` 远程激活。GAS 仍是**服务端授权**模型，客户端直接激活服务端限定技能会被拒绝。
+3. 旧版的"预测期防重触发"（4.26 的 `GetPredictingAbilitySpec`）在 5.8 已移除，由 `Spec->IsActive()` + `bRetriggerInstancedAbility`（见 3.2）承担。
+4. 末尾直接转给 `InternalTryActivateAbility(AbilityToActivate)`；预测键在该函数内部生成/沿用（`FPredictionKey`）。
 
 ### 3.2 核心调度：InternalTryActivateAbility
 
 `InternalTryActivateAbility` 是激活逻辑真正的"总闸"，完成：查 Spec → 预测键处理 → 可激活性检查 → 实例化策略 → 调用 `ActivateAbility`：
 
 ```cpp
-bool UAbilitySystemComponent::InternalTryActivateAbility(FGameplayAbilitySpecHandle AbilityToActivate,
+bool UAbilitySystemComponent::InternalTryActivateAbility(FGameplayAbilitySpecHandle Handle,
 	FPredictionKey InPredictionKey, UGameplayAbility** OutInstancedAbility,
 	FOnGameplayAbilityEnded::FDelegate* OnGameplayAbilityEndedDelegate,
 	FGameplayEventData const* TriggerEventData)
 {
-	check(InPredictionKey.IsValidForMorePrediction());
-
-	FGameplayAbilitySpec* Spec = FindAbilitySpecFromHandle(AbilityToActivate);
+	FGameplayAbilitySpec* Spec = FindAbilitySpecFromHandle(Handle);
 	if (!Spec)
 	{
 		ABILITY_LOG(Warning, TEXT("InternalTryActivateAbility called with invalid Handle"));
 		return false;
 	}
 
-	// 已激活且不允许重触发：直接失败
-	if (Spec->IsActive() && !Spec->Ability->bAllowRetrigger)
+	// 激活期间锁定能力列表，防止 Spec 被销毁
+	ABILITYLIST_SCOPE_LOCK();
+
+	const FGameplayAbilityActorInfo* ActorInfo = AbilityActorInfo.Get();
+	if (!ActorInfo || !ActorInfo->OwnerActor.IsValid() || !ActorInfo->AvatarActor.IsValid())
 	{
 		return false;
 	}
@@ -110,43 +127,74 @@ bool UAbilitySystemComponent::InternalTryActivateAbility(FGameplayAbilitySpecHan
 		return false;
 	}
 
-	// 数据就绪后先做"能不能激活"的检查（Tag 阻塞、冷却、成本、CanActivateAbility 蓝图事件）
-	FGameplayAbilityActorInfo* ActorInfo = AbilityActorInfo.Get();
-	FGameplayTagContainer FailureTags;
-	if (!Ability->CanActivateAbility(AbilityToActivate, ActorInfo, &FailureTags, nullptr, TriggerEventData))
+	// 本地/服务端限定技能的网络闸门（同 3.1，按 GetLocalRole 判定 ROLE_SimulatedProxy 等）
+	// （省略：NetMode 判定 + LocalPredicted/ServerOnly/ServerInitiated 分支）
+
+	// InstancedPerActor：已激活时按 bRetriggerInstancedAbility 决定"重触发"或拒绝
+	UGameplayAbility* InstancedAbility = Spec->GetPrimaryInstance();
+	if (Ability->GetInstancingPolicy() == EGameplayAbilityInstancingPolicy::InstancedPerActor)
 	{
+		if (Spec->IsActive())
+		{
+			if (Ability->bRetriggerInstancedAbility && InstancedAbility)
+			{
+				// 先结束旧实例再重触发
+				InstancedAbility->EndAbility(Handle, ActorInfo, InstancedAbility->GetCurrentActivationInfoRef(),
+					/*bReplicateEndAbility=*/true, /*bWasCancelled=*/false);
+			}
+			else
+			{
+				return false;
+			}
+		}
+	}
+
+	// 事件触发时先做 ShouldAbilityRespondToEvent 检查（省略）
+	UGameplayAbility* AbilitySource = InstancedAbility ? InstancedAbility : Ability;
+
+	// 数据就绪后先做"能不能激活"的检查（Tag 阻塞、冷却、成本、蓝图条件）。
+	// 5.8 签名：CanActivateAbility(Handle, ActorInfo, SourceTags, TargetTags, OptionalRelevantTags)；
+	// 触发事件时 SourceTags/TargetTags 取自 TriggerEventData->InstigatorTags / TargetTags
+	FGameplayTagContainer FailureTags;
+	const FGameplayTagContainer* SourceTags = TriggerEventData ? &TriggerEventData->InstigatorTags : nullptr;
+	const FGameplayTagContainer* TargetTags = TriggerEventData ? &TriggerEventData->TargetTags : nullptr;
+	if (!AbilitySource->CanActivateAbility(Handle, ActorInfo, SourceTags, TargetTags, &FailureTags))
+	{
+		NotifyAbilityFailed(Handle, AbilitySource, FailureTags);
 		return false;
 	}
 
-	// 预测键：客户端激活时生成本地预测键，用于回滚/同步
-	FPredictionKey PredictionKey = InPredictionKey;
-	if (!PredictionKey.IsValidForMorePrediction() && ScopedPredictionKey.IsValidForMorePrediction())
+	// 预测键：服务器生成新键（ServerSetActivationPredictionKey）或沿用客户端键；
+	// 期间用 FScopedPredictionWindow 把键挂到 ScopedPredictionKey 上，供后续属性修改打标
+	FGameplayAbilityActivationInfo ActivationInfo(ActorInfo->OwnerActor.Get());
+	if (InPredictionKey.IsValidKey())
 	{
-		PredictionKey = ScopedPredictionKey;
+		ActivationInfo.ServerSetActivationPredictionKey(InPredictionKey);
 	}
+	FScopedPredictionWindow ScopedPredictionWindow(this, ActivationInfo.GetActivationPredictionKey());
 
-	// 按实例化策略决定调用哪个"能力实例"上的 ActivateAbility
-	UGameplayAbility* InstancedAbility = Ability;
-	if (Ability->GetInstancingPolicy() == EGameplayAbilityInstancingPolicy::InstancedPerActor)
+	// 按实例化策略调用能力实例上的 ActivateAbility（InstancedPerExecution 每次 NewObject）
+	if (Ability->GetInstancingPolicy() == EGameplayAbilityInstancingPolicy::InstancedPerExecution)
 	{
-		InstancedAbility = GetInstancedAbility(AbilityToActivate);
+		InstancedAbility = CreateNewInstanceOfAbility(*Spec, Ability);
 	}
 
 	// 真正把控制权交给 Ability 子类
-	bool bActivated = CallActivateAbility(AbilityToActivate, ActorInfo, PredictionKey, OutInstancedAbility,
+	// 5.8 的 UGameplayAbility::CallActivateAbility 签名：
+	// CallActivateAbility(Handle, ActorInfo, ActivationInfo, OnGameplayAbilityEndedDelegate, TriggerEventData)
+	return AbilitySource->CallActivateAbility(Handle, ActorInfo, ActivationInfo,
 		OnGameplayAbilityEndedDelegate, TriggerEventData);
-	return bActivated;
 }
 ```
 
 逐行解读：
 
-1. `check(InPredictionKey.IsValidForMorePrediction())`：调试期断言——在"预测作用域"内不能再创建新预测键，防止预测键无限嵌套。
-2. `Spec->IsActive()`：`FGameplayAbilitySpec` 内部用 `ActiveCount` 计数，大于 0 即视为激活中；配合 `bAllowRetrigger`（如"可再次触发的位移技能"）决定是否放行。
-3. `CanActivateAbility`：**检查的总闸门**。内部依次检查：`AbilityTags` 与阻塞 Tag（`BlockAbilitiesWithTag`）、冷却（`CheckCooldown`）、成本（`CheckCost`），最后调用可在蓝图覆写的 `CanActivateAbility` 事件（如"怒气不足/处于眩晕"等自定义条件）。
-4. 预测键：客户端（`ScopedPredictionKey` 有效时）会把这个键作为本次激活的"预测令牌"，之后所有由本次激活产生的属性改动都打上这个键，用于服务端回包确认或分歧回滚。
-5. `GetInstancedAbility`：`InstancedPerActor` 策略下，ASC 会为每个 Spec 缓存一个"该 Actor 专用的能力实例"（`ReplicatedInstances` 数组），保证技能内状态（如当前连击段数）只属于这个 Actor。
-6. `CallActivateAbility`：统一封装"实例化 + 激活 + 结束回调注册"，是下面要讲的 `ActivateAbility` 的直接调用者。
+1. `ABILITYLIST_SCOPE_LOCK()`：激活期间锁定能力列表（`AbilityScopeLockCount` 计数），防止 Spec 在激活中途被销毁；旧版开头的 `check(InPredictionKey.IsValidForMorePrediction())` 断言在 5.8 已移除。
+2. `Spec->IsActive()`：`FGameplayAbilitySpec` 内部用 `ActiveCount` 计数，大于 0 即视为激活中；5.8 的成员名是 `bRetriggerInstancedAbility`（旧名 `bAllowRetrigger` 已移除），且只对 `InstancedPerActor` 生效（可再次触发的位移技能场景）。
+3. `CanActivateAbility`：**检查的总闸门**。5.8 签名为 `(Handle, ActorInfo, SourceTags, TargetTags, OptionalRelevantTags)`，事件触发时 `SourceTags`/`TargetTags` 取自 `TriggerEventData->InstigatorTags` / `TargetTags`；内部依次检查：`AbilityTags` 与阻塞 Tag（`BlockAbilitiesWithTag`）、冷却（`CheckCooldown`）、成本（`CheckCost`），最后调用可在蓝图覆写的 `CanActivateAbility` 事件（如"怒气不足/处于眩晕"等自定义条件）。
+4. 预测键：服务器用 `ServerSetActivationPredictionKey` 写入激活信息（`FPredictionKey::CreateNewServerInitiatedKey`），客户端沿用传入键；激活期间 `FScopedPredictionWindow` 把键挂到 `ScopedPredictionKey` 上，之后所有由本次激活产生的属性改动都打上这个键，用于服务端回包确认或分歧回滚。
+5. `Spec->GetPrimaryInstance()`：`InstancedPerActor` 策略下，ASC 在 `GiveAbility` 时就为每个 Spec 创建并缓存一个"该 Actor 专用的能力实例"（存于 `Spec->ReplicatedInstances` / `NonReplicatedInstances` 数组），保证技能内状态（如当前连击段数）只属于这个 Actor；旧版 `GetInstancedAbility` 访问器已移除。
+6. `UGameplayAbility::CallActivateAbility`：5.8 中 ASC 侧不再有 `CallActivateAbility` 包装（旧 6 参版本已移除），`InternalTryActivateAbility` 直接调用能力的 5 参版本 `CallActivateAbility(Handle, ActorInfo, ActivationInfo, OnGameplayAbilityEndedDelegate, TriggerEventData)`，它统一处理"实例化 + 激活 + 结束回调注册"。
 
 ### 3.3 实例化策略与 CallActivateAbility
 
@@ -154,46 +202,29 @@ bool UAbilitySystemComponent::InternalTryActivateAbility(FGameplayAbilitySpecHan
 
 | 策略 | 枚举值 | 激活时发生了什么 | 适用场景 |
 | --- | --- | --- | --- |
-| NonInstanced | `EGameplayAbilityInstancingPolicy::NonInstanced` | 直接调用 CDO 的 `ActivateAbility`，**不能存成员变量** | 纯函数式、无状态技能（如瞬发投掷） |
-| InstancedPerActor | `EGameplayAbilityInstancingPolicy::InstancedPerActor` | ASC 为 Spec 缓存一个实例（`GetInstancedAbility`），每次激活复用 | 绝大多数带状态的技能（连击、蓄力、持续引导） |
+| NonInstanced | `EGameplayAbilityInstancingPolicy::NonInstanced` | 直接调用 CDO 的 `ActivateAbility`，**不能存成员变量**（5.5 起已弃用，建议改用 InstancedPerActor） | 纯函数式、无状态技能（如瞬发投掷） |
+| InstancedPerActor | `EGameplayAbilityInstancingPolicy::InstancedPerActor` | ASC 在 `GiveAbility` 时为 Spec 缓存一个实例（`Spec->GetPrimaryInstance()`，存于 `ReplicatedInstances`），每次激活复用 | 绝大多数带状态的技能（连击、蓄力、持续引导） |
 | InstancedPerExecution | `EGameplayAbilityInstancingPolicy::InstancedPerExecution` | 每次激活都 `NewObject` 一个新实例 | 需要每次激活独立状态的场景（并发多次激活同一技能） |
 
-`CallActivateAbility` 的核心片段（AbilitySystemComponent.cpp）：
+`CallActivateAbility` 的核心片段（AbilitySystemComponent_Abilities.cpp，5.8 中实例化逻辑直接内联在 `InternalTryActivateAbility` 里）：
 
 ```cpp
-bool UAbilitySystemComponent::CallActivateAbility(FGameplayAbilitySpecHandle AbilityToActivate,
-	FGameplayAbilityActorInfo* ActorInfo, FPredictionKey PredictionKey,
-	UGameplayAbility** OutInstancedAbility,
-	FOnGameplayAbilityEnded::FDelegate* OnGameplayAbilityEndedDelegate,
-	FGameplayEventData const* TriggerEventData)
+// AbilitySystemComponent_Abilities.cpp（UE 5.8，节选）
+// 实例化策略在此落地：InstancedPerExecution 每次新建，其余复用 CDO / PerActor 实例
+if (Ability->GetInstancingPolicy() == EGameplayAbilityInstancingPolicy::InstancedPerExecution)
 {
-	FGameplayAbilitySpec* Spec = FindAbilitySpecFromHandle(AbilityToActivate);
-	if (!Spec)
-	{
-		return false;
-	}
-
-	UGameplayAbility* Ability = Spec->Ability;
-	if (Ability->GetInstancingPolicy() == EGameplayAbilityInstancingPolicy::InstancedPerExecution)
-	{
-		// 每次执行都新创建一个实例
-		Ability = CreateNewInstanceOfAbility(Spec, Ability);
-		if (OutInstancedAbility)
-		{
-			*OutInstancedAbility = Ability;
-		}
-	}
-
-	Spec->ActiveCount++;
-
-	// 激活，并把"结束回调"登记到 Spec 上（EndAbility 时会统一触发）
-	Ability->CallActivateAbility(AbilityToActivate, ActorInfo, PredictionKey, TriggerEventData, this, OnGameplayAbilityEndedDelegate);
-
-	return true;
+	InstancedAbility = CreateNewInstanceOfAbility(*Spec, Ability);   // 内部即 NewObject<UGameplayAbility>
+	InstancedAbility->CallActivateAbility(Handle, ActorInfo, ActivationInfo,
+		OnGameplayAbilityEndedDelegate, TriggerEventData);
+}
+else
+{
+	AbilitySource->CallActivateAbility(Handle, ActorInfo, ActivationInfo,
+		OnGameplayAbilityEndedDelegate, TriggerEventData);
 }
 ```
 
-关键点：`Spec->ActiveCount++` 发生在激活之前，保证 `EndAbility` 到来之前 `IsActive()` 一定为真；`InstancedPerExecution` 走 `CreateNewInstanceOfAbility`（内部即 `NewObject<UGameplayAbility>`），其余策略直接复用 Spec 上已有的 `Ability` 指针（CDO 或 PerActor 实例）。
+关键点：`InstancedPerExecution` 走 `CreateNewInstanceOfAbility(*Spec, Ability)`（内部即 `NewObject<UGameplayAbility>`），其余策略直接复用 `Spec->Ability`（CDO）或 `Spec->GetPrimaryInstance()`（PerActor 实例）；`Spec->ActiveCount` 的增减由 `ActivateAbility`/`EndAbility` 链路（`NotifyAbilityEnded`）维护，保证 `EndAbility` 到来之前 `IsActive()` 一定为真。
 
 ## 四、FGameplayAbilitySpec：能力的运行时"档案"
 
@@ -209,11 +240,7 @@ struct FGameplayAbilitySpec
 	UPROPERTY(BlueprintReadOnly, Category = Ability)
 	FGameplayAbilitySpecHandle Handle;
 
-	/** 该 Spec 对应的能力类 */
-	UPROPERTY(BlueprintReadOnly, Category = Ability)
-	TSubclassOf<UGameplayAbility> AbilityClass;
-
-	/** 能力对象本体：NonInstanced 时是 CDO，否则是实例 */
+	/** 能力对象本体（始终是 CDO，5.8 不再有 AbilityClass 成员） */
 	UPROPERTY(BlueprintReadOnly, Category = Ability)
 	TObjectPtr<UGameplayAbility> Ability;
 
@@ -221,66 +248,71 @@ struct FGameplayAbilitySpec
 	UPROPERTY(BlueprintReadOnly, Category = Ability)
 	int32 Level;
 
-	/** 配置时绑定的输入 ID（编辑器里设置的默认值） */
-	UPROPERTY(BlueprintReadOnly, Category = Ability)
-	int32 AbilityInputID = INDEX_NONE;
-
-	/** 运行时实际绑定的输入 ID（可在运行时用 SetInputID 改变） */
+	/** 绑定的输入 ID（5.8 中 AbilityInputID 已移除，只保留 InputID） */
 	UPROPERTY(BlueprintReadOnly, Category = Ability)
 	int32 InputID = INDEX_NONE;
 
-	/** 当前激活次数计数（>0 表示激活中） */
+	/** 当前激活次数计数（>0 表示激活中；5.8 中为 uint8 且 NotReplicated） */
 	UPROPERTY(BlueprintReadOnly, Category = Ability)
-	int32 ActiveCount;
+	uint8 ActiveCount;
 
-	/** 动态添加的标签（运行时通过 ASC 的 AddDynamicTag 修改） */
+	/** 动态添加的标签（5.5 起弃用，改用 GetDynamicSpecSourceTags() 访问；ASC 没有 AddDynamicTag API） */
 	FGameplayTagContainer DynamicAbilityTags;
 
-	/** 激活状态复制策略：是否把"激活中"状态同步到客户端 */
-	UPROPERTY()
-	EGameplayAbilityReplicationPolicy ReplicationPolicy;
+	/** 5.8 中以 ShouldReplicateAbilitySpec() 判断是否复制（EGameplayAbilityReplicationPolicy 成员已移除） */
 
 	/** 该 Spec 的激活能力实例列表（InstancedPerActor 时缓存于此） */
 	UPROPERTY()
 	TArray<TObjectPtr<UGameplayAbility>> ReplicatedInstances;
 
+	/** 非复制的能力实例列表（5.8 新增，InstancedPerActor 但无需复制的场景） */
+	UPROPERTY(NotReplicated)
+	TArray<TObjectPtr<UGameplayAbility>> NonReplicatedInstances;
+
 	bool IsActive() const { return ActiveCount > 0; }
+	UGameplayAbility* GetPrimaryInstance() const;   // InstancedPerActor 的主实例
+	TArray<UGameplayAbility*> GetAbilityInstances() const;   // 全部实例（Replicated + NonReplicated）
 	// ...
 };
 ```
 
 逐项解读：
 
-1. **Handle**：`FGameplayAbilitySpecHandle` 本质上是一个按 ASC 全局递增的 ID（内部为 `FPrimaryAssetId`），用来在函数间安全传递"哪条能力"，避免裸指针悬垂；激活、结束、输入绑定全走 Handle。
+1. **Handle**：`FGameplayAbilitySpecHandle` 在 5.8 中是一个全局递增的 `int32` ID（`GenerateNewHandle()` 签发，不再是 4.26 的 `FPrimaryAssetId`），用来在函数间安全传递"哪条能力"，避免裸指针悬垂；激活、结束、输入绑定全走 Handle。
 2. **Level**：技能的等级参数。`FGameplayEffectSpec::SetLevel` 会把 `Spec->Level` 拷入效果，伤害公式（如 `50 + Level * 10`）依赖它。
-3. **AbilityInputID 与 InputID**：`AbilityInputID` 是资产上配置的"默认输入绑定"，`InputID` 是运行时实际绑定值——两者分离是为了支持"同一个技能类在不同角色上绑定不同按键"。
-4. **ActiveCount**：支持同一 Spec 被多次激活（如两个 `InstancedPerExecution` 实例并行运行），`EndAbility` 时递减。
-5. **DynamicAbilityTags**：运行时给技能动态贴的 Tag（如"被沉默"），参与 `CanActivateAbility` 中的 Tag 检查。
-6. **ReplicatedInstances**：`InstancedPerActor` 实例的网络复制容器，客户端通过复制拿到同一个实例的引用，保证两端状态一致。
+3. **InputID**：绑定的输入 ID。5.8 中 `AbilityInputID`（资产上的"默认输入绑定"）已移除，只保留 `InputID`；"同一个技能类在不同角色上绑定不同按键"通过 `GiveAbility` 时传入的 `InputID` 实现。
+4. **ActiveCount**：支持同一 Spec 被多次激活（如两个 `InstancedPerExecution` 实例并行运行），`EndAbility` 链路（`NotifyAbilityEnded`）时递减。
+5. **DynamicAbilityTags**：运行时给技能动态贴的 Tag（如"被沉默"），参与 `CanActivateAbility` 中的 Tag 检查；5.5 起成员弃用，官方访问入口为 `GetDynamicSpecSourceTags()`，ASC 上不存在 `AddDynamicTag` 接口。
+6. **ReplicatedInstances / NonReplicatedInstances**：`InstancedPerActor` 实例的复制/非复制容器，客户端通过复制拿到同一个实例的引用，保证两端状态一致；主实例用 `GetPrimaryInstance()` 获取。
 
-`GiveAbility` 是 Spec 的诞生方式（AbilitySystemComponent.cpp）：
+`GiveAbility` 是 Spec 的诞生方式（AbilitySystemComponent_Abilities.cpp，5.8 拆分文件）：
 
 ```cpp
 FGameplayAbilitySpecHandle UAbilitySystemComponent::GiveAbility(const FGameplayAbilitySpec& Spec)
 {
+	if (!IsValid(Spec.Ability))
+	{
+		return FGameplayAbilitySpecHandle();
+	}
+
+	// 服务端授权：客户端 ASC 无权授予
 	if (!IsOwnerActorAuthoritative())
 	{
 		return FGameplayAbilitySpecHandle();
 	}
 
-	FGameplayAbilitySpec NewSpec(Spec);
-	NewSpec.Handle = FGameplayAbilitySpecHandle(FPrimaryAssetId(NewSpec.Ability->GetClass()->GetFName(), FGuid::NewGuid()));
-	ActivatableAbilities.Items.Add(NewSpec);
+	ABILITYLIST_SCOPE_LOCK();
+	FGameplayAbilitySpec& OwnedSpec = ActivatableAbilities.Items[ActivatableAbilities.Items.Add(Spec)];
 
-	// 复制相关：如果是初始授予，把这条 Spec 复制给客户端
-	if (IsUsingRegisteredSubObjectList() && NewSpec.ReplicationPolicy == EGameplayAbilityReplicationPolicy::ReplicateYes)
+	// InstancedPerActor：授予时立即创建该 Actor 专用的能力实例
+	if (OwnedSpec.Ability->GetInstancingPolicy() == EGameplayAbilityInstancingPolicy::InstancedPerActor)
 	{
-		TArray<FGameplayAbilitySpecHandle> AddedAbilityHandles;
-		AddedAbilityHandles.Add(NewSpec.Handle);
-		OnGiveAbility(AddedAbilityHandles);
+		CreateNewInstanceOfAbility(OwnedSpec, Spec.Ability);
 	}
 
-	return NewSpec.Handle;
+	OnGiveAbility(OwnedSpec);   // 5.8 签名：OnGiveAbility(FGameplayAbilitySpec&)
+	MarkAbilitySpecDirty(OwnedSpec, true);
+	return OwnedSpec.Handle;   // 5.8 直接沿用 Spec 自带句柄，不再重新生成
 }
 ```
 
@@ -290,7 +322,7 @@ FGameplayAbilitySpecHandle UAbilitySystemComponent::GiveAbility(const FGameplayA
 
 ### 5.1 ActivateAbility：技能的"主函数"
 
-`ActivateAbility` 是每个技能蓝图/C++ 子类必须实现的核心虚函数，源码签名（GameplayAbility.h）：
+`ActivateAbility` 是每个技能蓝图/C++ 子类必须实现的核心虚函数，源码签名（Abilities/GameplayAbility.h）：
 
 ```cpp
 virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle,
@@ -299,7 +331,7 @@ virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	const FGameplayEventData* TriggerEventData);
 ```
 
-引擎侧默认实现只做一件事：设置 `ActivationInfo` 的激活状态并调用蓝图事件（GameplayAbility.cpp）：
+引擎侧默认实现只做一件事：设置 `ActivationInfo` 的激活状态并调用蓝图事件（Abilities/GameplayAbility.cpp）：
 
 ```cpp
 void UGameplayAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
@@ -337,8 +369,12 @@ void UMyAttackAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	if (DamageSpec.IsValid())
 	{
 		DamageSpec.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName("Damage.Physical")), 100.f);
-		ApplyGameplayEffectSpecToTarget(GetCurrentActorInfo(), GetCurrentAbilitySpecHandle(),
-			GetCurrentActivationInfo(), DamageSpec, TargetActor);
+		// 5.8 签名：ApplyGameplayEffectSpecToTarget(AbilityHandle, ActorInfo, ActivationInfo,
+		//   SpecHandle, const FGameplayAbilityTargetDataHandle& TargetData)
+		// （参数以 TargetData 为目标载体，不再直接传 AActor*）
+		FGameplayAbilityTargetDataHandle TargetData;
+		ApplyGameplayEffectSpecToTarget(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(),
+			GetCurrentActivationInfo(), DamageSpec, TargetData);
 	}
 
 	// 3. 完成
@@ -346,7 +382,7 @@ void UMyAttackAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 }
 ```
 
-要点：`MakeOutgoingGameplayEffectSpec` + `ApplyGameplayEffectSpecToTarget` 是"技能 → 效果"的标准桥；`SetSetByCallerMagnitude` 把运行时算好的数值（如 100 点物理伤害）写进效果 Spec，供伤害公式读取。
+要点：`MakeOutgoingGameplayEffectSpec` + `ApplyGameplayEffectSpecToTarget` 是"技能 → 效果"的标准桥（5.8 中 `ApplyGameplayEffectSpecToTarget` 返回 `TArray<FActiveGameplayEffectHandle>`，目标用 `FGameplayAbilityTargetDataHandle` 表示）；对自己施加效果改用 `ApplyGameplayEffectSpecToOwner`（旧 `ApplyGameplayEffectSpecToSelf` 已从 `UGameplayAbility` 移除）；`SetSetByCallerMagnitude` 把运行时算好的数值（如 100 点物理伤害）写进效果 Spec，供伤害公式读取。
 
 ### 5.2 CommitAbility：扣费与进冷却
 
@@ -362,46 +398,44 @@ bool UGameplayAbility::CommitAbility(const FGameplayAbilitySpecHandle Handle,
 		return false;
 	}
 
-	// 真扣：应用成本 GE（瞬时）与冷却 GE（无限时/定时）
-	CommitCost(Handle, ActorInfo, ActivationInfo);
-	CommitCooldown(Handle, ActorInfo, ActivationInfo);
+	// 真扣：5.8 统一走 CommitExecute（蓝图可覆写 K2_CommitExecute）；
+	// 成本/冷却可分别用 CommitAbilityCost / CommitAbilityCooldown（内部 ApplyCost / ApplyCooldown 以 GE 施加）
+	CommitExecute(Handle, ActorInfo, ActivationInfo);
 	return true;
 }
 ```
 
-`CommitCost` 与 `CommitCooldown` 的实现思路非常统一：**把成本/冷却建模成 GameplayEffect**，动态创建并施加到自身：
+`CommitAbilityCost` 与 `CommitAbilityCooldown`（旧名 `CommitCost` / `CommitCooldown` 在 5.8 已移除）的实现思路非常统一：**把成本/冷却建模成 GameplayEffect**，动态创建并施加到自身：
 
 ```cpp
-bool UGameplayAbility::CommitCost(const FGameplayAbilitySpecHandle Handle,
+bool UGameplayAbility::CommitAbilityCost(const FGameplayAbilitySpecHandle Handle,
 	const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo)
 {
+	if (UAbilitySystemGlobals::Get().ShouldIgnoreCosts()) { return true; }
+	if (!CheckCost(Handle, ActorInfo, /*OptionalRelevantTags=*/nullptr)) { return false; }
+
 	// 动态构造一个瞬时 GE：把 GetCostGameplayEffect() 的 Modifier 拷进新 Spec 并施加
-	UGameplayEffect* CostGE = GetCostGameplayEffect();
-	if (CostGE)
-	{
-		FGameplayEffectSpecHandle SpecHandle = MakeOutgoingGameplayEffectSpec(CostGE, GetAbilityLevel());
-		ApplyGameplayEffectSpecToSelf(Handle, ActorInfo, ActivationInfo, SpecHandle);
-	}
+	ApplyCost(Handle, ActorInfo, ActivationInfo);   // 内部使用 GetCostGameplayEffect() 构造 GE 施加
 	return true;
 }
 ```
 
 ```
-bool UGameplayAbility::CommitCooldown(...)
+bool UGameplayAbility::CommitAbilityCooldown(const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo,
+	const bool ForceCooldown, OUT FGameplayTagContainer* OptionalRelevantTags)
 {
-	UGameplayEffect* CooldownGE = GetCooldownGameplayEffect();
-	if (CooldownGE)
-	{
-		FGameplayEffectSpecHandle SpecHandle = MakeOutgoingGameplayEffectSpec(CooldownGE, GetAbilityLevel());
-		// 冷却 GE 通常是 Duration 型，施加后进入"冷却中"状态；
-		// CheckCooldown 通过查询自己身上是否有冷却 GE 来决定能否再次激活
-		ApplyGameplayEffectSpecToSelf(Handle, ActorInfo, ActivationInfo, SpecHandle);
-	}
+	if (UAbilitySystemGlobals::Get().ShouldIgnoreCooldowns()) { return true; }
+	if (!ForceCooldown && !CheckCooldown(Handle, ActorInfo, OptionalRelevantTags)) { return false; }
+
+	// 冷却 GE 通常是 Duration 型，施加后进入"冷却中"状态；
+	// CheckCooldown 通过查询自己身上是否有冷却 GE 来决定能否再次激活
+	ApplyCooldown(Handle, ActorInfo, ActivationInfo);   // 内部使用 GetCooldownGameplayEffect() 构造 GE
 	return true;
 }
 ```
 
-这就是为什么"技能冷却"在 GAS 里其实是"一个施加到自己身上的持续时间效果"：`CheckCooldown` 只是去 `GetActiveEffects` 里查有没有匹配的冷却 GE。理解了这一点，就理解了为什么冷却可以被"缩短/移除/暂停"——它们都只是对这个 GE 的操作。
+这就是为什么"技能冷却"在 GAS 里其实是"一个施加到自己身上的持续时间效果"：`CheckCooldown` 只是去 `GetActiveEffects`（`FGameplayEffectQuery`）里查有没有匹配的冷却 GE。理解了这一点，就理解了为什么冷却可以被"缩短/移除/暂停"——它们都只是对这个 GE 的操作。
 
 ### 5.3 EndAbility：优雅收尾
 
@@ -414,22 +448,29 @@ void UGameplayAbility::EndAbility(const FGameplayAbilitySpecHandle Handle,
 	// 防止重复结束
 	if (IsEndAbilityValid(Handle, ActorInfo))
 	{
-		// 通知 ASC：这条能力结束了（ActiveCount--，触发 OnGameplayAbilityEnded）
-		GetAbilitySystemComponentFromActorInfo()->NotifyAbilityEnded(Handle, this, bWasCancelled);
-
-		// 蓝图侧的 EndAbility 事件
+		// 蓝图侧的 EndAbility 事件（5.8 中先于 NotifyAbilityEnded 调用）
 		K2_OnEndAbility(bWasCancelled);
 
-		// 清理预测相关的目标数据
+		// 广播结束委托：OnGameplayAbilityEnded（旧版）与 OnGameplayAbilityEndedWithData（5.8 新增，携带 FAbilityEndedData）
+		OnGameplayAbilityEnded.Broadcast(this);
+		OnGameplayAbilityEndedWithData.Broadcast(FAbilityEndedData(this, Handle, bReplicateEndAbility, bWasCancelled));
+
+		// 结束所有 AbilityTask、移除激活期添加的 Tag 与 GameplayCue
+		// ...
+
+		// 复制"结束"给客户端（客户端据此终止本地预测实例）
 		if (bReplicateEndAbility)
 		{
-			// 服务端把"结束"复制给客户端，客户端据此终止本地预测实例
+			AbilitySystemComponent->ReplicateEndOrCancelAbility(Handle, ActivationInfo, this, false);
 		}
+
+		// 通知 ASC：这条能力结束了（ActiveCount--，触发 OnGameplayAbilityEnded 多播）
+		AbilitySystemComponent->NotifyAbilityEnded(Handle, this, bWasCancelled);
 	}
 }
 ```
 
-`bWasCancelled` 区分"正常结束"与"被打断"（受击/死亡/取消引导），`IsEndAbilityValid` 内置了"不能重复 End"的保护。结束链路会依次触发：`NotifyAbilityEnded`（ASC 侧收尾）→ `OnGameplayAbilityEnded` 多播委托（外部系统监听，如 UI 关闭技能图标）→ 蓝图 `OnEndAbility` 事件。
+`bWasCancelled` 区分"正常结束"与"被打断"（受击/死亡/取消引导），`IsEndAbilityValid` 内置了"不能重复 End"的保护。结束链路会依次触发：蓝图 `OnEndAbility`（`K2_OnEndAbility`）→ `OnGameplayAbilityEnded` / `OnGameplayAbilityEndedWithData` 多播委托（外部系统监听，如 UI 关闭技能图标）→ 复制结束（`ReplicateEndOrCancelAbility`）→ `NotifyAbilityEnded`（ASC 侧收尾，`ActiveCount--`）。
 
 ## 六、GameplayEffect：从 Spec 到属性变更
 
@@ -445,13 +486,13 @@ struct FGameplayEffectSpec
 
 	/** 来源资产 */
 	UPROPERTY()
-	TSubclassOf<UGameplayEffect> Def;
+	TObjectPtr<const UGameplayEffect> Def;
 
 	/** 效果等级（影响 Modifier 计算中的等级系数） */
 	UPROPERTY()
 	float Level;
 
-	/** 持续时间（秒）：0 = 瞬时；>0 = 有持续时间；无限时 Duration 为 MAX_FLT 级大数 */
+	/** 持续时间（秒）：0（INSTANT_APPLICATION）= 瞬时；>0 = 有持续时间；无限时为 -1（INFINITE_DURATION） */
 	UPROPERTY()
 	float Duration;
 
@@ -461,22 +502,16 @@ struct FGameplayEffectSpec
 
 	/** 生效后的修饰符列表（从 Def->Modifiers 复制并完成计算前准备） */
 	UPROPERTY()
-	TArray<FGameplayModifierInfo> Modifiers;
+	TArray<FModifierSpec> Modifiers;   // 5.x 起由 FGameplayModifierInfo 改为 FModifierSpec（Def 侧仍用 FGameplayModifierInfo）
 
 	/** 动态授予的标签（效果生效期间加到目标身上的 Tag） */
 	UPROPERTY()
 	FGameplayTagContainer DynamicGrantedTags;
 
-	/** SetByCaller 数值表：运行时把"伤害值""治疗值"以 Tag 为键写入 */
+	/** SetByCaller 数值表：运行时把"伤害值""治疗值"以 Tag 为键写入（另有 TMap<FName, float> SetByCallerNameMagnitudes） */
 	TMap<FGameplayTag, float> SetByCallerTagMagnitudes;
 
-	/** 堆叠相关：当前堆叠层数 */
-	UPROPERTY()
-	int32 StackCount;
-
-	/** 来源能力上下文（谁造成的伤害、暴击与否等） */
-	UPROPERTY()
-	FGameplayEffectContextHandle EffectContext;
+	/** 堆叠层数与来源上下文在 5.8 中为私有成员，分别用 SetStackCount()/GetStackCount() 与 SetContext()/GetContext() 访问 */
 	// ...
 };
 ```
@@ -485,11 +520,11 @@ struct FGameplayEffectSpec
 
 | 时长类型 | Duration 值 | 生命周期 |
 | --- | --- | --- |
-| Instant（瞬时） | 0 | 施加后立刻执行一次修改，随即从容器移除 |
+| Instant（瞬时） | `FGameplayEffectConstants::INSTANT_APPLICATION`（0） | 施加后立刻执行一次修改，随即从容器移除 |
 | HasDuration（定时） | > 0 | 生效 Duration 秒后到期移除（可被刷新/叠加） |
-| Infinite（无限时） | `MAX_FLT` 级别的极大值 | 一直存在，直到被显式移除（Buff/光环/被动） |
+| Infinite（无限时） | `FGameplayEffectConstants::INFINITE_DURATION`（**-1**，不是极大值） | 一直存在，直到被显式移除（Buff/光环/被动） |
 
-`Period > 0` 时，效果在持续期间还会**周期性执行**（如每 2 秒流血），引擎在 `FActiveGameplayEffectsContainer` 的 tick 里检查 `Period` 并调用 `ExecutePeriodicGameplayEffect`。
+`Period > 0` 时，效果在持续期间还会**周期性执行**（如每 2 秒流血）：5.8 用 `FActiveGameplayEffect::PeriodHandle`（`FTimerHandle`）定时触发 `InternalExecutePeriodicGameplayEffect` → `ExecutePeriodicGameplayEffect`，不再依赖容器 tick 轮询。
 
 ### 6.2 FActiveGameplayEffect：容器里的"活效果"
 
@@ -515,28 +550,27 @@ struct FActiveGameplayEffect
 	UPROPERTY()
 	float StartWorldTime;
 
-	/** 剩余持续时间（秒） */
+	/** 服务器开始时间（复制用） */
 	UPROPERTY()
-	float Duration;
+	float StartServerWorldTime;
 
-	/** 剩余周期时间（秒） */
-	UPROPERTY()
-	float Period;
-
-	/** 堆叠层数 */
-	UPROPERTY()
-	int32 StackCount;
+	/** 周期/持续时间定时器（5.8 用 FTimerHandle 驱动，替代容器 tick） */
+	FTimerHandle PeriodHandle;
+	FTimerHandle DurationHandle;
 
 	/** 是否被抑制（如死亡时暂停被动） */
-	UPROPERTY()
+	UPROPERTY(NotReplicated)
 	bool bIsInhibited;
+
+	/** 该活效果的事件集（OnGameplayEffectRemoved 等，5.8 新增） */
+	FActiveGameplayEffectEvents EventSet;
 	// ...
 };
 ```
 
-`FActiveGameplayEffectsContainer` 持有 `TArray<FActiveGameplayEffect>`（实际为 `FActiveGameplayEffectList` 等），是 ASC 的"状态仓库"：持续型 Buff、光环、被动技能全部以 `FActiveGameplayEffect` 的形式活在这里。`FActiveGameplayEffectHandle` 由容器内的 `ActiveGameplayEffects` 计数器生成，用于安全引用某个活效果。
+`FActiveGameplayEffectsContainer`（`struct`，继承 `FFastArraySerializer`）持有 `TArray<FActiveGameplayEffect> GameplayEffects_Internal`，是 ASC 的"状态仓库"：持续型 Buff、光环、被动技能全部以 `FActiveGameplayEffect` 的形式活在这里。5.8 中 `Duration`/`Period`/`StackCount` 不再冗余存储，统一从 `Spec` 读取（`GetDuration()` / `GetPeriod()` / `GetStackCount()`）；`FActiveGameplayEffectHandle` 是全局唯一 ID，用于安全引用某个活效果。
 
-### 6.3 执行链：ApplyGameplayEffectSpecToSelf → ExecuteActiveEffectsFrom → InternalExecuteMod
+### 6.3 执行链：ApplyGameplayEffectSpecToSelf → ApplyGameplayEffectSpec → ExecuteActiveEffectsFrom → InternalExecuteMod
 
 以"技能施加瞬时伤害到自己/目标"为例，主路径（GameplayEffect.cpp）：
 
@@ -548,99 +582,89 @@ FActiveGameplayEffectHandle UAbilitySystemComponent::ApplyGameplayEffectSpecToSe
 	if (Spec.Def)
 	{
 		// 入口：把 Spec 交给容器
-		Handle = ActiveGameplayEffects.ApplyGameplayEffectSpecToSelf(Spec, InPredictionKey);
+		bool bFoundExistingStackableGE = false;
+		FActiveGameplayEffect* ActiveEffect = ActiveGameplayEffects.ApplyGameplayEffectSpec(Spec, InPredictionKey, bFoundExistingStackableGE);
+		if (ActiveEffect)
+		{
+			Handle = ActiveEffect->Handle;
+		}
 	}
 	return Handle;
 }
 ```
 
-容器内部按 Duration 分流：`Instant`（`Duration == 0`）走"立即执行"分支：
+容器内部按 Duration 分流：`Instant`（`Duration == 0`）走"立即执行"分支（5.8 中容器入口名为 `ApplyGameplayEffectSpec`，旧名 `ApplyGameplayEffectSpecToSelf` 已移除）：
 
 ```cpp
-FActiveGameplayEffectHandle FActiveGameplayEffectsContainer::ApplyGameplayEffectSpecToSelf(
-	const FGameplayEffectSpec& Spec, FPredictionKey InPredictionKey)
+FActiveGameplayEffect* FActiveGameplayEffectsContainer::ApplyGameplayEffectSpec(
+	const FGameplayEffectSpec& Spec, FPredictionKey& InPredictionKey, bool& bFoundExistingStackableGE)
 {
 	// ... 若干前置检查（预测、复制、抑制） ...
 
 	if (Spec.Def->DurationPolicy == EGameplayEffectDurationType::Instant)
 	{
-		// 瞬时效果：不进容器，直接执行 Modifier 后返回空 Handle
+		// 瞬时效果：不进容器，直接执行 Modifier 后返回 nullptr
 		ExecuteActiveEffectsFrom(Spec, InPredictionKey);
-		return FActiveGameplayEffectHandle();
+		return nullptr;
 	}
 
-	// 非瞬时：把 Spec 包装成 FActiveGameplayEffect 存入容器（叠加/刷新逻辑在此展开）
-	FActiveGameplayEffect* ActiveEffect = new FActiveGameplayEffect();
-	ActiveEffect->Spec = Spec;
-	ActiveEffect->PredictionKey = InPredictionKey;
-	// ... StartWorldTime / Duration / Stacking 初始化 ...
-	FActiveGameplayEffectHandle NewHandle = AddActiveGameplayEffect(ActiveEffect, InPredictionKey);
-	return NewHandle;
+	// 非瞬时：先查能否叠加（FindStackableActiveGameplayEffect）再构造 FActiveGameplayEffect 存入容器
+	//（叠加/刷新/溢出逻辑在 HandleActiveGameplayEffectStackOverflow / OnStackCountChange 等处展开）
+	FActiveGameplayEffect* ActiveEffect = new FActiveGameplayEffect(...);
+	return AddActiveGameplayEffect(ActiveEffect, InPredictionKey);
 }
 ```
 
 `ExecuteActiveEffectsFrom` 逐条处理 Spec 中的每个 Modifier，最终落到 `InternalExecuteMod`：
 
 ```cpp
-FActiveGameplayEffectHandle FActiveGameplayEffectsContainer::ExecuteActiveEffectsFrom(
-	FGameplayEffectSpec Spec, FPredictionKey PredictionKey)
+void FActiveGameplayEffectsContainer::ExecuteActiveEffectsFrom(FGameplayEffectSpec& Spec, FPredictionKey PredictionKey)
 {
-	FActiveGameplayEffectHandle Handle;
-	FActiveGameplayEffect* ActiveEffect = new FActiveGameplayEffect(Spec, PredictionKey);
-	ActiveEffect->StartWorldTime = GetWorld()->GetTimeSeconds();
+	// 捕获目标 Tag 并统一折算所有 Modifier 的数值（5.8 新增 CalculateModifierMagnitudes）
+	Spec.CalculateModifierMagnitudes();
 
-	// 对每个 Modifier 依次执行"属性修改"
-	for (FGameplayModifierInfo& Mod : Spec.Modifiers)
+	// 对每个 Modifier 依次执行"属性修改"（5.8 以 FGameplayModifierEvaluatedData 承载计算结果）
+	for (int32 ModIdx = 0; ModIdx < Spec.Modifiers.Num(); ++ModIdx)
 	{
-		InternalExecuteMod(Mod, ActiveEffect);
+		const FGameplayModifierInfo& ModDef = Spec.Def->Modifiers[ModIdx];
+		FGameplayModifierEvaluatedData EvalData(ModDef.Attribute, ModDef.ModifierOp, Spec.GetModifierMagnitude(ModIdx));
+		InternalExecuteMod(Spec, EvalData);
 	}
-
-	// 执行完的瞬时效果不常驻，直接销毁
-	delete ActiveEffect;
-	return Handle;
 }
 ```
 
 `InternalExecuteMod` 是属性改动的"最后一公里"（GameplayEffect.cpp，有删节）：
 
 ```cpp
-void FActiveGameplayEffectsContainer::InternalExecuteMod(FGameplayModifierInfo& Mod, FActiveGameplayEffect* ActiveEffect)
+bool FActiveGameplayEffectsContainer::InternalExecuteMod(FGameplayEffectSpec& Spec, FGameplayModifierEvaluatedData& ModEvalData)
 {
-	FGameplayEffectSpec& Spec = ActiveEffect->Spec;
-	FGameplayAttribute Attribute = Mod.Attribute;
-	float EvaluatedMagnitude = 0.f;
-
-	// 1. 计算修饰符数值（等级系数、SetByCaller、曲线表都在这步折算成具体数字）
-	Spec.CalculateModifierMagnitude(Mod, EvaluatedMagnitude);
-
-	// 2. 找到目标 AttributeSet 上对应的属性
+	// 1. 找到目标 AttributeSet 上对应的属性（按 FGameplayAttribute::GetAttributeSetClass 匹配）
 	UAttributeSet* AttributeSet = nullptr;
-	UAbilitySystemComponent* Component = GetOwningAbilitySystemComponent();
-	if (Component)
+	UClass* AttributeSetClass = ModEvalData.Attribute.GetAttributeSetClass();
+	if (AttributeSetClass && AttributeSetClass->IsChildOf(UAttributeSet::StaticClass()))
 	{
-		AttributeSet = Component->GetAttributeSubobject(Attribute.GetAttributeSetClass());
+		AttributeSet = const_cast<UAttributeSet*>(Owner->GetAttributeSubobject(AttributeSetClass));
 	}
 
-	// 3. 构造回调数据（携带 Effect、数值、属性、AttributeSet 的"案件卷宗"）
-	FGameplayEffectModCallbackData ExecuteData(Spec, ActiveEffect, EvaluatedMagnitude, Attribute, AttributeSet);
+	// 2. 构造回调数据（5.8：EffectSpec + 求值数据 + 目标 ASC）
+	FGameplayEffectModCallbackData ExecuteData(Spec, ModEvalData, *Owner);
 
-	// 4. 执行前回调（可修改数值/拦截）
-	AttributeSet->PreGameplayEffectExecute(ExecuteData);
-
-	// 5. 真正写入属性（经 FGameplayAttributeData::SetCurrentValue / 聚合器）
-	FGameplayAttributeData* AttributeData = AttributeSet->GetGameplayAttributeData(Attribute);
-	if (AttributeData)
+	// 3. 执行前回调（可修改数值/拦截；5.8 返回 bool 决定是否继续）
+	if (AttributeSet->PreGameplayEffectExecute(ExecuteData))
 	{
-		const float OldValue = AttributeData->GetCurrentValue();
-		AttributeData->SetCurrentValue(OldValue + EvaluatedMagnitude);
-	}
+		// 4. 真正写入属性（ApplyModToAttribute，内部经 FGameplayAttributeData 修改）
+		ApplyModToAttribute(ModEvalData.Attribute, ModEvalData.ModifierOp, ModEvalData.Magnitude, &ExecuteData);
+		Spec.AddModifiedAttribute(ModEvalData.Attribute);   // 记录"被改过的属性"供外部查询
 
-	// 6. 执行后回调（伤害结算、死亡判定、UI 通知的惯用位置）
-	AttributeSet->PostGameplayEffectExecute(ExecuteData);
+		// 5. 执行后回调（伤害结算、死亡判定、UI 通知的惯用位置）
+		AttributeSet->PostGameplayEffectExecute(ExecuteData);
+		return true;
+	}
+	return false;
 }
 ```
 
-> 注：UE5 中持续型效果的属性修改经由 `FActiveGameplayEffectsContainer::UpdateAggregatedModifier` + 聚合器（Aggregator）统一计算后写入，`InternalExecuteMod` 是**瞬时效果**的直通路径；两者的回调顺序（Pre → 写入 → Post）完全一致。
+> 注：持续型效果的属性修改经由 `FActiveGameplayEffectsContainer::UpdateAllAggregatorModMagnitudes` / `UpdateAggregatorModMagnitudes` + 聚合器（`FAggregator`，GameplayEffectAggregator.h）统一计算后写入，`InternalExecuteMod` 是**瞬时效果**的直通路径（旧名 `UpdateAggregatedModifier` 已移除）；两者的回调顺序（Pre → 写入 → Post）完全一致。
 
 ### 6.4 属性回调：PreAttributeChange / PostGameplayEffectExecute 与 FGameplayAttributeData
 
@@ -682,26 +706,36 @@ void UAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackDa
 }
 ```
 
-二者分工：**Pre 在数值写入前**（改 `NewValue` 的引用即可钳制），**Post 在数值写入后**（此时 `Data` 里有 `EvaluatedMagnitude`、`EffectSpec`、`Attribute`、`AttributeSet`，可以读取最终数值做结算）。`FGameplayEffectModCallbackData` 常见成员：`EffectSpec`、`ActiveEffect`、`EvaluatedMagnitude`、`Attribute`、`AttributeSet`、`PropertyName`。
+二者分工：**Pre 在数值写入前**（改 `NewValue` 的引用即可钳制），**Post 在数值写入后**（此时 `Data` 里可以读取最终数值做结算）。5.8 的 `FGameplayEffectModCallbackData`（定义于 GameplayEffectExtension.h）成员为：`EffectSpec`、`EvaluatedData`（`FGameplayModifierEvaluatedData`：`Attribute` / `Magnitude` / `ModifierOp`）、`Target`（`UAbilitySystemComponent&`）；旧成员 `ActiveEffect` / `EvaluatedMagnitude` / `PropertyName` 已移除。
 
 ## 七、InputID：输入与技能的绑定
 
-按键输入不直接调 `TryActivateAbility`，而是按 **InputID** 匹配。ASC 的输入处理（AbilitySystemComponent.cpp）：
+按键输入不直接调 `TryActivateAbility`，而是按 **InputID** 匹配。ASC 的输入处理（AbilitySystemComponent_Abilities.cpp，5.8 拆分文件）：
 
 ```cpp
 void UAbilitySystemComponent::AbilityLocalInputPressed(int32 InputID)
 {
+	// 先消费 GenericConfirm/GenericCancel 重载的输入（IsGenericConfirmInputBound → LocalInputConfirm 等，省略）
+
 	// 遍历所有能力 Spec，找出 InputID 匹配的
-	for (const FGameplayAbilitySpec& Spec : ActivatableAbilities.Items)
+	ABILITYLIST_SCOPE_LOCK();
+	for (FGameplayAbilitySpec& Spec : ActivatableAbilities.Items)
 	{
 		if (Spec.InputID == InputID && Spec.Ability)
 		{
-			// 优先触发"输入按下"事件（供能力内响应，如蓄力开始）
-			Spec.Ability->InputPressed(Spec.Handle, AbilityActorInfo.Get(), AbilityActivationInfo);
-
-			// 尝试激活（已有 InputID 机制的引擎内部即调用此链）
-			if (!Spec.IsActive())
+			Spec.InputPressed = true;
+			if (Spec.IsActive())
 			{
+				// 已激活：转发"输入按下"（AbilitySpecInputPressed → UGameplayAbility::InputPressed）并可复制到服务器
+				if (Spec.Ability->bReplicateInputDirectly && !IsOwnerActorAuthoritative())
+				{
+					ServerSetInputPressed(Spec.Handle);
+				}
+				AbilitySpecInputPressed(Spec);
+			}
+			else
+			{
+				// 未激活：尝试激活
 				TryActivateAbility(Spec.Handle);
 			}
 		}
@@ -710,17 +744,19 @@ void UAbilitySystemComponent::AbilityLocalInputPressed(int32 InputID)
 
 void UAbilitySystemComponent::AbilityLocalInputReleased(int32 InputID)
 {
-	for (const FGameplayAbilitySpec& Spec : ActivatableAbilities.Items)
+	ABILITYLIST_SCOPE_LOCK();
+	for (FGameplayAbilitySpec& Spec : ActivatableAbilities.Items)
 	{
 		if (Spec.InputID == InputID && Spec.Ability)
 		{
-			Spec.Ability->InputReleased(Spec.Handle, AbilityActorInfo.Get(), AbilityActivationInfo);
+			Spec.InputPressed = false;
+			AbilitySpecInputReleased(Spec);   // → UGameplayAbility::InputReleased
 		}
 	}
 }
 ```
 
-绑定关系由蓝图侧（如 ASC 的 InputID 数组与 Enhanced Input 动作映射）或代码 `GiveAbility` 时设置 `Spec.InputID` 建立；`InputPressed/InputReleased` 是 `UGameplayAbility` 上的虚函数，供"按住蓄力、松开释放"这类技能使用。
+绑定关系由蓝图侧（如 ASC 的 InputID 数组与 Enhanced Input 动作映射）或代码 `GiveAbility` 时设置 `Spec.InputID` 建立；`InputPressed/InputReleased` 是 `UGameplayAbility` 上的虚函数（签名 `(Handle, ActorInfo, ActivationInfo)`），经 `AbilitySpecInputPressed/AbilitySpecInputReleased` 转发，供"按住蓄力、松开释放"这类技能使用。注意 5.8 中已不存在 `AbilityActivationInfo` 之类的 ASC 成员，激活信息一律走 `Spec.ActivationInfo`（已弃用）或实例的 `GetCurrentActivationInfoRef()`。
 
 ## 八、GameplayCue 简述
 
@@ -733,7 +769,7 @@ void AddGameplayCue(const FGameplayTag GameplayCueTag, const FGameplayCueParamet
 void RemoveGameplayCue(const FGameplayTag GameplayCueTag);
 ```
 
-`FGameplayCueParameters` 携带触发上下文：`Instigator`、`EffectCauser`、`Location`、`Normal`、`PhysicalMaterial`、`AggregatedSourceTags`、`AggregatedTargetTags`、`RawMagnitude`、`NormalizedMagnitude`、`GameplayEffectLevel`、`AbilityLevel`、`HitResult`、`OptionalObject` 等。`UGameplayCueManager` 负责：把 `A_` 前缀 Tag 映射到 `GameplayCueNotify` 资产、运行时动态加载（`ShouldLoadGameplayCues`）、以及按类型分发到静态/动态 Notify。Cue 的 Tag 命名约定 `GameplayCue.Ability.Hit` 等由 `UGameplayCueManager` 统一解析。
+`FGameplayCueParameters`（定义于 GameplayEffectTypes.h）携带触发上下文：`Instigator`、`EffectCauser`、`SourceObject`、`Location`、`Normal`、`PhysicalMaterial`、`AggregatedSourceTags`、`AggregatedTargetTags`、`RawMagnitude`、`NormalizedMagnitude`、`GameplayEffectLevel`、`AbilityLevel`、`EffectContext`（含命中信息，`GetHitResult()` 可取）、`TargetAttachComponent` 等（旧成员 `HitResult` / `OptionalObject` 在 5.8 已移除）。`UGameplayCueManager` 负责：把 `A_` 前缀 Tag 映射到 `GameplayCueNotify` 资产、运行时动态加载（5.8 为 `ShouldAsyncLoadMissingGameplayCues`，旧名 `ShouldLoadGameplayCues` 已移除）、以及按类型分发到静态/动态 Notify。Cue 的 Tag 命名约定 `GameplayCue.Ability.Hit` 等由 `UGameplayCueManager` 统一解析。
 
 ## 九、运行流程总览
 
@@ -745,7 +781,7 @@ sequenceDiagram
     participant ASC as UAbilitySystemComponent
     participant Spec as FGameplayAbilitySpec
     participant AB as UGameplayAbility
-    participant GE as FGameplayEffectsContainer
+    participant GE as FActiveGameplayEffectsContainer
 
     Input->>ASC: AbilityLocalInputPressed(InputID)
     ASC->>ASC: 遍历 ActivatableAbilities.Items<br/>匹配 Spec.InputID
@@ -760,7 +796,7 @@ sequenceDiagram
     AB->>GE: 施加成本 GE（瞬时，扣蓝）
     AB->>GE: 施加冷却 GE（Duration，进冷却）
     AB->>GE: 施加伤害/治疗 GE 到目标
-    GE->>GE: ApplyGameplayEffectSpecToSelf → ExecuteActiveEffectsFrom
+    GE->>GE: ApplyGameplayEffectSpec → ExecuteActiveEffectsFrom
     GE->>GE: InternalExecuteMod → PreGameplayEffectExecute
     GE->>GE: FGameplayAttributeData 写入数值
     GE->>GE: PostGameplayEffectExecute（结算/死亡/UI）
@@ -797,18 +833,18 @@ flowchart TD
 
 1. **技能数值框架**：把"伤害/治疗/属性增减"全部建模为 `UGameplayEffect` + Modifier，业务侧只需配置资产，不要在技能代码里写死 `AttributeData->SetCurrentValue(...)`——否则会绕过 `PostGameplayEffectExecute` 的结算逻辑。
 2. **冷却系统**：冷却即"施加到自身的 Duration 型 GE"。因此"冷却缩减""冷却暂停""免疫冷却"都可以用 GE 的 Modifier/Tag 优雅实现，而不是在技能类里手写计时器。
-3. **Buff/叠加**：堆叠由 `FGameplayEffectSpec::StackCount` 与 `FActiveGameplayEffect::StackCount` 承载，叠加策略（AggregateBySource/ByTarget、StackLimitCount、RefreshDuration/ResetPeriod）在 `FActiveGameplayEffectsContainer::HandleIncomingGameplaySpec` 中展开——设计 Buff 系统时优先考虑"刷新 vs 叠层 vs 并存"三种语义的取舍。
-4. **输入绑定**：`InputID` 把按键与技能解耦，换键、多套按键方案（`AbilityInputID` 配置值 vs `InputID` 运行时值）不改技能资产。
+3. **Buff/叠加**：堆叠由 `FGameplayEffectSpec`（`GetStackCount`/`SetStackCount`）承载，叠加策略（`AggregateBySource`/`AggregateByTarget`、`StackLimitCount`、`RefreshOnSuccessfulApplication`/`ResetOnSuccessfulApplication`）在 5.8 的 `FActiveGameplayEffectsContainer::ApplyGameplayEffectSpec`（内部经 `FindStackableActiveGameplayEffect` / `HandleActiveGameplayEffectStackOverflow` / `OnStackCountChange`）中展开——设计 Buff 系统时优先考虑"刷新 vs 叠层 vs 并存"三种语义的取舍（旧名 `HandleIncomingGameplaySpec` 已移除）。
+4. **输入绑定**：`InputID` 把按键与技能解耦，换键、多套按键方案不改技能资产（5.8 中资产侧的 `AbilityInputID` 已移除，只保留运行时 `InputID`）。
 5. **表现分离**：数值走 GE/AttributeSet，表现走 GameplayCue（飘字、特效），`PostGameplayEffectExecute` 只负责"结算+通知"，不直接 Spawn 特效。
 6. **网络架构**：激活、GiveAbility、属性修改全部"服务端授权 + 预测键回滚"，客户端只做预测表现；理解 `FPredictionKey` 的传递（ScopedPredictionKey → 效果 Spec → 属性聚合器）是多人 GAS 不出现"双倍扣血"的关键。
 
 ## 十一、常见问题 FAQ
 
 **Q1：TryActivateAbility 返回 false，如何排查？**
-逐层定位：① `FindAbilitySpecFromHandle` 失败（Handle 无效/未 GiveAbility）→ ② 非授权端直接调用（需要走预测或服务端执行）→ ③ `Spec->IsActive() && !bAllowRetrigger`（已激活）→ ④ `CanActivateAbility` 失败（被 Tag 阻塞 / 冷却中 `CheckCooldown` / 成本不足 `CheckCost` / 蓝图条件不满足）。建议在 `CanActivateAbility` 的 `FailureTags` 中输出原因 Tag 并打日志。
+逐层定位：① `FindAbilitySpecFromHandle` 失败（Handle 无效/未 GiveAbility）→ ② 非授权端直接调用（5.8 由 `EGameplayAbilityNetExecutionPolicy` 闸门拦截，需要走预测或服务端执行）→ ③ `Spec->IsActive()` 且不允许重触发（`InstancedPerActor` 下看 `bRetriggerInstancedAbility`）→ ④ `CanActivateAbility` 失败（被 Tag 阻塞 / 冷却中 `CheckCooldown` / 成本不足 `CheckCost` / 蓝图条件不满足）。建议在 `CanActivateAbility` 的 `FailureTags` 中输出原因 Tag 并打日志。
 
 **Q2：NonInstanced 与 InstancedPerActor 怎么选？**
-技能内**不存任何成员状态**（只靠参数流转）才选 NonInstanced；需要连击段数、蓄力进度等状态必须 InstancedPerActor；需要同一技能并发多实例（如可同时存在多个召唤物释放）选 InstancedPerExecution，注意其实例不参与复制，状态同步需自行处理。
+技能内**不存任何成员状态**（只靠参数流转）才选 NonInstanced（5.5 起该策略已弃用，建议直接用 InstancedPerActor）；需要连击段数、蓄力进度等状态必须 InstancedPerActor（实例在 `GiveAbility` 时创建，存于 `ReplicatedInstances`）；需要同一技能并发多实例（如可同时存在多个召唤物释放）选 InstancedPerExecution，注意其实例不参与复制，状态同步需自行处理。
 
 **Q3：CommitAbility 返回 false 后技能状态异常？**
 `CommitAbility` 失败表示"检查不过"，此时**技能尚未进入冷却、也未扣费**，正确做法是立即 `EndAbility(Handle, ActorInfo, ActivationInfo, true, true)`（bWasCancelled=true）结束；如果先做了其他副作用再 Commit，会造成"没扣费却放了技能"。

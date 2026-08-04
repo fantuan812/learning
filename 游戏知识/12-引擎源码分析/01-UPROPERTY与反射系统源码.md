@@ -23,12 +23,11 @@
 
 | 文件 | 内容 |
 | --- | --- |
-| `Engine/Source/Runtime/CoreUObject/Public/UObject/UObjectMacros.h` | `UPROPERTY` / `UFUNCTION` / `UCLASS` / `USTRUCT` / `UENUM` / `GENERATED_BODY` 等宏定义 |
-| `Engine/Source/Runtime/CoreUObject/Public/UObject/ObjectMacros.h` | `EObjectFlags`、`EClassFlags` 等基础枚举 |
-| `Engine/Source/Runtime/CoreUObject/Public/UObject/UnrealType.h` | `FField` / `FProperty` 体系全部类与 `EPropertyFlags` |
+| `Engine/Source/Runtime/CoreUObject/Public/UObject/ObjectMacros.h` | `UPROPERTY` / `UFUNCTION` / `UCLASS` / `USTRUCT` / `UENUM` / `GENERATED_BODY` 等宏定义，以及 `EObjectFlags`、`EClassFlags`、`EPropertyFlags`（`CPF_*`）等基础枚举（UE5.8 中宏与枚举均定义于此，原名 `UObjectMacros.h` 已不存在） |
+| `Engine/Source/Runtime/CoreUObject/Public/UObject/UnrealType.h` | `FField` / `FProperty` 体系全部类（`EPropertyFlags` 在 UE5.8 已移至 `ObjectMacros.h`） |
 | `Engine/Source/Runtime/CoreUObject/Public/UObject/Class.h` | `UStruct` / `UClass`、`PropertyLink`、`ClassDefaultObject` |
 | `Engine/Source/Runtime/CoreUObject/Public/UObject/UObjectGlobals.h` | `StaticFindObjectFast`、`NewObject`、`StaticConstructObject_Internal` |
-| `Engine/Source/Programs/UnrealHeaderTool/` | UHT 本体（C#）：头文件解析与代码生成 |
+| `Engine/Source/Programs/Shared/EpicGames.UHT/` | UHT 本体（C#）：头文件解析与代码生成（UE5.8 起 UHT 源码位于 `Programs/Shared/EpicGames.UHT`，原 `Programs/UnrealHeaderTool` 目录已不存在） |
 | `<工程>/Intermediate/Build/Win64/<平台>/<模块>/.../*.generated.h`、`*.gen.cpp` | UHT 生成产物（阅读本篇的最佳实物） |
 
 ---
@@ -37,10 +36,10 @@
 
 ### 3.1 核心事实：反射宏都是"空宏"
 
-打开 `UObjectMacros.h`，你会看到 UE 反射体系的"魔术"其实非常朴素：
+打开 `ObjectMacros.h`（UE5.8 命名，原 `UObjectMacros.h` 已不存在），你会看到 UE 反射体系的"魔术"其实非常朴素：
 
 ```cpp
-// Engine/Source/Runtime/CoreUObject/Public/UObject/UObjectMacros.h（UE5，节选）
+// Engine/Source/Runtime/CoreUObject/Public/UObject/ObjectMacros.h（UE5.8，节选）
 #define UPROPERTY(...)                    // 展开为空！
 #define UFUNCTION(...)                    // 展开为空！
 #define UCLASS(...)                       // 展开为空！
@@ -65,7 +64,7 @@
 以"文件标识 + 行号"命名的宏：
 
 ```cpp
-// UObjectMacros.h（UE5，节选）——拼接宏基础设施
+// ObjectMacros.h（UE5.8，节选）——拼接宏基础设施
 #define BODY_MACRO_COMBINE_INNER(A, B, C, D) A##B##C##D
 #define BODY_MACRO_COMBINE(A, B, C, D) BODY_MACRO_COMBINE_INNER(A, B, C, D)
 
@@ -96,8 +95,8 @@ UHT 把说明符翻译成 `EPropertyFlags`（见第五章）。常用映射：
 | `Transient` | `CPF_Transient` | 不序列化、不保存 |
 | `Config` / `GlobalConfig` | `CPF_Config` / `CPF_GlobalConfig` | 读写 ini 配置 |
 | `SaveGame` | `CPF_SaveGame` | 可被 SaveGame 存档系统序列化 |
-| `Replicated` | `CPF_Replicated` | 服务器复制到客户端 |
-| `ReplicatedUsing=OnRep_X` | `CPF_Replicated \| CPF_ReplicatedUsing` | 复制并在客户端触发 OnRep 回调 |
+| `Replicated` | `CPF_Net`（UE5.8 命名，原 `CPF_Replicated` 已移除） | 服务器复制到客户端 |
+| `ReplicatedUsing=OnRep_X` | `CPF_Net \| CPF_RepNotify`（UE5.8 命名，原 `CPF_ReplicatedUsing` 已移除） | 复制并在客户端触发 OnRep 回调 |
 | `Instanced` | `CPF_InstancedReference \| CPF_ContainsInstancedReference` | 实例化子对象（编辑器里逐实例编辑） |
 | `DuplicateTransient` | `CPF_DuplicateTransient` | 复制/重复对象时丢弃 |
 | `AssetRegistrySearchable` | `CPF_AssetRegistrySearchable` | 属性进入资源注册表可被搜索 |
@@ -208,18 +207,19 @@ UClass* Z_Construct_UClass_AMyActor()
 }
 
 // 5) 编译期注册：把构造器挂进全局注册表，模块加载即执行
-static FCompiledInDefer Z_CompiledInDefer_UClass_AMyActor(
-	Z_Construct_UClass_AMyActor,
-	&AMyActor::StaticClass,
-	TEXT("AMyActor"),
-	false, nullptr, nullptr, nullptr);
+// （UE5.8：FCompiledInDefer 已移除，改为 FRegisterCompiledInInfo（定义于 UObjectBase.h），
+//   UHT 生成 Z_CompiledInDeferFile_<文件ID>_<包名> 静态对象 + FClassRegisterCompiledInInfo ClassInfo[]）
+static FRegisterCompiledInInfo Z_CompiledInDeferFile_MyActor_FID_MyProject_Source_MyProject_MyActor_h_MyGame(
+	TEXT("MyGame"),
+	ClassInfo, 1, ScriptStructInfo, 0, EnumInfo, 0, nullptr, 0);
 ```
 
 关键点：
 
-- **`FCompiledInDefer`**：一个全局静态对象，构造时把"如何构造这个 UClass"登记到
-  引擎的编译期注册表；引擎启动（`UClassRegisterAllCompiledInClasses`）时统一
-  调用 `Z_Construct_UClass_AMyActor()`；
+- **`FRegisterCompiledInInfo`**（UE5.8 命名，`FCompiledInDefer` 已移除）：UHT 生成的
+  全局静态对象，构造时把"如何构造这个 UClass"登记到引擎的编译期注册表；引擎启动
+  （`UClassRegisterAllCompiledInClasses`，定义于 `CoreUObject/Private/UObject/CompiledInUObjectInit.cpp`）
+  时统一调用 `Z_Construct_UClass_AMyActor()`；
 - **`NewProp_Health`**：每个 `UPROPERTY` 生成一个 `NewProp_<属性名>` 描述符变量，
   里面写死了属性名、`EPropertyFlags`、数组维度、容器偏移等信息（任务锚点中所说的
   "NewObjectProperty 式生成形态"，即对象类型属性如 `NewProp_MyObjectRef` 的
@@ -236,11 +236,11 @@ flowchart LR
     C --> D["生成 .generated.h / .gen.cpp<br/>写入 Intermediate/Build"]
     D --> E["编译器编译 用户代码+生成代码"]
     E --> F["链接进模块 DLL"]
-    F --> G["运行时 FCompiledInDefer<br/>注册表 → Z_Construct_UClass"]
+    F --> G["运行时 FRegisterCompiledInInfo<br/>注册表 → Z_Construct_UClass"]
 ```
 
-- UHT 是独立 C# 程序（`Engine/Source/Programs/UnrealHeaderTool/`），由 UBT
-  （UnrealBuildTool）在编译每个模块前自动调用；
+- UHT 是独立 C# 程序（UE5.8 起源码位于 `Engine/Source/Programs/Shared/EpicGames.UHT/`，
+  由 UBT（UnrealBuildTool）在编译每个模块前自动调用；旧版位于 `Programs/UnrealHeaderTool/`）
 - 生成的产物在 `Intermediate/Build/Win64/<目标平台>/<模块>/<配置>/.../` 下，
   与源文件同名加后缀：`MyActor.generated.h`（类内注入）与 `MyActor.gen.cpp`（注册逻辑）；
 - 修改头文件里的反射标注后**必须重新编译**（UHT 重新生成），纯蓝图工程也会触发
@@ -326,13 +326,12 @@ flowchart TB
 
 ### 5.3 描述符：PropertyFlags 与 EFieldFlags
 
-- **`EPropertyFlags`**（`CPF_*`，定义于 `UnrealType.h`）：属性对外语义。
-  常用值见 3.3 表格；网络复制、序列化、编辑器都在检查这些标志；
-- **`EFieldFlags`**：较新 UE5 版本（5.3+ 的反射整理工作中引入，定义于
-  `CoreUObject/Public/UObject/Field.h`）把原本散落在内部标志里的"字段级标志"
-  收敛为独立的字段标志位，与 `EObjectFlags` 解耦。FProperty 上同时存在
-  `PropertyFlags`（反射语义）与字段标志（实现细节），具体成员名随版本略有差异，
-  阅读时以所装版本的 `Field.h` / `UnrealType.h` 为准；
+- **`EPropertyFlags`**（`CPF_*`，UE5.8 起定义于 `ObjectMacros.h`，原在 `UnrealType.h`）：
+  属性对外语义。常用值见 3.3 表格；网络复制、序列化、编辑器都在检查这些标志；
+- **`EFieldFlags`**：UE5.8 中**不存在**此枚举（早期 5.x 反射整理工作曾计划引入，
+  但未落地）；5.8 的 `FField`（定义于 `CoreUObject/Public/UObject/Field.h`）直接使用
+  `EObjectFlags` 作为字段标志，与 `EPropertyFlags`（反射语义）并存。阅读时以所装版本的
+  `Field.h` / `ObjectMacros.h` 为准；
 - UHT 生成的 `NewProp_xxx` 描述符（4.2）就是 `PropertyFlags` 的"出厂值"来源。
 
 ### 5.4 FProperty 的关键方法
@@ -388,11 +387,11 @@ class COREUOBJECT_API UClass : public UStruct
 	// FField* ChildProperties;
 
 	// 类默认对象（Class Default Object）：所有实例的模板
-	UObject* ClassDefaultObject;
+	// UE5.8：TObjectPtr<UObject> ClassDefaultObject（5.6 起标记 deprecated，将转为私有）
 	// 类标志（CLASS_* 系列：Abstract/NotPlaceable/Transient/...）
 	EClassFlags ClassFlags;
-	// 类自身的 FName
-	FName ClassName;  // 注：实际为 FName 成员，随版本实现有差异
+	// 注：UE5.8 的 UClass 没有 ClassName 成员（对象名在 UObjectBase::NamePrivate），
+	// 此行为示意，仅表达"类有自己的名字"
 };
 ```
 
@@ -439,11 +438,12 @@ void UClass::AddCppProperty(FProperty* Property)
 ### 7.1 按名字找对象：StaticFindObjectFast
 
 ```cpp
-// UObjectGlobals.h（UE5，节选）
-UObject* StaticFindObjectFast(UClass* ObjectClass, UObject* Outer, FName Name,
-                              bool bExactClass = false,
+// UObjectGlobals.h（UE5.8，节选；UObjectHash.h 中另有 StaticFindObjectFastInternal）
+UObject* StaticFindObjectFast(UClass* Class, UObject* InOuter, FName InName,
+                              EFindObjectFlags Flags = EFindObjectFlags::None,
                               EObjectFlags ExclusiveFlags = RF_NoFlags,
                               EInternalObjectFlags ExclusiveInternalFlags = EInternalObjectFlags::None);
+// 兼容旧式 bool 参数的重载 StaticFindObjectFast(Class, Outer, Name, bExactClass, ...) 仍保留
 
 // 使用示例：查找名为 "MyActor_0" 的 AMyActor（Outer 传 nullptr 表示全局）
 AMyActor* Found = Cast<AMyActor>(
@@ -453,15 +453,16 @@ AMyActor* Found = Cast<AMyActor>(
 `StaticFindObjectFast` 通过 **GUObjectArray 的哈希表（对象名哈希）** 直接定位，
 比 `FindObject`（走路径解析）快得多；`StaticFindObject` / `FindObject` 则按
 `/Game/Path/Name` 字符串解析。运行时"按名字找类"则用
-`LoadClass<T>()` / `StaticLoadClass` 或 `UClass::TryFindType`。
+`LoadClass<T>()` / `StaticLoadClass` 或 `UClass::TryFindTypeSlow`（UE5.8 命名，
+早期版本的 `UClass::TryFindType` 已更名为 `TryFindTypeSlow` / `TryFindTypeSlowSafe`）。
 
 ### 7.2 在类上找属性：FindPropertyByName / FindProperty
 
 ```cpp
 // Class.h / UStruct（UE5）
 FProperty* UStruct::FindPropertyByName(const FName InName) const;
-// UClass 上还有便捷的 FindProperty：
-// FProperty* UClass::FindProperty(FName PropertyName) const;
+// 注：UE5.8 中 UClass::FindProperty(FName) 已移除（仅剩 FindPropertyByName），
+// 早期版本曾在 UClass 上提供该便捷重载。
 
 // 使用示例：读取任意 UObject 的任意属性（不需要知道类型）
 void DumpProperty(UObject* Obj, FName PropertyName)
@@ -486,7 +487,8 @@ void DumpProperty(UObject* Obj, FName PropertyName)
 for (TFieldIterator<FProperty> It(MyClass); It; ++It)
 {
 	FProperty* Prop = *It;
-	// 只处理本类声明（不含父类）可用 It.GetIterationIndex() 或对比 SuperStruct
+	// 只处理本类声明（不含父类）：UE5.8 的 TFieldIterator 无 GetIterationIndex()，
+	// 可对比 Prop->GetOwnerStruct() == MyClass（或遍历 ChildProperties）
 	UE_LOG(LogTemp, Log, TEXT("Prop=%s Offset=%d Flags=0x%llX"),
 	       *Prop->GetName(), Prop->GetOffset_ForGC(), (uint64)Prop->PropertyFlags);
 }
@@ -518,7 +520,7 @@ sequenceDiagram
     UHT->>UHT: 扫描头文件，解析 UPROPERTY 说明符
     UHT->>CPP: 产出 .generated.h / .gen.cpp
     CPP->>CPP: 编译（GENERATED_BODY 展开生成代码）
-    CPP->>BOOT: 全局 FCompiledInDefer 注册表
+    CPP->>BOOT: 全局 FRegisterCompiledInInfo 注册表
     BOOT->>BOOT: UClassRegisterAllCompiledInClasses()
     BOOT->>BOOT: 调用 Z_Construct_UClass_AMyActor()
     BOOT->>BOOT: new F*Property + AddCppProperty + StaticLink()
@@ -534,7 +536,7 @@ sequenceDiagram
 | --- | --- |
 | 蓝图变量与节点（[03-游戏玩法编程/05-蓝图与C++协作](../03-游戏玩法编程/05-蓝图与C++协作.md)） | `CPF_BlueprintVisible` 标志 + `FProperty` 描述符让蓝图 VM 能读写 C++ 属性 |
 | 存档系统（`SaveGame`，[01-引擎基础](../01-引擎基础/README.md)） | `CPF_SaveGame` 过滤 + `ImportText/ExportText` 文本化 |
-| 网络属性复制（[06-网络同步/02-RPC与属性同步](../06-网络同步/02-RPC与属性同步.md)） | `CPF_Replicated` + `FRepLayout` 基于 FProperty 偏移做增量序列化 |
+| 网络属性复制（[06-网络同步/02-RPC与属性同步](../06-网络同步/02-RPC与属性同步.md)） | `CPF_Net`（UE5.8 命名，原 `CPF_Replicated`）+ `FRepLayout` 基于 FProperty 偏移做增量序列化 |
 | 编辑器 Details 面板（[07-UI与性能优化](../07-UI与性能优化/README.md)） | `CPF_Edit` 系列标志决定面板显示/编辑能力 |
 | DataTable / DataAsset（[03-游戏玩法编程/03-GameplayTag与数据资产](../03-游戏玩法编程/03-GameplayTag与数据资产.md)） | 结构体属性由 `FStructProperty` 递归驱动行列序列化 |
 | GAS 的 AttributeSet（[03-游戏玩法编程/01-GameplayAbilitySystem能力系统](../03-游戏玩法编程/01-GameplayAbilitySystem能力系统.md)） | Attribute 通过 `FGameplayAttribute`（内含 `FProperty*`）按名字查找属性 |
@@ -570,7 +572,7 @@ UE4.25 前 `UProperty`（UObject 子类）；4.25 起改名 `FProperty`（FField
 
 **Q7：如何遍历"所有标记了某 meta 的属性"？**
 `TFieldIterator<FProperty>` + `Prop->HasMetaData(TEXT("MyTag"))`；
-`HasAllPropertyFlags(CPF_Replicated)` 同理可筛复制属性。
+`HasAllPropertyFlags(CPF_Net)`（UE5.8 命名，原 `CPF_Replicated`）同理可筛复制属性。
 
 ---
 
@@ -578,7 +580,7 @@ UE4.25 前 `UProperty`（UObject 子类）；4.25 起改名 `FProperty`（FField
 
 - [01-引擎基础/01-UObject与反射系统.md](../01-引擎基础/01-UObject与反射系统.md)：本篇的概念版（反射、宏系统、UHT 概述）
 - [12-引擎源码分析/02-UObject与垃圾回收源码.md](./02-UObject与垃圾回收源码.md)：属性偏移与引用链在 GC 中的使用（`RefLink` / 引用 Token）
-- [06-网络同步/02-RPC与属性同步.md](../06-网络同步/02-RPC与属性同步.md)：`CPF_Replicated` 与 FRepLayout 的源码级联动
+- [06-网络同步/02-RPC与属性同步.md](../06-网络同步/02-RPC与属性同步.md)：`CPF_Net`（UE5.8 命名，原 `CPF_Replicated`）与 FRepLayout 的源码级联动
 - [03-游戏玩法编程/05-蓝图与C++协作.md](../03-游戏玩法编程/05-蓝图与C++协作.md)：说明符在蓝图侧的实际效果
 - [08-工具链与打包发布/README.md](../08-工具链与打包发布/README.md)：UBT/UHT 构建管线
 - [01-引擎基础/README.md](../01-引擎基础/README.md)：分类总览与学习顺序
