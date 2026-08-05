@@ -474,9 +474,9 @@ void UMyListWidget::HandleItemClicked()
 
 ## 7. 关联阅读
 
-- [UE 官方文档：UMG UI Designer](https://docs.unrealengine.com/5.3/zh-CN/umg-ui-designer-for-unreal-engine/)（锚点、布局、控件详解）
-- [UE 官方文档：Slate UI Framework](https://docs.unrealengine.com/5.3/zh-CN/slate-ui-framework-for-unreal-engine/)（底层架构）
-- [UE 官方文档：CommonUI](https://docs.unrealengine.com/5.3/zh-CN/commonui-plugin-for-advanced-user-interfaces-in-unreal-engine/)（输入路由与焦点）
+- [UE 5.8 官方文档：UMG UI Designer 快速入门](https://dev.epicgames.com/documentation/en-us/unreal-engine/umg-ui-designer-quick-start-guide-in-unreal-engine)（布局、控件与 Widget Blueprint）
+- [UE 5.8 官方文档：Slate UI Framework](https://dev.epicgames.com/documentation/en-us/unreal-engine/slate-user-interface-programming-framework-for-unreal-engine)（底层架构）
+- [UE 5.8 官方文档：Common UI](https://dev.epicgames.com/documentation/unreal-engine/common-ui-plugin-for-advanced-user-interfaces-in-unreal-engine?lang=en-US)（输入路由与焦点）
 - 本知识库：`02-UI数据绑定与MVVM.md`（数据驱动刷新）
 - 本知识库：`03-性能分析工具与Profiling.md`（UI 耗时分析）
 - 本知识库：`04-渲染与加载性能优化.md`（UI 渲染与内存优化）

@@ -403,4 +403,4 @@ Landscape Grass 由地形材质权重在运行时动态生成草网格实例（�
 - 01-引擎基础 08-关卡流送与加载 / 09-WorldPartition 大世界分区：WP 机制层（Streaming Cell、DataLayer、HLOD 管线）；
 - 12-引擎源码分析 13-资源加载与异步加载源码：地形纹理/网格的加载与卸载机制；
 - 02-渲染与图形 04-Nanite与Lumen：Nanite Landscape、Lumen 下地表 GI 表现；
-- 官方文档：Landscape 快速入门、World Partition in UE、Landscape Splines（docs.unrealengine.com，5.8 版）。
+- [UE 5.8 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)：Landscape 快速入门、World Partition、Landscape Splines；具体专题 slug 待按本机文档版本核对。

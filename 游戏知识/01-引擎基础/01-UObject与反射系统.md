@@ -12,7 +12,10 @@ UObject 是虚幻引擎对象体系的基石。引擎中几乎所有可被蓝图
 - C++ 与蓝图是如何通过反射"打通"的？
 - UE5 中的 `TObjectPtr`、`TWeakObjectPtr`、`TSoftObjectPtr` 有什么区别？
 
-> 适用版本：本文以 UE 5.0+ 为准（如 `FProperty`、`TObjectPtr`、`MarkAsGarbage`），UE 4.27 及更早版本的差异会在行文中标注。
+> 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
+> 源码依据：`C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\CoreUObject`；以本机 5.8 源码为准。
+> 兼容性边界：UE 4.27 及更早版本仅作为反射/对象模型迁移对照，不作为当前基准。
+> 最后更新：2026-08-05（统一 UE5.8 版本基线）。
 
 ## 二、核心概念
 

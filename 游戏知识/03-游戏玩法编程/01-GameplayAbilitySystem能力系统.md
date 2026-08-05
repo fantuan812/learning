@@ -1,6 +1,10 @@
 # 01 · Gameplay Ability System（GAS）能力系统
 
-> 面向 UE 5.x 客户端开发。本文系统讲解 GAS 的五大核心：`AbilitySystemComponent`（ASC）、`GameplayAbility`（GA）、`GameplayEffect`（GE）、`AttributeSet`（AS）、`AbilityTask`（AT），并介绍 GameplayCue、网络模型、C++ 示例与最佳实践。
+> 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
+> 源码依据：`C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Runtime\GameplayAbilities\Source\GameplayAbilities`；以本机 5.8 源码为准。
+> 适用范围：GameplayAbilities 插件、运行时玩法与网络预测；示例不等价于完整源码剖析。
+> 兼容性边界：UE 4.27/早期 UE5 仅作为迁移背景，不作为当前基准。
+> 最后更新：2026-08-05（统一 UE5.8 版本基线）。
 
 ## 一、概述
 

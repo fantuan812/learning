@@ -398,9 +398,9 @@ flowchart TD
 
 ## 7. 关联阅读
 
-- [UE 官方文档：MVVM 插件（UE5.1+）](https://docs.unrealengine.com/5.3/zh-CN/mvvm-plugin-for-unreal-engine/)（FieldNotify、绑定源、列表绑定）
-- [UE 官方文档：UMG 属性绑定](https://docs.unrealengine.com/5.3/zh-CN/umg-ui-designer-for-unreal-engine/)（Binding 章节）
-- [UE 官方文档：ListView / TileView](https://docs.unrealengine.com/5.3/zh-CN/listview-and-tileview-in-unreal-engine/)（列表虚拟化）
+- [UE 5.8 官方文档：UMG Viewmodel](https://dev.epicgames.com/documentation/en-us/unreal-engine/umg-viewmodel-for-unreal-engine)（FieldNotify、Viewmodel、绑定源）
+- [UE 5.8 官方 API：ModelViewViewModel 模块](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/ModelViewViewModel)（运行时类与源码位置）
+- [UE 5.8 官方 API：UListView](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/UMG/UListView?lang=en-US)（虚拟化列表）
 - 本知识库：`01-UMG框架与控件系统.md`（控件与事件基础）
 - 本知识库：`03-性能分析工具与Profiling.md`（绑定开销分析）
 - 本知识库：`04-渲染与加载性能优化.md`（UI 渲染与内存优化）

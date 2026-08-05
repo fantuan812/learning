@@ -427,4 +427,4 @@ void ImportFoliageBatch(UWorld* World, const UFoliageType* InType,
 - 01-引擎基础 09-WorldPartition 大世界分区：Cell 加载与 ISM 分区机制层；
 - 02-渲染与图形：Nanite（植被 Nanite 化实验）、Lumen（植被 GI）、阴影与距离场；
 - 12-引擎源码分析：`Foliage\Public\InstancedFoliage.h`（`FFoliageInstance`/`FFoliageInfo`）、`HierarchicalInstancedStaticMeshComponent.h`（聚类树）源码细读；
-- 官方文档：Foliage Mode、Procedural Foliage、Mass Framework（docs.unrealengine.com）。
+- [UE 5.8 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)：Foliage Mode、Procedural Foliage、Mass Framework；具体专题 slug 待按本机文档版本核对。

@@ -424,10 +424,10 @@ void AMyGameMode::Tick(float DeltaSeconds)
 
 ## 7. 关联阅读
 
-- [UE 官方文档：Unreal Insights](https://docs.unrealengine.com/5.3/zh-CN/unreal-insights/)（Trace 系统与各视图）
-- [UE 官方文档：性能与 Profiling](https://docs.unrealengine.com/5.3/zh-CN/performance-and-profiling/)（stat 命令总览）
-- [UE 官方文档：内存分析与优化](https://docs.unrealengine.com/5.3/zh-CN/memory-profiling-in-unreal-engine/)（LLM、MemReport）
-- [UE 官方文档：RenderDoc 集成](https://docs.unrealengine.com/5.3/zh-CN/renderdoc/)（GPU 调试）
+- [UE 5.8 官方文档：性能分析与配置](https://dev.epicgames.com/documentation/en-us/unreal-engine/introduction-to-performance-profiling-and-configuration-in-unreal-engine)（Unreal Insights、stat 与性能预算）
+- [UE 5.8 官方文档：Trace 快速入门](https://dev.epicgames.com/documentation/en-us/unreal-engine/trace-quick-start-guide-in-unreal-engine)（Trace/Insights 采集）
+- [UE 5.8 官方文档：Memory Insights](https://dev.epicgames.com/documentation/en-us/unreal-engine/memory-insights-in-unreal-engine)（LLM、内存分配与调用栈）
+- [UE 5.8 官方文档：RenderDoc](https://dev.epicgames.com/documentation/en-us/unreal-engine/using-renderdoc-with-unreal-engine)（GPU 单帧捕获）
 - 本知识库：`01-UMG框架与控件系统.md`（UI 机制与 stat 关联命令）
 - 本知识库：`04-渲染与加载性能优化.md`（基于分析结论的优化手段）
 - 本知识库：`09-调试与工具链`（控制台命令与调试技巧）

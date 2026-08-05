@@ -1,6 +1,10 @@
 # 03 · GameplayTag 与数据资产（DataAsset / DataTable）
 
-> 面向 UE 5.x 客户端开发。本文分为两大部分：GameplayTag（标签层次、Container、Query、原生标签、标签事件）与数据资产（UDataAsset / UPrimaryDataAsset / UDataTable 的声明、创建、查询与最佳实践）。
+> 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
+> 源码依据：`C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\GameplayTags`；数据资产部分另参考 `CoreUObject`/`Engine` 运行时模块。
+> 适用范围：GameplayTags、DataAsset/DataTable 的运行时使用与编辑器配置；本文是概念/使用层说明。
+> 兼容性边界：UE 4.27/早期 UE5 仅作为迁移对照，不作为当前基准。
+> 最后更新：2026-08-05（统一 UE5.8 版本基线）。
 
 ## 一、概述
 

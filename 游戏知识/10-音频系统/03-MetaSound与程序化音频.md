@@ -1,9 +1,12 @@
 # 03 MetaSound 与程序化音频
 
 > 所属系列：10-音频系统（UE 客户端）
-> 适用引擎：UE 5.x（部分内容 4.27 不可用，已标注）；MetaSound 自 UE5.0 引入
+> 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
+> 源码依据：`C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Runtime\Metasound`、`Engine\Plugins\Runtime\AudioModulation`。
+> 适用范围：MetaSound、Submix/DSP、Audio Modulation 和程序化音频；编辑器节点细节需以本机插件为准。
+> 兼容性边界：UE 4.27 不提供本文全部 MetaSound 能力，仅作为历史对照，不作为当前基准。
 > 前置知识：第 01、02 篇；蓝图 / C++ 基础
-> 最后更新：2026-08-04
+> 最后更新：2026-08-05（统一 UE5.8 版本基线）。
 
 ---
 

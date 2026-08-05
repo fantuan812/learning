@@ -12,7 +12,10 @@
 
 UE5 引入了 World Partition（世界分区）作为面向超大型开放世界的演进方案，但传统 Level Streaming 并没有过时：中小型项目、模块化子关卡（室内副本、活动地图）、以及"主城 + 副本"这类结构，仍然大量使用传统流送。理解传统流送也是理解 World Partition 的前提——后者在运行时底层仍然借助 `ULevelStreaming` 机制（World Partition 的运行时单元会生成对应的流送关卡对象）。
 
-> 适用版本：UE 5.x（本文 API 对照本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\LevelStreaming.cpp` 与 `Classes\Engine\LevelStreaming.h` 验证）；大部分内容兼容 UE4.27，差异点会标注。
+> 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
+> 源码依据：`C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Engine\Private\LevelStreaming.cpp` 与 `Classes\Engine\LevelStreaming.h`。
+> 兼容性边界：UE4.27 仅作为传统流送迁移对照，当前 World Partition/Level Streaming 行为以 UE5.8 为准。
+> 最后更新：2026-08-05（统一 UE5.8 版本基线）。
 
 ## 二、核心概念
 

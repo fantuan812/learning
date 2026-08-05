@@ -1,20 +1,23 @@
 # 12 · 引擎源码分析
 
 > 面向 UE5 客户端开发者的**引擎源码剖析**分类：不满足于"知道怎么用"，而是打开
-> `Engine/Source` 逐行回答"为什么"。每个知识点对应知识库中 01-11 分类的一篇或多篇
-> 概念文档，先读概念、再读源码，用真实代码把"反射、GC、生命周期、框架流程"钉死。
+> `Engine/Source` 逐行回答"为什么"。现有文章覆盖若干核心模块，但不宣称与 01-11
+> 一一对应；概念层已有不等于源码层已完成。
 >
 > 同步目录：`C:\project\git\游戏知识\12-引擎源码分析` → https://github.com/fantuan812/learning.git
+> 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
+> 源码边界：`C:\Program Files\Epic Games\UE_5.8\Engine` 只读；以本机 5.8 源码为准。
+> 最后更新：2026-08-05（修正覆盖声明、统一源码基线并建立 P1 路线图）。
 
 ---
 
 ## 定位说明
 
-本分类是知识库的"源码纵深"层，与 01-11 分类**一一对应**：
+本分类是知识库的"源码纵深"层，当前为 **18 篇已落地源码文章 + 1 篇覆盖矩阵/路线图**。下表是“已有文章 → 概念分类”的映射，不是 01-11 的完成承诺：
 
 | 源码分析文件 | 对应知识分类 | 对应知识点 | 覆盖的引擎源码主题 |
 | --- | --- | --- | --- |
-| [01-UPROPERTY与反射系统源码.md](./01-UPROPERTY与反射系统源码.md) | [01-引擎基础](../01-引擎基础/README.md)（01-UObject与反射系统） | UPROPERTY 宏、UHT 代码生成、FProperty 体系、PropertyLink、运行时反射查找 | `UObjectMacros.h`、`UnrealType.h`、`Class.h`、UnrealHeaderTool 生成管线 |
+| [01-UPROPERTY与反射系统源码.md](./01-UPROPERTY与反射系统源码.md) | [01-引擎基础](../01-引擎基础/README.md)（01-UObject与反射系统） | UPROPERTY 宏、UHT 代码生成、FProperty 体系、PropertyLink、运行时反射查找 | `ObjectMacros.h`（旧名 `UObjectMacros.h` 已移除）、`UnrealType.h`、`Class.h`、UnrealHeaderTool 生成管线 |
 | [02-UObject与垃圾回收源码.md](./02-UObject与垃圾回收源码.md) | [01-引擎基础](../01-引擎基础/README.md)（01-UObject与反射系统·GC 部分） | UObject 三层类、NewObject 全流程、GUObjectArray、UE5 增量 GC、Weak/Soft 引用 | `UObjectBase.cpp`、`UObjectGlobals.cpp`、`UObjectArray.cpp`、`GarbageCollection.cpp` |
 | [03-Actor与Component生命周期源码.md](./03-Actor与Component生命周期源码.md) | [01-引擎基础](../01-引擎基础/README.md)（02-Actor与Component生命周期） | SpawnActor、BeginPlay 延迟广播、组件注册初始化、Tick 调度、销毁流程 | `World.cpp`、`Actor.cpp`、`ActorComponent.cpp`、`TickTaskManager.cpp` |
 | [04-Gameplay框架与登录流程源码.md](./04-Gameplay框架与登录流程源码.md) | [01-引擎基础](../01-引擎基础/README.md)（03-Gameplay框架与游戏模式）＋[06-网络同步](../06-网络同步/README.md)（04-多人游戏框架与玩家状态） | GameMode/GameState/PlayerController 职责、Login→Possess 全链路、MatchState 状态机 | `GameModeBase.cpp`、`GameMode.cpp`、`PlayerController.cpp`、`GameStateBase.cpp` |
@@ -22,8 +25,8 @@
 | [06-委托与事件系统源码.md](./06-委托与事件系统源码.md) | [03-游戏玩法编程](../03-游戏玩法编程/README.md)（04-委托事件与对象通信） | TDelegate 实现、多播稀疏存储、动态委托宏展开、UObject 弱引用安全 | `Delegate.h`、`DelegateSignatureImpl.inl`、`DelegateInstancesImpl.h` |
 | [07-容器与内存管理源码.md](./07-容器与内存管理源码.md) | [01-引擎基础](../01-引擎基础/README.md)＋[07-UI与性能优化](../07-UI与性能优化/README.md)（性能基础） | TArray/FScriptArray、TMap/TSet 哈希、TSharedPtr 原子计数、FMallocBinned 分配器 | `Containers/Array.h`、`Map.h`、`Set.h`、`SmartPointers/SharedPointer.h`、`MallocBinned*.cpp` |
 | [08-Tick与模块系统源码.md](./08-Tick与模块系统源码.md) | [01-引擎基础](../01-引擎基础/README.md)（04-引擎启动流程与模块架构；02-Actor 生命周期） | FTickTaskManager/Sequencer、Tick 分组与依赖、FModuleManager、IMPLEMENT_MODULE 宏 | `TickTaskManager.cpp`、`ModuleManager.cpp`、`ModuleDescriptor.cpp` |
-| [09-网络复制与RPC源码.md](./09-网络复制与RPC源码.md) | [06-网络同步](../06-网络同步/README.md)（01-网络架构与复制基础；02-RPC与属性同步） | ServerReplicateActors、FRepLayout 复制、ProcessBunch/OnRep、RPC 调用链、CMC 网络移动 | `NetDriver.cpp`、`ActorChannel.cpp`、`ReplicationDriver.cpp`、`CharacterMovementComponent.cpp` |
-| [10-渲染线程与RHI源码.md](./10-渲染线程与RHI源码.md) | [02-渲染与图形](../02-渲染与图形/README.md)（01-渲染管线概览） | 渲染线程命令模型、ENQUEUE_RENDER_COMMAND、FSceneRenderer::Render 主流程、FRHICommandList | `RenderingThread.cpp`、`DeferredShadingSceneRenderer.cpp`、`RHICommandList.h` |
+| [09-网络复制与RPC源码.md](./09-网络复制与RPC源码.md) | [06-网络同步](../06-网络同步/README.md)（01-网络架构与复制基础；02-RPC与属性同步） | ServerReplicateActors、FRepLayout 复制、ProcessBunch/OnRep、RPC 调用链、CMC 网络移动 | `NetDriver.cpp`、`DataChannel.cpp`（旧名 `ActorChannel.cpp` 已移除）、`ReplicationDriver.cpp`、`CharacterMovementComponent.cpp` |
+| [10-渲染线程与RHI源码.md](./10-渲染线程与RHI源码.md) | [02-渲染与图形](../02-渲染与图形/README.md)（01-渲染管线概览） | 渲染线程命令模型、ENQUEUE_RENDER_COMMAND、FSceneRenderer::Render 主流程、FRHICommandList | `RenderingThread.cpp`、`DeferredShadingRenderer.cpp`（旧名 `DeferredShadingSceneRenderer.cpp` 已移除）、`RHICommandList.h` |
 | [11-动画系统求值源码.md](./11-动画系统求值源码.md) | [04-动画系统](../04-动画系统/README.md)（01-动画蓝图与状态机） | FAnimInstanceProxy、NativeUpdateAnimation、Parallel 求值、FAnimNode_Base 协议、状态机求值 | `AnimInstance.cpp`、`AnimInstanceProxy.cpp`、`AnimNode_StateMachine.cpp` |
 | [12-行为树与AI源码.md](./12-行为树与AI源码.md) | [05-AI系统](../05-AI系统/README.md)（01-行为树详解） | StartTree/StopTree、UBTNode 生命周期、ConditionalAbort 中止机制、黑板键实现 | `BehaviorTreeComponent.cpp`、`BTNode.cpp`、`BTTaskNode.cpp`、`BlackboardComponent.cpp` |
 | [13-资源加载与异步加载源码.md](./13-资源加载与异步加载源码.md) | [07-UI与性能优化](../07-UI与性能优化/README.md)（04-渲染与加载性能优化） | LoadObject 链路、FLinkerLoad 序列化、FSoftObjectPath、FStreamableManager、FAsyncPackage2 | `UObjectGlobals.cpp`、`LinkerLoad.cpp`、`StreamableManager.cpp` |
@@ -33,13 +36,29 @@
 | [17-Niagara源码.md](./17-Niagara源码.md) | [11-VFX与Niagara](../11-VFX与Niagara/README.md)（01-Niagara粒子系统基础） | FNiagaraSystemInstance/Controller、数据接口、CPU/GPU 模拟、编译管线 | `Plugins/FX/Niagara` |
 | [18-RigVM与ControlRig源码.md](./18-RigVM与ControlRig源码.md) | [04-动画系统](../04-动画系统/README.md)（03-IK与程序化动画） | RigVM 虚拟机字节码/执行模型、RigUnit 注册、FRigHierarchy、ControlRig 求值链路 | `Plugins/Runtime/RigVM`、`Plugins/Animation/ControlRig` |
 
+### 覆盖边界与 P1 缺口
+
+详细状态、真实源码路径、官方 5.8 参考和验收命令见 [19-高优先级源码覆盖路线图.md](./19-高优先级源码覆盖路线图.md)。当前明确**未完成源码深度覆盖**的 P1 主题包括：
+
+| P1 主题 | 当前状态 |
+| --- | --- |
+| Iris 复制，以及 Iris 与 ReplicationGraph 的互斥/迁移 | 简述/待补；不能由传统网络复制文章替代 |
+| Mass Signals、无锁/并发调度、StateTree 5.8 编译变化 | 简述/待补或规划 |
+| World Partition、World Streaming Insights、Landscape、Foliage | 概念已有；源码链路待补 |
+| Sequencer、Movie Render Graph（MRG Production Ready）、`MovieSceneCapture` deprecated 迁移 | 概念已有/迁移项；源码链路待补 |
+| Enhanced Input、Gameplay Tags、Gameplay Tasks | 概念已有；源码链路待补 |
+| CommonUI、UMG MVVM、Unreal Insights/Trace | 概念已有；源码链路待补 |
+| UE5.8 Lumen Medium/Lite、MegaLights、Procedural Vegetation Editor | Release Notes/源码证据已登记；专题文章规划中 |
+
+因此本分类当前结论是“核心基础源码覆盖充分、UE5.8 新系统覆盖不完整”，不能写成“源码分析已覆盖全部 01-11 分类”。
+
 ---
 
 ## 文件列表
 
 | 文件 | 一句话简介 | 状态 |
 | --- | --- | --- |
-| [README.md](./README.md) | 本导航页：定位、映射表、学习顺序、知识地图 | 已完成 |
+| [README.md](./README.md) | 本导航页：定位、映射表、P1 覆盖边界、学习顺序、知识地图 | 已完成 |
 | [01-UPROPERTY与反射系统源码.md](./01-UPROPERTY与反射系统源码.md) | UPROPERTY 宏定义、UHT 生成代码形态、FProperty 体系、UClass::PropertyLink、运行时反射查找 | 已完成 |
 | [02-UObject与垃圾回收源码.md](./02-UObject与垃圾回收源码.md) | UObject 三层类、NewObject→StaticConstructObject_Internal、FUObjectArray、UE5 增量 GC、Weak/Soft 引用 | 已完成 |
 | [03-Actor与Component生命周期源码.md](./03-Actor与Component生命周期源码.md) | SpawnActor、BeginPlay 延迟广播、RegisterComponent、Tick 注册与调度、EndPlay/Destroy | 已完成 |
@@ -58,6 +77,7 @@
 | [16-音频系统源码.md](./16-音频系统源码.md) | 音频设备/混音器/Submix、播放链路（5.8 为 AddNewActiveSound） | 已完成 |
 | [17-Niagara源码.md](./17-Niagara源码.md) | 系统实例/控制器、数据接口、CPU/GPU 模拟 | 已完成 |
 | [18-RigVM与ControlRig源码.md](./18-RigVM与ControlRig源码.md) | RigVM 字节码/指令执行、RigUnit 注册、ControlRig 求值链路 | 已完成 |
+| [19-高优先级源码覆盖路线图.md](./19-高优先级源码覆盖路线图.md) | UE5.8 CL 固定证据、P1 缺口矩阵、真实源码路径、后续文章验收条件 | 路线图已落地；主题待补 |
 
 ---
 
@@ -83,6 +103,10 @@
 - 对象被"莫名其妙回收" / 内存泄漏 / WeakPtr 悬空 → 精读 **02** 的 GC 章节；
 - BeginPlay 顺序不对 / 动态生成组件不触发初始化 / Tick 不执行 → 精读 **03**；
 - 登录断线、Pawn 不生成、MatchState 卡住 → 精读 **04**。
+
+### 路线三：UE5.8 P1 补齐顺序
+
+先读 [19-高优先级源码覆盖路线图.md](./19-高优先级源码覆盖路线图.md)，按 Iris/ReplicationGraph → Mass/StateTree → World Streaming/MRG → Enhanced Input/Tags/Tasks → CommonUI/MVVM/Trace 的顺序补齐。Lumen Medium/Lite、MegaLights、Procedural Vegetation Editor 作为 5.8 Release Notes 差异专题单独验收。
 
 ### 配套练习建议
 
@@ -135,13 +159,14 @@ flowchart TB
 
 ## 撰写与阅读约定
 
-- 源码以 **UE 5.8** 为准，个别 API 差异（如 `IsPendingKill` 的移除、
+- 源码以 **UE 5.8.0 / CL 55116800 / `++UE5+Release-5.8`** 为准，个别 API 差异（如 `IsPendingKill` 的移除、
   `FCompiledInDefer` 更名为 `FRegisterCompiledInInfo`、`TickFunction.h` 并入
   `EngineBaseTypes.h`）会在文中显式标注版本；
 - 文中代码均取自引擎公开源码或 UHT 生成产物，**类名 / 函数名 / 宏名与真实引擎一致**；
   为控制篇幅，部分代码为"节选/示意"，会在注释中标注；
 - 建议对照引擎源码阅读：`Engine/Source/Runtime/CoreUObject/`、
   `Engine/Source/Runtime/Engine/`、`Engine/Source/Programs/Shared/EpicGames.UHT/`；
+- 对 Iris、Mass/StateTree、World Partition/Insights、MRG、CommonUI/MVVM/Trace 等 P1 主题，必须以路线图中的本机 5.8 路径为证据；没有独立文章前保持“待补”状态。
 - Mermaid 图中的中文为概念标注，非引擎字面量；
 - "服务器/客户端"指 Dedicated/Listen Server 与 Client 的网络角色划分。
 

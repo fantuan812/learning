@@ -18,7 +18,7 @@
 | [09-物理系统](09-物理系统/README.md) | Chaos 物理引擎、碰撞检测与物理材质、物理约束与关节、布娃娃与物理动画 |
 | [10-音频系统](10-音频系统/README.md) | 音频资产与播放、衰减与 3D 音效、MetaSound 与程序化音频 |
 | [11-VFX与Niagara](11-VFX与Niagara/README.md) | Niagara 粒子系统基础、高级模拟技巧、VFX 性能优化 |
-| [12-引擎源码分析](12-引擎源码分析/README.md) | UPROPERTY/反射、UObject/GC、Actor 生命周期、GAS、委托、容器、Tick、网络复制、渲染线程、动画、行为树、资源加载等源码剖析（与 01-11 分类逐一对应） |
+| [12-引擎源码分析](12-引擎源码分析/README.md) | 18 篇核心源码剖析 + UE5.8 P1 覆盖路线图；已覆盖反射、GC、生命周期、GAS、委托、容器、Tick、传统网络、渲染、动画、行为树、加载、UMG/Slate、Chaos、音频、Niagara、RigVM；Iris、Mass/StateTree、World Streaming、MRG、CommonUI/MVVM/Trace 等仍按路线图补齐 |
 | [13-世界构建与过场](13-世界构建与过场/README.md) | Landscape 地形、Foliage 植被与 ISM/HISM 实例化、过场与影视（Sequencer/LevelSequence/CineCamera） |
 
 ## 推荐学习路径

@@ -388,4 +388,4 @@ UI 动画、轻量演出：Template Sequence（无 Actor 绑定开销）；复�
 - 10-音频系统：过场音频（Audio Track、衰减、混音）与画面同步；
 - 02-渲染与图形：后处理、色彩分级（Color Grading）、Lumen 下电影级光照；
 - 12-引擎源码分析：`Runtime\MovieScene\`（求值模板）、`Runtime\LevelSequence\`（播放器/导演蓝图）源码细读；
-- 官方文档：Sequencer 概述、Cine Camera、Movie Render Queue（docs.unrealengine.com）。
+- [UE 5.8 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)：Sequencer、Cine Camera、Movie Render Queue；具体专题 slug 待按本机文档版本核对。

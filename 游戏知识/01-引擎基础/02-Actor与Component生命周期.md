@@ -13,7 +13,10 @@
 
 本文覆盖：Actor 的生成流程、注册与初始化、BeginPlay/EndPlay、Tick 调度体系（含 Tick Group 与依赖）、Component 的完整生命周期、销毁与关卡卸载，以及 UE5 中的相关变化。
 
-> 适用版本：UE 5.0+，兼容 UE4.27；差异点会标注。
+> 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
+> 源码依据：`C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Engine`；以本机 5.8 源码为准。
+> 兼容性边界：UE4.27 仅作为生命周期迁移对照，当前 API 与调用链以 UE5.8 为准。
+> 最后更新：2026-08-05（统一 UE5.8 版本基线）。
 
 ## 二、核心概念
 
