@@ -186,7 +186,7 @@ public:
 - `Client` RPC：**由服务器**调用，在**拥有该 Actor 的客户端**上执行；
 - `NetMulticast`：服务器调用，在所有客户端（及服务器自身）执行；
 - `Reliable` 保证送达与顺序（TCP 语义），`Unreliable` 可能丢失（UDP 语义，适合高频位置同步）；
-- RPC **只能在 Actor 上声明**，且该 Actor 必须启用复制（`bReplicates = true`）并已复制到目标端；静态函数、非 Actor 类（如 GameInstance）不可直接使用 RPC（可通过 `AActor::GetLifecycleProperty` 等间接手段，但标准做法是经 Actor 转发）。
+- RPC **只能在 Actor 上声明**，且该 Actor 必须启用复制（`bReplicates = true`）并已复制到目标端；静态函数、非 Actor 类（如 GameInstance）不可直接使用 RPC（RPC 必须挂在 Actor 上，非 Actor 类可经 Actor 转发实现，标准做法是经 Actor 转发）。
 
 ### 3.5 运行时反射操作
 

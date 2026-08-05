@@ -376,7 +376,7 @@ void UMyListWidget::HandleItemClicked()
 | --- | --- | --- | --- |
 | `stat unit` | 帧时间总览 | `Frame` / `Game` / `Draw` / `GPU` | 定位瓶颈在 CPU 还是 GPU |
 | `stat slate` | Slate 层统计 | `Slate Tick`、`Invalidate` 次数 | 控件树更新开销 |
-| `stat slateDebug` | Slate 调试信息 | 控件数量、绘制批次 | 控件过多排查 |
+| `stat slate` | Slate 调试信息 | 控件数量、绘制批次 | 控件过多排查 |
 | `stat UMG` | UMG 层统计 | Widget 数量、Construct/Destruct 频率 | 控件频繁创建销毁 |
 | `stat gpu` | GPU 时间 | `Slate Elements` | UI 绘制 GPU 开销 |
 | `ProfileGPU` | GPU 帧捕获 | Slate 相关 Pass | 精细定位 GPU 瓶颈 |

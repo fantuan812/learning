@@ -84,7 +84,7 @@ flowchart LR
 - 官方文档：Unreal Engine 5 文档 → Rendering 章节（Graphics / Rendering Overview、Nanite、Lumen、Post Process Effects、Lighting 等）。
 - 引擎源码：`Engine/Source/Runtime/Renderer`（渲染器核心）、`Engine/Source/Runtime/Engine/Private/Materials`（材质）、`Engine/Source/Runtime/RHI`（RHI 抽象层）。
 - 社区：Unreal Engine 官方论坛 Rendering 板块、Epic 开发者社区（Dev Community）渲染标签。
-- 本知识库其他分类：建议同步阅读"01-引擎基础"（线程模型、模块结构）与"03-性能优化"（若有），以补齐渲染之外的上下文。
+- 本知识库其他分类：建议同步阅读"01-引擎基础"（线程模型、模块结构）与"07-UI与性能优化"（若有），以补齐渲染之外的上下文。
 
 > 维护说明：本文档按 UE5.x 主线版本撰写；如引擎版本升级导致命令或默认值变化，请在对应文章中补充"版本差异"说明。
 
@@ -111,7 +111,7 @@ flowchart LR
 ```mermaid
 flowchart LR
     E[01-引擎基础<br/>线程模型/模块/资源] --> R[02-渲染与图形<br/>本文档]
-    R --> P[03-性能优化<br/>预算/Profile/优化手段]
+    R --> P[07-UI与性能优化<br/>预算/Profile/优化手段]
     A[04-美术与资产规范<br/>纹理/网格/光照规范] -. 与材质/光照章节联动 .-> R
 ```
 

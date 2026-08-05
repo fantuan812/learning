@@ -102,7 +102,7 @@ flowchart TD
 - **Tick Group**：通过 `PrimaryActorTick.TickGroup = TG_PostUpdateWork;` 调整执行时机，例如 UI 相关逻辑放 `TG_PostUpdateWork`；
 - **Tick 间隔**：`PrimaryActorTick.TickInterval = 0.1f` 可降频（如 10Hz），节省性能；`SetActorTickInterval` 运行时修改；
 - **Tick 依赖**：`AddTickPrerequisiteActor` / `AddTickPrerequisiteComponent` 保证 A 先于 B Tick；
-- **暂停与时间膨胀**：`UWorld::bIsPaused`（Pause）与 `UWorld::GetWorldSettings()->TimeDilation` 影响 DeltaSeconds 的缩放；Tick 不受 `GamePaused` 影响（`IsPaused()` 仅对 `TG_DuringPhysics` 之后的组暂停）。
+- **暂停与时间膨胀**：`UWorld::bIsPaused`（Pause）时世界以 `LEVELTICK_TimeOnly` 方式推进时间，普通 Actor/Component Tick 停止，仅 `bTickEvenWhenPaused = true` 的对象继续；`UWorld::GetWorldSettings()->TimeDilation` 缩放 DeltaSeconds。
 
 ### 3.4 Component 生命周期
 
@@ -238,6 +238,7 @@ void AMySpawnableActor::Tick(float DeltaSeconds)
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "TimerManager.h"
 #include "MyActorComponent.generated.h"
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
@@ -262,6 +263,9 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Logic")
     void RestartTimer();
+
+    FTimerHandle TimerHandle;
+    void OnIntervalElapsed();
 };
 ```
 

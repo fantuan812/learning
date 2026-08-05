@@ -52,7 +52,7 @@ UE 的 UI 在运行期是"一个 Slate 控件树 + 一层 UObject 包装"：
 | SlateCore | `SlateCore/Public/Application/SlateApplicationBase.h` | `FSlateApplicationBase`、`GetApplicationScale` | Slate 应用基类 |
 | Slate | `Slate/Public/Framework/Application/SlateApplication.h` + `Slate/Private/Framework/Application/SlateApplication.cpp` | `FSlateApplication`、`Get()`、`ProcessKeyDownEvent`、`ProcessMouseButtonDownEvent`、`ProcessMouseMoveEvent`、`FEventRouter`、`RouteAlongFocusPath`、`FTunnelPolicy`、`FBubblePolicy` | 输入路由与应用级流程（注意：5.8 位于 Slate 模块） |
 | Slate | `Slate/Public/Widgets/Layout/SConstraintCanvas.h` + 对应 .cpp | `SConstraintCanvas`、`OnArrangeChildren`、`FSlot` | 锚点布局画布（UCanvasPanel 的底层） |
-| Slate | `Slate/Public/Widgets/Layout/SGridPanel.h`、`SBox.h`、`SOverlay.h` 等 | `SGridPanel`、`SBox`、`SOverlay`、`SBorder`、`SScrollBox`、`SWidgetSwitcher`、`SButton`、`SImage`、`STextBlock` | 常用 Slate 控件族（UMG 对应控件的底层） |
+| Slate | `Slate/Public/Widgets/Layout/SGridPanel.h`、`SBox.h` 等（`SOverlay.h` 在 5.8 已移至 `SlateCore/Public/Widgets/`） | `SGridPanel`、`SBox`、`SOverlay`、`SBorder`、`SScrollBox`、`SWidgetSwitcher`、`SButton`、`SImage`、`STextBlock` | 常用 Slate 控件族（UMG 对应控件的底层） |
 | UMG | `UMG/Public/Blueprint/UserWidget.h` + `UMG/Private/UserWidget.cpp` | `UUserWidget`、`Initialize`、`RebuildWidget`、`OnWidgetRebuilt`、`NativeOnInitialized`、`NativeTick`、`NativePaint`、`AddToViewport`、`AddToPlayerScreen` | UMG 顶层 UserWidget：初始化、构建、Tick/Paint 钩子、上屏 |
 | UMG | `UMG/Public/Components/Widget.h` + `UMG/Private/Components/Widget.cpp` | `UWidget`、`TakeWidget`、`TakeWidget_Private`、`TakeDerivedWidget`、`GetCachedWidget`、`RebuildWidget`、`SynchronizeProperties`、`SetVisibility`、`PROPERTY_BINDING`、`BITFIELD_PROPERTY_BINDING`、`OPTIONAL_BINDING_CONVERT` | UWidget 基类：Slate 包装与属性同步、绑定宏 |
 | UMG | `UMG/Public/Slate/SObjectWidget.h` + `UMG/Private/Slate/SObjectWidget.cpp` | `SObjectWidget`、`Construct`、`AddReferencedObjects`、`Tick`、`OnPaint`、`ResetWidget` | UMG↔Slate 桥接核心：GC 锚定 + 事件/绘制转发（注意：5.8 位于 UMG 模块） |
@@ -962,7 +962,7 @@ SWidget 默认走"快速更新路径/Invalidation"缓存；`ForceVolatile(bIsVol
 
 ### Q8：蓝图"绑定"与 MVVM 是什么关系？
 
-蓝图绑定（Binding 面板）底层是本文的 `TAttribute` + `UPropertyBinding`（`UMG/Public/Binding/` 下 `UVisibilityBinding`/`UBoolBinding` 等）逐帧求值；MVVM（`UMG/Public/MVVM/` 目录）是事件驱动的属性通知（FieldNotify），不逐帧轮询。需要频繁变化的高频 UI 建议 MVVM，低频/简单场景用绑定即可。
+蓝图绑定（Binding 面板）底层是本文的 `TAttribute` + `UPropertyBinding`（`UMG/Public/Binding/` 下 `UVisibilityBinding`/`UBoolBinding` 等）逐帧求值；MVVM（5.8 位于 `Engine/Plugins/Experimental/SlateModelViewViewModel/Source/SlateMVVM`，UMG 下已无 MVVM 目录）是事件驱动的属性通知（FieldNotify），不逐帧轮询。需要频繁变化的高频 UI 建议 MVVM，低频/简单场景用绑定即可。
 
 ## 七、关联阅读
 

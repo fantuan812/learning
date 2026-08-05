@@ -75,16 +75,19 @@
 
 本知识库其余分类：
 
-- 00-引擎基础（C++、反射、GAS 前置）
-- 01-游戏性框架（Gameplay Framework、Actor/Component）
-- 02-网络与同步
-- 03-动画系统
-- 04-物理与移动
-- 05-AI 与行为树
-- 06-资产与资源管理
+- 01-引擎基础（UObject/反射、Actor 生命周期、Gameplay 框架）
+- 02-渲染与图形（材质、光照阴影、Nanite/Lumen）
+- 03-游戏玩法编程（GAS、Enhanced Input、委托通信）
+- 04-动画系统（动画蓝图、蒙太奇、IK）
+- 05-AI系统（行为树、感知系统与 EQS、NavMesh）
+- 06-网络同步（复制、RPC、多人框架）
 - 07-UI 与性能优化（本文档所在分类）
-- 08-移动端与多平台发布
-- 09-调试与工具链
+- 08-工具链与打包发布（UBT、UAT、插件、热更新）
+- 09-物理系统（Chaos、碰撞检测、物理约束）
+- 10-音频系统（音频播放、3D 空间音效、MetaSound）
+- 11-VFX与Niagara（Niagara 粒子、VFX 性能优化）
+- 12-引擎源码分析（反射/GC/网络等源码剖析）
+- 13-世界构建与过场（Landscape、Foliage、Sequencer）
 
 ---
 

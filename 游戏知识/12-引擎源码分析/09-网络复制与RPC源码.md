@@ -232,7 +232,7 @@ struct FDoRepLifetimeParams
 | COND_SimulatedOrPhysics | 模拟端或开启物理的 |
 | COND_InitialOrOwner | 初始复制或 Owner |
 | COND_ReplayOrOwner / COND_ReplayOnly / COND_SkipReplay | 回放相关 |
-| COND_Never | 永不复制（占位） |
+| COND_Never | 永不复制 |
 | ~~COND_ServerOnly / COND_ClientOnly~~ | 5.8 中不存在（已从枚举移除；完整枚举含 COND_Custom/COND_Dynamic/COND_NetGroup/COND_SimulatedOnlyNoReplay 等） |
 
 ### 5.4 REGISTER_REPLICATED_CLASS 与布局构建

@@ -409,7 +409,7 @@ if (ActorInfo.Actor->IsA(AProjectile::StaticClass()))
 ```cpp
 // 控制台（服务器）：
 //   Net.RepGraph.SetPeriodFrame AProjectile 3          —— 投射物每 3 帧复制一次
-//   Net.RepGraph.SetClassCullDistance AProjectile 20000 —— 20m 剔除
+//   Net.RepGraph.SetClassCullDistance AProjectile 20000 —— 200m 剔除
 //   Net.RepGraph.Spatial.SetCellSize 20000             —— 热调整格子尺寸
 //   Net.RepGraph.PrintAllActorInfo BP_Pickup           —— 查单个类的复制信息
 

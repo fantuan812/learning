@@ -234,7 +234,7 @@ flowchart TB
 | --- | --- |
 | `stat chaos` | Chaos 各项统计（刚体数、休眠数、求解时间） |
 | `stat physics` | 物理整体开销 |
-| `p.Chaos.Solver.EnableSleepIntervals 1` | 强制启用休眠区间 |
+| `p.Chaos.Solver.EnableSleeping 1` | 强制启用求解器休眠（CVar 名称以版本实际输出为准） |
 | `p.Chaos.Collision.Enabled 0/1` | 开关碰撞检测（排查用） |
 | Chaos Visual Debugger（CVD） | 可视化物理线程的碰撞与约束状态 |
 | `FreezeRendering` 配合 `stat` | 冻结渲染定位物理峰值 |

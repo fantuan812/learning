@@ -86,7 +86,7 @@ struct FZoneGraphStorage
 USTRUCT(BlueprintType)
 struct FZoneLaneDesc
 {
-	float Width = 150/0f;                                  // 宽度（默认 150cm）
+	float Width = 150.0f;                                  // 宽度（默认 150cm）
 	EZoneLaneDirection Direction = EZoneLaneDirection::Forward;
 	FZoneGraphTagMask Tags = FZoneGraphTagMask(1);        // 默认带 Tag 0
 };
@@ -179,8 +179,8 @@ struct FSmartObjectRequestFilter
 
 // 查询
 bool FindSmartObjects(const FSmartObjectRequest& Request, TArray<FSmartObjectRequestResult>& OutResults, const FConstStructView UserData) const;
-bool FindSmartObjectsInList(const FSmartObjectRequestFilter& Filter, const TConstArrayView<AActor*> ActorList, ///) const;
-void FindSlots(const FSmartObjectHandle Handle, const FSmartObjectRequestFilter& Filter, TArray<FSmartObjectSlotHandle>& OutSlots, ///) const;
+bool FindSmartObjectsInList(const FSmartObjectRequestFilter& Filter, const TConstArrayView<AActor*> ActorList, const FConstStructView UserData) const;
+void FindSlots(const FSmartObjectHandle Handle, const FSmartObjectRequestFilter& Filter, TArray<FSmartObjectSlotHandle>& OutSlots, const FConstStructView UserData) const;
 
 // 认领与占用
 bool CanBeClaimed(const FSmartObjectSlotHandle& SlotHandle, ESmartObjectClaimPriority ClaimPriority = ESmartObjectClaimPriority::Normal) const;
@@ -235,7 +235,7 @@ static UAITask_UseGameplayInteraction* UseSmartObjectWithGameplayInteraction(AAI
 static UAITask_UseGameplayInteraction* MoveToAndUseSmartObjectWithGameplayInteraction(AAIController* Controller, FSmartObjectClaimHandle ClaimHandle, bool bLockAILogic = true);
 ```
 
-`MoveToAndUse///` 内部：先 `UAITask_MoveTo` 走到槽位入口，再启动 `FGameplayInteractionContext` 执行交互定义（StateTree）。
+`MoveToAndUseSmartObjectWithGameplayInteraction` 内部：先 `UAITask_MoveTo` 走到槽位入口，再启动 `FGameplayInteractionContext` 执行交互定义（StateTree）。
 
 ### 3/4 与 Mass 的协作
 
@@ -295,9 +295,9 @@ Mass 侧关键部件（`MassGameplay` 插件，均已验证存在）：
 // 椅子 Actor 的初始化（示意）
 USmartObjectComponent* SOComp = NewObject<USmartObjectComponent>(ChairActor);
 // 配置槽位：1 个座位 + 1 个入口，活动标签 Seat，行为定义用 GameplayInteraction
-FSmartObjectSlotDefinition& Slot = SOComp->GetMutableSlotDefinitions()/AddDefaulted_GetRef();
-Slot/ActivityTags/AddTag(FGameplayTag::RequestGameplayTag(TEXT("Activity/Seat")));
-// /// 设置槽位变换与行为定义
+FSmartObjectSlotDefinition& Slot = SOComp->GetMutableSlotDefinitions().AddDefaulted_GetRef();
+Slot.ActivityTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Activity/Seat")));
+// 设置槽位变换与行为定义
 SOComp->RegisterComponent();
 ```
 
@@ -306,17 +306,17 @@ SOComp->RegisterComponent();
 USmartObjectSubsystem* SOSub = UWorld::GetSubsystem<USmartObjectSubsystem>(World);
 
 FSmartObjectRequestFilter Filter;
-Filter/UserTags/AddTag(FGameplayTag::RequestGameplayTag(TEXT("AI/NPC")));
-Filter/ActivityRequirements = FGameplayTagQuery::MakeQuery_MatchAnyTags(
+Filter.UserTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("AI/NPC")));
+Filter.ActivityRequirements = FGameplayTagQuery::MakeQuery_MatchAnyTags(
 	FGameplayTagContainer(FGameplayTag::RequestGameplayTag(TEXT("Activity/Seat"))));
 
 FSmartObjectRequest Request(FBox(MyLocation - FVector(500), MyLocation + FVector(500)), Filter);
 TArray<FSmartObjectRequestResult> Results;
 SOSub->FindSmartObjects(Request, Results);
 
-if (Results/Num() > 0 && SOSub->CanBeClaimed(Results[0]/SlotHandle))
+if (Results.Num() > 0 && SOSub->CanBeClaimed(Results[0].SlotHandle))
 {
-	FSmartObjectClaimHandle Claim = SOSub->MarkSlotAsClaimed(Results[0]/SlotHandle, ESmartObjectClaimPriority::Normal);
+	FSmartObjectClaimHandle Claim = SOSub->MarkSlotAsClaimed(Results[0].SlotHandle, ESmartObjectClaimPriority::Normal);
 	// 传统 AI：用 AITask 走过去并执行交互
 	UAITask_UseGameplayInteraction* Task =
 		UAITask_UseGameplayInteraction::MoveToAndUseSmartObjectWithGameplayInteraction(MyController, Claim);
@@ -346,15 +346,15 @@ StateTree：UseChair
 UZoneGraphSubsystem* ZoneSub = UWorld::GetSubsystem<UZoneGraphSubsystem>(World);
 
 FZoneGraphTagFilter Filter;
-Filter/AnyTags = FZoneGraphTagMask(FZoneGraphTag(1)); // 例如 Tag1 = 人行道
+Filter.AnyTags = FZoneGraphTagMask(FZoneGraphTag(1)); // 例如 Tag1 = 人行道
 
 FZoneGraphLaneLocation OutLocation;
-float OutDistanceSqr = 0/f;
+float OutDistanceSqr = 0.f;
 if (ZoneSub->FindNearestLane(FBox(AgentPos - FVector(100), AgentPos + FVector(100)), Filter, OutLocation, OutDistanceSqr))
 {
 	// 沿路推进 200cm 得到下一点
 	FZoneGraphLaneLocation Next;
-	ZoneSub->AdvanceLaneLocation(OutLocation, 200/f, Next);
+	ZoneSub->AdvanceLaneLocation(OutLocation, 200.f, Next);
 }
 ```
 

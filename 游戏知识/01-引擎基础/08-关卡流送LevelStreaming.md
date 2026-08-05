@@ -301,7 +301,7 @@ if (Level)
 {
     Level->SetShouldBeLoaded(true);
     // 阻塞直到加载完成（谨慎使用，仅限关键路径）
-    ULevelStreaming::RequestLevel(Level, GetWorld(), /*bAllowLevelLoadRequests*/ true,
+    Level->RequestLevel(GetWorld(), /*bAllowLevelLoadRequests*/ true,
         ULevelStreaming::EReqLevelBlock::BlockAlways);
 }
 ```
@@ -410,4 +410,3 @@ World Partition 运行时内部就依赖流送关卡机制（每个 Cell 生成�
 - 《06-网络同步》：Level Visibility 复制、复制 Actor 与加载竞态；
 - 《07-UI与性能优化》：加载时间优化、内存预算、`stat streaming` 使用；
 - 官方文档：Level Streaming（Docs）与 World Partition（Docs）。
-

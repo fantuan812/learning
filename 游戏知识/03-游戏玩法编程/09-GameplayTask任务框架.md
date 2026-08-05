@@ -134,7 +134,7 @@ void UMyTask::OnDestroy(bool bInOwnerFinished)
 {
     // 1. 解绑所有委托、释放资源
     if (SomeDelegate.IsBound()) { SomeDelegate.Unbind(); }
-    // 2. 最后调用基类（内部会标记 PendingKill，影响蓝图内部机制）
+    // 2. 最后调用基类（内部会 MarkAsGarbage 标记对象待回收，影响蓝图内部机制）
     Super::OnDestroy(bInOwnerFinished);
 }
 ```

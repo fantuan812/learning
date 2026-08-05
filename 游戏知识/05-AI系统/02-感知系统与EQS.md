@@ -23,7 +23,7 @@
 | --- | --- | --- |
 | 感知组件 | AIPerceptionComponent | 挂在 Pawn/AIController 上，管理多个感知配置，维护感知结果 |
 | 感知配置 | UAISenseConfig | 描述某一种感知的灵敏度参数（视觉范围、听觉半径等） |
-| 感知 | UAISense | 感知的"实现类"：视觉（Sight）、听觉（Hearing）、触觉（Touch）、伤害（Damage）、谓词（Prediction）、队伍（Team） |
+| 感知 | UAISense | 感知的"实现类"：视觉（Sight）、听觉（Hearing）、触觉（Touch）、伤害（Damage）、预测（Prediction）、队伍（Team） |
 | 刺激 | UAISenseEvent / FAIStimulus | 感知事件的载体，携带"发生位置、强度、是否被感知"等信息 |
 | 刺激来源 | UAISenseConfig 的"感知器" | 产生刺激的对象（如发声的枪、可见的玩家） |
 | 刺激注册器 | UAIPerceptionSystem | 全局单例，负责刺激的路由与衰减 |
@@ -99,7 +99,7 @@ flowchart LR
 - **听觉（Hearing）**：`UAISense_Hearing` 监听 `ReportNoiseEvent`（或 `UAIPerceptionSystem::ReportEvent` 报告 `UAISenseEvent_Hearing`）。参数 `Hearing Range`（听觉半径）决定最大可听距离；`Lose Hearing Range` 用于遗忘。声音强度（`FAIStimulus::Strength`）可做距离衰减。听觉不要求视线，因此是"墙后预警"的常用手段。
 - **触觉（Touch）**：`UAISense_Touch` 在 Actor 发生物理接触时产生刺激，用于"被碰到就警觉"。
 - **伤害（Damage）**：`UAISense_Damage` 在 Actor 受伤时产生刺激，携带伤害来源，用于"挨打后反击"。
-- **谓词（Prediction）**：`UAISense_Prediction` 用于预测性刺激（如"预计 2 秒后这里会有人"），常用于复杂战术 AI。
+- **预测（Prediction）**：`UAISense_Prediction` 用于预测性刺激（如"预计 2 秒后这里会有人"），常用于复杂战术 AI。
 - **队伍（Team）**：`UAISense_Team` 感知同队/敌队成员的公开信息。
 
 ```cpp
@@ -108,9 +108,9 @@ flowchart LR
 #include "Perception/AISense_Hearing.h"
 
 UAIPerceptionSystem::ReportEvent(GetWorld(), MakeShared<FAINoiseEvent>(
+    NoiseMakerActor,        // 噪声来源
     NoiseLocation,          // 噪声位置
     1.0f,                   // 强度（音量）
-    NoiseMakerActor,        // 噪声来源
     NoiseTag));             // 可选的标签（用于区分脚步/枪声）
 ```
 

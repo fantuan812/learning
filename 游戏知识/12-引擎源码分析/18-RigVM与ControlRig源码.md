@@ -139,10 +139,10 @@ struct FRigVMExecuteOp : public FRigVMInvokeCallableOp
 | `External` | 2 | 外部变量：不属于 VM 的内存（如引用层级里的对象） |
 | `Debug` | 3 | 调试内存：供 Debug Watch 使用 |
 
-5.8 的存储实现：`FRigVMMemoryStorageStruct : public FInstancedPropertyBag`（`RigVMMemoryStorageStruct.h`），即基于**属性包（Property Bag）**——每个"寄存器"是一个已注册的属性（`FProperty`），`FRigVMOperand` 记录：
+5.8 的存储实现：`FRigVMMemoryStorageStruct : public FInstancedPropertyBag`（`RigVMMemoryStorage.h`），即基于**属性包（Property Bag）**——每个"寄存器"是一个已注册的属性（`FProperty`），`FRigVMOperand` 记录：
 
 ```cpp
-// 节选：RigVMMemoryStorageStruct.h
+// 节选：RigVMMemoryStorage.h
 const int32 PropertyIndex = InOperand.GetRegisterIndex();   // 属性索引（旧称寄存器索引）
 const int32 PropertyPathIndex = InOperand.GetRegisterOffset(); // 属性路径索引（如 struct 内的嵌套成员）
 ```

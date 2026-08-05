@@ -87,7 +87,7 @@ sequenceDiagram
 - `AGameModeBase::Login`：创建 PlayerController；`PostLogin`：登录完成（创建 PlayerState、加入 GameState）；
 - `AGameModeBase::RestartPlayer`：为玩家选择出生点并生成默认 Pawn（内部调用 `FindPlayerStart` + `SpawnDefaultPawnFor` + `Possess`）；
 - `APlayerController::Possess`（服务器）→ `APawn::PossessedBy`；客户端通过 `APlayerController::OnRep_Pawn` 感知新 Pawn；
-- 断线：服务器调用 `Logout`，销毁该玩家的 PlayerController 与 Pawn（默认行为），PlayerState 是否保留取决于配置（`bMustSpectate`、`ShouldKeepPlayerState` 等）。
+- 断线：服务器调用 `Logout`，销毁该玩家的 PlayerController 与 Pawn（默认行为），PlayerState 是否保留取决于配置（如 `bMustSpectate` 等配置）。
 
 ### 3.3 Match State（比赛状态机）
 

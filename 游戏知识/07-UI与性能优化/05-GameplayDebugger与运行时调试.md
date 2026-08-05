@@ -581,13 +581,10 @@ Rewind Debugger（UE5.2+）基于 Trace 系统回放整个游戏状态；`FVisua
 ## 7. 关联阅读
 
 - 本知识库：`07-UI与性能优化/03-性能分析工具与Profiling.md`（Unreal Insights、stat 命令，与运行时调试互补）
-- 本知识库：`05-AI系统/01-行为树与黑板.md`、`05-AI系统/02-感知系统与EQS.md`（GDT 的 AI 分类背后是这些系统）
+- 本知识库：`05-AI系统/01-行为树详解.md`、`05-AI系统/02-感知系统与EQS.md`（GDT 的 AI 分类背后是这些系统）
 - 本知识库：`06-网络同步/02-RPC与属性同步.md`（CategoryReplicator 的复制链路原理）
 - 本知识库：`12-引擎源码分析/`（GDT 相关源码走读可参考其分析方法）
 - [UE 官方文档：Gameplay Debugger](https://dev.epicgames.com/documentation/zh-cn/unreal-engine/gameplay-debugger-in-unreal-engine)
 - [UE 官方文档：Visual Logger](https://dev.epicgames.com/documentation/zh-cn/unreal-engine/visual-logger-in-unreal-engine)
 - [UE 官方文档：Rewind Debugger](https://dev.epicgames.com/documentation/en-us/unreal-engine/rewind-debugger-in-unreal-engine)
 
----
-
-*下一篇：06-动画与物理的运行时调试实战（占位）——把 GDT/VLog 组合进 AI、移动、物理的日常排障流程。*

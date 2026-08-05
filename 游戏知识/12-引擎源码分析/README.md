@@ -57,6 +57,7 @@
 | [15-物理系统源码.md](./15-物理系统源码.md) | Chaos 场景与线程、碰撞求解、FPhysScene_Chaos | 已完成 |
 | [16-音频系统源码.md](./16-音频系统源码.md) | 音频设备/混音器/Submix、播放链路（5.8 为 AddNewActiveSound） | 已完成 |
 | [17-Niagara源码.md](./17-Niagara源码.md) | 系统实例/控制器、数据接口、CPU/GPU 模拟 | 已完成 |
+| [18-RigVM与ControlRig源码.md](./18-RigVM与ControlRig源码.md) | RigVM 字节码/指令执行、RigUnit 注册、ControlRig 求值链路 | 已完成 |
 
 ---
 
@@ -139,7 +140,7 @@ flowchart TB
 - 文中代码均取自引擎公开源码或 UHT 生成产物，**类名 / 函数名 / 宏名与真实引擎一致**；
   为控制篇幅，部分代码为"节选/示意"，会在注释中标注；
 - 建议对照引擎源码阅读：`Engine/Source/Runtime/CoreUObject/`、
-  `Engine/Source/Runtime/Engine/`、`Engine/Source/Programs/UnrealHeaderTool/`；
+  `Engine/Source/Runtime/Engine/`、`Engine/Source/Programs/Shared/EpicGames.UHT/`；
 - Mermaid 图中的中文为概念标注，非引擎字面量；
 - "服务器/客户端"指 Dedicated/Listen Server 与 Client 的网络角色划分。
 
