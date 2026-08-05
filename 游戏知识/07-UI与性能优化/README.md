@@ -32,6 +32,7 @@
 | 2 | `02-UI数据绑定与MVVM.md` | UI 数据驱动的三种模式：属性绑定、事件驱动刷新、UE5.1+ MVVM 框架及列表虚拟化实践。 |
 | 3 | `03-性能分析工具与Profiling.md` | 性能分析工具箱：Unreal Insights、stat 系列命令、ProfileGPU、内存分析工具的使用与判读。 |
 | 4 | `04-渲染与加载性能优化.md` | 性能优化实战：Draw Call、材质复杂度、UI 剔除、异步加载、引用管理与移动端内存预算。 |
+| 5 | `05-GameplayDebugger与运行时调试.md` | 运行时调试：GameplayDebugger 分类架构与网络调试、VisualLogger 可视日志记录与回放。 |
 
 ---
 

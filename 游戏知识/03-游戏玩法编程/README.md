@@ -25,6 +25,12 @@
 | [03-GameplayTag与数据资产.md](03-GameplayTag与数据资产.md) | 标签与数据资产 | 讲解 GameplayTag 层次、Container、Query 查询，以及 DataAsset / DataTable 的配置化实践。 |
 | [04-委托事件与对象通信.md](04-委托事件与对象通信.md) | 委托与通信 | 系统梳理单播/多播/动态委托/事件与 Lambda 绑定的原理、写法与生命周期安全。 |
 | [05-蓝图与C++协作.md](05-蓝图与C++协作.md) | 蓝图与 C++ 协作 | 围绕反射与 `UFUNCTION` / `UPROPERTY` 说明符，讲解事件、覆写、属性暴露与双向调用。 |
+| [06-角色移动系统UCharacterMovement.md](06-角色移动系统UCharacterMovement.md) | 角色移动 | UCharacterMovementComponent 四种移动模式、速度/加速度模型、跳跃与 Custom 移动扩展。 |
+| [07-相机系统与视口.md](07-相机系统与视口.md) | 相机系统 | UCameraComponent、PlayerCameraManager、ViewTarget 混合、CameraModifier/Shake 与 SpringArm。 |
+| [08-ModularGameplay模块化玩法.md](08-ModularGameplay模块化玩法.md) | 模块化玩法 | GameFrameworkComponentManager、InitState 状态机与组件化 Actor 架构（Lyra 式）。 |
+| [09-GameplayTask任务框架.md](09-GameplayTask任务框架.md) | 任务框架 | UGameplayTask/TasksComponent 生命周期与调度，GAS AbilityTask 的底层宿主。 |
+| [10-输入设备抽象与手柄触控.md](10-输入设备抽象与手柄触控.md) | 输入设备 | FKey/EKeys、PlayerInput 处理栈、Gamepad 力反馈、触控与 InputSettings 配置。 |
+| [11-常用移动与辅助组件.md](11-常用移动与辅助组件.md) | 移动辅助组件 | Projectile/Rotating/InterpTo/SpringArm/Cable 等常用组件的原理与用法。 |
 
 ## 学习顺序建议
 

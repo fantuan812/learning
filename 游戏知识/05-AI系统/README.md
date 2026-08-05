@@ -17,6 +17,9 @@
 | [01-行为树详解.md](01-行为树详解.md) | 深入剖析 Behavior Tree 的节点类型、执行流程、黑板数据共享，以及如何用 C++ 编写自定义任务/装饰器/服务节点。 |
 | [02-感知系统与EQS.md](02-感知系统与EQS.md) | 讲解 AIPerception 视觉/听觉/触觉感知机制、刺激与侦测流程，以及 EQS 环境查询的生成器、测试、上下文与评分原理。 |
 | [03-NavMesh寻路.md](03-NavMesh寻路.md) | 详解 NavMesh 生成与烘焙、寻路原理（A*）、NavLinkProxy 动态连接、避障与性能优化要点。 |
+| [04-Mass实体框架与群集模拟.md](04-Mass实体框架与群集模拟.md) | UE5 Mass 生态：MassEntity ECS、Spawner、Representation、LOD 与大规模群集模拟。 |
+| [05-StateTree状态树.md](05-StateTree状态树.md) | StateTree 状态树：State/Task/Evaluator/Transition、与行为树对比、Mass 配合与选型。 |
+| [06-ZoneGraph与SmartObjects.md](06-ZoneGraph与SmartObjects.md) | ZoneGraph 导航走廊空间数据、SmartObjects 智能对象交互、GameplayInteractions 与 Mass 协作。 |
 
 ## 学习顺序建议
 

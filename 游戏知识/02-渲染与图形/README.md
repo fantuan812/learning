@@ -25,6 +25,10 @@
 | [03-光照与阴影系统.md](./03-光照与阴影系统.md) | 光照与阴影 | 四种光源、Shadow Map 原理、CSM 级联阴影、距离场阴影、虚拟阴影贴图 VSM 与间接光照 |
 | [04-Nanite与Lumen.md](./04-Nanite与Lumen.md) | Nanite 与 Lumen | UE5 两大杀手锏：Nanite 虚拟化几何体（集群 LOD / 软件光栅化）与 Lumen 动态全局光照 / 反射 |
 | [05-后处理与画面特效.md](./05-后处理与画面特效.md) | 后处理 | Post Process Volume、Bloom、Tonemapping、自动曝光、DOF、运动模糊、TAA/TSR 与后期材质 |
+| [06-Groom毛发系统.md](./06-Groom毛发系统.md) | Groom 毛发 | Strands/Cards/Meshes 三种表示、GroomAsset/Binding、发丝渲染管线与物理模拟 |
+| [07-虚拟纹理与材质混合.md](./07-虚拟纹理与材质混合.md) | 虚拟纹理 | RVT Page/Feedback 机制、材质混合工作流、Adaptive Virtual Texture 与虚拟化家族 |
+| [08-体积渲染与云.md](./08-体积渲染与云.md) | 体积渲染 | Volumetric Fog（Froxel）、Volumetric Cloud 体积云、Local Fog Volume 与性能预算 |
+| [09-光线追踪与路径追踪.md](./09-光线追踪与路径追踪.md) | 光线追踪 | 硬件光追（RT 反射/阴影/AO）、Path Tracer、r.RayTracing.* 命令与 Lumen 选型 |
 
 ## 学习顺序建议
 

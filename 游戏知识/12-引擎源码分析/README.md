@@ -31,6 +31,7 @@
 | [15-物理系统源码.md](./15-物理系统源码.md) | [09-物理系统](../09-物理系统/README.md)（01-Chaos物理引擎概览） | FChaosScene（PhysicsCore）、物理线程模型、碰撞求解器、FPhysScene_Chaos | `Experimental/Chaos`、`PhysicsCore`、`Engine/Private/PhysicsEngine` |
 | [16-音频系统源码.md](./16-音频系统源码.md) | [10-音频系统](../10-音频系统/README.md)（01-音频基础与播放） | FAudioDevice::AddNewActiveSound、FMixerDevice/Source/Submix、混音渲染线程 | `Runtime/AudioMixer`、`Engine/Classes/Sound`、`Engine/Private/Audio` |
 | [17-Niagara源码.md](./17-Niagara源码.md) | [11-VFX与Niagara](../11-VFX与Niagara/README.md)（01-Niagara粒子系统基础） | FNiagaraSystemInstance/Controller、数据接口、CPU/GPU 模拟、编译管线 | `Plugins/FX/Niagara` |
+| [18-RigVM与ControlRig源码.md](./18-RigVM与ControlRig源码.md) | [04-动画系统](../04-动画系统/README.md)（03-IK与程序化动画） | RigVM 虚拟机字节码/执行模型、RigUnit 注册、FRigHierarchy、ControlRig 求值链路 | `Plugins/Runtime/RigVM`、`Plugins/Animation/ControlRig` |
 
 ---
 

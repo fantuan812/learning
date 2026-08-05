@@ -50,6 +50,8 @@ flowchart LR
 | [02-RPC与属性同步.md](02-RPC与属性同步.md) | Server/Client/Multicast 三类 RPC 与可靠性、属性复制与条件、同步频率、抖动与插值 |
 | [03-客户端预测与延迟补偿.md](03-客户端预测与延迟补偿.md) | CharacterMovement 网络移动、SavedMove 与回滚重放、服务器延迟补偿（回退命中检测） |
 | [04-多人游戏框架与玩家状态.md](04-多人游戏框架与玩家状态.md) | PlayerController/Pawn/PlayerState/GameState 网络角色、连接握手与登录流程、NetConnection 管理 |
+| [05-ReplicationGraph兴趣管理.md](05-ReplicationGraph兴趣管理.md) | ReplicationGraph 节点图架构、网格兴趣管理、自定义节点与大规模多人复制优化 |
+| [06-在线子系统与会话匹配.md](06-在线子系统与会话匹配.md) | OnlineSubsystem 架构、会话创建/搜索/加入/邀请、Matchmaking 与 Steam/EOS 平台对接 |
 
 ---
 

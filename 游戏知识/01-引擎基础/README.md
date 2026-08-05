@@ -19,6 +19,12 @@
 | [02-Actor与Component生命周期.md](./02-Actor与Component生命周期.md) | AActor 与 UActorComponent 的生成、注册、初始化、BeginPlay/EndPlay、Tick 调度与销毁全流程，含 UE5 延迟 BeginPlay 与流送场景说明。 |
 | [03-Gameplay框架与游戏模式.md](./03-Gameplay框架与游戏模式.md) | GameMode/GameState/PlayerController/Pawn/Character/PlayerState 等框架类职责、登录与 Possess 流程、Match State 状态机及多人协作分工。 |
 | [04-引擎启动流程与模块架构.md](./04-引擎启动流程与模块架构.md) | UE 模块系统（IModuleInterface、LoadingPhase、Build.cs/Target.cs、插件）与引擎 PreInit→Init→LoadMap 启动时序，含自定义模块示例。 |
+| [05-场景组件与变换体系.md](./05-场景组件与变换体系.md) | USceneComponent 组件树：Attach 挂接、相对/世界变换、Socket 挂点、注册与变换更新、组件查询。 |
+| [06-定时器与引擎Ticker.md](./06-定时器与引擎Ticker.md) | FTimerManager 定时器（SetTimer/循环/暂停/时间膨胀/服务器定时器）与引擎级 FTSTicker。 |
+| [07-World关卡与Subsystem体系.md](./07-World关卡与Subsystem体系.md) | UWorld/ULevel 组成、关卡与流送概念，以及 UWorld/GameInstance/Engine/LocalPlayer 四种子系统生命周期。 |
+| [08-关卡流送LevelStreaming.md](./08-关卡流送LevelStreaming.md) | 传统 Level Streaming：Persistent/Streaming Level、流送体积、Load/Unload 流程、性能与网络注意点。 |
+| [09-WorldPartition大世界.md](./09-WorldPartition大世界.md) | World Partition：ActorDesc 分散、DataLayer、运行时流送策略、HLOD 与大型开放世界实践。 |
+| [10-FName与FText底层.md](./10-FName与FText底层.md) | FName（FNamePool/全局名表）、FString 堆分配陷阱、FText 本地化管线与三者选型。 |
 
 ## 学习顺序建议
 

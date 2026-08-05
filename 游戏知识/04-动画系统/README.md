@@ -43,6 +43,7 @@ flowchart LR
 | [01-动画蓝图与状态机.md](01-动画蓝图与状态机.md) | 动画蓝图的组成与更新流程、状态机工作原理、各类混合节点与 Slot 的使用方法。 |
 | [02-动画蒙太奇与混合空间.md](02-动画蒙太奇与混合空间.md) | 蒙太奇播放/分段/通知机制，以及 Blend Space 1D/2D 参数化混合与 Aim Offset。 |
 | [03-IK与程序化动画.md](03-IK与程序化动画.md) | TwoBoneIK/FABRIK/Foot IK 原理、Control Rig、程序化动画、动画驱动与 Root Motion。 |
+| [04-动画性能与预算分配.md](04-动画性能与预算分配.md) | 骨骼动画成本、AnimationBudgetAllocator 预算算法与降级策略、AnimationSharing 动画共享。 |
 
 ## 每篇一句话简介
 

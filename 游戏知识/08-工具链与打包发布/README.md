@@ -24,6 +24,9 @@ UE 项目的工程化能力很大程度上取决于对官方工具链的掌握�
 | [02-UAT与自动化打包.md](02-UAT与自动化打包.md) | 讲解 UAT 架构、BuildCookRun 打包命令、Cook/Stage/Package/Archive 四阶段、各平台打包与自动化测试 | 先读 01 |
 | [03-插件开发与编辑器扩展.md](03-插件开发与编辑器扩展.md) | 讲解 .uplugin 插件结构、模块类型、编辑器扩展（工具栏/菜单/编辑器工具窗口/Slate） | 先读 01 |
 | [04-资源管理与热更新.md](04-资源管理与热更新.md) | 讲解资产组织规范、Pak/Chunk 打包、热更新方案、版本管理与迁移 | 先读 02 |
+| [05-GameFeatures特性插件.md](05-GameFeatures特性插件.md) | 讲解 GameFeatures 玩法模块化（GameFeaturePlugin/Action、加载激活状态机、DLC 内容） | 先读 03 |
+| [06-Interchange与DataValidation.md](06-Interchange与DataValidation.md) | 讲解 Interchange 资产导入管线与 DataValidation 资产数据验证/CI 门禁 | 先读 03 |
+| [07-Shader编译管线与PSO.md](07-Shader编译管线与PSO.md) | 讲解 Shader 编译基础设施（SCW/DDC 缓存）与 PSO 预缓存优化 | 先读 01 |
 
 ## 三、学习顺序建议
 
