@@ -54,7 +54,7 @@ flowchart TD
 | LLM | Low Level Memory Tracker | 底层内存追踪器（UE4.24+） |
 | MemReport | MemReport | 内存报告命令，输出文本报告 |
 | 内存分析器 | Memory Profiler | 可视化内存分配分析工具 |
-| 转储 | Dump | 导出统计/状态数据（`stat dump`） |
+| 转储 | Dump | 导出统计/状态数据（5.8 用 `stat startfile`/`stat stopfile`，无 `stat dump`） |
 | 控制台变量 | CVar | 运行时可调的配置项（`r.`、`Slate.` 前缀） |
 
 ---
@@ -105,7 +105,7 @@ Frame: 16.7 ms  Game: 15.1 ms  Draw: 3.2 ms  GPU: 5.0 ms
 
 - `stat unit`：文本显示帧时间；
 - `stat unitGraph`：图形化显示各线程耗时曲线，适合观察波动；
-- `stat unit -Detailed`：显示更多细分（UE5）。
+- `stat detailed`：显示更多细分（5.8；`stat unit -Detailed` 旧语法已不支持）。
 
 #### 常用 stat 命令族
 
@@ -127,7 +127,7 @@ Frame: 16.7 ms  Game: 15.1 ms  Draw: 3.2 ms  GPU: 5.0 ms
 ```text
 stat <组名>           # 显示/隐藏统计组
 stat groupname -enable / -disable
-stat dump             # 导出当前统计到日志
+stat startfile        # 导出当前统计（5.8 无 stat dump，用 startfile/stopfile 录制 .uprof）
 stat startfile        # 开始记录 .uprof
 stat stopfile         # 停止记录
 stat levels           # 各关卡耗时
@@ -221,7 +221,7 @@ Frame: 15.2 ms
 | `stat memory` | 实时内存概览 |
 | `obj list class=Texture2D` | 列出指定类实例与数量 |
 | `obj list -alphabetical` | 按字母列出对象统计 |
-| `LLM` 相关 CVar | `LLM.Enable`、`LLM.Dump` |
+| `LLM` 相关命令/CVar | `DumpLLM`（命令）、`LLM.TrackPeaks` 等（5.8） |
 | `stat LLM` | LLM 分类内存统计 |
 
 #### 内存分析器（Memory Profiler）
@@ -236,7 +236,7 @@ UE 自带内存分析器（编辑器 → Tools → Memory Profiler，或独立�
 
 ```text
 stat LLM
-LLM.Dump          # 输出 LLM 分类摘要
+DumpLLM           # 输出 LLM 分类摘要（5.8）
 ```
 
 #### UI 内存排查要点
@@ -335,8 +335,8 @@ void AMyGameMode::Tick(float DeltaSeconds)
 | `obj list class=XXX` | 对象实例清单 | ★★★（泄漏排查） |
 | `stat startfile` / `stat stopfile` | 录制 `.uprof` | ★★ |
 | `trace.start` / `trace.stop` | 录制 Trace（Insights） | ★★★ |
-| `stat dump` | 导出当前统计 | ★ |
-| `r.RHI.EnableValidation` | RHI 校验（开发） | ★ |
+| `stat startfile` / `stat stopfile` | 导出当前统计（5.8 无 `stat dump`） | ★ |
+| `-RHIValidation` | RHI 校验（5.8 为启动命令行参数，无 `r.RHI.EnableValidation` CVar） | ★ |
 
 ---
 
@@ -394,7 +394,7 @@ void AMyGameMode::Tick(float DeltaSeconds)
 ### Q3：ProfileGPU 在移动端不输出结果？
 
 **原因**：部分移动 GPU 驱动不支持 RHI 查询；或使用了 `-stat` 之外的启动模式。
-**解决**：改用 RenderDoc（Android 支持）或通过 `r.RHI.GPUStatsEnabled` 相关 CVar 尝试；也可用 `stat gpu` 做粗略观察。
+**解决**：改用 RenderDoc（Android 支持）或直接使用 `stat gpu` 做粗略观察（5.8 无 `r.RHI.GPUStatsEnabled` 这个 CVar）。
 
 ### Q4：`memreport` 输出在哪？
 
@@ -418,7 +418,7 @@ void AMyGameMode::Tick(float DeltaSeconds)
 
 ### Q8：怎么把性能数据接入 CI？
 
-**方案**：使用 UE 的自动化测试（Gauntlet / SessionFrontend）+ 启动参数录制 Trace，配合 `-ExecCmds="stat startfile"`；或在测试关卡中定时执行 `memreport` 与 `stat dump`，收集产物到 CI 平台并绘制趋势图。
+**方案**：使用 UE 的自动化测试（Gauntlet / SessionFrontend）+ 启动参数录制 Trace，配合 `-ExecCmds="stat startfile"`；或在测试关卡中定时执行 `memreport` 与 `stat startfile`/`stat stopfile`（5.8 无 `stat dump`），收集产物到 CI 平台并绘制趋势图。
 
 ---
 

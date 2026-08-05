@@ -75,7 +75,7 @@ flowchart TB
 流送与内存：
 
 - 只有**屏幕空间误差超过阈值**的 Cluster 才需要被加载与渲染，远处物体可以只保留极低 LOD；
-- `r.Nanite.Streaming.PoolSize`（默认约 512MB）控制 Nanite 流送池大小，`stat nanite` 可查看流送状态与内存占用；
+- `r.Nanite.Streaming.StreamingPoolSize`（5.8 名称，默认 512MB）控制 Nanite 流送池大小，`stat nanite` 可查看流送状态与内存占用；
 - 正因为"按需加载"，Nanite 场景可以远超显存的几何总量——这是"虚拟化"的核心含义。
 
 ### 3.2 Nanite 渲染流程：两遍光栅化与 Visibility Buffer
@@ -144,7 +144,7 @@ Visibility Buffer 的意义：
 ; ---- Nanite 常用命令 ----
 r.Nanite 1                     ; Nanite 总开关（0 关闭退回传统渲染）
 r.Nanite.MaxPixelsPerEdge 1    ; 每边最大像素误差（越大 LOD 越粗、越省）
-r.Nanite.Streaming.PoolSize 512 ; 流送池大小（MB）
+r.Nanite.Streaming.StreamingPoolSize 512 ; 流送池大小（MB）（5.8 名称）
 stat nanite                    ; Nanite 统计（绘制数、Cluster、三角形、光栅化方式占比）
 ```
 
@@ -194,7 +194,7 @@ Lumen 反射（Lumen Reflections）是 Lumen 的反射组件：
 - 优先使用**屏幕空间追踪**（复用屏幕颜色），未命中部分用 Lumen 世界空间追踪补全；
 - 支持**粗糙反射**（粗糙度越高反射越模糊），这是传统 SSR 难以做到的；
 - 与反射捕获（Reflection Capture）方案相比，Lumen 反射是动态的、连续的，不需要布点；
-- 相关命令：`r.Lumen.Reflections.Allow 0/1`、`r.Lumen.Reflections.Method 0/1`（0=屏幕空间优先，1=光线追踪，以版本为准）。
+- 相关命令：`r.Lumen.Reflections.Allow 0/1`、`r.Lumen.Reflections.HardwareRayTracing 0/1`（5.8；旧 `r.Lumen.Reflections.Method` 已移除）。
 
 ```mermaid
 flowchart LR
@@ -215,9 +215,9 @@ r.Lumen.DiffuseIndirect.Allow 1       ; 间接漫反射总开关
 r.Lumen.Reflections.Allow 1           ; Lumen 反射开关
 r.DynamicGlobalIlluminationMethod 1   ; 0=None 1=Lumen 2=SSGI
 r.ReflectionMethod 1                  ; 0=None 1=Lumen 2=屏幕空间反射
-r.Lumen.DiffuseIndirect.Method 0      ; 0=ScreenProbes(软件) 1=硬件光追
-r.Lumen.Reflections.Method 0          ; 0=屏幕空间优先 1=光线追踪
-stat lumen                            ; Lumen 各阶段耗时统计
+r.Lumen.HardwareRayTracing 1          ; 5.8 硬件光追总开关（旧 r.Lumen.DiffuseIndirect.Method 已移除）
+r.Lumen.Reflections.HardwareRayTracing 1 ; 5.8 Lumen 反射硬件光追开关（旧 r.Lumen.Reflections.Method 已移除）
+; 5.8 无 stat lumen（Lumen 各阶段耗时并入 stat gpu 的 Lumen 段）
 ```
 
 性能特征：
@@ -351,7 +351,7 @@ Lumen 的近似 GI 会提亮暗部；可通过后期（曝光、对比度、LUT�
 
 | 档位 | 配置思路 | 适用 |
 | --- | --- | --- |
-| 极高 | 硬件光追（r.Lumen.DiffuseIndirect.Method 1）+ 高追踪量 | 顶级 PC、过场 |
+| 极高 | 硬件光追（r.Lumen.HardwareRayTracing 1）+ 高追踪量 | 顶级 PC、过场 |
 | 高 | 软件 ScreenProbes 全开 + Lumen 反射 | 主机/高配 PC 默认 |
 | 中 | 关闭 Lumen 反射、降低追踪量 | 中配 PC |
 | 低 | 间接光降分辨率 + Surface Cache 降级 | 低配 PC |

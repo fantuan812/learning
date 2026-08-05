@@ -368,7 +368,7 @@ if (NewActor)
 5. **区分销毁原因**：`EEndPlayReason` 决定"存盘/恢复"逻辑（LevelTransition 应保存，Quit 可能无需保存）；
 6. **销毁前先 `SetActorTickEnabled(false)`**：避免销毁过程中 Tick 访问已释放资源；
 7. **大世界/World Partition**：把"一次性的全局状态"放 Subsystem/GameInstance，Actor BeginPlay 只做局部初始化；
-8. **调试**：用 `t.ActorLifecycle` 类日志、`ShowDebug`、`stat` 命令定位生命周期与 Tick 问题；给生命周期函数打印 `GetName()` 便于对照顺序；
+8. **调试**：用 `LogActor` 日志类别、`ShowDebug`、`stat` 命令定位生命周期与 Tick 问题（5.8 无 `t.ActorLifecycle` CVar）；给生命周期函数打印 `GetName()` 便于对照顺序；
 9. **组件设计**：一个组件一个职责；跨组件通信优先通过 Actor 接口/委托，避免组件互引成环；
 10. **`IsActorBeingDestroyed()`**：在异步回调（Timer、网络）中先判该标志再使用 Actor。
 

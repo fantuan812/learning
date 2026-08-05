@@ -135,8 +135,9 @@ flowchart TB
 
 ## 撰写与阅读约定
 
-- 源码以 **UE5（5.0 ~ 5.5）** 为主，个别 API 差异（如 `IsPendingKill` 的移除、
-  `EFieldFlags` 的引入）会在文中显式标注版本；
+- 源码以 **UE 5.8** 为准，个别 API 差异（如 `IsPendingKill` 的移除、
+  `FCompiledInDefer` 更名为 `FRegisterCompiledInInfo`、`TickFunction.h` 并入
+  `EngineBaseTypes.h`）会在文中显式标注版本；
 - 文中代码均取自引擎公开源码或 UHT 生成产物，**类名 / 函数名 / 宏名与真实引擎一致**；
   为控制篇幅，部分代码为"节选/示意"，会在注释中标注；
 - 建议对照引擎源码阅读：`Engine/Source/Runtime/CoreUObject/`、

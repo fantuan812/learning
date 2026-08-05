@@ -3,7 +3,7 @@
 > 本篇是「06-网络同步」分类的第二篇，讲解 UE 网络通信的两种核心手段：
 > **RPC（Remote Procedure Call，远程过程调用）**——跨机器执行函数；
 > **属性同步（Replicated Properties）**——服务器状态自动下发。
-> 适用版本：UE 5.0 ~ 5.5。
+> 适用版本：UE 5.0 ~ 5.8。
 
 ---
 
@@ -492,7 +492,7 @@ void AMyActor::Tick(float DeltaSeconds)
 7. **OnRep 里不要写服务器逻辑**：OnRep 只在客户端执行；需要服务器响应时，服务器代码写在修改处，两边各写各的（或通过 RPC 桥接）。
 8. **Fast Array 优先于 TArray 复制**：只要数组会增删元素，就用 `FFastArraySerializer`。
 9. **插值要基于时间戳**：不要"每帧按固定速度追"，而要用时间戳差计算，否则不同帧率下平滑效果不一致（03 篇详述）。
-10. **调试命令**：`net.InspectChannels`、`p.NetShowCorrections`、`log LogNetRPC verbose`、`stat Net`，用数据说话。
+10. **调试命令**：`showdebug net`（5.8；`net.InspectChannels` 已移除）、`p.NetShowCorrections`、`log LogNetRPC verbose`、`stat Net`，用数据说话。
 
 ---
 

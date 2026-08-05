@@ -159,15 +159,15 @@ Niagara 的 Scalability 让**同一个资产**在不同质量档下表现不同�
 | Renderer 的 Sort Mode | 粒子间排序模式：View Depth（视图深度）/ View Distance（距离）/ Custom Ascending/Descending（自定义键） |
 | Depth Fade / Soft Particles | 从视觉上"抹掉"排序瑕疵，比强行排序更便宜有效 |
 | 分层透明度 | 把大特效拆成"实体层 + 光效层"，减少透明穿插 |
-| Ribbon 用 2D Ribbon（UE5.4+） | 规避传统 Ribbon 排序伪影 |
+| Ribbon 设 Facing Mode=Screen | 规避传统 Ribbon 排序伪影（5.8 无 2D Ribbon） |
 | 避免透明物体相互穿插 | 关卡设计层面减少"半透明墙 + 半透明粒子"组合 |
 
 相关命令：
 
 | 命令 | 作用 |
 | --- | --- |
-| `r.TranslucencySortPolicy` | 全局透明排序策略（按距离/枢轴等） |
-| `r.TranslucencySortAxis` | 排序轴向（部分场景可固定轴向减少跳变） |
+| `r.TranslucentSortPolicy` | 全局透明排序策略（5.8 真实名称，默认按距离） |
+| Project Settings → Rendering → Translucent Sort Axis | 排序轴向（5.8 为项目设置，非 CVar） |
 | `r.SeparateTranslucency` | 独立半透明通道（版本相关，部分平台默认开） |
 
 > 排序没有银弹：视觉问题优先用 Depth Fade 软化，不要迷信"调排序策略"能解决一切。
@@ -279,11 +279,11 @@ Niagara 的 Scalability 让**同一个资产**在不同质量档下表现不同�
 
 | CVar | 作用 |
 | --- | --- |
-| `fx.Niagara.EnableGPUSimulation 0` | 全局关闭 GPU 模拟（A/B 对比 CPU/GPU 开销） |
-| `fx.Niagara.GPUCulling 0/1` | 开关 GPU 粒子剔除 |
-| `fx.Niagara.GpuComputeDebug` | GPU 粒子包围盒/剔除调试绘制 |
-| `fx.Niagara.MaxGPUParticleSpawnsPerFrame` | 限制单帧 GPU 粒子生成数（防峰值） |
-| `r.TranslucencySortPolicy` / `r.TranslucencySortAxis` | 透明排序策略与轴向 |
+| `fx.NiagaraAllowGPUParticles 0` | 全局关闭 GPU 粒子（5.8 真实名称，默认 1） |
+| `Niagara.GPUCulling 0/1` | 开关 GPU 粒子剔除（5.8 真实名称，无 fx. 前缀，默认 1） |
+| `fx.Niagara.GpuComputeDebug.DrawDebugEnabled` | GPU 粒子包围盒/剔除调试绘制（5.8） |
+| `fx.MaxNiagaraGPUParticlesSpawnPerFrame` | 限制单帧 GPU 粒子生成数（5.8 真实名称，默认 2000000） |
+| `r.TranslucentSortPolicy` / Translucent Sort Axis（项目设置） | 透明排序策略与轴向（5.8） |
 | `r.ScreenPercentage` | 渲染分辨率缩放（移动端压分辨率测试） |
 | `r.MobileContentScaleFactor` | 移动端内容缩放 |
 
@@ -308,7 +308,7 @@ flowchart TD
 
 - **固定复测环境**：同一地图、同一相机、同一操作序列、同一机型，数据才可比；
 - **一次只改一个变量**：粒子数、材质、包围盒分开测，避免归因错误；
-- **A/B 开关**：用 `fx.Niagara.EnableGPUSimulation`、隐藏单个系统等方式做对照；
+- **A/B 开关**：用 `fx.NiagaraAllowGPUParticles`（5.8）、隐藏单个系统等方式做对照；
 - **看峰值更要看 P95**：特效爆发帧（技能释放瞬间）的耗时才是玩家体感。
 
 #### 3.6.4 stat niagara 输出解读
@@ -377,11 +377,11 @@ stat rhi
 profilegpu
 
 # 3. A/B 开关
-fx.Niagara.EnableGPUSimulation 0     # 关闭 GPU 模拟，对比
-show AllParticles                     # 隐藏粒子（查看"没粒子"的帧预算）
+fx.NiagaraAllowGPUParticles 0        # 关闭 GPU 粒子，对比（5.8）
+show Particles                       # 隐藏/显示粒子系统（查看"没粒子"的帧预算）
 
 # 4. 压测与恢复
-fx.Niagara.MaxGPUParticleSpawnsPerFrame 2000
+fx.MaxNiagaraGPUParticlesSpawnPerFrame 2000    # 限制单帧 GPU 生成（5.8）
 ```
 
 ### 4.4 性能验收清单（交付前）
@@ -412,22 +412,22 @@ fx.Niagara.MaxGPUParticleSpawnsPerFrame 2000
 瓶颈多半在渲染侧：材质复杂度、overdraw、粒子尺寸过大或透明层数过多。用 `profilegpu` 定位到粒子渲染 Pass，检查像素着色器指令数与绘制面积。
 
 **Q2：GPU 粒子在移动端白屏/不显示？**
-ES3.1 设备无通用 Compute，或 `fx.Niagara.EnableGPUSimulation` 被关闭。对策：移动端走 CPU 发射器，或按设备 Profile 只在高档开 GPU。
+ES3.1 设备无通用 Compute，或 `fx.NiagaraAllowGPUParticles`（5.8）被关闭。对策：移动端走 CPU 发射器，或按设备 Profile 只在高档开 GPU。
 
 **Q3：远处的特效依然占开销？**
 检查：① 是否开了 Fixed Bounds（过大则无法剔除）；② 系统 LOD 距离是否配置；③ 组件 Cull Distance 设置；④ Scalability 是否在低档关闭该发射器。
 
 **Q4：粒子与场景穿插闪烁？**
-半透明排序问题：加 Depth Fade/软粒子、调整 Renderer Sort Mode、减少透明穿插层数；Ribbon 类优先 2D Ribbon（UE5.4+）。
+半透明排序问题：加 Depth Fade/软粒子、调整 Renderer Sort Mode、减少透明穿插层数；Ribbon 类将 Facing Mode 设为 Screen（5.8 无 2D Ribbon）。
 
 **Q5：一次爆炸 2 万粒子，帧率骤降？**
-CPU 发射器 2 万粒子几乎必卡。对策：① 拆成"核心 2000（CPU）+ 外围 18000（GPU）"；② 缩短 Lifetime 降低存活峰值；③ 限制单帧 Spawn（`fx.Niagara.MaxGPUParticleSpawnsPerFrame`）。
+CPU 发射器 2 万粒子几乎必卡。对策：① 拆成"核心 2000（CPU）+ 外围 18000（GPU）"；② 缩短 Lifetime 降低存活峰值；③ 限制单帧 Spawn（`fx.MaxNiagaraGPUParticlesSpawnPerFrame`，5.8）。
 
 **Q6：粒子带阴影后 Draw Call 翻倍？**
 阴影通道会额外提交。非必要关闭粒子阴影（Cast Shadow = false），或让粒子材质不参与阴影。
 
 **Q7：`stat niagara` 里看不到 GPU 发射器的耗时？**
-GPU 模拟耗时在 `stat gpu` / `profilegpu` 的 Compute 阶段，CPU 统计里没有。GPU 粒子调试绘制用 `fx.Niagara.GpuComputeDebug`。
+GPU 模拟耗时在 `stat gpu` / `profilegpu` 的 Compute 阶段，CPU 统计里没有。GPU 粒子调试绘制用 `fx.Niagara.GpuComputeDebug.DrawDebugEnabled`（5.8）。
 
 **Q8：合批为什么没生效？**
 透明排序、不同材质实例、每粒子动态材质参数都会打断合批；同一发射器内粒子通常已实例化，跨发射器合批条件更苛刻，不要指望"自动合批"。

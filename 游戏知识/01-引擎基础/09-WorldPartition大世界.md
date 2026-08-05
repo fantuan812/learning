@@ -363,7 +363,7 @@ WPS->ForEachWorldPartition([this](UWorldPartition* WP)
 
 ### 5.5 流送预算与性能
 
-- **观察指标**：`stat worldpartition`（Cell 数/加载中/内存）、`stat streaming`、`stat HLOD`；
+- **观察指标**：`stat worldpartition`（Cell 数/加载中/内存）、`stat streaming`（5.8 无 `stat HLOD` 组）；
 - **控制并发**：同时加载的 Cell 数有上限（相关控制台变量/项目设置），超限时按优先级排队；
 - **HLOD 是渲染预算的关键**：远景 Draw Call 来自 HLOD 合并体而不是原始 Actor；HLOD 构建质量与分层直接影响远景帧率；
 - **IO 预算**：PC 用 SSD 时加载压力小，主机要严格控制单帧 IO 请求数（Cell 大小、加载范围、流送源数量三者联动）；

@@ -332,7 +332,7 @@ void ARuntimeFoliageActor::ClearAll()
 
 1. 关卡中放置 `RuntimeFoliageActor`（上例 C++ 类），在 Details 指定 `GrassHISM` 的 Static Mesh 与材质；
 2. 蓝图调用 `Generate Grass(Center, Radius, Density)`：填 `(ActorLocation, 2000, 0.01)`（约 125 棵/半径 2000m 内）；
-3. 运行游戏 → 检查 `stat InstancedMesh` / `ProfileGPU`：实例数上涨但 Draw Call 基本不变；
+3. 运行游戏 → 检查 `stat Foliage`（5.8；`stat InstancedMesh` 不存在）/ `ProfileGPU`：实例数上涨但 Draw Call 基本不变；
 4. 需要"树木随机颜色"：在材质里加 `PerInstanceRandom` 节点（ISM 自动提供每实例随机数）即可，无需任何 C++。
 
 ### 4.3 UFoliageStatistics 统计查询（C++）

@@ -210,7 +210,7 @@ r.ShaderPipelineCache.BatchSize=50               ; 每帧预编译批大小
 r.ShaderPipelineCache.PrecompileBatchSize=50
 r.ShaderPipelineCache.SaveAfterPSOsLogged=10
 r.ShaderPipelineCache.AutoSaveTime=30            ; 自动保存间隔（秒）
-r.PSOPrecache=1                                  ; 运行时 PSO 预创建
+r.PSOPrecache.Components=1                       ; 运行时 PSO 预创建（5.8 真实 CVar 名称）
 ```
 
 ### 4.2 共享 DDC 配置

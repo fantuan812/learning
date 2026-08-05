@@ -190,7 +190,7 @@ DI 的详细原理与高级用法（碰撞、音频、网格体采样）见《02
 | Ribbon Renderer | 按 RibbonID 连接粒子成丝带 | 激光、闪电、拖尾、水流 | 粒子需携带 RibbonID/宽度/朝向；连接顺序影响形态 |
 | Light Renderer | 每个粒子一个点光源 | 极少量：篝火补光 | 光源极贵，尽量不用粒子做光源 |
 | Component Renderer | 每个粒子生成一个组件 | 少用 | 开销最大，几乎只用于特殊需求 |
-| 2D Ribbon（UE5.4+） | 面向相机的丝带 | 拖尾、轨迹 | 新渲染器，排序与形态更稳定 |
+| Ribbon（Facing Mode=Screen） | 面向相机的丝带（5.8 无"2D Ribbon"渲染器） | 拖尾、轨迹 | Ribbon Renderer 属性中设置 Facing Mode |
 
 > 提示：渲染器决定"画成什么样"，材质决定"画出来是什么颜色/形状"（Alpha 遮罩、SubUV 序列帧、渐变），二者不要混淆。
 
@@ -261,7 +261,7 @@ stateDiagram-v2
 | 事件通信 | 无 Send/Receive 概念 | 出生/死亡/碰撞/自定义事件 + Data Channel |
 | 脚本扩展 | 需改引擎 C++ | 蓝图 Scratch Pad、模块资产、C++ 模块类均可 |
 | 调试工具 | Particle Emitter 面板 | Niagara Debugger（属性面板、GPU 调试绘制） |
-| 渲染类型 | Sprite/Mesh/Ribbon/Beam（Beam 发射器） | Sprite/Mesh/Ribbon/Light/Component/2D Ribbon（Beam 用 Ribbon+样条替代） |
+| 渲染类型 | Sprite/Mesh/Ribbon/Beam（Beam 发射器） | Sprite/Mesh/Ribbon/Light/Component（5.8 无 2D Ribbon，Beam 用 Ribbon+样条替代） |
 | 可扩展性 | 无 Scalability 分档 | Scalability + 系统 LOD 距离分级 |
 | 现状 | UE5 已删除 | 标准特效方案 |
 
@@ -362,7 +362,7 @@ FXComp->OnSystemFinished.AddDynamic(this, &AMyCharacter::OnHitFXFinished);
 UE5 已完全移除 Cascade。旧项目迁移路径：使用 UE 自带的 Cascade 转换工具将粒子系统转成 Niagara，再人工修正模块与材质（Cascade 的 Fixed Relative Bounding Box 对应 Niagara 的 Fixed Bounds 等）。
 
 **Q2：粒子生成后什么都看不见，常见原因？**
-① 渲染器未指定材质或材质为全透明；② User 参数（如尺寸/数量）为 0；③ Local Space 导致粒子远离发射器原点；④ 系统被 Distance Culling 或可扩展性档位关闭；⑤ 粒子 Lifetime 为 0 秒（立即死亡）；⑥ 发射器 Sim Target 为 GPU 而平台不支持（检查 `fx.Niagara.EnableGPUSimulation`）。
+① 渲染器未指定材质或材质为全透明；② User 参数（如尺寸/数量）为 0；③ Local Space 导致粒子远离发射器原点；④ 系统被 Distance Culling 或可扩展性档位关闭；⑤ 粒子 Lifetime 为 0 秒（立即死亡）；⑥ 发射器 Sim Target 为 GPU 而平台不支持（检查 `fx.NiagaraAllowGPUParticles`（5.8））。
 
 **Q3：Spawn Per Frame 和 Spawn Rate 有什么区别？**
 Per Frame 每帧生成固定数量，与帧率耦合（60fps 比 30fps 多一倍粒子，不建议用于正式特效）；Rate 按秒生成，与帧率解耦，是标准做法。

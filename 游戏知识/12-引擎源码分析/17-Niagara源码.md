@@ -9,7 +9,7 @@
 > 标「摘选」的代码仅做裁剪、未改动任何符号；标「示意」的片段仅用于表达调用关系，请以实际源码为准。
 >
 > 特别提示：UE 5.8 的 Niagara 头文件布局与 UE4 ~ UE5.3 时代的老教程差异很大，例如：
-> `NiagaraComponent.h` 已从 `Classes/` 移到 `Public/`；`FNiagaraDataSet.h` 仍留在 `Classes/`；
+> `NiagaraComponent.h` 已从 `Classes/` 移到 `Public/`；`NiagaraDataSet.h` 仍留在 `Classes/`；
 > 5.3 时代的 `FNiagaraSystemInstanceImpl` 在 5.8 已不存在（实现合并回 `FNiagaraSystemInstance`，另有
 > `Internal/NiagaraEmitterInstanceImpl.h` 承载发射器实现）；编译器 `FHlslNiagaraCompiler` 位于
 > `NiagaraEditor/Private/`。本文一律以 5.8 实测为准，不沿用记忆中的旧名。

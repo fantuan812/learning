@@ -26,8 +26,8 @@
 | 概念 | 类别 | 一句话作用 | 关键点 |
 | ---- | ---- | ---- | ---- |
 | MetaSound | 资产 | 节点图形式的音频"程序" | UE5.0+，节点驱动 DSP |
-| MetaSound Source | 资产 | 可像 SoundWave 一样播放的 MetaSound | UE5.5 起更名 OneShot |
-| MetaSound Patch | 资产 | 可复用的子图（参数化模块） | UE5.5 起更名 Graph |
+| MetaSound Source | 资产 | 可像 SoundWave 一样播放的 MetaSound | 5.8 仍为 `UMetaSoundSource`（无更名） |
+| MetaSound Patch | 资产 | 可复用的子图（参数化模块） | 5.8 仍为 `UMetaSoundPatch`（无更名） |
 | Input / Output 节点 | 节点 | 暴露参数 / 输出音频 | 蓝图可驱动 |
 | ADSR Envelope | 节点 | 音量包络（起音/衰减/保持/释放） | 合成器基础 |
 | Oscillator | 节点 | 振荡器（正弦/锯齿/方波/噪声） | 程序化音源 |
@@ -55,12 +55,12 @@ MetaSound 是 UE5 引入的**音频节点图系统**：声音不是录音，而�
 
 两种资产形态：
 
-| 形态 | 作用 | UE5.5 更名 | 类比 |
+| 形态 | 作用 | 5.8 类名 | 类比 |
 | ---- | ---- | ---- | ---- |
-| MetaSound Source | 可直接播放的"完整声音" | MetaSound OneShot | 类似 SoundWave |
-| MetaSound Patch | 可复用的参数化子图 | MetaSound Graph | 类似 SoundCue / 函数 |
+| MetaSound Source | 可直接播放的"完整声音" | `UMetaSoundSource` | 类似 SoundWave |
+| MetaSound Patch | 可复用的参数化子图 | `UMetaSoundPatch` | 类似 SoundCue / 函数 |
 
-> 版本提示：UE5.5 官方将 MetaSound Patch 更名为 MetaSound Graph、MetaSound Source 更名为 MetaSound OneShot（旧名称仍可识别）。下文统称 MetaSound。
+> 版本提示：5.8 中资产类名仍为 `UMetaSoundSource`（Source）与 `UMetaSoundPatch`（Patch），并未更名（"UE5.5 更名 OneShot/Graph"的说法与 5.8 源码不符）。下文统称 MetaSound。
 
 #### 3.1.2 一个最小的合成器节点图
 

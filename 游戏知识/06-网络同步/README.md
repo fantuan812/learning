@@ -134,7 +134,7 @@ flowchart LR
 
 ## 撰写与阅读约定
 
-- 示例以 C++ 为主（UE5.3 ~ UE5.5 语法），涉及网络宏（`UFUNCTION`、`DOREPLIFETIME` 等）会单独说明其含义。
+- 示例以 C++ 为主（UE 5.8 语法），涉及网络宏（`UFUNCTION`、`DOREPLIFETIME` 等）会单独说明其含义。
 - 涉及流程的地方使用 Mermaid 图辅助理解；图中中文为概念标注，非引擎字面量。
 - 引擎 API 在不同版本间有小幅差异（如 Iris 的启用方式），文中会标注版本相关说明。
 - 阅读时建议打开引擎源码对照：`Engine/Source/Runtime/Engine/Private/NetDriver.cpp`、`ActorChannel.cpp`、`CharacterMovementComponent.cpp`、`GameModeBase.cpp`。

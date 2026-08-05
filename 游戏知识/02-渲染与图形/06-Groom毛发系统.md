@@ -109,7 +109,7 @@ flowchart TB
 
 各阶段说明：
 
-- **Visibility（可见性）**：把每根发丝扩展成屏幕空间片元，写入可见性缓冲。两种方案：**PPLL**（每像素链表，支持任意深度复杂度，贵）与 **MSAA**（每像素 2/4/8 个采样点，`r.HairStrands.Visibility.MSAA.SamplePerPixel`，性价比高，UE5 默认推荐）；
+- **Visibility（可见性）**：把每根发丝扩展成屏幕空间片元，写入可见性缓冲。两种方案：**PPLL**（每像素链表，支持任意深度复杂度，贵）与 **MSAA**（每像素 2/4/8 个采样点，`r.HairStrands.Visibility.MSAA.SamplePerPixel`，性价比高，5.8 默认方案（默认 8 采样））；
 - **DeepShadow（深阴影）**：对每个光源渲染"深度不透明图"，沿光线方向记录**多个深度层级的密度**，头发多的地方阴影更深——这是传统阴影贴图做不到的（`r.HairStrands.DeepShadow.Resolution` 默认 2048）；
 - **Voxelization（体素化）**：把发丝体素化成低分辨率密度场，用于投射阴影、环境遮挡与光追的粗粒度加速（`bVoxelize`，`r.RayTracing.Shadows.EnableHairVoxel`）；
 - **Transmittance（透射）**：计算光线穿过发丝的透过率，模拟"逆光下头发透光发亮"；
@@ -146,7 +146,7 @@ flowchart LR
 - **求解器**：`CosseratRods`（Groom Rods）基于弹性杆力学，适合长发大摆幅；`AngularSprings`（Groom Springs）基于角弹簧，更快但动态略硬；
 - **约束参数**：`BendStiffness` / `StretchStiffness`（单位 GPa）、`BendDamping` / `StretchDamping`、碰撞摩擦（`StaticFriction` / `KineticFriction`，默认 0.1）、自碰撞黏度（`StrandsViscosity`）、碰撞半径（`CollisionRadius`，默认 0.001 cm）；
 - **局部空间模拟**：`bLocalSimulation = true` 时在角色局部空间解算，配合 `LinearVelocityScale` / `AngularVelocityScale` 把骨骼速度传入，避免角色快速移动时头发"拖尾漂移"；`TeleportDistance`（默认 50cm）超过阈值自动重置模拟防穿帮；
-- **模拟缓存**：`EnableSimulationCache` 允许运行时挂载 GroomCache 替代实时求解（`r.HairStrands.SimulationCache` 相关）。
+- **模拟缓存**：`EnableSimulationCache`（UGroomAsset 资产属性，5.8 无同名 CVar）允许运行时挂载 GroomCache 替代实时求解。
 
 ### 3.5 LOD 与流送
 
@@ -192,7 +192,7 @@ Group 3「远景兜底」：LOD2 切 Cards，LOD3 切 Meshes，关闭物理与�
 | 命令 | 作用 | 备注 |
 | --- | --- | --- |
 | `r.HairStrands.Nanite` | 用 Nanite 渲染发丝（实验性） | 仅非模拟、无绑定的 Groom；只读 CVar |
-| `r.HairStrands.Visibility.MSAA.SamplePerPixel` | 发丝可见性 MSAA 采样数（2/4/8） | 4 是质量/性能平衡点 |
+| `r.HairStrands.Visibility.MSAA.SamplePerPixel` | 发丝可见性 MSAA 采样数（2/4/8，5.8 默认 8） | 4 是质量/性能平衡点 |
 | `r.HairStrands.Visibility.PPLL` | 启用每像素链表方案 | 与 MSAA 二选一 |
 | `r.HairStrands.Visibility.Compute.SamplePerPixel` | Compute 路径可见性采样数 | |
 | `r.HairStrands.DeepShadow.Resolution` | 深阴影分辨率（默认 2048） | 阴影软/硬与性能 |
@@ -292,10 +292,10 @@ Groom 本身不参与骨骼蒙皮；它通过 GroomBindingAsset 把发根"钉"�
 | --- | --- |
 | `stat gpu`（HairStrands 段） | 各 Pass 耗时：Visibility / DeepShadow / Transmittance / Composition |
 | `stat streaming`（HairStrands 段） | 曲线页流送状态与内存 |
-| `r.HairStrands.Debug` 系列视图 | 引导发、插值权重、LOD 档位、集群可视化 |
+| `r.HairStrands.ViewMode` 系列（5.8） | 引导发、插值权重、LOD 档位、集群可视化 |
 | `r.HairStrands.ViewMode.ClumpIndex` | 按发簇着色，检查分组归属 |
 | `r.HairStrands.Interpolation.Debug` | 插值质量检查（每根可见发丝到引导发的映射） |
-| `r.HairStrands.Cluster.Culling` | 集群剔除调试 |
+| `r.HairStrands.Cluster.Culling`（5.8 无此 CVar） | 集群剔除为固定管线，无控制台开关 |
 | `r.HairStrands.Dump.GroomAsset` / `Dump.GroomComponent` | 导出资产/组件诊断信息 |
 
 ### 8.2 术语表

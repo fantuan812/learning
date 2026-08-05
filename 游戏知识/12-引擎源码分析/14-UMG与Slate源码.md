@@ -568,7 +568,7 @@ void UWidgetComponent::InitWidget()
 | --- | --- | --- |
 | `UCanvasPanel` | `SConstraintCanvas` | `CanvasPanel.cpp:57` `MyCanvas = SNew(SConstraintCanvas);` |
 | `UGridPanel` | `SGridPanel` | `GridPanel.cpp`（`SNew(SGridPanel)`） |
-| `UVerticalBox` | `SVerticalBox`（SlateCore/SBoxPanel.h） | `VerticalBox.cpp`（`SNew(SVerticalBox)`） |
+| `UVerticalBox` | `SVerticalBox`（SlateCore/Public/Widgets/SBoxPanel.h） | `VerticalBox.cpp`（`SNew(SVerticalBox)`） |
 | `UOverlay` | `SOverlay` | `Overlay.cpp` |
 | `UBorder` | `SBorder` | `Border.cpp` |
 | `USizeBox` | `SBox` | `SizeBox.cpp` |

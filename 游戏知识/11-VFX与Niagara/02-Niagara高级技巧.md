@@ -251,9 +251,9 @@ flowchart LR
     D --> E["材质：Additive +<br/>径向渐变 + 微光闪烁"]
 ```
 
-#### 3.4.3 2D Ribbon（UE5.4+）
+#### 3.4.3 面向相机的 Ribbon（5.8）
 
-UE5.4 新增 2D Ribbon 渲染器，面向相机的丝带在排序与形态稳定性上优于传统 Ribbon（不再受连接顺序伪影影响），适合拖尾、轨迹类特效。新项目优先考虑。
+5.8 中并无"2D Ribbon"渲染器（"UE5.4 新增 2D Ribbon"与 5.8 源码不符）；面向相机的丝带通过 Ribbon Renderer 的 **Facing Mode = Screen** 实现，配合 RibbonID/宽度渐变即可获得稳定的拖尾效果。
 
 ### 3.5 Niagara 与蓝图 / C++ 交互
 
@@ -462,8 +462,8 @@ FXComp->SetVariableActor(FName("User.TargetSkeletalMesh"), SkeletalMeshComponent
 6. **Ribbon 特效优先固定方向运动**，避免粒子交叉导致的丝带撕裂；闪电用样条 + 噪声扰动而非纯随机。
 7. **半透明特效材质保持简单**：Additive 优先，减少 overdraw（多层半透明叠加是移动端杀手）。
 8. **池化一致性**：同一特效在所有调用点使用相同的池化策略（AutoRelease），避免池内组件状态混乱。
-9. **版本特性按需使用**：Data Channel、2D Ribbon、Simulation Stage 等新特性先确认团队引擎版本再采用。
-10. **调试工具用起来**：Niagara Debugger（属性面板、GPU 粒子绘制）、`fx.Niagara.GpuComputeDebug`、`stat niagara`。
+9. **版本特性按需使用**：Data Channel、Simulation Stage 等新特性先确认团队引擎版本再采用（5.8 无"2D Ribbon"，面向相机丝带用 Facing Mode=Screen）。
+10. **调试工具用起来**：Niagara Debugger（属性面板、GPU 粒子绘制）、`fx.Niagara.GpuComputeDebug.DrawDebugEnabled`（5.8）、`stat niagara`。
 
 ## 6. 常见问题 FAQ
 
@@ -477,7 +477,7 @@ GPU 发射器事件支持受限：GPU→CPU 事件涉及读回通常不可用；
 会有开销：函数调用 + 参数上传。几百个组件每帧调用会明显影响帧率；优化：变化时才设置、合并参数、用 Data Channel/Array 批量传输。
 
 **Q4：Ribbon 粒子顺序乱、丝带扭曲？**
-检查 RibbonID 是否稳定、运动方向是否一致；必要时手动维护 RibbonLinkOrder；UE5.4+ 可换 2D Ribbon 渲染器。
+检查 RibbonID 是否稳定、运动方向是否一致；必要时手动维护 RibbonLinkOrder；或将 Ribbon Renderer 的 Facing Mode 设为 Screen（5.8 无 2D Ribbon 渲染器）。
 
 **Q5：NPC（Niagara Parameter Collection）在 UE5 还能用吗？**
 已弃用。请迁移到 Niagara Data Channel 或组件参数；旧资产升级时编辑器会给出提示。

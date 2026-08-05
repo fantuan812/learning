@@ -161,7 +161,7 @@ void FlushRenderingCommands()
 游戏线程每帧绘制视口的入口（`FRendererModule::BeginRenderingViewFamily`，节选 + 结构示意）：
 
 ```cpp
-// Engine/Source/Runtime/Renderer/Private/RendererModule.cpp（结构示意）
+// Engine/Source/Runtime/Renderer/Private/SceneRendering.cpp（结构示意；5.8 中 RendererModule.cpp 已并入本文件）
 void FRendererModule::BeginRenderingViewFamily(FCanvas* Canvas, FSceneViewFamily* ViewFamily)   // 5.8：无 const
 {
     BeginRenderingViewFamilies(Canvas, MakeArrayView({ ViewFamily }));
@@ -180,7 +180,7 @@ void FRendererModule::BeginRenderingViewFamily(FCanvas* Canvas, FSceneViewFamily
 ### 4.2 场景渲染主流程：FDeferredShadingSceneRenderer::Render（5.8；FSceneRenderer::Render 为纯虚）
 
 ```cpp
-// Engine/Source/Runtime/Renderer/Private/DeferredShadingSceneRenderer.cpp
+// Engine/Source/Runtime/Renderer/Private/DeferredShadingRenderer.cpp（5.8 文件名；类名 FDeferredShadingSceneRenderer 未变）
 // 结构示意（真实 Render 有上千行，含大量条件分支与特性开关）
 void FDeferredShadingSceneRenderer::Render(FRDGBuilder& GraphBuilder, const FSceneRenderUpdateInputs* SceneUpdateInputs)   // 5.8 签名
 {

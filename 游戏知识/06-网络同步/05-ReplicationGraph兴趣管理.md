@@ -228,7 +228,7 @@ sequenceDiagram
 - `UNetDriver` 支持三种复制模型（NetDriver.h:2520 注释）：**Generic**（默认）、**RepGraph**、**Iris**；
 - 可用 `UNetDriver::IsUsingIrisReplication()`（NetDriver.h:2014）判断当前是否 Iris；
 - **ReplicationGraph 仍是传统复制管线的驱动器**：它接管的是"候选 Actor 选择/兴趣管理"这一段；Iris 则是整条复制管线的替换（状态跟踪、序列化、过滤全部重写）；
-- 5.8 中 Iris 仍为实验特性，生产项目主流仍是"传统管线 + ReplicationGraph"。兴趣管理的思想（空间网格、距离剔除、优先级）在 Iris 中同样存在，本篇知识不会浪费。
+- 5.8 中 Iris 仍为 Beta 状态（`Plugins/Experimental/Iris`，描述符 `IsBetaVersion=true`，并非 Experimental），生产项目主流仍是"传统管线 + ReplicationGraph"。兴趣管理的思想（空间网格、距离剔除、优先级）在 Iris 中同样存在，本篇知识不会浪费。
 
 ---
 

@@ -458,7 +458,7 @@ void UMyListWidget::HandleItemClicked()
 ### Q6：UI 纹理花屏 / 图集溢出？
 
 **原因**：超出 Slate 纹理图集（默认 2048x2048）或动态图集上限。
-**解决**：UI 贴图尺寸设为 2 的幂；使用 `Slate Brush` 的 `Draw As`（Border/Box）；检查 `r.Slate.AllowThrottling` 等控制台变量。
+**解决**：UI 贴图尺寸设为 2 的幂；使用 `Slate Brush` 的 `Draw As`（Border/Box）；检查 `Slate.bAllowThrottling`（5.8 真实名称，无 `r.` 前缀）等控制台变量。
 
 ### Q7：Widget Blueprint 与 C++ 如何选择？
 

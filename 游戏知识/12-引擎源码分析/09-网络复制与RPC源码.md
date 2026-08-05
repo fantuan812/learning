@@ -123,7 +123,7 @@ virtual float GetNetPriority(const FVector& ViewPos, const FVector& ViewDir,
 ### 4.2 UActorChannel::ReplicateActor
 
 ```cpp
-// Engine/Source/Runtime/Engine/Private/ActorChannel.cpp
+// Engine/Source/Runtime/Engine/Private/DataChannel.cpp（5.8 起 ActorChannel.cpp 并入本文件）
 // 结构示意（节选）
 int64 UActorChannel::ReplicateActor()   // 5.8 签名：已改为无参
 {
@@ -141,7 +141,7 @@ int64 UActorChannel::ReplicateActor()   // 5.8 签名：已改为无参
 ### 4.3 FRepLayout::ReplicateProperties：属性序列化核心
 
 ```cpp
-// Engine/Source/Runtime/Engine/Private/Net/RepLayout.cpp（UE5，真实签名）
+// Engine/Source/Runtime/Engine/Private/RepLayout.cpp（UE5，真实签名；5.8 位于 Private/ 而非 Net/）
 bool FRepLayout::ReplicateProperties(   // 5.8 真实签名
     FSendingRepState* RESTRICT RepState,
     FRepChangelistState* RESTRICT RepChangelistState,
@@ -274,7 +274,7 @@ Socket 收到数据包
 Bunch 内每个"节"的第一个 bit 标记类型：**1 = RPC，0 = 属性复制**（示意）：
 
 ```cpp
-// Engine/Source/Runtime/Engine/Private/ActorChannel.cpp
+// Engine/Source/Runtime/Engine/Private/DataChannel.cpp（5.8 起 ActorChannel.cpp 并入本文件）
 // 结构示意（节选）
 void UActorChannel::ProcessBunch(FInBunch& Bunch)
 {
@@ -328,7 +328,7 @@ void UActorChannel::ProcessBunch(FInBunch& Bunch)
 客户端调用 `ServerFire()`（UHT 生成的 thunk）→ `ProcessEvent` → 检测到 `FUNC_Net` 标志 → 进入 `AActor::ProcessRemoteFunction`：
 
 ```cpp
-// Engine/Source/Runtime/Engine/Public/Actor.h（真实签名）
+// Engine/Source/Runtime/Engine/Classes/GameFramework/Actor.h（真实签名）
 bool AActor::CallRemoteFunction(UFunction* Function, void* Parameters,
     FOutParmRec* OutParms, FFrame* Stack) override;   // 5.8 真实签名（AActor::ProcessRemoteFunction 已移除）
 // 内部调用：Driver.NetDriver->ProcessRemoteFunction(this, Function, Parameters, OutParms, Stack, SubObject)（NetDriver.h，virtual）
@@ -355,7 +355,7 @@ bool AActor::ProcessRemoteFunction(...)
 ### 7.3 RPC 发送链路：ProcessRemoteFunctionForChannel（5.8；UNetConnection::SendRPC 已移除）
 
 ```cpp
-// Engine/Source/Runtime/Engine/Public/NetConnection.h（真实签名）
+// Engine/Source/Runtime/Engine/Classes/Engine/NetConnection.h（真实签名）
 // 版本注记：UNetConnection::SendRPC 已在 5.8 移除，RPC 发送统一走：
 // UNetDriver::ProcessRemoteFunction → ProcessRemoteFunctionForChannel
 //   → 查找/创建 UActorChannel（无通道时可靠 RPC 经 CreateChannelByName(NAME_Actor, ...) 现建）
@@ -398,7 +398,7 @@ DEFINE_FUNCTION(AMyActor::execServerFire)
 经典签名（5.8 仍声明但已标记废弃 `DEPRECATED_CHARACTER_MOVEMENT_RPC(ServerMove, ServerMovePacked_ClientSend)`；UE5.3+ 主路径为 `ServerMovePacked` 打包）：
 
 ```cpp
-// UCharacterMovementComponent.h（节选）
+// CharacterMovementComponent.h（节选）
 UFUNCTION(Server, Unreliable, WithValidation)
 void ServerMove(float TimeStamp, FVector_NetQuantize10 InAccel,
     FVector_NetQuantize100 ClientLocation, uint8 CompressedMoveFlags,

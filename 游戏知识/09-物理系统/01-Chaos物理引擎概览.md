@@ -54,7 +54,7 @@ Chaos 的演进大致分四个阶段：
 | UE 5.0 | 成为默认后端 | 新项目默认 Chaos；PhysX 仍可选 |
 | UE 5.3+ | 持续收敛 | 物理控制组件、Chaos Vehicles 稳定、布料工具升级 |
 
-> 注意：UE 5.x 中 PhysX 相关代码仍大量保留在引擎里（如 `FPhysScene` 的 PhysX 路径、PhysicsAsset 的旧数据格式），但 Epic 的官方方向是全面转向 Chaos。不要在新项目里依赖 PhysX 专属特性。
+> 注意：UE 5.8 中 PhysX 集成代码已移除（本机 5.8 源码中已无 PhysX 物理模块，仅残留少量构建键与第三方二进制），Chaos 是唯一物理后端。不要在新项目里依赖 PhysX 专属特性。
 
 ### Chaos 架构分层
 
@@ -151,7 +151,7 @@ sequenceDiagram
 
 1. **不要在物理线程直接改游戏对象**：物理回调（如 `OnComponentHit`）默认在游戏线程派发，但某些 Chaos 内部回调可能在物理线程执行，修改 `UActorComponent` 状态前需要切回游戏线程（用 `AsyncTask(ENamedThreads::GameThread, ...)` 或 `FFunctionGraphTask`）；
 2. **物理命令缓冲区**：`FPhysicsCommand::ExecuteWrite/ExecuteRead` 是引擎用来保证"游戏线程提交、物理线程消费"安全的机制，游戏线程上的写操作会排队到物理步进时执行，所以**同一帧内立即读取物理结果可能拿不到最新值**；
-3. **Tick 与固定步长**：游戏 Tick 是变步长的，物理模拟是**固定步长**的（默认 1/120 秒，可在 Project Settings → Physics 的 `Fixed Frame Rate` 调整，也受 `p.Chaos.Solver.FixedStep` 控制）。物理步长与帧率不同步时，引擎会插值刚体位置用于渲染，这就是"物理比帧率平滑"的原因。
+3. **Tick 与固定步长**：游戏 Tick 是变步长的，物理模拟通常按**固定步长**推进（5.8 中专用物理线程默认以 `p.Chaos.Thread.DesiredHz`=60 的目标频率推进；异步模式可在 Project Settings → Physics → Framerate 的 `Async Fixed Time Step Size` 调整，默认 1/30；5.8 已无 `p.Chaos.Solver.FixedStep` 这个 CVar）。物理步长与帧率不同步时，引擎会插值刚体位置用于渲染，这就是"物理比帧率平滑"的原因。
 
 ### 刚体动力学基础
 
@@ -234,8 +234,8 @@ flowchart TB
 | --- | --- |
 | `stat chaos` | Chaos 各项统计（刚体数、休眠数、求解时间） |
 | `stat physics` | 物理整体开销 |
-| `p.Chaos.Solver.EnableSleeping 1` | 强制启用求解器休眠（CVar 名称以版本实际输出为准） |
-| `p.Chaos.Collision.Enabled 0/1` | 开关碰撞检测（排查用） |
+| `p.Chaos.Solver.Sleep.Enabled 1` | 启用求解器休眠（5.8 真实名称，默认 1） |
+| `p.Chaos.Solver.Collision.Enabled 0/1` | 开关碰撞检测（5.8 真实名称，默认 1） |
 | Chaos Visual Debugger（CVD） | 可视化物理线程的碰撞与约束状态 |
 | `FreezeRendering` 配合 `stat` | 冻结渲染定位物理峰值 |
 

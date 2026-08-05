@@ -345,7 +345,7 @@ if (bSuccess && Instance)
 
 - **提前量**：流送体积（或手动加载点）要放在玩家"看到目标区域"之前，配合加载进度提示；
 - **预加载下一区域**：在玩家进入区域 A 时预加载区域 B（只 `SetShouldBeLoaded(true)`，不设可见），真正进入时只做"显示"，体验最好；
-- **加载预算**：同时加载的关卡数不要太多；`s.LevelStreaming.MaxPendingLevels` 等控制台变量可调节并发请求；
+- **加载预算**：同时加载的关卡数不要太多；`s.LevelStreamingComponentsRegistrationGranularity`、`s.LevelStreamingActorsUpdateTimeLimit` 等控制台变量可调节加载/初始化节奏（5.8；`s.LevelStreaming.MaxPendingLevels` 不存在）；
 - **禁止滥用阻塞加载**：`Should Block On Load = true` 只在进度屏/切换场景等明确场景使用，否则直接表现为卡顿；
 - **卸载时机**：离开区域后不要立刻卸载——留出"回头"的余量（如 1-2 个区域距离），避免频繁加载/卸载抖动。
 

@@ -95,8 +95,8 @@ UHT 把说明符翻译成 `EPropertyFlags`（见第五章）。常用映射：
 | `Transient` | `CPF_Transient` | 不序列化、不保存 |
 | `Config` / `GlobalConfig` | `CPF_Config` / `CPF_GlobalConfig` | 读写 ini 配置 |
 | `SaveGame` | `CPF_SaveGame` | 可被 SaveGame 存档系统序列化 |
-| `Replicated` | `CPF_Net`（UE5.8 命名，原 `CPF_Replicated` 已移除） | 服务器复制到客户端 |
-| `ReplicatedUsing=OnRep_X` | `CPF_Net \| CPF_RepNotify`（UE5.8 命名，原 `CPF_ReplicatedUsing` 已移除） | 复制并在客户端触发 OnRep 回调 |
+| `Replicated` | `CPF_Net`（现名，原 `CPF_Replicated` 早已移除） | 服务器复制到客户端 |
+| `ReplicatedUsing=OnRep_X` | `CPF_Net \| CPF_RepNotify`（现名，原 `CPF_ReplicatedUsing` 早已移除） | 复制并在客户端触发 OnRep 回调 |
 | `Instanced` | `CPF_InstancedReference \| CPF_ContainsInstancedReference` | 实例化子对象（编辑器里逐实例编辑） |
 | `DuplicateTransient` | `CPF_DuplicateTransient` | 复制/重复对象时丢弃 |
 | `AssetRegistrySearchable` | `CPF_AssetRegistrySearchable` | 属性进入资源注册表可被搜索 |
@@ -330,8 +330,8 @@ flowchart TB
   属性对外语义。常用值见 3.3 表格；网络复制、序列化、编辑器都在检查这些标志；
 - **`EFieldFlags`**：UE5.8 中**不存在**此枚举（早期 5.x 反射整理工作曾计划引入，
   但未落地）；5.8 的 `FField`（定义于 `CoreUObject/Public/UObject/Field.h`）直接使用
-  `EObjectFlags` 作为字段标志，与 `EPropertyFlags`（反射语义）并存。阅读时以所装版本的
-  `Field.h` / `ObjectMacros.h` 为准；
+  `EClassFlags`（`FFieldClass::ClassFlags`）作为字段标志，与 `EPropertyFlags`（反射语义）
+  并存。阅读时以所装版本的 `Field.h` / `ObjectMacros.h` 为准；
 - UHT 生成的 `NewProp_xxx` 描述符（4.2）就是 `PropertyFlags` 的"出厂值"来源。
 
 ### 5.4 FProperty 的关键方法
@@ -536,7 +536,7 @@ sequenceDiagram
 | --- | --- |
 | 蓝图变量与节点（[03-游戏玩法编程/05-蓝图与C++协作](../03-游戏玩法编程/05-蓝图与C++协作.md)） | `CPF_BlueprintVisible` 标志 + `FProperty` 描述符让蓝图 VM 能读写 C++ 属性 |
 | 存档系统（`SaveGame`，[01-引擎基础](../01-引擎基础/README.md)） | `CPF_SaveGame` 过滤 + `ImportText/ExportText` 文本化 |
-| 网络属性复制（[06-网络同步/02-RPC与属性同步](../06-网络同步/02-RPC与属性同步.md)） | `CPF_Net`（UE5.8 命名，原 `CPF_Replicated`）+ `FRepLayout` 基于 FProperty 偏移做增量序列化 |
+| 网络属性复制（[06-网络同步/02-RPC与属性同步](../06-网络同步/02-RPC与属性同步.md)） | `CPF_Net`（现名，原 `CPF_Replicated` 已更名）+ `FRepLayout` 基于 FProperty 偏移做增量序列化 |
 | 编辑器 Details 面板（[07-UI与性能优化](../07-UI与性能优化/README.md)） | `CPF_Edit` 系列标志决定面板显示/编辑能力 |
 | DataTable / DataAsset（[03-游戏玩法编程/03-GameplayTag与数据资产](../03-游戏玩法编程/03-GameplayTag与数据资产.md)） | 结构体属性由 `FStructProperty` 递归驱动行列序列化 |
 | GAS 的 AttributeSet（[03-游戏玩法编程/01-GameplayAbilitySystem能力系统](../03-游戏玩法编程/01-GameplayAbilitySystem能力系统.md)） | Attribute 通过 `FGameplayAttribute`（内含 `FProperty*`）按名字查找属性 |
@@ -572,7 +572,7 @@ UE4.25 前 `UProperty`（UObject 子类）；4.25 起改名 `FProperty`（FField
 
 **Q7：如何遍历"所有标记了某 meta 的属性"？**
 `TFieldIterator<FProperty>` + `Prop->HasMetaData(TEXT("MyTag"))`；
-`HasAllPropertyFlags(CPF_Net)`（UE5.8 命名，原 `CPF_Replicated`）同理可筛复制属性。
+`HasAllPropertyFlags(CPF_Net)`（现名，原 `CPF_Replicated` 早已更名）同理可筛复制属性。
 
 ---
 
@@ -580,7 +580,7 @@ UE4.25 前 `UProperty`（UObject 子类）；4.25 起改名 `FProperty`（FField
 
 - [01-引擎基础/01-UObject与反射系统.md](../01-引擎基础/01-UObject与反射系统.md)：本篇的概念版（反射、宏系统、UHT 概述）
 - [12-引擎源码分析/02-UObject与垃圾回收源码.md](./02-UObject与垃圾回收源码.md)：属性偏移与引用链在 GC 中的使用（`RefLink` / 引用 Token）
-- [06-网络同步/02-RPC与属性同步.md](../06-网络同步/02-RPC与属性同步.md)：`CPF_Net`（UE5.8 命名，原 `CPF_Replicated`）与 FRepLayout 的源码级联动
+- [06-网络同步/02-RPC与属性同步.md](../06-网络同步/02-RPC与属性同步.md)：`CPF_Net`（现名，原 `CPF_Replicated` 早已更名）与 FRepLayout 的源码级联动
 - [03-游戏玩法编程/05-蓝图与C++协作.md](../03-游戏玩法编程/05-蓝图与C++协作.md)：说明符在蓝图侧的实际效果
 - [08-工具链与打包发布/README.md](../08-工具链与打包发布/README.md)：UBT/UHT 构建管线
 - [01-引擎基础/README.md](../01-引擎基础/README.md)：分类总览与学习顺序

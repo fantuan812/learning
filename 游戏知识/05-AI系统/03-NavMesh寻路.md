@@ -303,7 +303,7 @@ void AAController::OnMoveFinished(FAIRequestID RequestID, const FPathFollowingRe
     else
     {
         // 失败：可能目标不可达，写黑板通知行为树换方案
-        UE_LOG(LogTemp, Warning, TEXT("MoveTo failed: %s"), *Result.Code.ToString());
+        UE_LOG(LogTemp, Warning, TEXT("MoveTo failed: %d"), (int32)Result.Code); // EPathFollowingResult 非 UENUM，按整型输出
     }
 }
 ```
@@ -326,7 +326,7 @@ void AMyActor::QueryPathAsync(const FVector& Goal)
     // 异步查找：结果通过回调返回，不阻塞游戏线程
     FNavPathQueryDelegate Delegate;
     Delegate.BindUObject(this, &AMyActor::OnPathFound);
-    NavSys->FindPathAsync(FAIMessageObserver::Get(), Query, Delegate);
+    FPathFindingResult Result = NavSys->FindPathSync(Query); // 5.8 同步寻路 API；异步可基于 FPathFindingQuery 自行封装
 }
 
 void AMyActor::OnPathFound(uint32 RequestID, ENavigationQueryResult::Type Result, FNavPathSharedPtr NavPath)
@@ -362,12 +362,12 @@ protected:
 // 实现（节选）
 EBTNodeResult::Type UBTTask_JumpNavLink::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {
-    // 实际项目中：监听 UPathFollowingComponent::OnNavLinkMatch 或 NavLinkProxy 的 OnSmartLinkReached，
+    // 实际项目中：监听 NavLinkProxy 的 OnSmartLinkReached 委托，
     // 播放跳跃动画后调用 ResumePathFollowing 继续沿路径移动。
     AAIController* AIC = OwnerComp.GetAIOwner();
     if (AIC && AIC->GetPathFollowingComponent())
     {
-        AIC->GetPathFollowingComponent()->OnNavLinkMatch.AddUObject(this, &UBTTask_JumpNavLink::OnLinkReached);
+        NavLinkProxy->OnSmartLinkReached.AddDynamic(this, &UBTTask_JumpNavLink::OnLinkReached); // FSmartLinkReachedSignature
         return EBTNodeResult::InProgress; // 等待链接事件
     }
     return EBTNodeResult::Failed;
@@ -395,7 +395,7 @@ void UBTTask_JumpNavLink::OnLinkReached(AActor* MovingActor, const FVector& Dest
    - 用 `stat Navigation`、`stat AI`、`stat RHI` 定位瓶颈；
    - 大量 AI 时用 EQS 的 PathingGrid + 查询缓存减少重复寻路；
    - 避障代理数量控制在必要范围（`AvoidanceUID` 数量上限内），否则避障本身成为瓶颈。
-7. **路径可视化**：`show Navigation`（网格）、`show NavPaths`（当前路径）、`ai.debug` 系列命令；运行时绘制 `UNavigationPath` 便于排查"为什么走这条路"。
+7. **路径可视化**：`show Navigation`（网格）、`ai.debug.DrawPaths`（5.8 路径绘制 CVar；旧 `show NavPaths` 已移除）、`ai.debug` 系列命令；运行时绘制 `UNavigationPath` 便于排查"为什么走这条路"。
 8. **流送关卡**：NavMeshBoundsVolume 与关卡绑定，注意 `Runtime Generation` 设为 `Dynamic` 或按需生成，避免流送后无网格。
 
 ## 常见问题 FAQ

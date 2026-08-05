@@ -53,7 +53,7 @@ UE 的 Tick 建立在 TaskGraph（任务图）之上：
 ### 3.2 Tick Group 定义
 
 ```cpp
-// Engine/Source/Runtime/Engine/Public/TickFunction.h（UE5）
+// Engine/Source/Runtime/Engine/Classes/Engine/EngineBaseTypes.h（UE5.8；原 TickFunction.h 已并入本文件）
 enum ETickingGroup : int   // 5.8：由 enum class 改为普通 enum，定义在 EngineBaseTypes.h
 {
     TG_PrePhysics,      // 物理模拟开始之前（Actor 默认组）
@@ -260,7 +260,7 @@ void AActor::TickActor(float DeltaSeconds, ELevelTick TickType, FActorTickFuncti
 `UActorComponent::TickComponent` 的签名（组件逻辑覆写点）：
 
 ```cpp
-// Engine/Source/Runtime/Engine/Public/Components/ActorComponent.h
+// Engine/Source/Runtime/Engine/Classes/Components/ActorComponent.h
 virtual void TickComponent(float DeltaTime, ELevelTick TickType,
     FActorComponentTickFunction* ThisTickFunction);
 ```
