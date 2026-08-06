@@ -61,6 +61,60 @@ function Get-NonCodeMarkdownText([string]$Text) {
     return ($kept -join "`n")
 }
 
+function Get-NonCodeMarkdownLinkText([string]$Text) {
+    $kept = [System.Collections.Generic.List[string]]::new()
+    $nonCode = Get-NonCodeMarkdownText $Text
+    foreach ($line in ($nonCode -split "`r?`n")) {
+        # 与 README 链接解析保持一致：缩进代码块和行内代码不作为来源文本。
+        if ($line -match '^\s{4,}') { continue }
+        $kept.Add([regex]::Replace($line, '`[^`]*`', ''))
+    }
+    return ($kept -join "`n")
+}
+
+function Test-ExternalSourceUrl([string]$Candidate) {
+    if ([string]::IsNullOrWhiteSpace($Candidate)) { return $false }
+    $candidate = $Candidate.Trim()
+    $candidate = [regex]::Replace($candidate, '[.,;:!?，。；：！？]+$', '')
+    try {
+        $uri = [System.Uri]$candidate
+    } catch {
+        return $false
+    }
+    if ($uri.Scheme -notin @('http', 'https')) { return $false }
+    $uriHost = $uri.Host.ToLowerInvariant()
+    if ([string]::IsNullOrWhiteSpace($uriHost)) { return $false }
+    if ($uriHost -eq 'localhost' -or $uriHost -eq '127.0.0.1' -or
+        $uriHost -eq 'example.com' -or $uriHost.EndsWith('.example.com')) {
+        return $false
+    }
+    return $true
+}
+
+function Get-ExternalSourceUrls([string]$Text) {
+    $urls = [System.Collections.Generic.List[string]]::new()
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+
+    # 先复用 README 的 Markdown 链接解析，确保围栏、缩进代码和行内代码不计入。
+    foreach ($target in (Get-LinkTargets $Text)) {
+        $candidate = $target.Trim()
+        if (Test-ExternalSourceUrl $candidate -and $seen.Add($candidate)) {
+            $urls.Add($candidate) | Out-Null
+        }
+    }
+
+    # 同时支持正文中的裸 URL，但仍沿用相同的非代码文本过滤。
+    $linkText = Get-NonCodeMarkdownLinkText $Text
+    foreach ($match in [regex]::Matches($linkText, '(?i)\bhttps?://[^\s<>()\[\]]+')) {
+        $candidate = $match.Value.Trim()
+        $candidate = [regex]::Replace($candidate, '[.,;:!?，。；：！？]+$', '')
+        if (Test-ExternalSourceUrl $candidate -and $seen.Add($candidate)) {
+            $urls.Add($candidate) | Out-Null
+        }
+    }
+    return $urls
+}
+
 function Get-LinkTargets([string]$Text) {
     $targets = [System.Collections.Generic.List[string]]::new()
     $inFence = $false
@@ -292,9 +346,119 @@ foreach ($file in $sourceBodyFiles) {
     }
 }
 
+# P2 领域质量门禁：只检查三个顶层领域的正文，README、围栏代码和维护目录不参与判定。
+$domainDefinitions = @(
+    [pscustomobject]@{ Name = '游戏AI'; Root = (Join-Path $rootPath '游戏AI') }
+    [pscustomobject]@{ Name = '游戏服务端'; Root = (Join-Path $rootPath '游戏服务端') }
+    [pscustomobject]@{ Name = '游戏算法'; Root = (Join-Path $rootPath '游戏算法') }
+)
+$domainStats = @{}
+$domainBodyFiles = @{}
+$domainBaselinePattern = '(?m)^\s*(?:(?:>\s*)|(?:[-+*]\s*)|(?:\|\s*)|(?:#+\s*))*\s*(?:\*\*)?(?:知识基线|版本与规范基线|事实边界)(?:\s*\*\*)?\s*[：:](?:\s*\*\*)?\s*\S+'
+$domainTableBaselinePattern = '(?m)^\s*\|\s*(?:知识基线|版本与规范基线|[^|\r\n]*事实边界)\s*\|'
+$domainDatePattern = '(?m)^\s*(?:(?:>\s*)|(?:[-+*]\s*)|(?:\|\s*)|(?:#+\s*))*\s*(?:\*\*)?最后更新(?:\s*\*\*)?\s*[：:](?:\s*\*\*)?\s*\S+'
+$domainTableDatePattern = '(?m)^\s*\|\s*最后更新\s*\|\s*\S+'
+$domainValidationPattern = '验证与基准|验证建议|测试矩阵|基准测试|可复现|回放'
+# 现有 P0 文章以“验收”标题作为验证入口；仍优先要求上面的明确关键词。
+$domainValidationEntryPattern = '(?m)^\s*(?:#{1,6}\s+|>\s*|[-*+]\s+|\d+[.)]\s+|\|\s*)[^\r\n]*(?:验证与基准|验证建议|测试矩阵|基准测试|可复现|回放|验收)'
+$legacyDomainPattern = '(?i)docs\.unrealengine\.com'
+$rfc793Pattern = '(?i)(?<![A-Za-z0-9])RFC\s*793(?![A-Za-z0-9])'
+$rfc9293Pattern = '(?i)(?<![A-Za-z0-9])RFC\s*9293(?![A-Za-z0-9])'
+$rfcCurrentBaselinePattern = '(?is)(?:RFC\s*9293.{0,120}(?:取代|替代|当前基线|现行基线|当前规范|现行规范)|(?:当前基线|现行基线|当前规范|现行规范).{0,120}RFC\s*9293|RFC\s*793.{0,120}(?:取代|替代).{0,120}RFC\s*9293)'
+
+foreach ($domain in $domainDefinitions) {
+    $domainStats[$domain.Name] = @{
+        BaselineMissing = 0
+        DateMissing = 0
+        SourceMissing = 0
+        ValidationMissing = 0
+        LegacyReferenceMissing = 0
+    }
+    $domainBodyFiles[$domain.Name] = @($mdFiles | Where-Object {
+        $_.Name -ne 'README.md' -and
+        (Test-PathUnder $_.FullName $domain.Root) -and
+        -not (Test-MaintenancePath $_.FullName)
+    })
+}
+
+foreach ($domain in $domainDefinitions) {
+    $stats = $domainStats[$domain.Name]
+    foreach ($file in $domainBodyFiles[$domain.Name]) {
+        if (-not $textByFile.ContainsKey($file.FullName)) { continue }
+        $relative = Get-RepoRelative $file.FullName
+        $qualityText = Get-NonCodeMarkdownText $textByFile[$file.FullName]
+
+        if ($qualityText -notmatch $domainBaselinePattern -and
+            $qualityText -notmatch $domainTableBaselinePattern) {
+            $stats.BaselineMissing++
+            Add-Failure "领域质量门禁缺少领域基线行（知识基线/版本与规范基线/事实边界）: $relative"
+        }
+        if ($qualityText -notmatch $domainDatePattern -and
+            $qualityText -notmatch $domainTableDatePattern) {
+            $stats.DateMissing++
+            Add-Failure "领域质量门禁缺少文档元数据最后更新（最后更新：/最后更新:）: $relative"
+        }
+
+        $sourceUrls = @(Get-ExternalSourceUrls $textByFile[$file.FullName])
+        if ($sourceUrls.Count -eq 0) {
+            $stats.SourceMissing++
+            Add-Failure "领域质量门禁缺少非代码外部来源 URL: $relative"
+        }
+
+        if ($qualityText -notmatch $domainValidationPattern -and
+            $qualityText -notmatch $domainValidationEntryPattern) {
+            $stats.ValidationMissing++
+            Add-Failure "领域质量门禁缺少验证/可复现入口（验证与基准/验证建议/测试矩阵/基准测试/可复现/回放）: $relative"
+        }
+
+        $legacyIssue = $false
+        $linkText = Get-NonCodeMarkdownLinkText $textByFile[$file.FullName]
+        if ($linkText -match $legacyDomainPattern) {
+            $legacyIssue = $true
+            Add-Failure "领域质量门禁保留 docs.unrealengine.com 旧域名: $relative"
+        }
+
+        $isServiceOrNetworkDocument = ($domain.Name -eq '游戏服务端') -or
+            ($relative -match '(?i)服务端|网络|协议|通信|传输|TCP|UDP|HTTP|QUIC|WebSocket|RPC')
+        if ($isServiceOrNetworkDocument -and $qualityText -match $rfc793Pattern) {
+            $rfcReplacementAllowed = $false
+            foreach ($paragraph in ($qualityText -split "`r?`n\s*`r?`n")) {
+                if ($paragraph -match $rfc793Pattern -and
+                    $paragraph -match $rfc9293Pattern -and
+                    $paragraph -match $rfcCurrentBaselinePattern) {
+                    $rfcReplacementAllowed = $true
+                    break
+                }
+            }
+            if (-not $rfcReplacementAllowed) {
+                $legacyIssue = $true
+                Add-Failure "领域质量门禁发现 RFC 793，但缺少 RFC 9293 已取代/当前基线说明: $relative"
+            }
+        }
+        if ($legacyIssue) { $stats.LegacyReferenceMissing++ }
+    }
+}
+
 Write-Host "Markdown: $fileCount（正文 $bodyCount，README $readmeCount）"
 Write-Host "PASS: $($passes.Count + 1) 项基础检查已执行"
 Write-Host "质量元数据：版本缺失 $qualityVersionMissing、日期缺失 $qualityDateMissing、官方链接缺失 $qualityOfficialLinkMissing、源码占位 $qualitySourcePlaceholder"
+$domainTotals = @{
+    BaselineMissing = 0
+    DateMissing = 0
+    SourceMissing = 0
+    ValidationMissing = 0
+    LegacyReferenceMissing = 0
+}
+$domainMetricKeys = @('BaselineMissing', 'DateMissing', 'SourceMissing', 'ValidationMissing', 'LegacyReferenceMissing')
+$domainBodyTotal = 0
+Write-Host '领域质量门禁统计：'
+foreach ($domain in $domainDefinitions) {
+    $stats = $domainStats[$domain.Name]
+    $domainBodyTotal += $domainBodyFiles[$domain.Name].Count
+    foreach ($metric in $domainMetricKeys) { $domainTotals[$metric] += $stats[$metric] }
+    Write-Host "$($domain.Name)：领域基线缺失 $($stats.BaselineMissing)、日期缺失 $($stats.DateMissing)、来源缺失 $($stats.SourceMissing)、验证入口缺失 $($stats.ValidationMissing)、旧规范引用缺失 $($stats.LegacyReferenceMissing)"
+}
+Write-Host "领域质量门禁合计（正文 $domainBodyTotal）：领域基线缺失 $($domainTotals.BaselineMissing)、日期缺失 $($domainTotals.DateMissing)、来源缺失 $($domainTotals.SourceMissing)、验证入口缺失 $($domainTotals.ValidationMissing)、旧规范引用缺失 $($domainTotals.LegacyReferenceMissing)"
 if ($warnings.Count -gt 0) {
     Write-Host "WARN: $($warnings.Count)"
     $warnings | ForEach-Object { Write-Host "WARN $_" }
