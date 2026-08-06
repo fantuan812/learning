@@ -27,6 +27,7 @@ UE 项目的工程化能力很大程度上取决于对官方工具链的掌握�
 | [05-GameFeatures特性插件.md](05-GameFeatures特性插件.md) | 讲解 GameFeatures 玩法模块化（GameFeaturePlugin/Action、加载激活状态机、DLC 内容） | 先读 03 |
 | [06-Interchange与DataValidation.md](06-Interchange与DataValidation.md) | 讲解 Interchange 资产导入管线与 DataValidation 资产数据验证/CI 门禁 | 先读 03 |
 | [07-Shader编译管线与PSO.md](07-Shader编译管线与PSO.md) | 讲解 Shader 编译基础设施（SCW/DDC 缓存）与 PSO 预缓存优化 | 先读 01 |
+| [08-全栈质量门禁与灰度回滚.md](08-全栈质量门禁与灰度回滚.md) | 串起 UBT/UAT、CI/CD 构建矩阵、自动化测试、Cook/Stage/Pak/签名、Crash/Trace 门禁、服务端安全与灰度回滚 | 先读 01、02；发布协同必读 |
 
 ## 三、学习顺序建议
 
