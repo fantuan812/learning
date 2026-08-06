@@ -7,13 +7,13 @@
 > 同步目录：`C:\project\git\游戏知识\12-引擎源码分析` → https://github.com/fantuan812/learning.git
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
 > 源码边界：`C:\Program Files\Epic Games\UE_5.8\Engine` 只读；以本机 5.8 源码为准。
-> 最后更新：2026-08-06（补齐 CommonUI、UMG MVVM、Unreal Insights/Trace、Gameplay Tasks、Lumen/MegaLights 与 Procedural Vegetation Editor 源码专题）。
+> 最后更新：2026-08-06（补齐 CommonUI、UMG MVVM、Unreal Insights/Trace、Gameplay Tasks、Lumen/MegaLights、Procedural Vegetation Editor 与 Dedicated Server 启动/监听源码专题）。
 
 ---
 
 ## 定位说明
 
-本分类是知识库的"源码纵深"层，当前为 **30 篇已落地源码文章 + 1 篇覆盖矩阵/路线图**。统计口径为 01-18、20-31 共 30 篇源码文章与 19 号路线图；`README.md` 是导航文件，单独列出且不计入上述数量。下表是“已有文章 → 概念分类”的映射，不是 01-11 的完成承诺：
+本分类是知识库的"源码纵深"层，当前为 **31 篇已落地源码文章 + 1 篇覆盖矩阵/路线图**。统计口径为 01-18、20-32 共 31 篇源码文章与 19 号路线图；`README.md` 是导航文件，单独列出且不计入上述数量。下表是“已有文章 → 概念分类”的映射，不是 01-11 的完成承诺：
 
 | 源码分析文件 | 对应知识分类 | 对应知识点 | 覆盖的引擎源码主题 |
 | --- | --- | --- | --- |
@@ -54,6 +54,7 @@
 | Gameplay Tasks | 已有（AI/异步玩法概念） | 源码深度已完成：[29-GameplayTasks源码.md](./29-GameplayTasks源码.md) |
 | UE5.8 Lumen Medium/Lite、MegaLights | 已登记 UE5.8 图形特性 | 源码深度已完成：[30-Lumen与MegaLights源码.md](./30-Lumen与MegaLights源码.md) |
 | Procedural Vegetation Editor | 已登记 UE5.8 世界内容特性 | 源码深度已完成：[31-ProceduralVegetationEditor源码.md](./31-ProceduralVegetationEditor源码.md) |
+| Dedicated Server 启动与监听 | 已有（网络同步/服务端运行概念） | 源码深度已完成：[32-UE Dedicated Server启动与监听源码.md](<./32-UE Dedicated Server启动与监听源码.md>) |
 
 因此本分类当前结论是“核心基础源码覆盖充分、UE5.8 新系统覆盖不完整”，不能写成“源码分析已覆盖全部 01-11 分类”。
 
@@ -97,6 +98,7 @@
 | [29-GameplayTasks源码.md](./29-GameplayTasks源码.md) | Gameplay Tasks 资源、优先级、依赖与任务调度链路 | 源码深度已完成 |
 | [30-Lumen与MegaLights源码.md](./30-Lumen与MegaLights源码.md) | Lumen 光照路径与 MegaLights UE5.8 渲染特性源码边界 | 源码深度已完成 |
 | [31-ProceduralVegetationEditor源码.md](./31-ProceduralVegetationEditor源码.md) | Procedural Vegetation Editor 的编辑器、规则与实例化源码链路 | 源码深度已完成 |
+| [32-UE Dedicated Server启动与监听源码.md](<./32-UE Dedicated Server启动与监听源码.md>) | Dedicated Server 启动、世界监听、网络 Tick、登录、复制与有序关服源码链路 | 源码深度已完成 |
 
 ---
 
@@ -125,7 +127,7 @@
 
 ### 路线三：UE5.8 P1 补齐顺序
 
-先读 [19-高优先级源码覆盖路线图.md](./19-高优先级源码覆盖路线图.md)。Iris/ReplicationGraph、Mass/StateTree、World Partition/World Streaming、Landscape/Foliage、Sequencer/MRG、Enhanced Input/Gameplay Tags、CommonUI、UMG MVVM、Unreal Insights/Trace、Gameplay Tasks、Lumen/MegaLights 与 Procedural Vegetation Editor 已分别由 20-31 号文章完成源码深度覆盖；其余未列入本轮的未来主题仍按路线图保持待补或规划状态。
+先读 [19-高优先级源码覆盖路线图.md](./19-高优先级源码覆盖路线图.md)。Iris/ReplicationGraph、Mass/StateTree、World Partition/World Streaming、Landscape/Foliage、Sequencer/MRG、Enhanced Input/Gameplay Tags、CommonUI、UMG MVVM、Unreal Insights/Trace、Gameplay Tasks、Lumen/MegaLights、Procedural Vegetation Editor 与 Dedicated Server 启动/监听已分别由 20-32 号文章完成源码深度覆盖；其余未列入本轮的未来主题仍按路线图保持待补或规划状态。
 
 ### 配套练习建议
 
@@ -185,7 +187,7 @@ flowchart TB
   为控制篇幅，部分代码为"节选/示意"，会在注释中标注；
 - 建议对照引擎源码阅读：`Engine/Source/Runtime/CoreUObject/`、
   `Engine/Source/Runtime/Engine/`、`Engine/Source/Programs/Shared/EpicGames.UHT/`；
-- 对已标记“源码深度已完成”的 Iris、Mass/StateTree、World Partition/World Streaming、Landscape/Foliage、MRG、Enhanced Input/Gameplay Tags、CommonUI、UMG MVVM、Unreal Insights/Trace、Gameplay Tasks、Lumen/MegaLights 与 Procedural Vegetation Editor，以 20-31 号文章和路线图中的本机 5.8 路径为证据；其余未涉及主题继续保持各自的“待补/规划”状态。
+- 对已标记“源码深度已完成”的 Iris、Mass/StateTree、World Partition/World Streaming、Landscape/Foliage、MRG、Enhanced Input/Gameplay Tags、CommonUI、UMG MVVM、Unreal Insights/Trace、Gameplay Tasks、Lumen/MegaLights、Procedural Vegetation Editor 与 Dedicated Server 启动/监听，以 20-32 号文章和路线图中的本机 5.8 路径为证据；其余未涉及主题继续保持各自的“待补/规划”状态。
 - Mermaid 图中的中文为概念标注，非引擎字面量；
 - "服务器/客户端"指 Dedicated/Listen Server 与 Client 的网络角色划分。
 
