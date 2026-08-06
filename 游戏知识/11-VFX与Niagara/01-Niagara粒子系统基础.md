@@ -2,6 +2,9 @@
 
 > 适用范围：UE 客户端 · 视觉特效
 > 版本基准：UE 5.x（涉及 4.x 差异处单独标注）
+> 兼容性边界：适用于 UE5.8 编辑器/运行时，UE4.27 与早期 UE5 仅作迁移背景，具体模块以正文为准。
+> 官方参考：[Unreal Engine UE5.8 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
+> 最后更新：2026-08-06（本轮元数据维护）。
 
 ## 1. 概述
 

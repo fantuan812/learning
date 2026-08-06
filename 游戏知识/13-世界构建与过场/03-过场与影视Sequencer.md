@@ -2,6 +2,8 @@
 
 > 适用范围：UE 客户端 · 过场动画与影视级演出
 > 版本基准：UE 5.8（关键 API 已对照本机源码：`Runtime\LevelSequence\Public\LevelSequence.h`、`Runtime\MovieScene\Public\MovieSceneSequence.h`、`Runtime\CinematicCamera\Public\CineCameraActor.h`、`Runtime\MovieSceneCapture\Public\MovieSceneCapture.h`）
+> 兼容性边界：适用于 UE5.8 编辑器/运行时，UE4.27 与早期 UE5 仅作迁移背景，具体模块以正文为准。
+> 最后更新：2026-08-06（本轮元数据维护）。
 
 ## 1. 概述
 

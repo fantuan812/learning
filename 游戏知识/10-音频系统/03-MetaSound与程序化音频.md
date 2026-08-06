@@ -7,6 +7,7 @@
 > 兼容性边界：UE 4.27 不提供本文全部 MetaSound 能力，仅作为历史对照，不作为当前基准。
 > 前置知识：第 01、02 篇；蓝图 / C++ 基础
 > 最后更新：2026-08-05（统一 UE5.8 版本基线）。
+> 官方参考：[Unreal Engine UE5.8 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
 
 ---
 
