@@ -1,6 +1,7 @@
 # Enhanced Input 与 Gameplay Tags 源码分析
 
 版本基准：UE5.8.0 / CL55116800 / ++UE5+Release-5.8
+- 最后更新：2026-08-06（本轮元数据维护）
 
 ## 概述
 

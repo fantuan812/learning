@@ -1,6 +1,7 @@
 # 18 RigVM 与 ControlRig 源码剖析
 > 源码基线：UE 5.8.0（本机 `Engine/Build/Build.version`：Major 5 / Minor 8 / Patch 0 / CL 55116800，分支 `++UE5+Release-5.8`）。
 > 验收边界：以本机 `C:\Program Files\Epic Games\UE_5.8\Engine` 只读源码为准；未在本文落地的主题不视为已完成源码覆盖。
+> 官方参考：[Unreal Engine 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
 > 最后更新：2026-08-05（统一源码分析版本基线）。
 
 > 对应知识点：[04-动画系统/03 IK 与程序化动画](../04-动画系统/03-IK与程序化动画.md)

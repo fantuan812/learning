@@ -3,6 +3,7 @@
 ## 运行时调用链与对象生命周期
 
 > 版本基准：UE 5.8.0；`Engine/Build/Build.version` 的 CL 为 `55116800`，分支为 `++UE5+Release-5.8`。
+> 最后更新：2026-08-06（本轮元数据维护）
 > 源码证据：`Engine/Source/Runtime/Net/Iris`、`Engine/Source/Runtime/Engine/Private/Net/Iris/ReplicationSystem`。
 > 本节只描述本机安装的 UE5.8 源码可定位事实；调用方的具体网络线程调度不由本节臆测。
 
