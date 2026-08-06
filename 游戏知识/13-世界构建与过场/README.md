@@ -20,6 +20,7 @@
 | [01-Landscape地形系统.md](./01-Landscape地形系统.md) | Landscape 地形创建与雕刻、高度图编码（LandscapeDataAccess）、材质 Layer Blend 权重混合、Landscape Spline、运行时高度查询/修改、LOD 与烘焙、World Partition 配合。 |
 | [02-植被Foliage与实例化渲染.md](./02-植被Foliage与实例化渲染.md) | Foliage 绘制与数据流、AInstancedFoliageActor / FFoliageInfo、ISM 与 HISM 实例化渲染原理、LOD 与剔除、运行时生成植被、与 Mass 群集对比。 |
 | [03-过场与影视Sequencer.md](./03-过场与影视Sequencer.md) | Sequencer 资产架构（轨道/片段/键帧/绑定）、Possessable/Spawnable、CineCamera 电影镜头、子序列与模板序列、MovieSceneCapture 渲染、运行时播放控制。 |
+| [05-大世界植被与渲染协同.md](./05-大世界植被与渲染协同.md) | 将 World Partition/World Streaming、PCG、Procedural Vegetation Editor、Foliage/ISM/HISM 与 HLOD 串成植被生成、打包、流送、渲染和销毁闭环。 |
 
 ## 学习顺序建议
 
