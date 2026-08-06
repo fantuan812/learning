@@ -33,6 +33,7 @@
 | 3 | [03-性能分析工具与Profiling.md](03-性能分析工具与Profiling.md) | 性能分析工具箱：Unreal Insights、stat 系列命令、ProfileGPU、内存分析工具的使用与判读。 |
 | 4 | [04-渲染与加载性能优化.md](04-渲染与加载性能优化.md) | 性能优化实战：Draw Call、材质复杂度、UI 剔除、异步加载、引用管理与移动端内存预算。 |
 | 5 | [05-GameplayDebugger与运行时调试.md](05-GameplayDebugger与运行时调试.md) | 运行时调试：GameplayDebugger 分类架构与网络调试、VisualLogger 可视日志记录与回放。 |
+| 6 | [06-UI状态与可观测性闭环.md](06-UI状态与可观测性闭环.md) | 打通 CommonUI、UMG MVVM、Enhanced Input 与 Unreal Insights/Trace 的 UI 状态、输入、数据和性能验收闭环。 |
 
 ---
 
