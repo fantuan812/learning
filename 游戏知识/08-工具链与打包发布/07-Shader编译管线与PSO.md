@@ -1,4 +1,7 @@
 # 07 Shader 编译管线与 PSO
+> 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
+> 兼容性边界：适用于 UE5.8 编辑器/运行时，UE4.27 与早期 UE5 仅作迁移背景，具体模块以正文为准。
+> 最后更新：2026-08-06（本轮元数据维护）。
 
 > 本文基于 UE 5.8 源码验证：`Engine/Source/Runtime/RenderCore/Public/ShaderCompilerCore.h`、`ShaderCore.h`、`ShaderCompilerJobTypes.h`、`ShaderPipelineCache.h`，`Engine/Source/Runtime/Engine/Private/ShaderCompiler/`（UE 5.8 起主编译逻辑位于 Engine 模块：`ShaderCompiler.cpp`、`ShaderCompilerThreadRunnable.cpp`、`ShaderCompilerDistributed.cpp`、`ShaderCompilerJobCache.cpp` 等），以及 `Engine/Source/Runtime/RHI/Public/PipelineFileCache.h`。
 

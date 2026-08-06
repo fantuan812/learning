@@ -1,4 +1,7 @@
 # 05 · GameplayDebugger 与运行时调试
+> 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
+> 兼容性边界：适用于 UE5.8 编辑器/运行时，UE4.27 与早期 UE5 仅作迁移背景，具体模块以正文为准。
+> 最后更新：2026-08-06（本轮元数据维护）。
 
 > 适用版本：UE 5.x（关键 API 已对照本机 UE 5.8 源码验证：`Engine/Source/Runtime/GameplayDebugger/Public/` 与 `Engine/Source/Runtime/Engine/Public/VisualLogger/`；涉及 5.8 行为变化会单独标注）
 
@@ -587,4 +590,3 @@ Rewind Debugger（UE5.2+）基于 Trace 系统回放整个游戏状态；`FVisua
 - [UE 官方文档：Gameplay Debugger](https://dev.epicgames.com/documentation/zh-cn/unreal-engine/gameplay-debugger-in-unreal-engine)
 - [UE 官方文档：Visual Logger](https://dev.epicgames.com/documentation/zh-cn/unreal-engine/visual-logger-in-unreal-engine)
 - [UE 官方文档：Rewind Debugger](https://dev.epicgames.com/documentation/en-us/unreal-engine/rewind-debugger-in-unreal-engine)
-
