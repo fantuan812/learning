@@ -1,27 +1,28 @@
 # UMG MVVM 源码分析
 
-> 版本基准：UE5.8.0 / CL55116800 / ++UE5+Release-5.8
+> 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：Major 5 / Minor 8 / Patch 0 / CL 55116800，分支 `++UE5+Release-5.8`）。
+> 源码依据：本机只读安装目录 `C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Runtime\ModelViewViewModel`，重点覆盖 ModelViewViewModel Runtime、编译器、编辑器和调试模块。
+> 适用范围：UMG Widget 的 View/ViewModel 绑定、FieldNotify、生成 ViewClass、编译绑定库、Immediate/Delayed/Tick 执行和 Widget 生命周期；编辑器负责生成绑定描述，Runtime 负责执行。
+> 兼容性边界：UE 4.27 及 UE 5.0–5.7 仅用于迁移背景；UMG Viewmodel 在 UE5.8 仍是 Beta，生成类布局、Private 实现和 deprecated 兼容 API 不作为跨版本稳定 ABI。
+> 插件边界：`ModelViewViewModel.uplugin` 在 UE5.8 中 `EnabledByDefault=false`、`IsBetaVersion=true`、`IsExperimentalVersion=false`；`ModelViewViewModel` 为 Runtime，Blueprint/Editor/Debugger 模块按 `UncookedOnly` 或 Editor 目标加载，不能把它们作为 Shipping Runtime 依赖。
+> 官方参考：[UE5.8 UMG Viewmodel 官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine/umg-viewmodel-for-unreal-engine)。
+> 最后更新：2026-08-06（清理占位导读，补齐 Beta/插件边界和绑定运行时验收说明）。
 
 ## 概述
-记录 UMG MVVM 的源码分析入口与学习要点。
+
+本文把 UMG Viewmodel 从生成类、source/context、FieldNotify 委托到 compiled binding 执行串起来。目标不是把“绑定”当作无成本的编辑器连线，而是能定位属性不刷新、Widget 重建后仍回调、双向绑定递归和 Tick binding 过重等问题对应的源码阶段。
 
 ## 核心概念
-View、ViewModel、FieldNotify 与绑定关系。
 
-## 原理
-说明属性通知、绑定更新和生命周期协作。
+View 持有运行时 source、绑定状态和委托句柄；ViewModel 通常是 `UObject`，通过 `INotifyFieldValueChanged` 暴露字段通知；生成的 `UMVVMViewClass` 与 `FMVVMCompiledBindingLibrary` 保存编译期描述；运行时按照执行模式刷新 Widget 目标属性。
 
-## 示例
-待补充最小化的 ViewModel 与 Widget 绑定示例。
+## 原理导读
 
-## 最佳实践
-保持职责分离，明确通知边界并控制绑定成本。
+核心链路是“Widget 扩展构造 → source 初始化 → binding 初始化 → FieldNotify 订阅 → 字段变化 → `HandledLibraryBindingValueChanged` → compiled library 执行 → Widget 目标写入 → `Destruct` 解除订阅”。编译器尽量前移 FieldPath 和类型检查，但运行时仍必须处理空对象、失效路径、递归和执行模式成本。
 
-## FAQ
-待补充常见绑定、生命周期与调试问题。
+## 最小验收示例
 
-## 关联阅读
-待关联 UMG、MVVM 模块及 Unreal Insights 资料。
+建立 `UMVVMViewModelBase` 子类并让 setter 只在值变化时广播 FieldNotify；在 Widget 中把 source 指向该实例，建立一个单向 binding，然后分别验证初始化、Immediate/Delayed/Tick 刷新和 Widget 重建后的 delegate 清理。示例代码在后文明确标为伪代码，不能把文档片段直接当作完整可编译类。
 
 ## 源码证据与核心概念
 
@@ -78,7 +79,7 @@ View、ViewModel、FieldNotify 与绑定关系。
 2. `Construct` 根据配置初始化 sources/events；并不等价于所有 binding 都已完成。
 3. `InitializeBindings` 注册 FieldNotify 委托，并运行标记为初始化执行的 binding。
 4. Immediate binding 直接执行，Delayed binding 交给 `UMVVMBindingSubsystem` 排队；Tick binding 通过 subsystem 注册 View。
-6. `Destruct` 先撤销 events，再通过 `UninitializeSources` 清理 source 与 binding 注册。
+5. `Destruct` 先撤销 events，再通过 `UninitializeSources` 清理 source 与 binding 注册。
 
 ### 7. Beta 边界
 - UE5.8 的插件元数据明确仍是 Beta，且默认不启用；项目必须显式启用并验证模块依赖。
@@ -92,6 +93,21 @@ View、ViewModel、FieldNotify 与绑定关系。
 - 修改属性后观察 `HandledLibraryBindingValueChanged` 是否被触发且只刷新相关 binding。
 - 反复创建/销毁 Widget，确认委托句柄和 delayed/tick binding 没有残留。
 - 看到旧 `BroadcastFieldValueChanged` 或 deprecated 类型时，先按 5.8 迁移提示处理。
+
+## 源码与绑定验证命令
+
+以下命令只读核对 UE5.8 插件元数据、Runtime 入口、ViewModel 通知和绑定回调；它们不能替代在目标项目中重新编译 Widget Blueprint 与运行时重建测试。
+
+```powershell
+$mvvm = 'C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Runtime\ModelViewViewModel'
+Test-Path "$mvvm\ModelViewViewModel.uplugin"
+Test-Path "$mvvm\Source\ModelViewViewModel\Public\View\MVVMView.h"
+Test-Path "$mvvm\Source\ModelViewViewModel\Public\MVVMViewModelBase.h"
+rg -n 'IsBetaVersion|IsExperimentalVersion|EnabledByDefault|ModelViewViewModelBlueprint' "$mvvm\ModelViewViewModel.uplugin"
+rg -n 'ConstructView\(|InitializeBindings|HandledLibraryBindingValueChanged|AddFieldValueChangedDelegate|K2_BroadcastFieldValueChanged' "$mvvm\Source"
+```
+
+验收顺序是“插件启用 → Widget Blueprint 重新编译 → source 初始化 → FieldNotify 触发 → Immediate/Delayed/Tick 执行 → Widget 销毁”；其中 `Destruct` 后不得再出现该 View 的通知回调或 Tick 登记增长。
 
 ## Binding 编译、FieldNotify 与运行时刷新
 

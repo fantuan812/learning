@@ -1,7 +1,10 @@
 # 17 Niagara 源码剖析（UE 5.8）
-> 源码基线：UE 5.8.0（本机 `Engine/Build/Build.version`：Major 5 / Minor 8 / Patch 0 / CL 55116800，分支 `++UE5+Release-5.8`）。
-> 验收边界：以本机 `C:\Program Files\Epic Games\UE_5.8\Engine` 只读源码为准；未在本文落地的主题不视为已完成源码覆盖。
-> 最后更新：2026-08-05（统一源码分析版本基线）。
+> 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：Major 5 / Minor 8 / Patch 0 / CL 55116800，分支 `++UE5+Release-5.8`）。
+> 源码依据：本机只读安装目录 `C:\Program Files\Epic Games\UE_5.8\Engine`，Niagara 运行时与编辑器位于 `Plugins/FX/Niagara/Source`，VectorVM 依赖位于 `Source/Runtime/VectorVM`。
+> 适用范围：编辑器资产编译、客户端/服务端运行时系统实例、CPU VectorVM、GPU Compute 与渲染线程派发；GPU 模拟和渲染部分仍需按目标平台能力单独验收。
+> 兼容性边界：UE 4.27 及 UE 5.0–5.7 仅作为迁移背景；插件目录、实例实现拆分和编译器私有类均以 UE 5.8 实际源码为准，不承诺跨版本 ABI。
+> 官方参考：[Unreal Engine 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
+> 最后更新：2026-08-06（补齐 UE5.8 元数据、官方入口与 Niagara 源码验收边界）。
 
 > 对应知识点：[11-VFX与Niagara/01-Niagara粒子系统基础](../11-VFX与Niagara/01-Niagara粒子系统基础.md)
 >
@@ -208,7 +211,7 @@ class FNiagaraSystemInstanceController
 
 逐行解释：
 - `NIAGARA_SYSTEM_INSTANCE_CONTROLLER_ASYNC` 默认 0：控制器目前是「透传」模式；若置 1 则所有操作
-  进入延迟队列异步执行（接口已为异步化预留）。
+  进入延迟队列异步执行（接口通过延迟队列表达异步执行边界）。
 - `NIAGARA_SYSTEM_INSTANCE_CONTROLLER_SHIM`：宏批量生成转发方法——`MethodName(...)` 展开为
   `ensure(IsValid()); return SystemInstance->MethodName(...)`，把控制器方法直接转发给内部实例，
   同时用 `ensure` 保证实例仍有效。
@@ -991,7 +994,7 @@ flowchart LR
 因为 5.x 起系统实例的 `Tick_Concurrent` 在工作线程执行，裸指针访问不安全。
 `FNiagaraSystemInstanceController` 是线程安全的共享指针（`TSharedPtr<..., ESPMode::ThreadSafe>`）封装，
 并提供 `ensure(IsValid())` 的转发层（`NIAGARA_SYSTEM_INSTANCE_CONTROLLER_SHIM`），
-还预留了异步化开关（`NIAGARA_SYSTEM_INSTANCE_CONTROLLER_ASYNC`）。
+还保留了异步化兼容开关（`NIAGARA_SYSTEM_INSTANCE_CONTROLLER_ASYNC`），是否启用必须以本机 5.8 的宏定义和构建配置为准。
 
 **Q2：FNiagaraDataSet 和 FNiagaraDataBuffer 有什么区别？**
 `FNiagaraDataSet` 是「布局 + 缓冲池」：保存编译期确定的变量/分量布局（`FNiagaraDataSetCompiledData`）

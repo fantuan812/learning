@@ -1,18 +1,27 @@
 # Landscape 与 Foliage 源码分析
 
-- 版本基准：UE5.8.0 / CL 55116800 / `++UE5+Release-5.8`
-- 维护状态：骨架
+> 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：Major 5 / Minor 8 / Patch 0 / CL 55116800，分支 `++UE5+Release-5.8`）。
+> 源码依据：本机只读安装目录 `C:\Program Files\Epic Games\UE_5.8\Engine`，重点覆盖 `Runtime/Landscape`、`Runtime/Foliage`、`Runtime/Engine` 的 ISM/HISM 与 World Partition Landscape 适配代码。
+> 适用范围：编辑器地形/植被编辑、运行时 Landscape 渲染与碰撞、Grass Map、Foliage ISM/HISM、World Partition 分区和 HLOD；移动、主机与大世界项目应按各自渲染和内存预算回归。
+> 兼容性边界：UE 4.27 及 UE 5.0–5.7 只作为迁移对照；Landscape LOD、Grass Map、HISM 簇树和 World Partition 私有实现以 UE 5.8 实际源码为准，不能把编辑器数据结构当作稳定运行时 API。
+> 官方参考：[Unreal Engine 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)；版本敏感结论仍以本机源码路径和验证命令为证据。
+> 最后更新：2026-08-06（清理占位导读，补齐适用范围、兼容边界和 Landscape/Foliage 源码验收说明）。
 
 ## 概述
-待补充。
+
+本文从数据持有、组件注册、渲染代理、LOD/剔除、碰撞、草实例、Foliage 实例簇、World Partition 与 HLOD 这条链路分析 Landscape 与 Foliage。读者应能从一个“地形接缝、碰撞旧数据、草生成抖动或 HISM 重建慢”的现象，回到对应的 UE5.8 类、函数和验证命令，而不是只停留在编辑器操作层。
 
 ## 核心概念
-待补充。
-## 原理
-## 示例
-## 最佳实践
-## FAQ
-## 关联阅读
+
+- `ALandscapeProxy` 管理 `ULandscapeComponent`、碰撞组件和分区关联；`ALandscape` 是主 Landscape Actor。
+- `ULandscapeComponent` 持有 Heightmap/Weightmap 和 LOD、流送状态，并通过 `FLandscapeComponentSceneProxy` 进入渲染线程。
+- Grass Map/Named Grass Types 产生 Grass HISM；编辑器 Foliage 则由 `FFoliageInfo` 管理实例，再落到 ISM/HISM 渲染组件。
+- HISM 的簇树、排序表和实例重排是剔除/LOD 缓存，不等同于编辑器实例数组；数据变更后必须验证重建和应用阶段。
+- World Partition/ActorDesc、Landscape LOD、Grass HISM 与 HLOD 是相互关联但独立的生命周期阶段，不能用一个阶段的成功推断全链路正确。
+
+## 阅读路径
+
+建议按“源码路径核对 → Landscape 数据与 SceneProxy → LOD/碰撞/Grass → Foliage/ISM/HISM → World Partition/HLOD → 运行时验证”顺序阅读。文中的代码块明确标为示意或伪代码，代表类和函数应以 UE5.8 安装目录的 `Test-Path`、`rg -n` 结果为准。
 
 ## 源码证据与核心概念
 

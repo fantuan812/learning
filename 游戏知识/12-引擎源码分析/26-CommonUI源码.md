@@ -1,19 +1,27 @@
 # CommonUI 源码专题
-版本基准：UE5.8.0 / CL55116800 / `++UE5+Release-5.8`
+
+> 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：Major 5 / Minor 8 / Patch 0 / CL 55116800，分支 `++UE5+Release-5.8`）。
+> 源码依据：本机只读安装目录 `C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Runtime\CommonUI`，重点覆盖 CommonUI、CommonInput Runtime 和 CommonUIEditor 分界。
+> 适用范围：UMG/Slate 之上的跨键鼠、手柄和触控页面激活、输入路由、Action Domain、焦点恢复和 Enhanced Input 映射；网络游戏中的激活栈与焦点仍是本地玩家状态。
+> 兼容性边界：UE 4.27 及 UE 5.0–5.7 仅作为迁移背景；CommonUI 的激活树、路由器私有实现和插件模块边界以 UE 5.8 为准，不把 Editor 模块或内部节点布局当作 Runtime ABI。
+> 插件边界：`CommonUI.uplugin` 在 UE5.8 中 `EnabledByDefault=false`、`IsBetaVersion=false`；`CommonUI`/`CommonInput` 为 Runtime，`CommonUIEditor` 为 Editor，项目必须显式启用插件并分别验证编辑器与 Development/Shipping 构建。
+> 官方参考：[Common UI Plugin 官方 UE5.8 入口](https://dev.epicgames.com/documentation/en-us/unreal-engine/common-ui-plugin-for-advanced-user-interfaces-in-unreal-engine?lang=en-US)。
+> 最后更新：2026-08-06（清理占位导读，补齐插件边界、源码入口和运行时验收说明）。
+
 ## 概述
-待补充 CommonUI 模块职责与源码入口。
+
+CommonUI 是建立在 UMG/Slate 之上的 Runtime 插件：它把页面激活状态、Local Player 级输入路由、动作绑定、输入配置和焦点恢复组织成一条可追踪的 UI 状态链。本文以 UE5.8 源码为证据，重点回答“页面为什么能抢占输入、焦点为什么会恢复、普通 UMG 为什么不是 Active Leaf，以及打包时为什么不能带入 CommonUIEditor”。
+
 ## 核心概念
-待补充控件、输入路由与层级管理概念。
-## 原理
-待补充 CommonUI 与 Slate、UMG 的协作原理。
-## 示例
-待补充最小使用示例与调用链。
-## 最佳实践
-待补充项目使用与扩展建议。
-## FAQ
-待补充常见问题与排查方向。
-## 关联阅读
-待补充 Slate、UMG、MVVM 与 UI 输入系统专题。
+
+- `UCommonActivatableWidget` 表达页面级激活/停用，`UCommonUIActionRouterBase` 作为 `ULocalPlayerSubsystem` 管理每个本地玩家的输入状态。
+- `FActivatableTreeNode`/Root/Leaf 形成 CommonUI 语义树；Slate Widget Path 仍负责视觉焦点和导航，两者通过焦点变化回调协作但不是同一棵树。
+- `FUIInputConfig` 描述 UI/游戏输入模式与鼠标捕获等策略；Action Domain 限制动作查找范围；Enhanced Input 负责动作资产和 Mapping Context。
+- CommonUI Runtime 负责运行时页面生命周期，CommonUIEditor 负责编辑器侧定制；插件未默认启用，必须在项目和目标构建中显式验证。
+
+## 原理导读
+
+输入通常从 Slate/CommonInput 预处理进入 `ProcessInput`，Router 根据 Active Root/Leaf、Action Domain、Binding Handle 和 `FUIInputConfig` 决定 UI 消费还是继续交给玩法层。`ActivateWidget` 与 `DeactivateWidget` 是状态入口；只改 Visibility 不会自动完成节点注册、焦点恢复或 Mapping Context 清理。
 
 ## 源码证据与核心概念
 版本基准：UE5.8.0 / CL55116800 / `++UE5+Release-5.8`。
@@ -78,6 +86,21 @@
 - 蓝图设计、细节面板和编辑器定制属于 Editor 路径；激活、路由、焦点和映射属于 Runtime 路径。
 - 插件清单的 `EnabledByDefault` 为 false，项目需要显式启用插件后再使用这些模块。
 - 打包验证应同时覆盖 Editor 编译与 Shipping/Development Runtime 编译，避免编辑器依赖漏入或运行时缺模块。
+
+### 7. 源码与模块验证命令
+
+以下命令只读核对 UE5.8 的插件清单、模块文件和代表符号；构建验证必须在项目自己的目标配置中执行。
+
+```powershell
+$common = 'C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Runtime\CommonUI'
+Test-Path "$common\CommonUI.uplugin"
+Test-Path "$common\Source\CommonUI\Public\Input\CommonUIActionRouterBase.h"
+Test-Path "$common\Source\CommonUI\Public\CommonActivatableWidget.h"
+rg -n 'EnabledByDefault|IsBetaVersion|CommonUIEditor|CommonInput' "$common\CommonUI.uplugin"
+rg -n 'ProcessInput\(|ActivateWidget\(|GetDesiredFocusTarget|FUIInputConfig' "$common\Source"
+```
+
+推荐在目标项目中分别运行 Editor 与 Development/Shipping 的编译或打包命令，并在运行时复现“激活页面 → 输入消费 → 停用页面 → 映射移除”；不要用编辑器里能打开资产作为 Runtime 模块和焦点路由已经正确的证明。
 
 ### 7. 阅读结论与最小调用关系
 - 页面状态可概括为：`ActivateWidget` → `NativeOnActivated` → UI 映射/激活事件；停用时反向清理。
