@@ -1,4 +1,8 @@
 # 06 · 角色移动系统（UCharacterMovementComponent）
+> 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
+> 兼容性边界：适用于 UE5.8 编辑器/运行时，UE4.27 与早期 UE5 仅作迁移背景，具体模块以正文为准。
+> 官方参考：[Unreal Engine UE5.8 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
+> 最后更新：2026-08-06（本轮元数据维护）。
 
 > 面向 UE 5.x 客户端开发（API 已对照 UE 5.8 引擎源码核对，涉及版本差异处单独标注）。本文详解角色移动的核心组件 `UCharacterMovementComponent`（下文简称 CMC）：移动模式（Walking / Falling / Flying / Swimming / Custom）、速度与加速度/减速度/摩擦模型、跳跃与重力、Custom 移动模式的扩展方式、CMC 子类化与蓝图覆写，以及移动在多人网络下的视角（客户端预测 / 服务器校正），并交叉指向「06-网络同步 · 03-客户端预测与延迟补偿」。
 

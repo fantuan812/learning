@@ -1,4 +1,8 @@
 # 10 FName / FString / FText 底层
+> 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
+> 兼容性边界：适用于 UE5.8 编辑器/运行时，UE4.27 与早期 UE5 仅作迁移背景，具体模块以正文为准。
+> 官方参考：[Unreal Engine UE5.8 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
+> 最后更新：2026-08-06（本轮元数据维护）。
 
 > 适用版本：UE 5.8（以本机 `C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Core` 源码为基准，逐行核对）。FName 池机制在 4.x→5.x 有两次大重构（4.26 引入分片池、5.0 引入 FNameEntryId/块分配器），本文以 5.8 现状为准。
 

@@ -5,6 +5,7 @@
 > 适用范围：Enhanced Input 插件、运行时客户端输入与编辑器配置；本文是概念/使用层说明。
 > 兼容性边界：旧输入系统和 UE 4.27 仅作为迁移对照，不作为当前基准。
 > 最后更新：2026-08-05（统一 UE5.8 版本基线）。
+> 官方参考：[Unreal Engine UE5.8 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
 
 ## 一、概述
 

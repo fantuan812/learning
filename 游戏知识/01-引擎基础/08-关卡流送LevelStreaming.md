@@ -16,6 +16,7 @@ UE5 引入了 World Partition（世界分区）作为面向超大型开放世界
 > 源码依据：`C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Engine\Private\LevelStreaming.cpp` 与 `Classes\Engine\LevelStreaming.h`。
 > 兼容性边界：UE4.27 仅作为传统流送迁移对照，当前 World Partition/Level Streaming 行为以 UE5.8 为准。
 > 最后更新：2026-08-05（统一 UE5.8 版本基线）。
+> 官方参考：[Unreal Engine UE5.8 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
 
 ## 二、核心概念
 

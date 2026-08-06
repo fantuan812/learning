@@ -1,4 +1,8 @@
 # 09 · GameplayTask 任务框架
+> 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
+> 兼容性边界：适用于 UE5.8 编辑器/运行时，UE4.27 与早期 UE5 仅作迁移背景，具体模块以正文为准。
+> 官方参考：[Unreal Engine UE5.8 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
+> 最后更新：2026-08-06（本轮元数据维护）。
 
 > 面向 UE 5.x 客户端开发。本文讲解引擎级任务框架：`UGameplayTask` / `UGameplayTasksComponent` 的对象模型与调度机制、任务生命周期（`ReadyForActivation → Activate → OnDestroy`）、`IGameplayTaskOwnerInterface` 拥有者协议、Tick 与外部取消，以及它和 GAS `UAbilityTask` 的关系、蓝图 Task 的写法。
 >
