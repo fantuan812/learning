@@ -439,6 +439,135 @@ foreach ($domain in $domainDefinitions) {
     }
 }
 
+# P3 UE Dedicated Server 专项门禁：只检查四篇已登记专题、质量门禁说明和网络同步旧路径。
+# 这里的锚点检查只证明正文覆盖了必要概念，不等于实际执行了命令或通过了运行验收。
+$dsStats = [ordered]@{
+    RequiredFileMissing = 0
+    SourceAnchorMissing = 0
+    BuildAnchorMissing = 0
+    PlatformAnchorMissing = 0
+    TestAnchorMissing = 0
+    GateTextMissing = 0
+    ActorChannelResidual = 0
+}
+$dsDocumentDefinitions = @(
+    [pscustomobject]@{
+        Name = '源码专题'
+        Relative = '游戏知识\12-引擎源码分析\32-UE Dedicated Server启动与监听源码.md'
+        Counter = 'SourceAnchorMissing'
+        Anchors = @(
+            [pscustomobject]@{ Label = 'UE_SERVER'; Patterns = @('UE_SERVER', 'Dedicated Server') }
+            [pscustomobject]@{ Label = 'WITH_SERVER_CODE'; Patterns = @('WITH_SERVER_CODE', '服务端代码', '服务端规则', '服务器进程') }
+            [pscustomobject]@{ Label = 'UWorld::Listen'; Patterns = @('UWorld::Listen') }
+            # UE5.8 本机专题以 UIpNetDriver::InitListen 记录实际 IP 实现；作为该监听概念锚点的已核对别名。
+            [pscustomobject]@{ Label = 'UNetDriver::InitListen'; Patterns = @('UNetDriver::InitListen', 'UIpNetDriver::InitListen') }
+            [pscustomobject]@{ Label = 'TickDispatch'; Patterns = @('TickDispatch') }
+            [pscustomobject]@{ Label = 'TickFlush'; Patterns = @('TickFlush') }
+            [pscustomobject]@{ Label = 'PreLogin'; Patterns = @('PreLogin') }
+            [pscustomobject]@{ Label = 'PostLogin'; Patterns = @('PostLogin') }
+            # 源码专题已核对的验证入口使用 Resolve-Path/Test-NetConnection；保留 Test-Path 作为规范锚点并接受实际等价路径检查写法。
+            [pscustomobject]@{ Label = 'Test-Path/路径验证'; Patterns = @('Test-Path', 'Resolve-Path', 'Test-NetConnection') }
+            [pscustomobject]@{ Label = 'rg'; Patterns = @('rg\s+-') }
+        )
+    }
+    [pscustomobject]@{
+        Name = '构建专题'
+        Relative = '游戏知识\08-工具链与打包发布\09-UE Dedicated Server构建烘焙与运行.md'
+        Counter = 'BuildAnchorMissing'
+        Anchors = @(
+            [pscustomobject]@{ Label = 'TargetType.Server'; Patterns = @('TargetType\.Server') }
+            [pscustomobject]@{ Label = 'BuildCookRun'; Patterns = @('BuildCookRun') }
+            [pscustomobject]@{ Label = 'ServerDefaultMap'; Patterns = @('ServerDefaultMap') }
+            [pscustomobject]@{ Label = 'serverconfig'; Patterns = @('serverconfig') }
+            [pscustomobject]@{ Label = 'serverplatform'; Patterns = @('serverplatform', 'servertargetplatform') }
+            [pscustomobject]@{ Label = 'iostore'; Patterns = @('iostore') }
+            [pscustomobject]@{ Label = 'pak'; Patterns = @('pak') }
+        )
+    }
+    [pscustomobject]@{
+        Name = '平台专题'
+        Relative = '游戏服务端\05-UE Dedicated Server平台化\01-UE Dedicated Server实例生命周期与平台化.md'
+        Counter = 'PlatformAnchorMissing'
+        Anchors = @(
+            [pscustomobject]@{ Label = 'Booting'; Patterns = @('Booting') }
+            [pscustomobject]@{ Label = 'Ready'; Patterns = @('Ready') }
+            [pscustomobject]@{ Label = 'Allocated'; Patterns = @('Allocated') }
+            [pscustomobject]@{ Label = 'Draining'; Patterns = @('Draining') }
+            [pscustomobject]@{ Label = 'Terminating'; Patterns = @('Terminating') }
+            [pscustomobject]@{ Label = 'instanceId'; Patterns = @('instanceId') }
+            [pscustomobject]@{ Label = 'buildId'; Patterns = @('buildId') }
+            [pscustomobject]@{ Label = 'sessionTicket'; Patterns = @('sessionTicket') }
+            [pscustomobject]@{ Label = 'readiness'; Patterns = @('readiness') }
+            [pscustomobject]@{ Label = 'heartbeat'; Patterns = @('heartbeat') }
+            [pscustomobject]@{ Label = 'Agones'; Patterns = @('Agones') }
+            [pscustomobject]@{ Label = 'GameLift'; Patterns = @('GameLift') }
+        )
+    }
+    [pscustomobject]@{
+        Name = '测试专题'
+        Relative = '游戏测试与质量\06-UE Dedicated Server联机验收与Gauntlet.md'
+        Counter = 'TestAnchorMissing'
+        Anchors = @(
+            [pscustomobject]@{ Label = 'Gauntlet'; Patterns = @('Gauntlet') }
+            [pscustomobject]@{ Label = 'RunUnreal'; Patterns = @('RunUnreal') }
+            [pscustomobject]@{ Label = 'Server/Client'; Patterns = @('Server', 'Client') }
+            [pscustomobject]@{ Label = '网络仿真/Network Emulation'; Patterns = @('网络仿真', 'Network Emulation') }
+            [pscustomobject]@{ Label = '丢包'; Patterns = @('丢包') }
+            [pscustomobject]@{ Label = 'Soak/长稳'; Patterns = @('Soak', '长稳') }
+            [pscustomobject]@{ Label = 'Trace/日志'; Patterns = @('Trace', '日志') }
+        )
+    }
+)
+
+foreach ($definition in $dsDocumentDefinitions) {
+    $fullPath = Join-Path $rootPath $definition.Relative
+    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+        $dsStats.RequiredFileMissing++
+        Add-Failure "DS 专项门禁必需文件缺失: $($definition.Relative)"
+        continue
+    }
+
+    $documentText = $textByFile[$fullPath]
+    foreach ($anchor in $definition.Anchors) {
+        $matched = $false
+        foreach ($pattern in $anchor.Patterns) {
+            if ($documentText -match $pattern) {
+                $matched = $true
+                break
+            }
+        }
+        if (-not $matched) {
+            $dsStats[$definition.Counter]++
+            Add-Failure "DS 专项门禁锚点缺失 [$($definition.Name)/$($anchor.Label)]: $($definition.Relative)"
+        }
+    }
+}
+
+$dsQualityGateRelative = '游戏知识\08-工具链与打包发布\08-全栈质量门禁与灰度回滚.md'
+$dsQualityGatePath = Join-Path $rootPath $dsQualityGateRelative
+if (-not (Test-Path -LiteralPath $dsQualityGatePath -PathType Leaf)) {
+    $dsStats.RequiredFileMissing++
+    Add-Failure "DS 专项门禁质量文档缺失: $dsQualityGateRelative"
+} else {
+    $dsQualityGateText = $textByFile[$dsQualityGatePath]
+    if ($dsQualityGateText -notmatch '概念覆盖不等于执行验证' -or
+        $dsQualityGateText -notmatch '占位命令') {
+        $dsStats.GateTextMissing++
+        Add-Failure "DS 专项门禁说明缺少概念/执行验证边界: $dsQualityGateRelative"
+    }
+}
+
+$networkSyncRoot = Join-Path $gameKnowledgeRoot '06-网络同步'
+if (Test-Path -LiteralPath $networkSyncRoot -PathType Container) {
+    $networkSyncFiles = @($mdFiles | Where-Object { Test-PathUnder $_.FullName $networkSyncRoot })
+    foreach ($file in $networkSyncFiles) {
+        if ($textByFile[$file.FullName] -match '(?i)ActorChannel\.cpp') {
+            $dsStats.ActorChannelResidual++
+            Add-Failure "DS 专项门禁发现网络同步旧路径 ActorChannel.cpp: $(Get-RepoRelative $file.FullName)"
+        }
+    }
+}
+
 Write-Host "Markdown: $fileCount（正文 $bodyCount，README $readmeCount）"
 Write-Host "PASS: $($passes.Count + 1) 项基础检查已执行"
 Write-Host "质量元数据：版本缺失 $qualityVersionMissing、日期缺失 $qualityDateMissing、官方链接缺失 $qualityOfficialLinkMissing、源码占位 $qualitySourcePlaceholder"
@@ -459,6 +588,7 @@ foreach ($domain in $domainDefinitions) {
     Write-Host "$($domain.Name)：领域基线缺失 $($stats.BaselineMissing)、日期缺失 $($stats.DateMissing)、来源缺失 $($stats.SourceMissing)、验证入口缺失 $($stats.ValidationMissing)、旧规范引用缺失 $($stats.LegacyReferenceMissing)"
 }
 Write-Host "领域质量门禁合计（正文 $domainBodyTotal）：领域基线缺失 $($domainTotals.BaselineMissing)、日期缺失 $($domainTotals.DateMissing)、来源缺失 $($domainTotals.SourceMissing)、验证入口缺失 $($domainTotals.ValidationMissing)、旧规范引用缺失 $($domainTotals.LegacyReferenceMissing)"
+Write-Host "DS 专项门禁统计：必需文件缺失 $($dsStats.RequiredFileMissing)、源码锚点缺失 $($dsStats.SourceAnchorMissing)、构建锚点缺失 $($dsStats.BuildAnchorMissing)、平台锚点缺失 $($dsStats.PlatformAnchorMissing)、测试锚点缺失 $($dsStats.TestAnchorMissing)、门禁说明缺失 $($dsStats.GateTextMissing)、ActorChannel.cpp 旧路径残留 $($dsStats.ActorChannelResidual)"
 if ($warnings.Count -gt 0) {
     Write-Host "WARN: $($warnings.Count)"
     $warnings | ForEach-Object { Write-Host "WARN $_" }
