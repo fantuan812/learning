@@ -22,6 +22,7 @@
 | [04-Mass实体框架与群集模拟.md](04-Mass实体框架与群集模拟.md) | UE5 Mass 生态：MassEntity ECS、Spawner、Representation、LOD 与大规模群集模拟。 |
 | [05-StateTree状态树.md](05-StateTree状态树.md) | StateTree 状态树：State/Task/Evaluator/Transition、与行为树对比、Mass 配合与选型。 |
 | [06-ZoneGraph与SmartObjects.md](06-ZoneGraph与SmartObjects.md) | ZoneGraph 导航走廊空间数据、SmartObjects 智能对象交互、GameplayInteractions 与 Mass 协作。 |
+| [07-GameplayTasks-StateTree-GAS-AI协同.md](07-GameplayTasks-StateTree-GAS-AI协同.md) | 组合 GameplayTasks、StateTree、GAS 与感知/EQS/NavMesh/行为树，落地可取消、可确认、可观测的 AI 行为闭环。 |
 
 ## 学习顺序建议
 
