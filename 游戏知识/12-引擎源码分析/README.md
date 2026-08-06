@@ -7,13 +7,13 @@
 > 同步目录：`C:\project\git\游戏知识\12-引擎源码分析` → https://github.com/fantuan812/learning.git
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
 > 源码边界：`C:\Program Files\Epic Games\UE_5.8\Engine` 只读；以本机 5.8 源码为准。
-> 最后更新：2026-08-05（修正覆盖声明、统一源码基线并建立 P1 路线图）。
+> 最后更新：2026-08-06（补齐 CommonUI、UMG MVVM、Unreal Insights/Trace、Gameplay Tasks、Lumen/MegaLights 与 Procedural Vegetation Editor 源码专题）。
 
 ---
 
 ## 定位说明
 
-本分类是知识库的"源码纵深"层，当前为 **18 篇已落地源码文章 + 1 篇覆盖矩阵/路线图**。下表是“已有文章 → 概念分类”的映射，不是 01-11 的完成承诺：
+本分类是知识库的"源码纵深"层，当前为 **30 篇已落地源码文章 + 1 篇覆盖矩阵/路线图**。统计口径为 01-18、20-31 共 30 篇源码文章与 19 号路线图；`README.md` 是导航文件，单独列出且不计入上述数量。下表是“已有文章 → 概念分类”的映射，不是 01-11 的完成承诺：
 
 | 源码分析文件 | 对应知识分类 | 对应知识点 | 覆盖的引擎源码主题 |
 | --- | --- | --- | --- |
@@ -36,21 +36,28 @@
 | [17-Niagara源码.md](./17-Niagara源码.md) | [11-VFX与Niagara](../11-VFX与Niagara/README.md)（01-Niagara粒子系统基础） | FNiagaraSystemInstance/Controller、数据接口、CPU/GPU 模拟、编译管线 | `Plugins/FX/Niagara` |
 | [18-RigVM与ControlRig源码.md](./18-RigVM与ControlRig源码.md) | [04-动画系统](../04-动画系统/README.md)（03-IK与程序化动画） | RigVM 虚拟机字节码/执行模型、RigUnit 注册、FRigHierarchy、ControlRig 求值链路 | `Plugins/Runtime/RigVM`、`Plugins/Animation/ControlRig` |
 
-### 覆盖边界与 P1 缺口
+### 覆盖边界与 P1 状态
 
-详细状态、真实源码路径、官方 5.8 参考和验收命令见 [19-高优先级源码覆盖路线图.md](./19-高优先级源码覆盖路线图.md)。当前明确**未完成源码深度覆盖**的 P1 主题包括：
+详细状态、真实源码路径、官方 5.8 参考和验收命令见 [19-高优先级源码覆盖路线图.md](./19-高优先级源码覆盖路线图.md)。下表同时列出已完成与待补主题；“源码深度已完成”必须对应独立源码文章、真实 UE5.8 路径和验收证据，不能由概念文章替代：
 
-| P1 主题 | 当前状态 |
-| --- | --- |
-| Iris 复制，以及 Iris 与 ReplicationGraph 的互斥/迁移 | 简述/待补；不能由传统网络复制文章替代 |
-| Mass Signals、无锁/并发调度、StateTree 5.8 编译变化 | 简述/待补或规划 |
-| World Partition、World Streaming Insights、Landscape、Foliage | 概念已有；源码链路待补 |
-| Sequencer、Movie Render Graph（MRG Production Ready）、`MovieSceneCapture` deprecated 迁移 | 概念已有/迁移项；源码链路待补 |
-| Enhanced Input、Gameplay Tags、Gameplay Tasks | 概念已有；源码链路待补 |
-| CommonUI、UMG MVVM、Unreal Insights/Trace | 概念已有；源码链路待补 |
-| UE5.8 Lumen Medium/Lite、MegaLights、Procedural Vegetation Editor | Release Notes/源码证据已登记；专题文章规划中 |
+| P1 主题 | 概念层状态 | 源码层状态 |
+| --- | --- | --- |
+| Iris 复制，以及 Iris 与 ReplicationGraph 的互斥/迁移 | 已有（网络同步概念） | 源码深度已完成：[20-Iris复制源码.md](./20-Iris复制源码.md) |
+| Mass Signals、无锁/并发调度、StateTree 5.8 编译变化 | 已有（AI/ECS 概念） | 源码深度已完成：[21-Mass与StateTree源码.md](./21-Mass与StateTree源码.md) |
+| World Partition、World Streaming Insights | 已有（大世界/流送概念） | 源码深度已完成：[22-WorldPartition与WorldStreaming源码.md](./22-WorldPartition与WorldStreaming源码.md) |
+| Landscape、Foliage | 已有（世界内容概念） | 源码深度已完成：[23-Landscape与Foliage源码.md](./23-Landscape与Foliage源码.md) |
+| Sequencer、Movie Render Graph（MRG Production Ready）、`MovieSceneCapture` deprecated 迁移 | 已有（动画/演出概念） | 源码深度已完成：[24-Sequencer与MovieRenderGraph源码.md](./24-Sequencer与MovieRenderGraph源码.md) |
+| Enhanced Input、Gameplay Tags | 已有（输入/玩法概念） | 源码深度已完成：[25-EnhancedInput与GameplayTags源码.md](./25-EnhancedInput与GameplayTags源码.md) |
+| CommonUI | 已有（UI 框架概念） | 源码深度已完成：[26-CommonUI源码.md](./26-CommonUI源码.md) |
+| UMG MVVM | 已有（UI 数据绑定概念） | 源码深度已完成：[27-UMGMVVM源码.md](./27-UMGMVVM源码.md) |
+| Unreal Insights/Trace | 已有（性能分析与调试概念） | 源码深度已完成：[28-UnrealInsights与Trace源码.md](./28-UnrealInsights与Trace源码.md) |
+| Gameplay Tasks | 已有（AI/异步玩法概念） | 源码深度已完成：[29-GameplayTasks源码.md](./29-GameplayTasks源码.md) |
+| UE5.8 Lumen Medium/Lite、MegaLights | 已登记 UE5.8 图形特性 | 源码深度已完成：[30-Lumen与MegaLights源码.md](./30-Lumen与MegaLights源码.md) |
+| Procedural Vegetation Editor | 已登记 UE5.8 世界内容特性 | 源码深度已完成：[31-ProceduralVegetationEditor源码.md](./31-ProceduralVegetationEditor源码.md) |
 
 因此本分类当前结论是“核心基础源码覆盖充分、UE5.8 新系统覆盖不完整”，不能写成“源码分析已覆盖全部 01-11 分类”。
+
+**状态口径：**“概念层已有”表示相邻知识分类已有使用说明、设计概念或工作流，但不代表已经解释引擎实现；“源码深度已完成”表示本目录有独立文章，并以 UE5.8.0 / CL 55116800 的真实源码路径、调用链或数据结构为依据；“待补”表示仍缺独立源码核对；“规划”表示主题已登记但尚未形成可验收的源码文章。
 
 ---
 
@@ -77,7 +84,19 @@
 | [16-音频系统源码.md](./16-音频系统源码.md) | 音频设备/混音器/Submix、播放链路（5.8 为 AddNewActiveSound） | 已完成 |
 | [17-Niagara源码.md](./17-Niagara源码.md) | 系统实例/控制器、数据接口、CPU/GPU 模拟 | 已完成 |
 | [18-RigVM与ControlRig源码.md](./18-RigVM与ControlRig源码.md) | RigVM 字节码/指令执行、RigUnit 注册、ControlRig 求值链路 | 已完成 |
-| [19-高优先级源码覆盖路线图.md](./19-高优先级源码覆盖路线图.md) | UE5.8 CL 固定证据、P1 缺口矩阵、真实源码路径、后续文章验收条件 | 路线图已落地；主题待补 |
+| [19-高优先级源码覆盖路线图.md](./19-高优先级源码覆盖路线图.md) | UE5.8 CL 固定证据、P1 覆盖矩阵、真实源码路径、后续文章验收条件 | 路线图已落地；持续验收 |
+| [20-Iris复制源码.md](./20-Iris复制源码.md) | Iris 复制系统、ReplicationGraph 互斥/迁移、复制桥接与运行时链路 | 源码深度已完成 |
+| [21-Mass与StateTree源码.md](./21-Mass与StateTree源码.md) | Mass Signals、并发调度、StateTree 5.8 编译与运行时协作 | 源码深度已完成 |
+| [22-WorldPartition与WorldStreaming源码.md](./22-WorldPartition与WorldStreaming源码.md) | World Partition、Streaming Source/Cell、World Streaming Insights 分析链路 | 源码深度已完成 |
+| [23-Landscape与Foliage源码.md](./23-Landscape与Foliage源码.md) | Landscape 数据与编辑运行时、Foliage/ISM 渲染与实例管理 | 源码深度已完成 |
+| [24-Sequencer与MovieRenderGraph源码.md](./24-Sequencer与MovieRenderGraph源码.md) | Sequencer 求值、Movie Render Graph 管线与旧 MovieSceneCapture 迁移边界 | 源码深度已完成 |
+| [25-EnhancedInput与GameplayTags源码.md](./25-EnhancedInput与GameplayTags源码.md) | Enhanced Input 映射/触发器、Gameplay Tags 注册查询与玩法协作 | 源码深度已完成 |
+| [26-CommonUI源码.md](./26-CommonUI源码.md) | CommonUI 栈、输入路由、激活与可复用 UI 层级源码链路 | 源码深度已完成 |
+| [27-UMGMVVM源码.md](./27-UMGMVVM源码.md) | UMG MVVM 视图模型、绑定编译与运行时更新链路 | 源码深度已完成 |
+| [28-UnrealInsights与Trace源码.md](./28-UnrealInsights与Trace源码.md) | Trace 采集、通道/事件与 Unreal Insights 分析链路 | 源码深度已完成 |
+| [29-GameplayTasks源码.md](./29-GameplayTasks源码.md) | Gameplay Tasks 资源、优先级、依赖与任务调度链路 | 源码深度已完成 |
+| [30-Lumen与MegaLights源码.md](./30-Lumen与MegaLights源码.md) | Lumen 光照路径与 MegaLights UE5.8 渲染特性源码边界 | 源码深度已完成 |
+| [31-ProceduralVegetationEditor源码.md](./31-ProceduralVegetationEditor源码.md) | Procedural Vegetation Editor 的编辑器、规则与实例化源码链路 | 源码深度已完成 |
 
 ---
 
@@ -106,7 +125,7 @@
 
 ### 路线三：UE5.8 P1 补齐顺序
 
-先读 [19-高优先级源码覆盖路线图.md](./19-高优先级源码覆盖路线图.md)，按 Iris/ReplicationGraph → Mass/StateTree → World Streaming/MRG → Enhanced Input/Tags/Tasks → CommonUI/MVVM/Trace 的顺序补齐。Lumen Medium/Lite、MegaLights、Procedural Vegetation Editor 作为 5.8 Release Notes 差异专题单独验收。
+先读 [19-高优先级源码覆盖路线图.md](./19-高优先级源码覆盖路线图.md)。Iris/ReplicationGraph、Mass/StateTree、World Partition/World Streaming、Landscape/Foliage、Sequencer/MRG、Enhanced Input/Gameplay Tags、CommonUI、UMG MVVM、Unreal Insights/Trace、Gameplay Tasks、Lumen/MegaLights 与 Procedural Vegetation Editor 已分别由 20-31 号文章完成源码深度覆盖；其余未列入本轮的未来主题仍按路线图保持待补或规划状态。
 
 ### 配套练习建议
 
@@ -166,7 +185,7 @@ flowchart TB
   为控制篇幅，部分代码为"节选/示意"，会在注释中标注；
 - 建议对照引擎源码阅读：`Engine/Source/Runtime/CoreUObject/`、
   `Engine/Source/Runtime/Engine/`、`Engine/Source/Programs/Shared/EpicGames.UHT/`；
-- 对 Iris、Mass/StateTree、World Partition/Insights、MRG、CommonUI/MVVM/Trace 等 P1 主题，必须以路线图中的本机 5.8 路径为证据；没有独立文章前保持“待补”状态。
+- 对已标记“源码深度已完成”的 Iris、Mass/StateTree、World Partition/World Streaming、Landscape/Foliage、MRG、Enhanced Input/Gameplay Tags、CommonUI、UMG MVVM、Unreal Insights/Trace、Gameplay Tasks、Lumen/MegaLights 与 Procedural Vegetation Editor，以 20-31 号文章和路线图中的本机 5.8 路径为证据；其余未涉及主题继续保持各自的“待补/规划”状态。
 - Mermaid 图中的中文为概念标注，非引擎字面量；
 - "服务器/客户端"指 Dedicated/Listen Server 与 Client 的网络角色划分。
 
