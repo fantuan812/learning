@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [string]$Root = 'C:\project\git'
 )
@@ -32,6 +32,33 @@ function Test-MaintenancePath([string]$Path) {
         }
     }
     return $false
+}
+
+function Test-PathUnder([string]$Path, [string]$BasePath) {
+    $fullPath = [System.IO.Path]::GetFullPath($Path).TrimEnd('\')
+    $fullBase = [System.IO.Path]::GetFullPath($BasePath).TrimEnd('\')
+    return $fullPath -eq $fullBase -or $fullPath.StartsWith($fullBase + '\', [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+function Get-NonCodeMarkdownText([string]$Text) {
+    $kept = [System.Collections.Generic.List[string]]::new()
+    $inFence = $false
+    $fenceChar = ''
+    foreach ($line in ($Text -split "`r?`n")) {
+        if ($line -match '^\s*(```|~~~)') {
+            $markerChar = $Matches[1].Substring(0, 1)
+            if (-not $inFence) {
+                $inFence = $true
+                $fenceChar = $markerChar
+            } elseif ($fenceChar -eq $markerChar) {
+                $inFence = $false
+                $fenceChar = ''
+            }
+            continue
+        }
+        if (-not $inFence) { $kept.Add($line) }
+    }
+    return ($kept -join "`n")
 }
 
 function Get-LinkTargets([string]$Text) {
@@ -83,6 +110,7 @@ $mdFiles = @(Get-ChildItem -LiteralPath $rootPath -Recurse -File -Filter '*.md' 
 if ($mdFiles.Count -eq 0) { Add-Failure '没有发现 Markdown 文件' }
 
 $linkedByFile = @{}
+$textByFile = @{}
 $fileCount = 0
 $readmeCount = 0
 $bodyCount = 0
@@ -104,6 +132,7 @@ foreach ($file in $mdFiles) {
         continue
     }
     if ($text.Contains([char]0xFFFD)) { Add-Failure "替换字符 U+FFFD: $relative" }
+    $textByFile[$file.FullName] = $text
 
     $inFence = $false
     $fenceChar = ''
@@ -190,8 +219,82 @@ if (Test-Path -LiteralPath $rootReadme -PathType Leaf) {
     }
 }
 
+# 语义质量门禁只作用于游戏知识正文；路线图、维护日志和代码示意不参与源码质量判定。
+$gameKnowledgeRoot = Join-Path $rootPath '游戏知识'
+$sourceAnalysisRoot = Join-Path $gameKnowledgeRoot '12-引擎源码分析'
+$ueInstallRoot = 'C:\Program Files\Epic Games\UE_5.8'
+$ueEngineRoot = Join-Path $ueInstallRoot 'Engine'
+$absoluteEvidencePattern = '(?i)(?<![#A-Za-z0-9])C:\\+Program Files\\+Epic Games\\+UE_5\.8\\+Engine(?:\\+[A-Za-z0-9_+.\-]+)*'
+$relativeEvidencePattern = '(?i)(?<![#A-Za-z0-9_./-])Engine/(?:Source|Plugins)(?:/[A-Za-z0-9_+.\-]+)*(?:/)?'
+$qualityVersionMissing = 0
+$qualityDateMissing = 0
+$qualityOfficialLinkMissing = 0
+$qualitySourcePlaceholder = 0
+$uePathWarningEmitted = $false
+
+$gameBodyFiles = @($mdFiles | Where-Object {
+    $_.Name -ne 'README.md' -and (Test-PathUnder $_.FullName $gameKnowledgeRoot)
+})
+foreach ($file in $gameBodyFiles) {
+    if (-not $textByFile.ContainsKey($file.FullName)) { continue }
+    $relative = Get-RepoRelative $file.FullName
+    $qualityText = Get-NonCodeMarkdownText $textByFile[$file.FullName]
+
+    if ($qualityText -notmatch '版本基准|版本基线') {
+        $qualityVersionMissing++
+        Add-Failure "质量元数据缺少版本基准/版本基线: $relative"
+    }
+    if ($qualityText -notmatch '最后更新|更新日期|更新时间') {
+        $qualityDateMissing++
+        Add-Failure "质量元数据缺少最后更新/更新日期/更新时间: $relative"
+    }
+    if ($qualityText -notmatch 'https://dev\.epicgames\.com/documentation') {
+        $qualityOfficialLinkMissing++
+        Add-Failure "质量元数据缺少官方链接 https://dev.epicgames.com/documentation: $relative"
+    }
+}
+
+$sourceBodyFiles = @($gameBodyFiles | Where-Object {
+    (Test-PathUnder $_.FullName $sourceAnalysisRoot) -and
+    $_.Name -ne '19-高优先级源码覆盖路线图.md'
+})
+foreach ($file in $sourceBodyFiles) {
+    if (-not $textByFile.ContainsKey($file.FullName)) { continue }
+    $relative = Get-RepoRelative $file.FullName
+    $qualityText = Get-NonCodeMarkdownText $textByFile[$file.FullName]
+    $placeholder = [regex]::Match($qualityText, '预留|待补充|学习骨架')
+    if ($placeholder.Success) {
+        $qualitySourcePlaceholder++
+        Add-Failure "源码占位词 [$($placeholder.Value)]: $relative"
+    }
+
+    $absoluteEvidence = [regex]::Matches($qualityText, $absoluteEvidencePattern)
+    $relativeEvidence = [regex]::Matches($qualityText, $relativeEvidencePattern)
+    if ($absoluteEvidence.Count -eq 0 -and $relativeEvidence.Count -eq 0) { continue }
+
+    if (-not (Test-Path -LiteralPath $ueEngineRoot -PathType Container)) {
+        if (-not $uePathWarningEmitted) {
+            Add-Warning "源码证据路径未验证（UE 安装根不存在）: $ueInstallRoot"
+            $uePathWarningEmitted = $true
+        }
+        continue
+    }
+
+    # 相对 Engine/... 路径可能是模块/目录示意；只对明确的 UE 绝对路径判定明显不存在。
+    $checkedAbsolute = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($match in $absoluteEvidence) {
+        $evidencePath = $match.Value
+        while ($evidencePath.Contains('\\')) { $evidencePath = $evidencePath.Replace('\\', '\') }
+        if (-not $checkedAbsolute.Add($evidencePath)) { continue }
+        if (-not (Test-Path -LiteralPath $evidencePath)) {
+            Add-Failure "源码绝对证据路径不存在: $evidencePath（$relative）"
+        }
+    }
+}
+
 Write-Host "Markdown: $fileCount（正文 $bodyCount，README $readmeCount）"
 Write-Host "PASS: $($passes.Count + 1) 项基础检查已执行"
+Write-Host "质量元数据：版本缺失 $qualityVersionMissing、日期缺失 $qualityDateMissing、官方链接缺失 $qualityOfficialLinkMissing、源码占位 $qualitySourcePlaceholder"
 if ($warnings.Count -gt 0) {
     Write-Host "WARN: $($warnings.Count)"
     $warnings | ForEach-Object { Write-Host "WARN $_" }
