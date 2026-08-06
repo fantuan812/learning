@@ -1,22 +1,48 @@
 # Procedural Vegetation Editor 源码分析
 
-> 版本基准：UE5.8.0 / CL55116800 / ++UE5+Release-5.8
+> 专题定位：以 UE5.8.0 的 Experimental Procedural Vegetation Editor 插件源码为中心，分析 Runtime/Editor 模块边界、PCG 图/资产/实例生命周期，以及到 Foliage 与 World Partition 的可验证适配边界。
+
+> 版本基准：UE5.8.0 / CL55116800 / `++UE5+Release-5.8`
+>
+> 源码依据：`Engine/Plugins/Experimental/ProceduralVegetationEditor/`，重点核对 `.uplugin`、两个模块的 Build.cs、`ProceduralVegetationEditorModule.cpp`、`PVEditorSettings.h` 以及本文列出的图、实例、Foliage 和 World Partition 符号。
+>
+> 适用范围：用于 UE5.8.0 编辑器源码阅读、插件启停与模块边界验收、PCG 植被图资产链路分析，以及项目输出适配前的证据整理。
+>
+> 兼容性边界：本文只对 UE5.8.0 / CL55116800 / `++UE5+Release-5.8` 的 Experimental 插件源码负责；插件的 Foliage/World Partition 输出需有显式项目适配和保存步骤，当前源码未证明的直接调用链不能视为插件 API，跨版本迁移必须重新检查 `.uplugin`、Build.cs 和已列符号。
+>
+> 官方参考：[Using PCG Generation Modes in Unreal Engine 5.8](https://dev.epicgames.com/documentation/en-us/unreal-engine/using-pcg-generation-modes-in-unreal-engine)；[Procedural Content Generation Framework Node Reference](https://dev.epicgames.com/documentation/en-us/unreal-engine/procedural-content-generation-framework-node-reference-in-unreal-engine)。
+>
+> 最后更新：2026-08-06
 
 ## 概述
 
-本文记录 Procedural Vegetation Editor 的源码学习骨架与验收范围。
+- 本专题的执行主线是“插件模块启动 → 编辑器设置与图模型 → 资产/实例生命周期 → 项目输出适配 → Foliage/World Partition 承载”。
+- 每个结论按“源码存在、符号存在、调用链存在”分级，避免把数据类型或编辑器颜色设置误读成自动生成能力。
 
 ## 核心概念
 
+- `ProceduralVegetation` 是 Runtime 模块，`ProceduralVegetationEditor` 是 Editor 模块；`UProceduralVegetationGraph` 建立在 `UPCGGraph` 上，`UProceduralVegetation`、GraphInstance 与 Instance 组成资产关系链。
+
 ## 原理
+
+- 编辑器负责注册设置、菜单和图编辑入口，图/实例承载生成数据，项目适配层显式把网格与变换交给 Foliage 或 Actor，再由 World Partition 管理已保存的分区内容。
 
 ## 示例
 
+- 可执行检查：先核对 `.uplugin`、两个 Build.cs 和 `FProceduralVegetationEditorModule::StartupModule`，再沿 `UProceduralVegetationGraph` → 资产/实例 → 显式输出适配验证；示意代码不替代已核实 API。
+
 ## 最佳实践
+
+- 保持 Runtime 与 Editor 依赖方向单向，固定版本、种子和 Cell 边界，并在生成结果进入 Foliage 或 World Partition 前记录显式适配与保存证据。
 
 ## FAQ
 
+- `FoliageMeshDataPinColor` 只表达编辑器引脚颜色，不代表已经创建 Foliage 实例。
+- 当前源码未证明图执行会自动写入 `AInstancedFoliageActor` 或 Runtime Cell，需检查项目适配层和保存流程。
+
 ## 关联阅读
+
+- [源码覆盖路线图](19-高优先级源码覆盖路线图.md)、[引擎源码分析导航](README.md)以及文末列出的 PCG 官方页面和本机源码证据。
 
 ## 源码证据与核心概念
 

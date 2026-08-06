@@ -1,19 +1,48 @@
 # Unreal Insights 与 Trace 源码
-版本基准：UE5.8.0 / CL55116800 / `++UE5+Release-5.8`
+
+> 专题定位：以 UE5.8.0 源码为证据，追踪 TraceLog 事件从声明与写入到 `.utrace`、TraceServices 分析以及 TraceInsights TimingView 呈现的完整链路。
+
+> 版本基准：UE5.8.0 / CL55116800 / `++UE5+Release-5.8`
+>
+> 源码依据：`Engine/Source/Runtime/TraceLog/`、`Engine/Source/Developer/TraceServices/`、`Engine/Source/Developer/TraceInsights/`，并以本文列出的文件路径和符号作为逐项核对入口。
+>
+> 适用范围：用于 UE5.8.0 源码阅读、开发/编辑器构建下的 Trace 采集证据链分析，以及 Unreal Insights Timing、Thread、Counter 等视图的故障定位。
+>
+> 兼容性边界：本文结论只对 UE5.8.0 / CL55116800 / `++UE5+Release-5.8` 这组源码基线负责；旧版源码、旧 `.utrace` 文件和自定义事件 schema 必须重新核对，文中标注“伪代码/示意”的片段不承诺可直接编译。
+>
+> 官方参考：[Unreal Insights 官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-insights-in-unreal-engine)。
+>
+> 最后更新：2026-08-06
+
 ## 概述
-- 记录 Unreal Insights 与 Trace 的源码分析入口和学习范围。
+
+- 执行顺序：先核对 TraceLog 的 channel、事件 schema 和写入符号，再确认 `.utrace` 文件，随后检查 `IAnalysisSession`、Provider 与 TimingView。
+- 交付证据：每个诊断结论都保留源码路径、符号、采集基线、文件时间范围和视图筛选条件。
+
 ## 核心概念
-- Trace 通道、事件、分析器与 Insights 会话。
+
+- Trace channel 决定采集范围，事件 schema 决定字段布局，`UE_TRACE_LOG` 产生事件实例，TraceServices 将事件转换为 Provider 数据，Insights 视图只消费已解析模型。
+
 ## 原理
-- 说明采集、传输、存储、解析及可视化的基本链路。
+
+- 采集、缓冲、落盘、分析和呈现是五个可独立验证的边界；排查时沿“事件 → `.utrace` → session → Provider → view”逐段收敛。
+
 ## 示例
-- 预留 Trace 事件定义、采集命令与分析流程示例。
+
+- 可执行检查：用本文已有的 `UE_TRACE_EVENT_BEGIN`、`UE_TRACE_EVENT_FIELD`、`UE_TRACE_LOG` 路径核对 schema 与写入，再按示意流程采集并打开 `.utrace`；所有伪代码均不替代 UE5.8 API 文档。
+
 ## 最佳实践
-- 关注事件开销、线程边界、版本差异和可复现性。
+
+- 先定义要回答的诊断问题，再选择 channel、事件字段和时间范围；同时区分采集开销、分析开销与 TimingView 绘制开销。
+
 ## FAQ
-- 待补充常见配置、采集失败与分析结果解释问题。
+
+- 文件能打开但时间线为空时，依次检查 channel、文件时间范围、分析器/Provider 注册和 TimingView 筛选，不先修改 UI。
+- 采集结束缺少末尾事件时，先检查 Stop/Flush 时序、缓冲刷新和 `.utrace` 尾部完整性。
+
 ## 关联阅读
-- 待关联 UE5.8 TraceLog、TraceServices、TraceInsights 源码专题。
+
+- [Unreal Insights 官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-insights-in-unreal-engine)；源码入口为本文后续列出的 TraceLog、TraceServices 与 TraceInsights 目录。
 
 ## 源码证据与核心概念
 版本证据：本节固定对应 UE5.8.0、CL55116800、`++UE5+Release-5.8`。
