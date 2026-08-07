@@ -23,6 +23,7 @@
 | [03-过场与影视Sequencer.md](./03-过场与影视Sequencer.md) | Sequencer 资产架构（轨道/片段/键帧/绑定）、Possessable/Spawnable、CineCamera 电影镜头、子序列与模板序列、MovieSceneCapture 渲染、运行时播放控制。 |
 | [04-PCG程序化内容生成.md](./04-PCG程序化内容生成.md) | PCG 图资产/节点/设置/数据流、编辑器与运行时生成、确定性、PCGCompute 与 Foliage/ISM/World Partition 协同。 |
 | [05-大世界植被与渲染协同.md](./05-大世界植被与渲染协同.md) | 将 World Partition/World Streaming、PCG、Procedural Vegetation Editor、Foliage/ISM/HISM 与 HLOD 串成植被生成、打包、流送、渲染和销毁闭环。 |
+| [06-虚拟制片与ICVFX.md](./06-虚拟制片与ICVFX.md) | nDisplay 多屏集群、ICVFX 内镜头特效、LiveLink 相机跟踪、LED 墙舞台工作流与虚拟制片管线。 |
 
 ## 学习顺序建议
 

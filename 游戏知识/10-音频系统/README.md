@@ -29,6 +29,7 @@
 | [01-音频基础与播放.md](./01-音频基础与播放.md) | 从资产到扬声器：音频格式、SoundBase 体系、2D/3D 播放、音量混音、衰减入门。 |
 | [02-衰减与3D空间音效.md](./02-衰减与3D空间音效.md) | 让声音"长在场景里"：衰减曲线、空间化、混响、遮挡传播、环境区域音效。 |
 | [03-MetaSound与程序化音频.md](./03-MetaSound与程序化音频.md) | 用节点图"合成"声音：MetaSound、Submix DSP 链、性能优化与中间件集成。 |
+| [04-Quartz音频时钟与节奏同步.md](./04-Quartz音频时钟与节奏同步.md) | Quartz 音频时钟：UQuartzSubsystem/ClockHandle、BPM/节拍/量化、音频驱动游戏逻辑与 MetaSound 协作。 |
 
 ---
 

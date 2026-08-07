@@ -49,6 +49,7 @@ flowchart LR
 | [03-物理约束与关节.md](03-物理约束与关节.md) | 关节类型与自由度锁定、约束驱动器、悬挂/弹簧系统、Chaos 断裂连接与约束性能。 |
 | [04-布娃娃与物理动画.md](04-布娃娃与物理动画.md) | Ragdoll 布娃娃激活流程、物理资产工具、布娃娃与动画混合、Chaos Cloth 与物理控制。 |
 | [05-Chaos破坏系统与Field.md](05-Chaos破坏系统与Field.md) | Geometry Collection 层级碎块、Fracture 资产管线、Chaos Solver、Field System 力场与破坏事件接入。 |
+| [06-Chaos车辆系统.md](06-Chaos车辆系统.md) | ChaosVehicles 插件与 WheeledVehiclePawn：引擎/传动/差速/车轮/悬挂配置、调校方法、p.Vehicle.* 调试与载具网络同步。 |
 
 ## 每篇一句话简介
 

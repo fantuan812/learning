@@ -47,6 +47,8 @@ flowchart LR
 | [03-IK与程序化动画.md](03-IK与程序化动画.md) | TwoBoneIK/FABRIK/Foot IK 原理、Control Rig、程序化动画、动画驱动与 Root Motion。 |
 | [04-动画性能与预算分配.md](04-动画性能与预算分配.md) | 骨骼动画成本、AnimationBudgetAllocator 预算算法与降级策略、AnimationSharing 动画共享。 |
 | [05-AnimNext动画框架.md](05-AnimNext动画框架.md) | AnimNext/UAF 新一代动画框架：功能数据流、图驱动求值、Trait、StateTree 协同与迁移建议（实验性）。 |
+| [06-动画重定向与IKRetargeter.md](06-动画重定向与IKRetargeter.md) | IK Rig/IK Retargeter 跨骨骼动画复用：骨骼链与 Goal、链映射、22 个 Retarget Op、批量重定向与运行时控制。 |
+| [07-动画资产与骨骼基础.md](07-动画资产与骨骼基础.md) | 骨骼层级与蒙皮原理、Skeleton 资产（虚拟骨骼/插槽）、AnimSequence 资产结构、FBX 导入与重导入、动画曲线与通知的资产层位置。 |
 
 ## 每篇一句话简介
 

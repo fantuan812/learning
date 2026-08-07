@@ -34,6 +34,7 @@
 | 4 | [04-渲染与加载性能优化.md](04-渲染与加载性能优化.md) | 性能优化实战：Draw Call、材质复杂度、UI 剔除、异步加载、引用管理与移动端内存预算。 |
 | 5 | [05-GameplayDebugger与运行时调试.md](05-GameplayDebugger与运行时调试.md) | 运行时调试：GameplayDebugger 分类架构与网络调试、VisualLogger 可视日志记录与回放。 |
 | 6 | [06-UI状态与可观测性闭环.md](06-UI状态与可观测性闭环.md) | 打通 CommonUI、UMG MVVM、Enhanced Input 与 Unreal Insights/Trace 的 UI 状态、输入、数据和性能验收闭环。 |
+| 7 | [07-CommonUI输入路由与焦点管理.md](07-CommonUI输入路由与焦点管理.md) | CommonUI 使用层：ActivatableWidget/ButtonBase、激活栈、CommonInputSubsystem、焦点与手柄导航、Action 路由与调试命令。 |
 
 ---
 

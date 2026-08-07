@@ -31,6 +31,8 @@
 | [09-GameplayTask任务框架.md](09-GameplayTask任务框架.md) | 任务框架 | UGameplayTask/TasksComponent 生命周期与调度，GAS AbilityTask 的底层宿主。 |
 | [10-输入设备抽象与手柄触控.md](10-输入设备抽象与手柄触控.md) | 输入设备 | FKey/EKeys、PlayerInput 处理栈、Gamepad 力反馈、触控与 InputSettings 配置。 |
 | [11-常用移动与辅助组件.md](11-常用移动与辅助组件.md) | 移动辅助组件 | Projectile/Rotating/InterpTo/SpringArm/Cable 等常用组件的原理与用法。 |
+| [12-SaveGame存档系统与序列化.md](12-SaveGame存档系统与序列化.md) | 存档系统 | USaveGame 基类与序列化链路、SaveGameToSlot/Async 读写、槽位管理、版本迁移与平台差异。 |
+| [13-背包与装备系统.md](13-背包与装备系统.md) | 背包与装备 | 物品定义/实例分离、Inventory 组件、装备槽、FastArray 网络同步、UI 绑定与 Lyra Inventory 参考。 |
 
 ## 学习顺序建议
 

@@ -25,6 +25,7 @@
 | [08-关卡流送LevelStreaming.md](./08-关卡流送LevelStreaming.md) | 传统 Level Streaming：Persistent/Streaming Level、流送体积、Load/Unload 流程、性能与网络注意点。 |
 | [09-WorldPartition大世界.md](./09-WorldPartition大世界.md) | World Partition：ActorDesc 分散、DataLayer、运行时流送策略、HLOD 与大型开放世界实践。 |
 | [10-FName与FText底层.md](./10-FName与FText底层.md) | FName（FNamePool/全局名表）、FString 堆分配陷阱、FText 本地化管线与三者选型。 |
+| [11-多线程与任务系统.md](./11-多线程与任务系统.md) | 线程模型与任务系统使用层：FRunnable/FThread、FAsyncTask、Async()/ParallelFor、TaskGraph 与 ENamedThreads、线程安全原语与 UObject 线程限制。 |
 
 ## 学习顺序建议
 

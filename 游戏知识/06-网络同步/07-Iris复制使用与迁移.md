@@ -39,7 +39,7 @@
 
 ## 原理详解
 
-### 4.1 Iris 在 5.8 的形态与接入点
+### 1.1 Iris 在 5.8 的形态与接入点
 
 ```mermaid
 flowchart TB
@@ -53,7 +53,7 @@ flowchart TB
 
 接入点集中在 `UNetDriver`：`IsUsingIrisReplication()` 决定走哪条复制链路；`NetDriver.cpp` 1921 行附近在"使用 Iris 但尚未创建复制系统"时创建 `ReplicationSystem`；每帧视角更新走 `UpdateIrisReplicationViews`。`ShouldUseIrisReplication(const UObject*)` 是桥接层对"这个对象是否该用 Iris 复制"的决策入口。
 
-### 4.2 启用与配置
+### 1.2 启用与配置
 
 Iris 的启用是**项目级开关 + 对象级决策**的组合：
 
@@ -61,15 +61,11 @@ Iris 的启用是**项目级开关 + 对象级决策**的组合：
 - **对象级**：桥接层按对象类型/条件决定是否走 Iris（`ShouldUseIrisReplication`），因此工程可"部分对象走 Iris、部分走经典路径"过渡；
 - **验证**：`IsUsingIrisReplication()` 分支与 `ReplicationSystem` 创建点（`NetDriver.cpp`）是判断当前构建是否真正启用 Iris 的源码依据。
 
-> 注意：启用 Iris 会改变复制底层（句柄体系、实例化、序列化），不是"换一行配置就完事"，必须按 4.4 的迁移清单回归验证。
+> 注意：启用 Iris 会改变复制底层（句柄体系、实例化、序列化），不是"换一行配置就完事"，必须按 1.4 的迁移清单回归验证。
 
 工程化落地的关键是把"启用"变成"可验证、可回退"的决策：先明确目标（性能/可扩展性收益），再按对象维度灰度，最后全量切换——每个阶段都有独立验收与回退预案（见下文"试点与灰度流程"）。
 
-### 4.3.1 与 ReplicationGraph 的协作边界（补充）
-
-ReplicationGraph 的节点图仍然负责"哪些 Actor 复制给谁"；Iris 替换的是"复制实现"。因此迁移 Iris 时**不需要重写 ReplicationGraph 图**，但要注意：ReplicationGraph 的类级复制参数（`FClassReplicationInfo` 的 `ReplicationPeriodFrame`/`ActorChannelFrameTimeout`/`NetPriority` 等，见 12 章 34 篇）与 Iris 的 Filter/Prioritizer 是两套"节奏与优先级"配置，迁移后要对照校准，避免"图说发、Iris 说不发"或节奏错配。
-
-### 4.3 与经典复制、ReplicationGraph 的关系
+### 1.3 与经典复制、ReplicationGraph 的关系
 
 ```mermaid
 flowchart LR
@@ -90,7 +86,11 @@ flowchart LR
 - **调度层可共存**：ReplicationGraph 负责"哪些 Actor 复制给谁"的调度/相关性，Iris 负责"怎么序列化/实例化"；两者不是同层替代品，迁移时把"节点/网格兴趣/类级参数"映射为 Iris 侧的 Filter/Prioritizer 规则（映射表见 20 篇）；
 - **迁移顺序**：先核对 20 篇的迁移映射，再在试点对象上开启 Iris，最后全量切换并回退演练。
 
-### 4.4 迁移路径与兼容性清单
+### 1.3.1 与 ReplicationGraph 的协作边界（补充）
+
+ReplicationGraph 的节点图仍然负责"哪些 Actor 复制给谁"；Iris 替换的是"复制实现"。因此迁移 Iris 时**不需要重写 ReplicationGraph 图**，但要注意：ReplicationGraph 的类级复制参数（`FClassReplicationInfo` 的 `ReplicationPeriodFrame`/`ActorChannelFrameTimeout`/`NetPriority` 等，见 12 章 34 篇）与 Iris 的 Filter/Prioritizer 是两套"节奏与优先级"配置，迁移后要对照校准，避免"图说发、Iris 说不发"或节奏错配。
+
+### 1.4 迁移路径与兼容性清单
 
 从经典路径迁移到 Iris 的**代码侧要求**（结合 20 篇与官方 Migrate to Iris 文档）：
 
@@ -105,13 +105,13 @@ flowchart LR
 | 网络 GUID | NetGuidCache / FNetworkGUID | Iris 下不支持（`NetDriver.h` 注释），依赖 GUID 的代码需改造 |
 | 调试 | `net.` 系列命令/通道日志 | Iris 使用自己的调试/日志通道（以 20 篇与官方文档为准） |
 
-### 4.5 运行时链路一句话回顾
+### 1.5 运行时链路一句话回顾
 
 启用后每帧：`ReplicationSystem` 维护对象注册表与 dirty 状态 → 按连接视角（`UpdateIrisReplicationViews`）与 Filter/Prioritizer 选出待发对象 → serializer/data stream 序列化 → 接收端按 NetRefHandle 实例化/更新对象。调用链细节、`UE_WITH_IRIS` 条件与接收端实例化见 20 篇，本文只负责"决策与迁移"视角。
 
 ## 代码 / 示例
 
-### 5.1 核对当前构建是否启用 Iris（验证命令）
+### 2.1 核对当前构建是否启用 Iris（验证命令）
 
 ```powershell
 $UE = 'C:\Program Files\Epic Games\UE_5.8\Engine'
@@ -122,7 +122,7 @@ Test-Path "$UE\Source\Runtime\Engine\Public\Net\Iris\ReplicationSystem\EngineRep
 rg -n "IsUsingIrisReplication|ShouldUseIrisReplication|UpdateIrisReplicationViews" "$UE\Source\Runtime\Engine\Classes\Engine\NetDriver.h" "$UE\Source\Runtime\Engine\Private\NetDriver.cpp"
 ```
 
-### 5.2 对象级启用决策（示意）
+### 2.2 对象级启用决策（示意）
 
 > 节选/示意：`ShouldUseIrisReplication` 为引擎真实函数（`EngineReplicationBridge.h`），自定义决策逻辑以目标版本 API 为准。
 
@@ -132,7 +132,7 @@ rg -n "IsUsingIrisReplication|ShouldUseIrisReplication|UpdateIrisReplicationView
 bool bUseIrisForActor = /* 目标版本项目设置与对象条件 */;
 ```
 
-### 5.3 迁移试点配置（示意）
+### 2.3 迁移试点配置（示意）
 
 ```ini
 ; 示意：迁移试点期只对指定对象/关卡启用，其余保持经典路径
@@ -141,7 +141,7 @@ bool bUseIrisForActor = /* 目标版本项目设置与对象条件 */;
 ; bUseIrisReplication=...
 ```
 
-### 5.4 观测与调试
+### 2.4 观测与调试
 
 Iris 的调试与经典路径不同：经典路径看 `net.` 系列命令与通道日志，Iris 看自己的日志通道与调试工具（以 20 篇与目标版本官方文档为准，此处只给验证入口）：
 
@@ -226,7 +226,7 @@ flowchart TD
 
 1. **先读 20 篇再动手**：Iris 的注册/序列化/实例化差异都在源码层面，先建立实现层认知，避免把迁移当成"改个开关"。
 2. **试点 + 灰度**：先对"无子对象、无 GUID 依赖、复制简单的 Actor"开 Iris，验证后再扩展；保留一键回退（经典路径开关）。
-3. **迁移清单逐项核对**：按 4.4 的表逐项检查：Fast Array、COND_*、子对象注册、RPC、OnRep、GUID 依赖。
+3. **迁移清单逐项核对**：按 1.4 的表逐项检查：Fast Array、COND_*、子对象注册、RPC、OnRep、GUID 依赖。
 4. **网络回归测试**：迁移后跑完整的联机验收（丢包/延迟/重连场景，见 游戏测试与质量 的联机验收与机器人压测专题），Iris 的时序与经典路径有差异，不能只看"能连上"。
 5. **性能对比基线**：迁移前后记录同场景的服务器复制 CPU、带宽与客户端处理耗时，用数据决定是否全量切换。
 6. **记录版本差异**：Iris 仍为实验性，每次升级引擎都要回归；在工程 Wiki 或本文对应章节登记"目标版本开关位置与已知差异"。
@@ -243,7 +243,7 @@ flowchart TD
 
 ### Q3：怎么知道当前构建真的在用 Iris？
 
-用 5.1 的命令核对模块存在性，再在源码/日志中确认 `IsUsingIrisReplication()` 分支与 `ReplicationSystem` 创建点；运行时可通过 Iris 日志通道观察（以目标版本为准）。
+用 2.1 的命令核对模块存在性，再在源码/日志中确认 `IsUsingIrisReplication()` 分支与 `ReplicationSystem` 创建点；运行时可通过 Iris 日志通道观察（以目标版本为准）。
 
 ### Q4：Iris 稳定吗？生产项目能用吗？
 

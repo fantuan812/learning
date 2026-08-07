@@ -81,5 +81,6 @@ VFX 的性能问题往往在项目后期集中爆发。性能篇给出预算基�
 - [01-Niagara粒子系统基础.md](./01-Niagara粒子系统基础.md)
 - [02-Niagara高级技巧.md](./02-Niagara高级技巧.md)
 - [03-VFX性能优化.md](./03-VFX性能优化.md)
+- [04-Niagara流体模拟.md](./04-Niagara流体模拟.md)
 - 知识库根目录 `README.md`（全栈知识地图）
 - 官方文档：Unreal Engine 文档「Niagara 概述」「Niagara 数据接口」「Niagara 性能」章节
