@@ -10,7 +10,7 @@
 
 网络同步是多人游戏开发中最容易"出问题"也最难调试的部分。UE 的网络系统建立在**客户端-服务器（Client-Server）架构**之上：服务器是唯一权威（Authority），负责所有游戏逻辑的最终裁决；客户端负责输入采集、表现渲染与本地预测。
 
-本分类把 UE 网络同步拆成六个递进的主题：
+本分类把 UE 网络同步拆成七个递进的主题：
 
 1. **网络架构与复制基础**：先回答"谁说了算"与"东西怎么传到别人机器上"这两个根本问题，包括 NetMode / NetRole、Actor 复制管线、NetConnection 与通道、带宽控制。
 2. **RPC 与属性同步**：掌握两种远程通信手段——RPC（函数级远程调用）与属性复制（状态级自动同步），以及可靠性、条件、频率、抖动与插值等工程细节。
@@ -18,6 +18,7 @@
 4. **多人游戏框架与玩家状态**：把知识落到框架层面——PlayerController / Pawn / PlayerState / GameState 各自在网络中的角色，以及连接、登录、进入游戏的完整流程。
 5. **ReplicationGraph 兴趣管理**：大规模场景的服务器性能保障——用节点图 + 2D 网格兴趣管理替代"全量遍历 × 每连接排序"，配合类级复制参数与调试命令调优。
 6. **在线子系统与会话匹配**：平台接入层——OnlineSubsystem 的登录、会话创建/搜索/加入/邀请与 Matchmaking，以及 OSS 会话与游戏内会话的区别与衔接。
+7. **Iris 复制使用与迁移**：下一代复制系统的使用层——如何启用、与经典路径/ReplicationGraph 的关系、迁移清单与限制（实验性）。
 
 建议在阅读本分类前先掌握 `01-引擎基础`（UObject / Actor / Gameplay 框架）与 `03-游戏玩法编程`（输入系统、GAS）的基础内容。
 
@@ -54,6 +55,7 @@ flowchart LR
 | [04-多人游戏框架与玩家状态.md](04-多人游戏框架与玩家状态.md) | PlayerController/Pawn/PlayerState/GameState 网络角色、连接握手与登录流程、NetConnection 管理 |
 | [05-ReplicationGraph兴趣管理.md](05-ReplicationGraph兴趣管理.md) | ReplicationGraph 节点图架构、网格兴趣管理、自定义节点与大规模多人复制优化 |
 | [06-在线子系统与会话匹配.md](06-在线子系统与会话匹配.md) | OnlineSubsystem 架构、会话创建/搜索/加入/邀请、Matchmaking 与 Steam/EOS 平台对接 |
+| [07-Iris复制使用与迁移.md](07-Iris复制使用与迁移.md) | Iris 复制系统启用与迁移：与经典路径/ReplicationGraph 的关系、迁移清单、限制与试点策略（实验性） |
 
 ---
 
@@ -96,6 +98,10 @@ flowchart LR
 ### 04-多人游戏框架与玩家状态.md
 
 梳理 GameInstance / GameMode / GameState / PlayerState / PlayerController / Pawn 在网络中的分布与职责；用时序图还原从连接建立（UDP）、Hello/Login/Welcome 握手、PreLogin/Login/PostLogin 到 RestartPlayer 的完整登录流程；最后介绍 NetConnection 的细节（地址、状态、流量、踢人、断线处理）与 Seamless Travel。
+
+### 07-Iris复制使用与迁移.md
+
+Iris 是新一代复制系统（实验性）：本机 5.8 中由 `Source/Runtime/Net/Iris` 与 `EngineReplicationBridge`（`ShouldUseIrisReplication`）接入 `UNetDriver`（`IsUsingIrisReplication` 分支）；本文讲"怎么开、怎么迁、有什么限制"——启用决策、与 ReplicationGraph 的调度层关系、迁移清单（Fast Array/COND_*/子对象/GUID）与试点灰度策略；实现层深读见 12 章 20 篇。
 
 ---
 
@@ -153,3 +159,4 @@ flowchart LR
 ## 更新日志
 
 - 2026-08-03：创建本分类，完成 01 ~ 06 六篇正文与导航页。
+- 2026-08-07：新增 07-Iris复制使用与迁移篇（Iris 启用决策、迁移清单与限制）。

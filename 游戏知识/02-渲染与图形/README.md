@@ -29,6 +29,7 @@
 | [07-虚拟纹理与材质混合.md](./07-虚拟纹理与材质混合.md) | 虚拟纹理 | RVT Page/Feedback 机制、材质混合工作流、Adaptive Virtual Texture 与虚拟化家族 |
 | [08-体积渲染与云.md](./08-体积渲染与云.md) | 体积渲染 | Volumetric Fog（Froxel）、Volumetric Cloud 体积云、Local Fog Volume 与性能预算 |
 | [09-光线追踪与路径追踪.md](./09-光线追踪与路径追踪.md) | 光线追踪 | 硬件光追（RT 反射/阴影/AO）、Path Tracer、r.RayTracing.* 命令与 Lumen 选型 |
+| [10-移动端渲染专项.md](./10-移动端渲染专项.md) | 移动端渲染 | 移动渲染器/Forward 与移动端 Deferred、光照阴影限制、材质精度、Vulkan/Metal/GLES、ASTC/ETC2、带宽/Overdraw 与设备分级 |
 
 ## 学习顺序建议
 
@@ -49,6 +50,7 @@
 5. **05-后处理与画面特效**（收尾，约 1~2 天）
    - 学习画面"最后一道工序"：从 HDR 到最终屏幕输出。
    - 结合 01 的管线图，理解后处理在管线末端的位置与开销。
+6. **10-移动端渲染专项**（专题，按需）：做移动端（Android/iOS）的同学必读——移动端不是桌面的降级版，而是一套独立的 Forward 管线，涉及带宽/Overdraw/发热、纹理压缩（ASTC/ETC2）与设备分级。
 
 ### 学习方法建议
 

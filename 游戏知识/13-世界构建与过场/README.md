@@ -10,6 +10,7 @@
 - **Landscape 地形系统**：从地形创建与雕刻、高度图数据组织、材质层（Layer Blend）权重混合、Landscape Spline 道路河流，到运行时高度查询/修改、LOD 与烘焙性能控制，以及 UE5 大世界下与 World Partition 的深度集成；
 - **Foliage 植被与实例化渲染**：Foliage 模式绘制、`AInstancedFoliageActor` 与 `FFoliageInfo` 的数据组织、ISM/HISM（`UHierarchicalInstancedStaticMeshComponent`）实例化渲染原理、植被 LOD 与剔除策略、运行时动态生成植被，以及与 Mass 群集方案的选型对比；
 - **过场与影视 Sequencer**：LevelSequence/MovieScene 资产架构（轨道/片段/键帧/绑定）、Possessable/Spawnable 绑定机制、CineCamera 电影镜头参数、子序列与模板序列工作流、MovieSceneCapture 电影渲染输出，以及运行时播放控制（`UMovieSceneSequencePlayer`）。
+- **PCG 程序化内容生成**：PCG 图资产/节点/数据流（`UPCGGraph`/`UPCGNode`/`UPCGSettings`/`FPCGData`）、编辑器与运行时生成（`UPCGSubsystem`）、确定性与种子、以及与大世界 Cell/PVE 的协同。
 
 与前几个分类"讲机制"的定位不同，本分类偏"讲系统 + 讲创作流程"：既解释每个系统在引擎中的数据结构与工作管线（对照 UE 5.8 本机源码），也给出可直接上手的编辑器操作步骤与 C++/蓝图示例。
 
@@ -20,6 +21,7 @@
 | [01-Landscape地形系统.md](./01-Landscape地形系统.md) | Landscape 地形创建与雕刻、高度图编码（LandscapeDataAccess）、材质 Layer Blend 权重混合、Landscape Spline、运行时高度查询/修改、LOD 与烘焙、World Partition 配合。 |
 | [02-植被Foliage与实例化渲染.md](./02-植被Foliage与实例化渲染.md) | Foliage 绘制与数据流、AInstancedFoliageActor / FFoliageInfo、ISM 与 HISM 实例化渲染原理、LOD 与剔除、运行时生成植被、与 Mass 群集对比。 |
 | [03-过场与影视Sequencer.md](./03-过场与影视Sequencer.md) | Sequencer 资产架构（轨道/片段/键帧/绑定）、Possessable/Spawnable、CineCamera 电影镜头、子序列与模板序列、MovieSceneCapture 渲染、运行时播放控制。 |
+| [04-PCG程序化内容生成.md](./04-PCG程序化内容生成.md) | PCG 图资产/节点/设置/数据流、编辑器与运行时生成、确定性、PCGCompute 与 Foliage/ISM/World Partition 协同。 |
 | [05-大世界植被与渲染协同.md](./05-大世界植被与渲染协同.md) | 将 World Partition/World Streaming、PCG、Procedural Vegetation Editor、Foliage/ISM/HISM 与 HLOD 串成植被生成、打包、流送、渲染和销毁闭环。 |
 
 ## 学习顺序建议
@@ -27,6 +29,7 @@
 1. **先读 01-Landscape**：地形是开放世界的"地基"，植被与过场都依赖"世界里有东西可放、有场景可拍"；
 2. **再读 02-Foliage**：植被是地形之上数量最大的内容层，理解实例化渲染原理后才能正确评估性能与选型；
 3. **最后读 03-Sequencer**：过场是"消费"前面所有场景资产的演出层，需要理解绑定与播放架构才能做运行时控制。
+4. **再读 04-PCG**：大世界内容"规则化填充"的生成框架——理解图资产与数据流后，用 05 篇串起 PCG/PVE/Foliage/World Partition 的完整闭环。
 
 速查路径：
 

@@ -27,6 +27,7 @@ flowchart LR
 | 02-动画蒙太奇与混合空间 | Animation Montage 播放机制、Section / Slot、AnimNotify / AnimNotifyState、Blend Space 1D/2D 参数化混合、Aim Offset |
 | 03-IK与程序化动画 | TwoBoneIK / FABRIK 原理、Foot IK 落地、Control Rig（UE5）、程序化动画、动画驱动、Root Motion、Motion Matching 简述 |
 | 04-动画性能与预算分配 | 骨骼动画成本构成、AnimationBudgetAllocator 预算分配与三档降级、AnimationSharing 动画共享 |
+| 05-AnimNext动画框架（UAF） | AnimNext/UAF 新一代动画框架、功能数据流与图驱动求值、Trait 与 StateTree 协同（实验性，UE5.8 以 UAF 插件提供） |
 
 ### 与其他分类的关系
 
@@ -45,6 +46,7 @@ flowchart LR
 | [02-动画蒙太奇与混合空间.md](02-动画蒙太奇与混合空间.md) | 蒙太奇播放/分段/通知机制，以及 Blend Space 1D/2D 参数化混合与 Aim Offset。 |
 | [03-IK与程序化动画.md](03-IK与程序化动画.md) | TwoBoneIK/FABRIK/Foot IK 原理、Control Rig、程序化动画、动画驱动与 Root Motion。 |
 | [04-动画性能与预算分配.md](04-动画性能与预算分配.md) | 骨骼动画成本、AnimationBudgetAllocator 预算算法与降级策略、AnimationSharing 动画共享。 |
+| [05-AnimNext动画框架.md](05-AnimNext动画框架.md) | AnimNext/UAF 新一代动画框架：功能数据流、图驱动求值、Trait、StateTree 协同与迁移建议（实验性）。 |
 
 ## 每篇一句话简介
 
@@ -52,6 +54,7 @@ flowchart LR
 - **02-动画蒙太奇与混合空间**：讲"一次性动作"（攻击、施法、处决）与"连续动作"（走路、跑动、瞄准）两大表现手段，分别对应蒙太奇与混合空间。
 - **03-IK与程序化动画**：讲"动画数据之外"的姿态修正与生成手段：IK 求解、Control Rig 程序化控制、物理驱动，以及 Root Motion 与 Motion Matching 简述。
 - **04-动画性能与预算分配**：讲大规模角色的动画开销治理：预算分配器（ABA）的预算算法、三档分配与降级策略，以及 AnimationSharing 动画共享。
+- **05-AnimNext动画框架**：讲"下一代的动画组织方式"：UAF/AnimNext 的功能数据流与图驱动求值模型、Trait 与 StateTree 协同，以及"何时迁移"的决策建议。
 
 ## 学习顺序建议
 
@@ -85,7 +88,7 @@ flowchart TD
 
 ### 阶段四：Root Motion 与 Motion Matching 进阶
 
-需要精确位移同步（攀爬、处决、Boss 技能）时启用 Root Motion；追求下一代表现时了解 Motion Matching / AnimNext（UE5.4+ 实验、UE5.5+ AnimNext）。
+需要精确位移同步（攀爬、处决、Boss 技能）时启用 Root Motion；追求下一代表现时了解 Motion Matching / AnimNext（UE5.4+ 实验、UE5.5+ AnimNext；AnimNext/UAF 详见 05 篇）。
 
 - 建议动手：把一段翻越动画改为 Root Motion 模式，对比位移与网络同步表现。
 - 验收标准：能说明 Root Motion 的提取模式差异及网络注意事项。
