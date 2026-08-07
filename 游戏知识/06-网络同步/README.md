@@ -57,6 +57,7 @@ flowchart LR
 | [06-在线子系统与会话匹配.md](06-在线子系统与会话匹配.md) | OnlineSubsystem 架构、会话创建/搜索/加入/邀请、Matchmaking 与 Steam/EOS 平台对接 |
 | [07-Iris复制使用与迁移.md](07-Iris复制使用与迁移.md) | Iris 复制系统启用与迁移：与经典路径/ReplicationGraph 的关系、迁移清单、限制与试点策略（实验性） |
 | [08-网络调试与性能分析.md](08-网络调试与性能分析.md) | 联机问题定位方法论、Pkt* 网络仿真参数、NetDriver 统计与 net.* 命令、NetTrace/Insights 网络通道分析与带宽基线对比 |
+| [09-网络回放与DemoNetDriver.md](09-网络回放与DemoNetDriver.md) | 回放系统（5.8 入口为 UReplaySubsystem）、DemoNetDriver 录制/播放/检查点、观战与流送、回放限制与兼容提示 |
 
 ---
 

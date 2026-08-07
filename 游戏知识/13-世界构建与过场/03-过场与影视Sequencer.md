@@ -229,6 +229,31 @@ graph LR
 
 两种管线**都发生在编辑器/工具环境**，打包后的游戏运行时不会做离屏电影渲染；运行时"录屏"应走游戏内捕获（如 SceneCapture2D 或平台录屏 API）。
 
+**迁移引导**：新项目生产管线应优先迁移到 Movie Render Queue + Movie Render Graph（见 3.8）；MovieSceneCapture 保留用于简单快速输出与兼容旧资产，不作为新生产管线的首选。
+
+### 3.8 MRG（Movie Render Graph）使用层
+
+MRG（Movie Render Graph）是 UE5.4+ 引入的渲染图方案，也是 Movie Render Queue 内部渲染管线的现代实现；对旧 MovieSceneCapture 渲染通道而言，它是官方推荐的迁移方向。
+
+核心概念（使用层）：
+
+- **渲染图（Render Graph）**：以图节点描述"数据源 → 渲染 Pass → 输出"的依赖关系，替代旧的固定渲染 Pass 链，便于组合、复用与调度；
+- **图节点**：代表具体渲染阶段（场景捕捉、抗锯齿、时间超采样、后期处理、色彩管理等），节点通过输入/输出端口连接成图，可保存为可复用资产；
+- **输出队列**：Movie Render Queue 负责任务的排队与批量调度，支持多镜头、多配置与 CI 命令行批量渲染，是 MRG 的提交与调度入口。
+
+版本与事实边界：
+
+- MRG 自 UE5.4 起逐步替代旧渲染管线，UE5.8 中为生产级推荐路径；具体节点名称、默认值与平台支持需以本机引擎版本和官方文档核对为准，本文不虚构 API。
+- 源码层细节见 [24-Sequencer与MovieRenderGraph源码](../12-引擎源码分析/24-Sequencer与MovieRenderGraph源码.md)。
+
+何时用 MRG vs MovieSceneCapture：
+
+| 场景 | 选择 |
+| --- | --- |
+| 生产级影片输出（多镜头、抗锯齿、时间超采样、色彩管理） | MRG + Movie Render Queue |
+| 编辑器内快速"渲染视频"、简单序列帧输出 | MovieSceneCapture（保留兼容） |
+| 打包后游戏运行时"录屏" | 两者都不适用，走 SceneCapture2D 或平台录屏 API |
+
 ## 4. 示例
 
 ### 4.1 C++：运行时加载并播放 LevelSequence

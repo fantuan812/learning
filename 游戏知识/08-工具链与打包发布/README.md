@@ -32,6 +32,9 @@ UE 项目的工程化能力很大程度上取决于对官方工具链的掌握�
 | [09-UE Dedicated Server构建烘焙与运行.md](<09-UE Dedicated Server构建烘焙与运行.md>) | 以 UE5.8 本机源码为边界，讲解 Server.Target.cs、UBT/UAT、BuildCookRun、ServerDefaultMap、Cook/Stage/Pak/IoStore、Archive 与双客户端冒烟 | 先读 01、02；需结合网络/服务端 |
 | [10-UE Dedicated Server运行参数与性能调优.md](<10-UE Dedicated Server运行参数与性能调优.md>) | 以 UE5.8 本机源码为边界，讲解服务器帧率与 Tick、NetServerMaxTickRate、带宽与连接预算、网络仿真参数、DDoS 防护与调优方法论 | 先读 09；需结合网络/服务端 |
 | [11-DS内容裁剪与服务器资源预算.md](11-DS内容裁剪与服务器资源预算.md) | 讲解 Dedicated Server 的编译层/Cook 层/运行层内容裁剪、服务器加载集合、World Partition 流送行为与内存预算 | 先读 09；需结合资源管理 |
+| [12-版本控制与资产协作.md](12-版本控制与资产协作.md) | uasset 二进制与版本控制、Perforce/Git LFS 工作流、关卡拆分协作、锁 vs 合并、CI 追溯与备份恢复 | 团队协作必读 |
+| [13-本地化发布工作流.md](13-本地化发布工作流.md) | Localization Dashboard 管线、Gather/翻译导入导出、语音与字体本地化、平台语言包与 Cook 集成 | 出海项目必读 |
+| [14-Python编辑器脚本与资产自动化.md](14-Python编辑器脚本与资产自动化.md) | Python Script Plugin、Editor Subsystem 族（5.8 变化）、批量资产处理、Interchange 衔接与 CI 集成 | 先读 06 |
 
 ## 三、学习顺序建议
 
