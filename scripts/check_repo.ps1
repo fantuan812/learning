@@ -439,7 +439,7 @@ foreach ($domain in $domainDefinitions) {
     }
 }
 
-# P3 UE Dedicated Server 专项门禁：只检查四篇已登记专题、质量门禁说明和网络同步旧路径。
+# P3 UE Dedicated Server 专项门禁：检查十一篇已登记专题（四篇核心 + 七篇扩展）、质量门禁说明和网络同步旧路径。
 # 这里的锚点检查只证明正文覆盖了必要概念，不等于实际执行了命令或通过了运行验收。
 $dsStats = [ordered]@{
     RequiredFileMissing = 0
@@ -447,6 +447,7 @@ $dsStats = [ordered]@{
     BuildAnchorMissing = 0
     PlatformAnchorMissing = 0
     TestAnchorMissing = 0
+    ExtendedAnchorMissing = 0
     GateTextMissing = 0
     ActorChannelResidual = 0
 }
@@ -519,7 +520,94 @@ $dsDocumentDefinitions = @(
     }
 )
 
-foreach ($definition in $dsDocumentDefinitions) {
+# 七篇扩展专题：运行调优、内容裁剪、Linux 部署、会话重连、日志观测、机器人压测、UNetDriver 源码。
+$dsExtendedDefinitions = @(
+    [pscustomobject]@{
+        Name = '运行调优专题'
+        Relative = '游戏知识\08-工具链与打包发布\10-UE Dedicated Server运行参数与性能调优.md'
+        Counter = 'ExtendedAnchorMissing'
+        Anchors = @(
+            [pscustomobject]@{ Label = 'NetServerMaxTickRate'; Patterns = @('NetServerMaxTickRate') }
+            [pscustomobject]@{ Label = 'FixedFrameRate'; Patterns = @('bUseFixedFrameRate', 'FixedFrameRate') }
+            [pscustomobject]@{ Label = 'MaxClientRate'; Patterns = @('MaxClientRate') }
+            [pscustomobject]@{ Label = 'PktLag/PktLoss'; Patterns = @('PktLag', 'PktLoss') }
+            [pscustomobject]@{ Label = 'DDoS'; Patterns = @('DDoS') }
+        )
+    }
+    [pscustomobject]@{
+        Name = '内容裁剪专题'
+        Relative = '游戏知识\08-工具链与打包发布\11-DS内容裁剪与服务器资源预算.md'
+        Counter = 'ExtendedAnchorMissing'
+        Anchors = @(
+            [pscustomobject]@{ Label = 'UE_SERVER'; Patterns = @('UE_SERVER') }
+            [pscustomobject]@{ Label = 'Cook'; Patterns = @('Cook') }
+            [pscustomobject]@{ Label = 'World Partition/Streaming'; Patterns = @('World Partition', 'Level Streaming') }
+            [pscustomobject]@{ Label = '内存预算'; Patterns = @('内存预算') }
+        )
+    }
+    [pscustomobject]@{
+        Name = 'Linux部署专题'
+        Relative = '游戏服务端\05-UE Dedicated Server平台化\02-Linux DS部署与容器实战.md'
+        Counter = 'ExtendedAnchorMissing'
+        Anchors = @(
+            [pscustomobject]@{ Label = 'Linux'; Patterns = @('Linux') }
+            [pscustomobject]@{ Label = 'systemd/容器'; Patterns = @('systemd', '容器', 'Docker') }
+            [pscustomobject]@{ Label = 'SIGTERM/drain'; Patterns = @('SIGTERM', 'drain', '优雅关服') }
+            [pscustomobject]@{ Label = '非root'; Patterns = @('非 root', '非root') }
+            [pscustomobject]@{ Label = '崩溃/符号'; Patterns = @('core dump', '崩溃', '符号') }
+        )
+    }
+    [pscustomobject]@{
+        Name = '会话重连专题'
+        Relative = '游戏服务端\05-UE Dedicated Server平台化\03-DS会话注册与重连实现.md'
+        Counter = 'ExtendedAnchorMissing'
+        Anchors = @(
+            [pscustomobject]@{ Label = 'ConnectionTimeout'; Patterns = @('ConnectionTimeout', 'InitialConnectTimeout') }
+            [pscustomobject]@{ Label = '重连窗口'; Patterns = @('重连窗口', '重连') }
+            [pscustomobject]@{ Label = 'JIP'; Patterns = @('JIP') }
+            [pscustomobject]@{ Label = 'ticket/票据'; Patterns = @('ticket', '票据') }
+            [pscustomobject]@{ Label = '平台会话/游戏内会话'; Patterns = @('平台会话', '游戏内会话') }
+        )
+    }
+    [pscustomobject]@{
+        Name = '日志观测专题'
+        Relative = '游戏服务端\05-UE Dedicated Server平台化\04-DS日志崩溃与可观测性实战.md'
+        Counter = 'ExtendedAnchorMissing'
+        Anchors = @(
+            [pscustomobject]@{ Label = '脱敏'; Patterns = @('脱敏') }
+            [pscustomobject]@{ Label = '符号化'; Patterns = @('符号化', '符号') }
+            [pscustomobject]@{ Label = 'Trace'; Patterns = @('Trace') }
+            [pscustomobject]@{ Label = 'SLO'; Patterns = @('SLO') }
+            [pscustomobject]@{ Label = '告警'; Patterns = @('告警') }
+        )
+    }
+    [pscustomobject]@{
+        Name = '机器人压测专题'
+        Relative = '游戏测试与质量\07-UE DS机器人压测与容量评估.md'
+        Counter = 'ExtendedAnchorMissing'
+        Anchors = @(
+            [pscustomobject]@{ Label = '机器人/Bot'; Patterns = @('机器人', 'Bot') }
+            [pscustomobject]@{ Label = '容量'; Patterns = @('容量') }
+            [pscustomobject]@{ Label = '拐点'; Patterns = @('拐点') }
+            [pscustomobject]@{ Label = '阶梯加压/Ramp'; Patterns = @('阶梯加压', 'Ramp') }
+            [pscustomobject]@{ Label = '场景混合'; Patterns = @('场景混合', '行为') }
+        )
+    }
+    [pscustomobject]@{
+        Name = 'UNetDriver源码专题'
+        Relative = '游戏知识\12-引擎源码分析\33-UNetDriver与连接通道源码.md'
+        Counter = 'ExtendedAnchorMissing'
+        Anchors = @(
+            [pscustomobject]@{ Label = 'InitBase'; Patterns = @('UNetDriver::InitBase', 'InitBase') }
+            [pscustomobject]@{ Label = 'ReceivedRawPacket'; Patterns = @('ReceivedRawPacket') }
+            [pscustomobject]@{ Label = 'ReceivedBunch'; Patterns = @('UControlChannel::ReceivedBunch', 'ReceivedBunch') }
+            [pscustomobject]@{ Label = 'ConnectionTimeout'; Patterns = @('ConnectionTimeout', 'InitialConnectTimeout') }
+            [pscustomobject]@{ Label = 'ServerTravel'; Patterns = @('UWorld::ServerTravel', 'ServerTravel') }
+        )
+    }
+)
+
+foreach ($definition in @($dsDocumentDefinitions + $dsExtendedDefinitions)) {
     $fullPath = Join-Path $rootPath $definition.Relative
     if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
         $dsStats.RequiredFileMissing++
@@ -588,7 +676,7 @@ foreach ($domain in $domainDefinitions) {
     Write-Host "$($domain.Name)：领域基线缺失 $($stats.BaselineMissing)、日期缺失 $($stats.DateMissing)、来源缺失 $($stats.SourceMissing)、验证入口缺失 $($stats.ValidationMissing)、旧规范引用缺失 $($stats.LegacyReferenceMissing)"
 }
 Write-Host "领域质量门禁合计（正文 $domainBodyTotal）：领域基线缺失 $($domainTotals.BaselineMissing)、日期缺失 $($domainTotals.DateMissing)、来源缺失 $($domainTotals.SourceMissing)、验证入口缺失 $($domainTotals.ValidationMissing)、旧规范引用缺失 $($domainTotals.LegacyReferenceMissing)"
-Write-Host "DS 专项门禁统计：必需文件缺失 $($dsStats.RequiredFileMissing)、源码锚点缺失 $($dsStats.SourceAnchorMissing)、构建锚点缺失 $($dsStats.BuildAnchorMissing)、平台锚点缺失 $($dsStats.PlatformAnchorMissing)、测试锚点缺失 $($dsStats.TestAnchorMissing)、门禁说明缺失 $($dsStats.GateTextMissing)、ActorChannel.cpp 旧路径残留 $($dsStats.ActorChannelResidual)"
+Write-Host "DS 专项门禁统计：必需文件缺失 $($dsStats.RequiredFileMissing)、源码锚点缺失 $($dsStats.SourceAnchorMissing)、构建锚点缺失 $($dsStats.BuildAnchorMissing)、平台锚点缺失 $($dsStats.PlatformAnchorMissing)、测试锚点缺失 $($dsStats.TestAnchorMissing)、扩展锚点缺失 $($dsStats.ExtendedAnchorMissing)、门禁说明缺失 $($dsStats.GateTextMissing)、ActorChannel.cpp 旧路径残留 $($dsStats.ActorChannelResidual)"
 if ($warnings.Count -gt 0) {
     Write-Host "WARN: $($warnings.Count)"
     $warnings | ForEach-Object { Write-Host "WARN $_" }

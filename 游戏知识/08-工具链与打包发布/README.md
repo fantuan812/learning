@@ -30,6 +30,8 @@ UE 项目的工程化能力很大程度上取决于对官方工具链的掌握�
 | [07-Shader编译管线与PSO.md](07-Shader编译管线与PSO.md) | 讲解 Shader 编译基础设施（SCW/DDC 缓存）与 PSO 预缓存优化 | 先读 01 |
 | [08-全栈质量门禁与灰度回滚.md](08-全栈质量门禁与灰度回滚.md) | 串起 UBT/UAT、CI/CD 构建矩阵、自动化测试、Cook/Stage/Pak/签名、Crash/Trace 门禁、服务端安全与灰度回滚 | 先读 01、02；发布协同必读 |
 | [09-UE Dedicated Server构建烘焙与运行.md](<09-UE Dedicated Server构建烘焙与运行.md>) | 以 UE5.8 本机源码为边界，讲解 Server.Target.cs、UBT/UAT、BuildCookRun、ServerDefaultMap、Cook/Stage/Pak/IoStore、Archive 与双客户端冒烟 | 先读 01、02；需结合网络/服务端 |
+| [10-UE Dedicated Server运行参数与性能调优.md](<10-UE Dedicated Server运行参数与性能调优.md>) | 以 UE5.8 本机源码为边界，讲解服务器帧率与 Tick、NetServerMaxTickRate、带宽与连接预算、网络仿真参数、DDoS 防护与调优方法论 | 先读 09；需结合网络/服务端 |
+| [11-DS内容裁剪与服务器资源预算.md](11-DS内容裁剪与服务器资源预算.md) | 讲解 Dedicated Server 的编译层/Cook 层/运行层内容裁剪、服务器加载集合、World Partition 流送行为与内存预算 | 先读 09；需结合资源管理 |
 
 ## 三、学习顺序建议
 
@@ -38,6 +40,8 @@ flowchart LR
     A[01 UBT 构建系统与编译配置] --> B[02 UAT 与自动化打包]
     A --> C[03 插件开发与编辑器扩展]
     B --> E[09 Dedicated Server 构建烘焙与运行]
+    E --> F[10 DS 运行参数与性能调优]
+    E --> G[11 DS 内容裁剪与资源预算]
     E --> D[04 资源管理与热更新]
     B --> D[04 资源管理与热更新]
     C --> D
@@ -49,9 +53,11 @@ flowchart LR
    掌握 Cook/Stage/Package/Archive 流水线，能独立跑通 Windows 打包，并能在 CI 上配置自动化构建与自动化测试。
 3. **第三步：09-UE Dedicated Server 构建烘焙与运行**（服务端发布必读）
    在 UAT 基础上理解 Server.Target.cs、Server/NoClient 参数、ServerDefaultMap、Win64/Linux 产物、Pak/IoStore/Archive 和双客户端冒烟。
-4. **第四步：03-插件开发与编辑器扩展**（建议）
+4. **第四步：10-UE Dedicated Server 运行参数与性能调优 + 11-DS 内容裁剪与服务器资源预算**（服务端调优必读）
+   在构建链路之上掌握服务器帧率/带宽/连接参数与内容裁剪方法，把"能跑"推进到"跑得好、省资源"。
+5. **第五步：03-插件开发与编辑器扩展**（建议）
    团队工具链建设依赖插件化思维：把工具做成插件、把通用代码做成 Runtime 插件，是多人协作与代码复用的最佳实践。
-5. **第五步：04-资源管理与热更新**（上线前必读）
+6. **第六步：04-资源管理与热更新**（上线前必读）
    涉及包体拆分、更新策略、版本兼容，建议在项目立项阶段就阅读并制定规范，上线前再临阵磨枪代价极高。
 
 ## 四、配套知识分类
