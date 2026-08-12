@@ -29,3 +29,5 @@
 14. `learning/log.md` 只增不改，用 `scripts/append_lesson.ps1` 追加真实发生的经验；重复出现两次或用户明确纠正的规则才提炼到本文件。
 15. PowerShell 行数统计使用 `$text -split "`r?`n"`；不要把第三个参数 `-1` 写成逗号参数，否则在当前 PowerShell 解析下可能把全文误报为 1 行。
 16. 派发子代理前先用仓库实际清单验证路径和文件名，尤其源码分类固定为 `游戏知识/12-引擎源码分析`；批次写入范围必须不重叠，子代理 commit 后由主代理验收并 push。
+17. 与单一仓库绑定的 Skill 应直接读取仓库内的记忆和维护脚本；Skill 目录中的重复副本会独立演进并造成事实分叉，不得继续作为当前事实源。
+18. 中文 Windows 上运行 `skill-creator` 的 Python 生成器或校验器时使用 `python -X utf8`；否则默认 GBK 可能导致中文 YAML 写入非 UTF-8，或读取 UTF-8 的 `SKILL.md` 失败。

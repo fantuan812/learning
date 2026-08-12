@@ -10,7 +10,7 @@
 
 Niagara 是 UE 自 4.20 起逐步引入、并在 UE5 中彻底取代旧 Cascade 粒子系统的下一代特效框架。它以"数据驱动 + 模块化栈"为核心设计，支持 CPU / GPU 双轨模拟、丰富的数据接口（碰撞、音频、网格体采样、样条、渲染目标等）、粒子事件通信、以及面向大规模计算的 Simulation Stage（模拟阶段）。对于客户端程序员而言，VFX 不仅是美术资产的堆叠，更涉及渲染成本、Draw Call、半透明排序、移动端适配等一系列工程问题——这正是本分类要讲清楚的内容。
 
-本分类共 3 篇正文 + 1 篇导航，从 **基础原理 → 高级技巧 → 性能优化** 逐层递进，每篇均包含核心概念表格、原理详解、代码/蓝图示例、最佳实践与 FAQ。
+本分类共 4 篇正文 + 1 篇导航，从 **基础原理 → 高级技巧 → 流体模拟 → 性能优化** 逐层递进，每篇均包含核心概念表格、原理详解、代码/蓝图示例、最佳实践与 FAQ。
 
 ## 前置知识
 
@@ -30,13 +30,15 @@ Niagara 是 UE 自 4.20 起逐步引入、并在 UE5 中彻底取代旧 Cascade 
 | `01-Niagara粒子系统基础.md` | Niagara 架构（System/Emitter/Module）、粒子属性与数据接口、发射器类型（CPU/GPU、Sprite/Mesh/Ribbon）、发射与更新模块、粒子生命周期、与旧 Cascade 对比 |
 | `02-Niagara高级技巧.md` | 数据接口（碰撞/音频/网格体采样）、事件与粒子通信（Send/Receive）、CPU vs GPU 模拟选型、Ribbon/Beam 特效、Niagara 与蓝图/C++ 交互、Niagara 与材质配合 |
 | `03-VFX性能优化.md` | 粒子数量预算与 LOD、固定/动态发射器、材质复杂度与半透明排序、Draw Call 与合批、移动端 VFX 限制与对策、`stat niagara` 等性能分析命令 |
+| [04-Niagara流体模拟.md](./04-Niagara流体模拟.md) | NiagaraFluids 网格流体（Grid2D/Grid3D）、GPU Simulation Stage、烟雾/水/火/沙模板、Data Channel 与性能边界 |
 
 ## 学习顺序建议
 
 ```mermaid
 flowchart LR
     A["01-Niagara粒子系统基础<br/>架构 / 属性 / 发射器 / 生命周期"] --> B["02-Niagara高级技巧<br/>数据接口 / 事件 / GPU / 交互"]
-    B --> C["03-VFX性能优化<br/>预算 / LOD / 合批 / 移动端"]
+    B --> F["04-Niagara流体模拟<br/>Grid2D/3D / GPU / 模板"]
+    F --> C["03-VFX性能优化<br/>预算 / LOD / 合批 / 移动端"]
     C --> D["实战项目：<br/>按性能预算制作并优化完整特效"]
     A -. 随时回头查阅 .-> C
 ```

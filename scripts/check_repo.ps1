@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [string]$Root = 'C:\project\git'
 )
@@ -98,7 +98,7 @@ function Get-ExternalSourceUrls([string]$Text) {
     # 先复用 README 的 Markdown 链接解析，确保围栏、缩进代码和行内代码不计入。
     foreach ($target in (Get-LinkTargets $Text)) {
         $candidate = $target.Trim()
-        if (Test-ExternalSourceUrl $candidate -and $seen.Add($candidate)) {
+        if ((Test-ExternalSourceUrl $candidate) -and $seen.Add($candidate)) {
             $urls.Add($candidate) | Out-Null
         }
     }
@@ -108,7 +108,7 @@ function Get-ExternalSourceUrls([string]$Text) {
     foreach ($match in [regex]::Matches($linkText, '(?i)\bhttps?://[^\s<>()\[\]]+')) {
         $candidate = $match.Value.Trim()
         $candidate = [regex]::Replace($candidate, '[.,;:!?，。；：！？]+$', '')
-        if (Test-ExternalSourceUrl $candidate -and $seen.Add($candidate)) {
+        if ((Test-ExternalSourceUrl $candidate) -and $seen.Add($candidate)) {
             $urls.Add($candidate) | Out-Null
         }
     }
