@@ -351,6 +351,9 @@ $domainDefinitions = @(
     [pscustomobject]@{ Name = '游戏AI'; Root = (Join-Path $rootPath '游戏AI') }
     [pscustomobject]@{ Name = '游戏服务端'; Root = (Join-Path $rootPath '游戏服务端') }
     [pscustomobject]@{ Name = '游戏算法'; Root = (Join-Path $rootPath '游戏算法') }
+    [pscustomobject]@{ Name = '00-计算机与工程基础'; Root = (Join-Path $rootPath '00-计算机与工程基础') }
+    [pscustomobject]@{ Name = '游戏测试与质量'; Root = (Join-Path $rootPath '游戏测试与质量') }
+    [pscustomobject]@{ Name = '系统实战'; Root = (Join-Path $rootPath '系统实战') }
 )
 $domainStats = @{}
 $domainBodyFiles = @{}
@@ -436,7 +439,68 @@ foreach ($domain in $domainDefinitions) {
             }
         }
         if ($legacyIssue) { $stats.LegacyReferenceMissing++ }
+
+        # 系统实战链路额外要素：链路类型、依赖模块、失败路径、Benchmark/Evidence、验证矩阵。
+        if ($domain.Name -eq '系统实战') {
+            if ($qualityText -notmatch '链路类型|依赖模块|失败路径|Benchmark|Evidence|验证矩阵') {
+                Add-Failure "系统实战门禁缺少链路要素（链路类型/依赖模块/失败路径/Benchmark/Evidence/验证矩阵）: $relative"
+            }
+        }
     }
+}
+
+# 知识成熟度门禁（W0-03）：阶段 A——既有正文缺成熟度仅 WARN，本次新增/修改正文缺成熟度 FAIL；
+# L3 必须有 Evidence/Demo 入口，L4 必须有 Benchmark/Test 证据，L5 必须有工作日志/复盘/生产证据。
+$changedFiles = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+try {
+    foreach ($cmd in @(
+        @('diff', '--name-only'),
+        @('diff', '--cached', '--name-only'),
+        @('ls-files', '--others', '--exclude-standard'))) {
+        $names = & git -C $rootPath -c core.quotepath=false @cmd 2>$null
+        foreach ($name in @($names)) {
+            if (-not [string]::IsNullOrWhiteSpace($name)) {
+                $changedFiles.Add([System.IO.Path]::GetFullPath((Join-Path $rootPath $name))) | Out-Null
+            }
+        }
+    }
+} catch { }
+
+$maturityMissing = 0
+$maturityMissingChanged = 0
+$maturityStats = @{ L0 = 0; L1 = 0; L2 = 0; L3 = 0; L4 = 0; L5 = 0 }
+foreach ($file in $mdFiles) {
+    if ($file.Name -eq 'README.md') { continue }
+    if (Test-MaintenancePath $file.FullName) { continue }
+    $relative = Get-RepoRelative $file.FullName
+    # 工作日志/笔记是过程记录与速查笔记，方案/是建设规划，均不参与知识成熟度门禁。
+    if ($relative -like '工作日志\*' -or $relative -like '笔记\*' -or $relative -like '方案\*') { continue }
+    if (-not $textByFile.ContainsKey($file.FullName)) { continue }
+    $qualityText = Get-NonCodeMarkdownText $textByFile[$file.FullName]
+    $m = [regex]::Match($qualityText, '知识成熟度\s*[：:]\s*L([0-5])')
+    if (-not $m.Success) {
+        if ($changedFiles.Contains($file.FullName)) {
+            $maturityMissingChanged++
+            Add-Failure "本次新增/修改正文缺少知识成熟度: $relative"
+        } else {
+            $maturityMissing++
+        }
+        continue
+    }
+    $level = [int]$m.Groups[1].Value
+    $maturityStats["L$level"]++
+    if ($level -ge 3 -and $qualityText -notmatch 'Evidence|证据|Demo|演示|实验|可运行') {
+        Add-Failure "标注 L$level 但缺少 Evidence/Demo 入口: $relative"
+    }
+    if ($level -ge 4 -and $qualityText -notmatch '原始结果|results/|P50|P95|P99|验证矩阵|测试矩阵|压测数据|基准数据') {
+        Add-Failure "标注 L$level 但缺少 Benchmark/Test 证据: $relative"
+    }
+    if ($level -ge 5 -and $qualityText -notmatch '工作日志|复盘|Postmortem|生产证据|线上事故|故障复盘') {
+        Add-Failure "标注 L5 但缺少工作日志/项目复盘证据: $relative"
+    }
+}
+if ($maturityMissing -gt 0 -or $maturityMissingChanged -gt 0) {
+    Add-Warning "正文缺少知识成熟度：既有 $maturityMissing 篇（阶段 A 仅警告，阶段 B 将升级为 FAIL）；本次新增/修改 $maturityMissingChanged 篇（已 FAIL）"
 }
 
 # P3 UE Dedicated Server 专项门禁：检查十一篇已登记专题（四篇核心 + 七篇扩展）、质量门禁说明和网络同步旧路径。
@@ -657,6 +721,15 @@ if (Test-Path -LiteralPath $networkSyncRoot -PathType Container) {
 }
 
 Write-Host "Markdown: $fileCount（正文 $bodyCount，README $readmeCount）"
+Write-Host '领域分布：'
+foreach ($domainName in @('00-计算机与工程基础', '游戏知识', '游戏服务端', '游戏算法', '游戏AI', '游戏测试与质量', '系统实战')) {
+    $domainRoot = Join-Path $rootPath $domainName
+    $domainFiles = @($mdFiles | Where-Object { Test-PathUnder $_.FullName $domainRoot })
+    $domainBody = @($domainFiles | Where-Object { $_.Name -ne 'README.md' }).Count
+    $domainReadme = $domainFiles.Count - $domainBody
+    Write-Host "  $domainName：正文 $domainBody / README $domainReadme"
+}
+Write-Host "成熟度分布：L0 $($maturityStats.L0)、L1 $($maturityStats.L1)、L2 $($maturityStats.L2)、L3 $($maturityStats.L3)、L4 $($maturityStats.L4)、L5 $($maturityStats.L5)"
 Write-Host "PASS: $($passes.Count + 1) 项基础检查已执行"
 Write-Host "质量元数据：版本缺失 $qualityVersionMissing、日期缺失 $qualityDateMissing、官方链接缺失 $qualityOfficialLinkMissing、源码占位 $qualitySourcePlaceholder"
 $domainTotals = @{
