@@ -788,7 +788,7 @@ PawnClass、PawnData、动态组件、能力和输入都可能来自 Experience/
 - [03-Actor与Component生命周期源码](03-Actor与Component生命周期源码.md)：deferred spawn 和组件生命周期。
 - [08-ModularGameplay模块化玩法](../03-游戏玩法编程/08-ModularGameplay模块化玩法.md)：使用层概念。
 - [45-Lyra-相机音频与游戏阶段源码](45-Lyra-相机音频与游戏阶段源码.md)：GamePhase 阶段能力如何承接 Experience 之后的玩法流程。
-- [46-Lyra-AI队伍与调试源码](46-Lyra-AI队伍与调试源码.md)：队伍归属与 Bot 补位如何配合 Experience 玩法。
+- [46-Lyra-AI机器人与队伍源码](46-Lyra-AI机器人与队伍源码.md)：队伍归属与 Bot 补位如何配合 Experience 玩法。
 
 ## 三十二、权威来源
 

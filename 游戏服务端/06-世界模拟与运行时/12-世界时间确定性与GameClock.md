@@ -2,7 +2,7 @@
 
 > 知识基线：时间源分类（wall/monotonic/game/tick/scheduled）、GameClock 单一权威、世界减速/暂停语义、跨服与重连时间对齐；UE 对照以 `FApp` 时间 API（`Engine\Source\Runtime\Core\Public\Misc\App.h`）与 [游戏知识/01-引擎基础](../../游戏知识/01-引擎基础/README.md) 为参照。
 > 版本基准：C++11 `steady_clock`/`system_clock` 语义；服务器 20Hz Tick 示例。
-> 适用范围：MMO/实时服务器的时间权威设计；与 [01-ServerMainLoop与TickScheduler](01-ServerMainLoop与TickScheduler.md) 的固定步长、`13-世界Snapshot与故障恢复`（规划）的恢复语义配合。
+> 适用范围：MMO/实时服务器的时间权威设计；与 [01-ServerMainLoop与TickScheduler](01-ServerMainLoop与TickScheduler.md) 的固定步长、[13-世界Snapshot与故障恢复](13-世界Snapshot与故障恢复.md)（已落地）的恢复语义配合。
 > 官方参考：[cppreference - std::chrono 时钟](https://en.cppreference.com/w/cpp/chrono)、[UE5.8 官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
 > 最后更新：2026-08-13（首版）。
 > 知识成熟度：L2（标准/官方资料验证；示例为伪代码，未做独立实验）。
@@ -111,13 +111,13 @@ GameClock 的线程语义：逻辑线程独占修改（`AdvanceTick`），其他
 
 这就是"时间确定性"的最终验收：**把真实时间从逻辑中彻底摘除**。
 
-### 3.5 UE 对照
+### 3.6 UE 对照
 
 - UE 用 `FApp::GetCurrentTime()`（墙上）与 DeltaTime（帧间单调）；固定帧率由 `FApp::UseFixedDeltaTime/SetFixedDeltaTime` 控制（`Engine\Source\Runtime\Core\Public\Misc\App.h`，见 [01](01-ServerMainLoop与TickScheduler.md) 的 3.5）；
 - UE 服务器时间同步：`UNetDriver` 下发服务器时间戳，客户端用 `ServerWorldTimeSecondsDelta` 校正（详见 [游戏知识/06-网络同步](../../游戏知识/06-网络同步/README.md)）；
 - 自研逻辑服建议独立实现 GameClock（本文），不要把引擎时间直接当业务时间。
 
-### 3.6 事件时间戳与日志
+### 3.7 事件时间戳与日志
 
 服务器日志的事件时间戳统一用"世界时间 + 真实时间"双字段：
 
@@ -130,8 +130,6 @@ GameClock 的线程语义：逻辑线程独占修改（`AdvanceTick`），其他
 - 两者偏差恰好就是 worldLag——日志里顺带记录了过载历史。
 
 审计类事件（充值、封号）**必须**用真实时间（法律/运营语义），玩法类事件用世界时间；日志框架强制双写，防止开发时漏字段。
-
-## 4. 示例：暂停与减速语义（伪代码）
 
 ## 4. 示例：暂停与减速语义（伪代码）
 
@@ -283,11 +281,20 @@ NTP 校时会回拨（甚至负跳变），导致 `dt < 0`、世界倒退；单�
 跨服/迁移 → 只同步基准点，禁止本地累计
 ```
 
-## 8. 关联阅读
+## 8. 术语速查
+
+## 9. 关联阅读
+
+| 术语 | 含义 |
+| --- | --- |
+| wall / monotonic / game | 真实时间 / 单调时钟 / 世界时间三类时间源 |
+| GameClock | 服务器唯一世界时间权威（支持暂停/减速/迁移） |
+| worldLag | 世界时间与真实时间的偏差（过载/降级的观测指标） |
+| 事件时间戳 | 审计事件用真实时间、玩法事件用世界时间（日志双写） |
 
 - [01-ServerMainLoop与TickScheduler](01-ServerMainLoop与TickScheduler.md)：固定步长与 catch-up/drop 的时间语义。
 - [14-运行时背压与过载保护](14-运行时背压与过载保护.md)：worldLag 与降级联动。
-- `13-世界Snapshot与故障恢复`（规划）：恢复时的时间基准（正文暂不链接）。
+- [13-世界Snapshot与故障恢复](13-世界Snapshot与故障恢复.md)（已落地）：恢复时的时间基准。
 - [游戏知识/06-网络同步](../../游戏知识/06-网络同步/README.md)：UE 服务器时间同步。
 - [00-计算机与工程基础/01-C++核心](../../00-计算机与工程基础/01-C++核心/README.md)：时间类型包装与值语义。
 - [游戏知识/06-网络同步](../../游戏知识/06-网络同步/README.md)：客户端时间校正（`ServerWorldTimeSecondsDelta`）。

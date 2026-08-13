@@ -79,7 +79,7 @@
 | 连接物品与 UI | [43-Lyra-背包装备消息与UI源码.md](./43-Lyra-背包装备消息与UI源码.md) | Inventory/Equipment FastArray、QuickBar、GameplayMessage 与 UIExtension |
 | 闭合产品流程 | [44-Lyra-前端会话网络与扩展源码.md](./44-Lyra-前端会话网络与扩展源码.md) | Frontend ControlFlow、CommonUser/Session、加载屏、网络与测试入口 |
 | 表现与流程 | [45-Lyra-相机音频与游戏阶段源码.md](./45-Lyra-相机音频与游戏阶段源码.md) | CameraMode 栈与穿透预防、音频混合设置、GamePhase 阶段能力 |
-| AI 与队伍 | [46-Lyra-AI队伍与调试源码.md](./46-Lyra-AI队伍与调试源码.md) | Bot 创建与控制器、Team 归属、伤害过滤与队伍展示 |
+| AI 与队伍 | [46-Lyra-AI机器人与队伍源码.md](./46-Lyra-AI机器人与队伍源码.md) | Bot 创建与控制器、Team 归属、伤害过滤与队伍展示 |
 | 调试与扩展 | [47-Lyra-调试工具与扩展源码.md](./47-Lyra-调试工具与扩展源码.md) | Cheat/开发者设置、LyraEditor 校验工具、异步与口袋世界插件 |
 
 ---
@@ -134,7 +134,7 @@
 | [43-Lyra-背包装备消息与UI源码.md](./43-Lyra-背包装备消息与UI源码.md) | Inventory/Equipment FastArray、QuickBar、AbilitySet、消息路由和动态 UI 注入 | 源码深度已完成 |
 | [44-Lyra-前端会话网络与扩展源码.md](./44-Lyra-前端会话网络与扩展源码.md) | 前端 ControlFlow、登录会话、Travel、加载屏、网络配置、目标与测试扩展 | 源码深度已完成 |
 | [45-Lyra-相机音频与游戏阶段源码.md](./45-Lyra-相机音频与游戏阶段源码.md) | CameraMode 栈、穿透预防、音频混合设置与 GamePhase 阶段能力 | 源码深度已完成 |
-| [46-Lyra-AI队伍与调试源码.md](./46-Lyra-AI队伍与调试源码.md) | Bot 创建与控制器、Team 归属、CanCauseDamage 与队伍展示链路 | 源码深度已完成 |
+| [46-Lyra-AI机器人与队伍源码.md](./46-Lyra-AI机器人与队伍源码.md) | Bot 创建与控制器、Team 归属、CanCauseDamage 与队伍展示链路 | 源码深度已完成 |
 | [47-Lyra-调试工具与扩展源码.md](./47-Lyra-调试工具与扩展源码.md) | Cheat、开发者设置、LyraEditor 校验、测试控制器与扩展插件地图 | 源码深度已完成 |
 
 ---
@@ -164,7 +164,7 @@
 
 ### 路线三：UE5.8 P1 补齐顺序
 
-先读 [19-高优先级源码覆盖路线图.md](./19-高优先级源码覆盖路线图.md)。Iris/ReplicationGraph、Mass/StateTree、World Partition/World Streaming、Landscape/Foliage、Sequencer/MRG、Enhanced Input/Gameplay Tags、CommonUI、UMG MVVM、Unreal Insights/Trace、Gameplay Tasks、Lumen/MegaLights、Procedural Vegetation Editor、Dedicated Server 启动/监听、UNetDriver/连接通道、ReplicationGraph、Nanite、AnimNext/UAF、Chaos 破坏与 PCG 已分别由 20-38 号文章完成源码深度覆盖；其余未列入本轮的未来主题仍按路线图保持待补或规划状态。
+先读 [19-高优先级源码覆盖路线图.md](./19-高优先级源码覆盖路线图.md)。Iris/ReplicationGraph、Mass/StateTree、World Partition/World Streaming、Landscape/Foliage、Sequencer/MRG、Enhanced Input/Gameplay Tags、CommonUI、UMG MVVM、Unreal Insights/Trace、Gameplay Tasks、Lumen/MegaLights、Procedural Vegetation Editor、Dedicated Server 启动/监听、UNetDriver/连接通道、Nanite、AnimNext/UAF、Chaos 破坏与 PCG 已分别由 20-38 号文章完成源码深度覆盖；其余未列入本轮的未来主题仍按路线图保持待补或规划状态。
 
 ### 路线四：按 Lyra 完整运行链精读
 
@@ -228,7 +228,7 @@ flowchart TB
   为控制篇幅，部分代码为"节选/示意"，会在注释中标注；
 - 建议对照引擎源码阅读：`Engine/Source/Runtime/CoreUObject/`、
   `Engine/Source/Runtime/Engine/`、`Engine/Source/Programs/Shared/EpicGames.UHT/`；
-- 对已标记"源码深度已完成"的 UE5.8 引擎专题，以 20-38 号文章和路线图中的本机 5.8 路径为证据；Lyra 项目级综合链路以 39-44 号文章、本机 `LyraStarterGame.uproject` 的 `EngineAssociation=5.8` 及项目源码为证据；其余未涉及主题继续保持各自的"待补/规划"状态。
+- 对已标记"源码深度已完成"的 UE5.8 引擎专题，以 20-38 号文章和路线图中的本机 5.8 路径为证据；Lyra 项目级综合链路以 39-47 号文章、本机 `LyraStarterGame.uproject` 的 `EngineAssociation=5.8` 及项目源码为证据；其余未涉及主题继续保持各自的"待补/规划"状态。
 - Mermaid 图中的中文为概念标注，非引擎字面量；
 - "服务器/客户端"指 Dedicated/Listen Server 与 Client 的网络角色划分。
 

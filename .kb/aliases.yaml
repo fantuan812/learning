@@ -22,3 +22,7 @@ aliases:
     canonical: "Dedicated Server"
   AOI:
     canonical: "Area of Interest"
+  WorldPartition:
+    canonical: "World Partition"
+  GameplayTask:
+    canonical: "GameplayTasks"

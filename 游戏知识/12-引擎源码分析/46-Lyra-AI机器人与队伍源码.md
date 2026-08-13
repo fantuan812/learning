@@ -1718,7 +1718,7 @@ rg -n 'RunBehaviorTree|UBehaviorTree|BrainComponent' "$Lyra\Source\LyraGame" -g 
 
 ```powershell
 # 节选：文档门禁（行数、BOM、围栏、违禁词）
-$f = 'C:\project\git\游戏知识\12-引擎源码分析\46-Lyra-AI队伍与调试源码.md'
+$f = 'C:\project\git\游戏知识\12-引擎源码分析\46-Lyra-AI机器人与队伍源码.md'
 (Get-Content $f).Count
 $b = [System.IO.File]::ReadAllBytes($f); $b[0..2] -join ','
 (Get-Content $f | Where-Object { $_ -match '^```' }).Count

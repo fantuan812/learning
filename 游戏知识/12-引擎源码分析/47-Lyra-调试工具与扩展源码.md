@@ -1445,7 +1445,7 @@ Spec 用 AutomationDriver 驱动真实 UI 点击（前端路径）；ShooterTest
 - [43-Lyra-背包装备消息与UI源码](43-Lyra-背包装备消息与UI源码.md)：Inventory、GameplayMessage 与 UIExtension，RPC 组件读取库存的上下文。
 - [44-Lyra-前端会话网络与扩展源码](44-Lyra-前端会话网络与扩展源码.md)：ShooterTests、Gauntlet、回放与加载屏投票，本篇只交叉引用不重复。
 - [45-Lyra-相机音频与游戏阶段源码](45-Lyra-相机音频与游戏阶段源码.md)：相机与游戏阶段（并行写作，最终存在）。
-- [46-Lyra-AI队伍与调试源码](46-Lyra-AI队伍与调试源码.md)：AI 队伍与调试（并行写作，最终存在）；ModularAIController 与机器人 Cheat 的延伸。
+- [46-Lyra-AI机器人与队伍源码](46-Lyra-AI机器人与队伍源码.md)：AI 机器人与队伍（并行写作，最终存在）；ModularAIController 与机器人 Cheat 的延伸。
 - [19-高优先级源码覆盖路线图](19-高优先级源码覆盖路线图.md)：调试与验证工具的覆盖位置。
 - [05-GAS能力系统源码](05-GAS能力系统源码.md)：AbilitySystemComponent 与 GameplayEffect 底层。
 - [13-资源加载与异步加载源码](13-资源加载与异步加载源码.md)：FStreamableHandle 与异步加载机制，理解 FAsyncMixin。

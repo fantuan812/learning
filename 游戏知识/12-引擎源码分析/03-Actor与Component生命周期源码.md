@@ -1,4 +1,5 @@
 # 03 · Actor 与 Component 生命周期源码
+> 知识成熟度：L2（本轮审计修订时补标）
 > 源码基线：UE 5.8.0（本机 `Engine/Build/Build.version`：Major 5 / Minor 8 / Patch 0 / CL 55116800，分支 `++UE5+Release-5.8`）。
 > 验收边界：以本机 `C:\Program Files\Epic Games\UE_5.8\Engine` 只读源码为准；未在本文落地的主题不视为已完成源码覆盖。
 > 官方参考：[Unreal Engine 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
@@ -566,3 +567,4 @@ flowchart LR
 - [09-物理系统/README.md](../09-物理系统/README.md)：物理组件状态创建与销毁
 - [07-UI与性能优化/README.md](../07-UI与性能优化/README.md)：Tick 开销分析与优化
 - [03-游戏玩法编程/01-GameplayAbilitySystem能力系统.md](../03-游戏玩法编程/01-GameplayAbilitySystem能力系统.md)：ASC 组件生命周期时序
+- [08-Tick与模块系统源码](./08-Tick与模块系统源码.md)：Tick 调度体系深度篇（本篇 Tick 章节为生命周期视角摘要）。

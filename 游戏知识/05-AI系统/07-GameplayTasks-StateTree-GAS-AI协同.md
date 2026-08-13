@@ -1,4 +1,5 @@
 # 07 GameplayTasks、StateTree、GAS 与 AI 协同闭环
+> 知识成熟度：L2（本轮审计修订时补标）
 > 一句话定位：用 StateTree 或行为树做决策，用 GameplayTasks 做可取消的异步执行编排，用 GAS 管理能力与战斗承诺，再把感知、EQS、NavMesh 结果接回状态机，形成可观测、可回滚、可由服务端确认的 AI 行为闭环。
 
 > 版本基准：UE5.8.0 / CL55116800 / ++UE5+Release-5.8。
@@ -1099,6 +1100,7 @@ NavMesh、目标、代理半径、动态障碍或资源状态变化后必须重�
 - [NavMesh 寻路](03-NavMesh寻路.md)：补充路径、导航代理、动态障碍、NavLink 和移动性能。
 - [StateTree 状态树](05-StateTree状态树.md)：补充 State、Task、Evaluator、Condition、Transition 和绑定。
 - [ZoneGraph 与 SmartObjects](06-ZoneGraph与SmartObjects.md)：补充交互槽位、认领、GameplayInteractions 与 Mass 的使用场景。
+- [03-游戏玩法编程/09-GameplayTask任务框架](../03-游戏玩法编程/09-GameplayTask任务框架.md)：任务生命周期/调度/资源锁的完整叙述（本文第 3 节为协同视角要点，细节以该篇为准）。
 
 ### 18.3 推荐落地顺序
 

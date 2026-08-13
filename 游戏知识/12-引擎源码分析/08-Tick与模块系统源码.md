@@ -1,4 +1,5 @@
 # 08 Tick 调度与模块系统源码剖析
+> 知识成熟度：L2（本轮审计修订时补标）
 > 源码基线：UE 5.8.0（本机 `Engine/Build/Build.version`：Major 5 / Minor 8 / Patch 0 / CL 55116800，分支 `++UE5+Release-5.8`）。
 > 验收边界：以本机 `C:\Program Files\Epic Games\UE_5.8\Engine` 只读源码为准；未在本文落地的主题不视为已完成源码覆盖。
 > 官方参考：[Unreal Engine 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
@@ -550,4 +551,5 @@ flowchart LR
 - [01-引擎基础/02 Actor 与 Component 生命周期](../01-引擎基础/02-Actor与Component生命周期.md)
 - [01-引擎基础/01 UObject 与反射系统](../01-引擎基础/01-UObject与反射系统.md)
 - [01-引擎基础/03 Gameplay 框架与游戏模式](../01-引擎基础/03-Gameplay框架与游戏模式.md)
+- [03-Actor与Component生命周期源码.md](03-Actor与Component生命周期源码.md)：Actor/Component Tick 的注册与调度入口。
 - 同分类：[09-网络复制与RPC源码.md](09-网络复制与RPC源码.md)、[10-渲染线程与RHI源码.md](10-渲染线程与RHI源码.md)

@@ -53,4 +53,4 @@
 ## 关联知识文档
 
 - [01-ServerMainLoop与TickScheduler](../../../游戏服务端/06-世界模拟与运行时/01-ServerMainLoop与TickScheduler.md)
-- `05-AI与寻路时间预算`（规划，待建）
+- [11-AI与寻路时间预算](../../../游戏服务端/06-世界模拟与运行时/11-AI与寻路时间预算.md)（已落地）

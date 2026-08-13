@@ -20,7 +20,7 @@
 | [09-物理系统](09-物理系统/README.md) | Chaos 物理引擎、碰撞检测与物理材质、物理约束与关节、布娃娃与物理动画 |
 | [10-音频系统](10-音频系统/README.md) | 音频资产与播放、衰减与 3D 音效、MetaSound 与程序化音频 |
 | [11-VFX与Niagara](11-VFX与Niagara/README.md) | Niagara 粒子系统基础、高级模拟技巧、VFX 性能优化 |
-| [12-引擎源码分析](12-引擎源码分析/README.md) | 37 篇源码正文 + 1 篇覆盖矩阵/路线图；详见分类 README 中的实际文件清单与覆盖路线图 |
+| [12-引擎源码分析](12-引擎源码分析/README.md) | 46 篇源码正文 + 1 篇覆盖矩阵/路线图；详见分类 README 中的实际文件清单与覆盖路线图 |
 | [13-世界构建与过场](13-世界构建与过场/README.md) | Landscape 地形、Foliage 植被与 ISM/HISM 实例化、过场与影视（Sequencer/LevelSequence/CineCamera） |
 
 ## 推荐学习路径

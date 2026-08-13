@@ -1385,7 +1385,7 @@ rg -n 'ShooterGame.GamePhase' "$Lyra\Plugins\GameFeatures\ShooterCore\Config\Tag
 - [42-Lyra-输入GAS与武器战斗源码](42-Lyra-输入GAS与武器战斗源码.md)：Ability 的 `SetCameraMode`/`ClearCameraMode` 与瞄准散布联动。
 - [43-Lyra-背包装备消息与UI源码](43-Lyra-背包装备消息与UI源码.md)：GameplayMessageRouter 与阶段通知的职责差异。
 - [44-Lyra-前端会话网络与扩展源码](44-Lyra-前端会话网络与扩展源码.md)：进入对局、加载屏与服务器启动链路。
-- [46-Lyra-AI队伍与调试源码](46-Lyra-AI队伍与调试源码.md)：AI 与队伍系统的并行阅读（本篇写作时同步落盘）。
+- [46-Lyra-AI机器人与队伍源码](46-Lyra-AI机器人与队伍源码.md)：AI 与队伍系统的并行阅读（本篇写作时同步落盘）。
 - [47-Lyra-调试工具与扩展源码](47-Lyra-调试工具与扩展源码.md)：调试工具与扩展点（本篇写作时同步落盘）。
 - [05-GAS能力系统源码](05-GAS能力系统源码.md)：AbilitySpec、实例化策略与能力激活的引擎底层。
 - [16-音频系统源码](16-音频系统源码.md)：引擎混音器、Submix 与 AudioModulation 底层。

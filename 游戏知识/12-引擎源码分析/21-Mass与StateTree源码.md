@@ -1,18 +1,12 @@
 # Mass 与 StateTree 源码分析
+> 知识成熟度：L2（本轮审计修订时补标）
 
 > 版本基准：UE5.8.0 / CL 55116800 / `++UE5+Release-5.8`
 > 最后更新：2026-08-06（本轮元数据维护）
 
 ## 概述
 
-待补：本文概述 Mass Entity 与 StateTree 的源码边界。
-
-## 核心概念
-## 原理
-## 示例
-## 最佳实践
-## FAQ
-## 关联阅读
+本文以 UE5.8 本机源码为证据，梳理 Mass EntityManager/Fragment/CommandBuffer/Processor/Signals 的调度边界，以及 StateTree 编译、实例化与 Mass 组合运行的完整链路；同时给出并发边界、失败路径与排查清单。
 
 ## 源码证据与核心概念
 

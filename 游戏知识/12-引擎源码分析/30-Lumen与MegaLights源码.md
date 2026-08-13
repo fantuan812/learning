@@ -1,22 +1,13 @@
 # Lumen 与 MegaLights 源码分析
+> 知识成熟度：L2（本轮审计修订时补标）
 
 版本基准：UE5.8.0 / CL 55116800 / ++UE5+Release-5.8
 - 最后更新：2026-08-06（本轮元数据维护）
 
 ## 概述
 
-## 核心概念
+本文以 UE5.8 本机源码为证据，梳理 Lumen 场景表示与 ScreenProbeGather、三条反射路径，以及 MegaLights sampling/resolve 与 Render Graph 集成；同时给出平台/CVar 边界与性能排查顺序。
 
-## 原理
-
-## 示例
-
-## 最佳实践
-
-## FAQ
-
-## 关联阅读
-+
 ## 源码证据与核心概念
 
 证据基线：UE5.8.0 / CL 55116800 / `++UE5+Release-5.8`。以下路径均来自本机 `C:/Program Files/Epic Games/UE_5.8/Engine/Source/Runtime/Renderer/Private`。
@@ -75,7 +66,6 @@
 - 反射路径以屏幕追踪和软件计算追踪为基础，在满足 RHI 与 CVar 条件时切换到硬件 ray tracing。
 - MegaLights 将大量灯光问题拆成 sample、ray trace、shade/resolve 三段 RDG 工作流，采样数、tile 类型和历史引导决定成本与噪声。
 - 平台能力与 CVar 是路径选择的证据链，源码符号和 RDG event 才是跨版本维护时可复核的锚点。
-+
 ## Lumen 与 MegaLights 渲染调用链
 
 版本基线：UE5.8.0 / CL 55116800 / `++UE5+Release-5.8`。
@@ -145,7 +135,6 @@
 RenderLumen(GraphBuilder, View): SceneData -> ScreenProbeGather -> Reflections
 RenderMegaLights(GraphBuilder, View): GenerateSamples -> RayTrace -> Resolve
 ```
-+
 ## 最佳实践、FAQ、Mermaid 与关联阅读
 
 版本基线：UE5.8.0 / CL 55116800 / `++UE5+Release-5.8`。本节只引用已核实的 UE5.8 源码符号、CVar 和 RDG 关系。
@@ -235,7 +224,6 @@ else: compare(screen_or_software_path)
 - [Lumen 全局光照与反射官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine/lumen-global-illumination-and-reflections-in-unreal-engine)
 - [Lumen 性能指南（官方）](https://dev.epicgames.com/documentation/en-us/unreal-engine/lumen-performance-guide-for-unreal-engine?lang=en-US)
 - [Rendering Path 支持特性（官方）](https://dev.epicgames.com/documentation/en-us/unreal-engine/supported-features-by-rendering-path-for-desktop-with-unreal-engine)
-+
 ## 质量档位、平台限制与性能排查
 
 版本基线：UE5.8.0 / CL 55116800 / `++UE5+Release-5.8`。本节只使用本机已核实的 UE5.8 CVar、符号和 RDG 证据。
@@ -301,3 +289,14 @@ profile(RDG_events, GPU_timing, final_CVar_values)
 - **为什么 MegaLights 质量升高后噪声仍大？** 逐步提高 `NumSamplesPerPixel`，同时观察 `ShadingConfidence`、历史引导和 resolve 区段，避免把所有变量同时调高。
 - **为什么改 CVar 会有线程风险？** 区分 `GetValueOnAnyThread` 与 `GetValueOnRenderThread` 的读取域，并避免跨线程直接持有 RDG 临时资源。
 - **如何确认是平台限制而非配置错误？** 保存 RHI 能力、平台设置、Device Profile、最终 CVar 和 GPU capture，按同一测试矩阵复现。
+
+## 术语速查
+
+| 术语 | 含义 |
+| --- | --- |
+| ScreenProbeGather | Lumen 屏幕探针采集与 Radiance Cache 更新阶段 |
+| Radiance Cache | 探针辐射度缓存（历史引导与去噪的载体） |
+| RDG | Render Dependency Graph：UE5 渲染资源/Pass 调度框架 |
+| Resolve | 采样结果解析到最终光照/反射输出 |
+| MegaLights | UE5.8 大规模动态灯光采样-追踪-解析工作流 |
+| CVar | 控制台变量（路径选择/质量档位的运行时开关） |

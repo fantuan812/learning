@@ -1,4 +1,5 @@
 # 04 · Gameplay 框架与登录流程源码
+> 知识成熟度：L2（本轮审计修订时补标）
 > 源码基线：UE 5.8.0（本机 `Engine/Build/Build.version`：Major 5 / Minor 8 / Patch 0 / CL 55116800，分支 `++UE5+Release-5.8`）。
 > 验收边界：以本机 `C:\Program Files\Epic Games\UE_5.8\Engine` 只读源码为准；未在本文落地的主题不视为已完成源码覆盖。
 > 官方参考：[Unreal Engine 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
@@ -553,3 +554,4 @@ GameMode 只存在于服务器（`GetAuthGameMode()`）；客户端通过复制�
 - [03-游戏玩法编程/01-GameplayAbilitySystem能力系统.md](../03-游戏玩法编程/01-GameplayAbilitySystem能力系统.md)：Possess/PostLogin 与 ASC 初始化
 - [05-AI系统/README.md](../05-AI系统/README.md)：`AAIController::Possess` 同源机制
 - [01-引擎基础/README.md](../01-引擎基础/README.md)：分类总览
+- [32-UE Dedicated Server启动与监听源码](<./32-UE Dedicated Server启动与监听源码.md>)：登录链的 DS 进程视角（框架语义以本篇为准）。

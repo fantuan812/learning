@@ -1972,7 +1972,7 @@ Beacon 在正式 Travel 前预约服务器容量，减少 Lobby 显示可加入�
 - [20-Iris复制源码](20-Iris复制源码.md)：Iris 状态描述、过滤与序列化边界。
 - [26-CommonUI源码](26-CommonUI源码.md)：CommonUI 激活栈和输入路由。
 - [28-UnrealInsights与Trace源码](28-UnrealInsights与Trace源码.md)：把登录、Travel、加载屏和复制事件变成可观测证据。
-- [46-Lyra-AI队伍与调试源码](46-Lyra-AI队伍与调试源码.md)：Bot 会话与队伍规则补充。
+- [46-Lyra-AI机器人与队伍源码](46-Lyra-AI机器人与队伍源码.md)：Bot 会话与队伍规则补充。
 - [47-Lyra-调试工具与扩展源码](47-Lyra-调试工具与扩展源码.md)：测试控制器与 LyraEditor 校验工具，衔接 Gauntlet 与内容验证。
 
 ## 三十、权威来源与验证命令

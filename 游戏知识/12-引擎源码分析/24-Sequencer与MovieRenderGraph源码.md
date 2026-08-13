@@ -1,21 +1,12 @@
 # Sequencer 与 Movie Render Graph 源码
+> 知识成熟度：L2（本轮审计修订时补标）
 
 - 版本基准：UE5.8.0 / CL 55116800 / `++UE5+Release-5.8`
 - 最后更新：2026-08-06（本轮元数据维护）
 
 ## 概述
 
-## 核心概念
-
-## 原理
-
-## 示例
-
-## 最佳实践
-
-## FAQ
-
-## 关联阅读
+本文以 UE5.8 本机源码为证据，梳理 Sequencer 求值（MovieScene/LevelSequence/Player）与 Movie Render Graph（Config/Graph/Node/Pass/Deferred）两条主链，并给出 MovieSceneCapture 旧管线到 MRG 的迁移边界与验证命令。
 
 ## 源码证据与核心概念
 

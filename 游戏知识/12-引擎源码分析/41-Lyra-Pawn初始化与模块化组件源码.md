@@ -840,7 +840,7 @@ void UMyPawnFeature::CheckDefaultInitialization()
 - [05-GAS能力系统源码](05-GAS能力系统源码.md)：ASC ActorInfo 与能力底层。
 - [08-ModularGameplay模块化玩法](../03-游戏玩法编程/08-ModularGameplay模块化玩法.md)：概念层实践。
 - [45-Lyra-相机音频与游戏阶段源码](45-Lyra-相机音频与游戏阶段源码.md)：Hero 绑定摄像机模式的模式栈实现。
-- [46-Lyra-AI队伍与调试源码](46-Lyra-AI队伍与调试源码.md)：Bot 不需要 LocalPlayer 的控制器与队伍实现。
+- [46-Lyra-AI机器人与队伍源码](46-Lyra-AI机器人与队伍源码.md)：Bot 不需要 LocalPlayer 的控制器与队伍实现。
 
 ## 三十八、权威来源
 

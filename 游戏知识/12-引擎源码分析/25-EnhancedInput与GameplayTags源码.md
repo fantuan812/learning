@@ -1,21 +1,12 @@
 # Enhanced Input 与 Gameplay Tags 源码分析
+> 知识成熟度：L2（本轮审计修订时补标）
 
 版本基准：UE5.8.0 / CL55116800 / ++UE5+Release-5.8
 - 最后更新：2026-08-06（本轮元数据维护）
 
 ## 概述
 
-## 核心概念
-
-## 原理
-
-## 示例
-
-## 最佳实践
-
-## FAQ
-
-## 关联阅读
+本文以 UE5.8 本机源码为证据，梳理 Enhanced Input 从 IMC/InputAction 经 Modifier/Trigger 到 UPlayerInput 的求值链，以及 Gameplay Tags 的 Manager 配置、原生注册、Container/Query 与复制边界。
 
 ## 源码证据与核心概念
 
@@ -352,6 +343,7 @@ flowchart LR
 - [Enhanced Input 官方 API 入口](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/EnhancedInput)
 - [Gameplay Tags 官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine/using-gameplay-tags-in-unreal-engine)
 - [Gameplay Tags 官方 API 入口](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/GameplayTags)
+- [26-CommonUI源码](26-CommonUI源码.md)：CommonUI 对输入的消费路由（输入机制内部分工见本篇）。
 
 ### 验收边界
 

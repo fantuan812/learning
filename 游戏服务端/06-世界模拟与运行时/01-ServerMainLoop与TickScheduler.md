@@ -152,10 +152,10 @@ struct TickContext {
 | 模块 | 对接方式 | 关联文档 |
 | --- | --- | --- |
 | Timer | 注册回调，按 tickIndex 到期触发 | `02-Timer时间轮与延迟任务`（规划） |
-| Entity 生命周期 | Spawn/Despawn 队列在 Tick 边界处理 | `03-Entity生命周期与组件模型`（规划） |
-| Scene/Zone | 每 Tick 处理进出场景、加载卸载 | `04-Scene-Map-Zone与实例管理`（规划） |
-| AOI | 移动收集 → Tick 内计算 Interest → 批量发送 | `05-AOI与InterestManagement`（规划） |
-| AI/寻路 | 分帧预算片，多 Tick 摊薄 | `05-AI与寻路时间预算`（规划） |
+| Entity 生命周期 | Spawn/Despawn 队列在 Tick 边界处理 | [03-Entity生命周期与组件模型](03-Entity生命周期与组件模型.md)（已落地） |
+| Scene/Zone | 每 Tick 处理进出场景、加载卸载 | [04-Scene-Map-Zone与实例管理](04-Scene-Map-Zone与实例管理.md)（已落地） |
+| AOI | 移动收集 → Tick 内计算 Interest → 批量发送 | [05-AOI与InterestManagement](05-AOI与InterestManagement.md)（已落地） |
+| AI/寻路 | 分帧预算片，多 Tick 摊薄 | [11-AI与寻路时间预算](11-AI与寻路时间预算.md)（已落地） |
 | 网络 | 每帧窗口批量发送，与 Tick 解耦 | [05-UE Dedicated Server平台化](<../05-UE Dedicated Server平台化/README.md>) |
 
 原则：**任何系统都不允许自己创建时间循环**；统一由调度器按 Tick 分片执行，否则预算与确定性都会失控。
@@ -292,10 +292,10 @@ queue_backlog        # 输入/网络队列积压，> 阈值告警
 
 ## 9. 关联阅读
 
-- `05-AI与寻路时间预算`（规划）：AI Tick 分帧与预算片。
+- [11-AI与寻路时间预算](11-AI与寻路时间预算.md)（已落地）：AI Tick 分帧与预算片。
 - `02-Timer时间轮与延迟任务`（规划）：Timer 如何接入 Tick。
-- `07-世界时间确定性与GameClock`（规划）：wall/monotonic/game time 的边界。
+- [12-世界时间确定性与GameClock](12-世界时间确定性与GameClock.md)（已落地）：wall/monotonic/game time 的边界。
 - [游戏服务端 README](../README.md)：领域导航。
 - [游戏测试与质量](../../游戏测试与质量/README.md)：机器人压测与容量评估。
 - [06-世界模拟与运行时 README](README.md)：本分类导航与规划。
-- `03-Entity生命周期与组件模型`（规划）：Tick 内实体增删的边界。
+- [03-Entity生命周期与组件模型](03-Entity生命周期与组件模型.md)（已落地）：Tick 内实体增删的边界。

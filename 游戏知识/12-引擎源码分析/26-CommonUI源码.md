@@ -1,4 +1,5 @@
 # CommonUI 源码专题
+> 知识成熟度：L2（本轮审计修订时补标）
 
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：Major 5 / Minor 8 / Patch 0 / CL 55116800，分支 `++UE5+Release-5.8`）。
 > 源码依据：本机只读安装目录 `C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Runtime\CommonUI`，重点覆盖 CommonUI、CommonInput Runtime 和 CommonUIEditor 分界。
@@ -338,5 +339,6 @@ flowchart TD
 
 ### 8. 关联阅读
 - [UE5.8 源码覆盖路线图](19-高优先级源码覆盖路线图.md)
+- [25-EnhancedInput与GameplayTags源码](25-EnhancedInput与GameplayTags源码.md)：Enhanced Input 内部机制（本篇聚焦 CommonUI 消费侧）。
 - [Common UI Plugin 官方 UE5.8 入口](https://dev.epicgames.com/documentation/en-us/unreal-engine/common-ui-plugin-for-advanced-user-interfaces-in-unreal-engine?lang=en-US)
 - [Common UI Quickstart 官方 UE5.8 指南](https://dev.epicgames.com/documentation/en-us/unreal-engine/common-ui-quickstart-guide-for-unreal-engine?lang=en-US)
