@@ -1,0 +1,17 @@
+== Atomic 与内存模型实验（MSVC /O2 /std:c++17，8 线程 × 1000000 次）==
+
+A) atomic fetch_add x8000000: got=8000000 expect=8000000 -> PASS
+B) plain ++ x40000000 round 1: got=22136253 expect=40000000 -> 丢更新
+B) plain ++ x40000000 round 2: got=19921180 expect=40000000 -> 丢更新
+B) plain ++ x40000000 round 3: got=19179024 expect=40000000 -> 丢更新
+B) plain ++ x40000000 round 4: got=19949629 expect=40000000 -> 丢更新
+B) plain ++ x40000000 round 5: got=21574681 expect=40000000 -> 丢更新
+B) 5 轮中 5 轮出现丢更新（数据竞争 = UB，结果不确定，可能因机器/优化而不同）
+C) message passing (release/acquire) x5000000: PASS
+D) CAS loop x8000000: got=8000000 expect=8000000 -> PASS
+
+E) fetch_add 耗时（ms，iters=20000000/线程）
+   threads | relaxed | acq_rel | seq_cst
+         1 |   81.38 |   81.64 |   82.12
+         8 | 1814.89 | 2739.05 | 2766.33
+   （x86 上三种 order 的 RMW 均编译为 lock 前缀指令，差异主要来自缓存行竞争）

@@ -1,0 +1,6 @@
+# Evidence 实验构建产物：保留 src/ scripts/ results/，忽略编译输出
+evidence/**/build/
+*.exe
+*.obj
+*.pdb
+*.ilk

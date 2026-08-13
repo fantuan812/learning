@@ -1,0 +1,16 @@
+== 1) vector 扩容：noexcept 移动类型（先 reserve(1)，再 push_back 10000 次）==
+push_back x10000: capacity=12138, ctors=10000, copies=0, moves=34284
+
+== 2) 相同操作但先 reserve(N)：扩容消失 ==
+push_back x10000 (reserve): capacity=10000, ctors=10000, copies=0, moves=10000
+
+== 3) 只有拷贝的类型（无移动构造）：扩容退化为逐元素复制 ==
+push_back x10000 (CopyOnly): capacity=12138, ctors=10000, copies=34284
+
+== 4) 返回值优化 ==
+NRVO 返回具名对象: ctors=1, copies=0, moves=0
+C++17 返回临时对象: ctors=1, copies=0, moves=0
+反模式 return std::move(t): ctors=1, copies=0, moves=1
+
+== 5) moved-from 状态（长字符串超过 SSO 长度，移动才会真正转移缓冲区）==
+move 后: t.size()=59, s.size()=0（实现定义：MSVC 下通常为空，但必须保持有效、可析构、可赋值）

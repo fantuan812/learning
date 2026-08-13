@@ -1,0 +1,9 @@
+== False Sharing Benchmark（16 线程 × 5000000 次/线程，3 次取平均）==
+
+run 1: aligned=32.09 ms  packed=38.48 ms  shared_atomic=1103.99 ms  (packed/aligned=1.2x)
+run 2: aligned=30.58 ms  packed=39.01 ms  shared_atomic=1106.31 ms  (packed/aligned=1.3x)
+run 3: aligned=32.58 ms  packed=38.71 ms  shared_atomic=1148.56 ms  (packed/aligned=1.2x)
+
+对照：每线程先局部累加再写回（不产生缓存行竞争）
+run 1: aligned=25.84 ms  packed=26.80 ms
+run 2: aligned=26.90 ms  packed=24.45 ms
