@@ -1,4 +1,5 @@
-# UMG MVVM 源码分析
+# UE 引擎源码分析 27：UMG MVVM 源码分析
+> 知识成熟度：L2（本轮审计修订时补标）
 
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：Major 5 / Minor 8 / Patch 0 / CL 55116800，分支 `++UE5+Release-5.8`）。
 > 源码依据：本机只读安装目录 `C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Runtime\ModelViewViewModel`，重点覆盖 ModelViewViewModel Runtime、编译器、编辑器和调试模块。

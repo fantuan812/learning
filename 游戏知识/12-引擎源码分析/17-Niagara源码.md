@@ -1,4 +1,5 @@
-# 17 Niagara 源码剖析（UE 5.8）
+# UE 引擎源码分析 17：Niagara 源码剖析（UE 5.8）
+> 知识成熟度：L2（本轮审计修订时补标）
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：Major 5 / Minor 8 / Patch 0 / CL 55116800，分支 `++UE5+Release-5.8`）。
 > 源码依据：本机只读安装目录 `C:\Program Files\Epic Games\UE_5.8\Engine`，Niagara 运行时与编辑器位于 `Plugins/FX/Niagara/Source`，VectorVM 依赖位于 `Source/Runtime/VectorVM`。
 > 适用范围：编辑器资产编译、客户端/服务端运行时系统实例、CPU VectorVM、GPU Compute 与渲染线程派发；GPU 模拟和渲染部分仍需按目标平台能力单独验收。

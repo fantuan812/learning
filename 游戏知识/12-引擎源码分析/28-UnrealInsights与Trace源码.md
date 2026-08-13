@@ -1,4 +1,5 @@
-# Unreal Insights 与 Trace 源码
+# UE 引擎源码分析 28：Unreal Insights 与 Trace 源码
+> 知识成熟度：L2（本轮审计修订时补标）
 
 > 专题定位：以 UE5.8.0 源码为证据，追踪 TraceLog 事件从声明与写入到 `.utrace`、TraceServices 分析以及 TraceInsights TimingView 呈现的完整链路。
 

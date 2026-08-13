@@ -1,4 +1,5 @@
-# World Partition 与 World Streaming 源码分析
+# UE 引擎源码分析 22：World Partition 与 World Streaming 源码分析
+> 知识成熟度：L2（本轮审计修订时补标）
 
 - 引擎版本：UE5.8.0
 - 变更列表：CL 55116800

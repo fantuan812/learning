@@ -92,6 +92,18 @@
 - 12-引擎源码分析（反射/GC/网络等源码剖析）
 - 13-世界构建与过场（Landscape、Foliage、Sequencer）
 
+## 性能主题跨分类导航
+
+性能优化按侧重点分布在三个分类，建议按瓶颈所在组合阅读：
+
+| 分类 | 覆盖的性能主题 |
+| --- | --- |
+| [02-渲染与图形](../02-渲染与图形/README.md) | GPU 侧：`stat gpu`、Nanite/Lumen/VSM 开销、移动端带宽与 Overdraw |
+| [07-UI与性能优化](README.md)（本文） | CPU/UI 侧：`stat unit`、Unreal Insights、Draw Call、内存预算 |
+| [11-VFX与Niagara](../11-VFX与Niagara/README.md) | VFX 侧：粒子预算与 LOD、合批、半透明排序、移动端限制（03-VFX性能优化） |
+
+排查思路：先按现象定位侧重点（UI 卡顿 → 07；渲染开销 → 02；特效开销 → 11），再回到本文第 3/4 篇统一用 Profiler 量化验证。
+
 ---
 
 *本文档由 UE 客户端知识库自动生成，内容基于 UE5 官方文档与社区最佳实践整理。*

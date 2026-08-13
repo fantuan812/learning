@@ -1,4 +1,5 @@
-# 37 Chaos 破坏系统与 Field System 源码分析
+# UE 引擎源码分析 37：Chaos 破坏系统与 Field System 源码分析
+> 知识成熟度：L2（本轮审计修订时补标）
 
 ## 元数据
 

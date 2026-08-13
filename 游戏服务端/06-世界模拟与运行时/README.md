@@ -59,13 +59,13 @@ Player 进入 Scene → 加入 AOI Cell → 计算 Interest Set → EnterView/Le
 | 文件 | 简介 | 成熟度 |
 | --- | --- | --- |
 | [01-ServerMainLoop与TickScheduler](01-ServerMainLoop与TickScheduler.md) | 固定步长主循环、accumulator、catch-up/drop、时间预算、UE5.8 对照；含本机模拟 | L4 |
-| [05-AOI与InterestManagement](05-AOI与InterestManagement.md) | Move→Cell Change→Interest Diff→Enter/Leave→限流→批量；含本机模拟器（100/1K/10K 实体） | L4 |
 | [03-Entity生命周期与组件模型](03-Entity生命周期与组件模型.md) | Entity ID/世代、Spawn/Despawn、组件模型、实体池、Ghost/Mirror、悬垂防护 | L3 |
+| [04-Scene-Map-Zone与实例管理](04-Scene-Map-Zone与实例管理.md) | Map/Scene/Zone 三层、玩家归属、实例分配、Zone 迁移、动态加载、线程/进程分布 | L3 |
+| [05-AOI与InterestManagement](05-AOI与InterestManagement.md) | Move→Cell Change→Interest Diff→Enter/Leave→限流→批量；含本机模拟器（100/1K/10K 实体） | L4 |
 | [11-AI与寻路时间预算](11-AI与寻路时间预算.md) | 三层频率/预算、可中断寻路、分帧更新、降级阶梯；复用 A*/Tick 实验证据 | L4 |
 | [12-世界时间确定性与GameClock](12-世界时间确定性与GameClock.md) | 五类时间边界、GameClock 单一权威、暂停/减速、跨服对齐、worldLag 监控 | L2 |
-| [14-运行时背压与过载保护](14-运行时背压与过载保护.md) | 背压传导、降级优先级、四类过载阈值、滞回恢复；复用 Tick/AOI 实验证据 | L4 |
-| [04-Scene-Map-Zone与实例管理](04-Scene-Map-Zone与实例管理.md) | Map/Scene/Zone 三层、玩家归属、实例分配、Zone 迁移、动态加载、线程/进程分布 | L3 |
 | [13-世界Snapshot与故障恢复](13-世界Snapshot与故障恢复.md) | 快照+增量事件、崩溃恢复状态机、客户端 Reconcile、事件日志幂等 | L3 |
+| [14-运行时背压与过载保护](14-运行时背压与过载保护.md) | 背压传导、降级优先级、四类过载阈值、滞回恢复；复用 Tick/AOI 实验证据 | L4 |
 
 ## 验收门禁
 

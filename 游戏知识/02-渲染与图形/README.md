@@ -118,6 +118,12 @@ flowchart LR
     A[04-美术与资产规范<br/>纹理/网格/光照规范] -. 与材质/光照章节联动 .-> R
 ```
 
+### 性能主题跨分类导航
+
+- [07-UI与性能优化](../07-UI与性能优化/README.md)：性能分析工具链（`stat unit`、Unreal Insights）与 CPU/UI 侧优化方法论；渲染开销的量化口径以本文 `stat gpu`/`stat sceneRendering` 为准。
+- [11-VFX与Niagara](../11-VFX与Niagara/README.md)：VFX 性能优化（粒子预算、合批、半透明排序、移动端限制）是渲染性能预算的典型应用，与本文材质复杂度、Draw Call 章节同链。
+- 本文 02-渲染与图形：GPU 侧性能（`stat gpu`、Nanite/Lumen/VSM 开销、移动端带宽与 Overdraw）。
+
 ## 阅读反馈
 
 - 发现问题（错别字、命令错误、版本过时）时，请直接修改对应文章并在"版本差异"处注明；

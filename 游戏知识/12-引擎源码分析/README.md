@@ -230,7 +230,7 @@ flowchart TB
   为控制篇幅，部分代码为"节选/示意"，会在注释中标注；
 - 建议对照引擎源码阅读：`Engine/Source/Runtime/CoreUObject/`、
   `Engine/Source/Runtime/Engine/`、`Engine/Source/Programs/Shared/EpicGames.UHT/`；
-- 对已标记"源码深度已完成"的 UE5.8 引擎专题，以 20-38 号文章和路线图中的本机 5.8 路径为证据；Lyra 项目级综合链路以 39-47 号文章、本机 `LyraStarterGame.uproject` 的 `EngineAssociation=5.8` 及项目源码为证据；其余未涉及主题继续保持各自的"待补/规划"状态。
+- 对已标记"源码深度已完成"的 UE5.8 引擎专题，以 20-38 号文章和路线图中的本机 5.8 路径为证据；Lyra 项目级综合链路以 39-48 号文章、本机 `LyraStarterGame.uproject` 的 `EngineAssociation=5.8` 及项目源码为证据；其余未涉及主题继续保持各自的"待补/规划"状态。
 - Mermaid 图中的中文为概念标注，非引擎字面量；
 - "服务器/客户端"指 Dedicated/Listen Server 与 Client 的网络角色划分。
 

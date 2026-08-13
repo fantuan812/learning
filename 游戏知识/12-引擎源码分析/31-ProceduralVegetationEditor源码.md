@@ -1,4 +1,4 @@
-# Procedural Vegetation Editor 源码分析
+# UE 引擎源码分析 31：Procedural Vegetation Editor 源码分析
 > 知识成熟度：L2（本轮审计修订时补标）
 
 > 专题定位：以 UE5.8.0 的 Experimental Procedural Vegetation Editor 插件源码为中心，分析 Runtime/Editor 模块边界、PCG 图/资产/实例生命周期，以及到 Foliage 与 World Partition 的可验证适配边界。
