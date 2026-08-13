@@ -623,11 +623,12 @@ Lyra 的 InitState 正是为跨 Actor 引用乱序和延迟而存在。
 
 ## 附录：核心文件完整源码
 
-> 收录原则：本附录把正文直接分析的 LyraStarterGame 5.8 项目源码文件逐字完整收录（未删改，保留 Epic 版权头），正文中的“节选”负责解释调用链，本附录提供全文，二者配合阅读。引擎层（`Engine/`）文件体量过大且不属于项目教程主体，仍按正文的路径+符号检索方式引用，不在此收录；`.uasset/.umap` 资产也不在收录范围。
+> 收录原则：本附录把正文直接分析的 LyraStarterGame 5.8 项目源码文件逐字完整收录（未删改，保留 Epic 版权头），正文中的"节选"负责解释调用链，本附录提供全文，二者配合阅读。引擎层（`Engine/`）文件体量过大且不属于项目教程主体，仍按正文的路径+符号检索方式引用，不在此收录；`.uasset/.umap` 资产也不在收录范围。
 > 版权提示：以下代码来自 Epic Games 的 LyraStarterGame 样例（UE 5.8），随 Unreal Engine EULA 的样例代码条款提供，仅作本地学习收录；对外发布前请自行核对许可条款。
 
 | # | 文件（相对 LyraStarterGame 根） | 行数 |
-| --- | --- | --- || 1 | `LyraStarterGame.uproject` | 391 |
+| --- | --- | --- |
+| 1 | `LyraStarterGame.uproject` | 391 |
 | 2 | `Source\LyraGame\LyraGame.Build.cs` | 117 |
 | 3 | `Config\DefaultEngine.ini` | 435 |
 | 4 | `Config\DefaultGame.ini` | 243 |
@@ -4103,7 +4104,6 @@ public:
 
 #undef UE_API
 ```
-
 
 ## 更新日志
 - 2026-08-13：按用户要求补入核心文件完整源码附录（共 14 个文件，逐字收录），正文分析不变。
