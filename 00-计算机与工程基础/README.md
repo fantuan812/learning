@@ -15,7 +15,7 @@ UE 客户端链路：C++ → UE 源码 → 游戏客户端（UObject/GC/容器�
 
 没有这一层时，`TArray`、`TSharedPtr`、`FRunnable`、`TaskGraph`、`FMallocBinned` 只能"记住结论"，无法回答性能与正确性问题；UE 源码开发与高性能游戏服务端最终都会汇合到这里。
 
-## 规划分类（10 个）
+## 规划分类（11 个，来自执行方案 W1）
 
 | 分类 | 主题 |
 | --- | --- |
@@ -28,11 +28,12 @@ UE 客户端链路：C++ → UE 源码 → 游戏客户端（UObject/GC/容器�
 | 07-Linux系统编程 | socket、epoll LT/ET、IO 多路复用、信号、性能工具 |
 | 08-计算机体系结构与性能 | CPU cache、branch prediction、SIMD、NUMA、perf 分析方法 |
 | 09-计算机网络基础 | TCP/UDP/QUIC 原理、拥塞控制、网络边界（与服务端网络分层） |
-| 10-工程设计与调试 | 调试器、sanitizer、profiler、错误处理与日志 |
+| 10-编译链接与ABI | 编译/链接/加载、符号与 ABI、ODR、动态库、`MODULE_API`、Build.cs |
+| 11-工程调试与性能分析 | 调试器、sanitizer、profiler、错误处理与日志 |
 
 ## 优先级（第一批）
 
-对象生命周期 / RAII / copy-move / 模板 / STL 容器实现 / allocator / 虚函数与对象布局 / alignment / cache line / atomic 与 memory ordering / thread 与 process / virtual memory / socket 与 epoll / CPU cache / branch prediction / SIMD / perf
+第一批 13 篇见 [执行方案 W1](../方案/知识体系完善执行方案.md)；优先级主题：对象生命周期 / RAII / copy-move / 模板 / STL 容器实现 / allocator / 虚函数与对象布局 / alignment / cache line / atomic 与 memory ordering / thread 与 process / virtual memory / socket 与 epoll / CPU cache / branch prediction / SIMD / perf / 编译链接与 ABI
 
 ## 与现有知识库的分工
 
@@ -44,16 +45,17 @@ UE 客户端链路：C++ → UE 源码 → 游戏客户端（UObject/GC/容器�
 
 | 分类 | 状态 | 篇数 | 成熟度分布 |
 | --- | --- | --- | --- |
-| 01-C++核心 | 规划 | 0 | - |
+| [01-C++核心](01-C++核心/README.md) | 建设中 | 2 | L2/L3 |
 | 02-C++对象模型与内存 | 规划 | 0 | - |
 | 03-现代C++与泛型 | 规划 | 0 | - |
-| 04-C++并发与内存模型 | 规划 | 0 | - |
+| [04-C++并发与内存模型](04-C++并发与内存模型/README.md) | 建设中 | 2 | L4/L4 |
 | 05-数据结构与复杂度 | 规划 | 0 | - |
 | 06-操作系统 | 规划 | 0 | - |
-| 07-Linux系统编程 | 规划 | 0 | - |
+| [07-Linux系统编程](07-Linux系统编程/README.md) | 建设中 | 1 | L3 |
 | 08-计算机体系结构与性能 | 规划 | 0 | - |
 | 09-计算机网络基础 | 规划 | 0 | - |
-| 10-工程设计与调试 | 规划 | 0 | - |
+| 10-编译链接与ABI | 规划 | 0 | - |
+| 11-工程调试与性能分析 | 规划 | 0 | - |
 
 ## 验收门禁
 
