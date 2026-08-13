@@ -1,0 +1,5 @@
+# Knowledge Base Manifest
+# 索引文件，不存放正文；由 kb_scanner/kb_analyzer 流程增量维护。
+version: 1
+
+documents: {}

@@ -1,0 +1,50 @@
+# Knowledge Base Taxonomy（初稿）
+# 与现有仓库顶层目录一一对应；首轮 kb_scanner + kb_architect 流程完成后修订为 active。
+# 状态取值：draft（草案）/ active（已确认）/ archived（已归档）
+version: 1
+
+domains:
+  计算机与工程基础:
+    description: C++、OS、Linux、网络、并发与性能底座。
+    status: draft
+    subdomains: {}
+  游戏知识:
+    description: UE 客户端开发与引擎源码分析（13 大分类，含引擎源码纵深层）。
+    status: draft
+    subdomains: {}
+  游戏服务端:
+    description: 游戏服务端架构、网络、数据业务、DS 平台化与世界模拟运行时。
+    status: draft
+    subdomains: {}
+  游戏算法:
+    description: 寻路图论、数学碰撞与工程技巧。
+    status: draft
+    subdomains: {}
+  游戏AI:
+    description: 游戏 AI 决策架构、移动学习与服务端 AI。
+    status: draft
+    subdomains: {}
+  游戏测试与质量:
+    description: 测试策略、自动化、压测与 CI 门禁。
+    status: draft
+    subdomains: {}
+  系统实战:
+    description: 项目树：技能、Buff、假人AI 等端到端业务链路。
+    status: draft
+    subdomains: {}
+  工作日志:
+    description: 维护经验与复盘日志（只增不改）。
+    status: draft
+    subdomains: {}
+  笔记:
+    description: 短笔记与实验记录。
+    status: draft
+    subdomains: {}
+  evidence:
+    description: 实验证据链（src / scripts / results）。
+    status: draft
+    subdomains: {}
+  方案:
+    description: 执行方案与规划。
+    status: draft
+    subdomains: {}

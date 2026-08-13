@@ -1,0 +1,5 @@
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 5
+default_subagent_model = "opencode-go/deepseek-v4-flash"
+default_subagent_reasoning_effort = "max"

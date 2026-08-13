@@ -1,0 +1,24 @@
+# 同义分类映射：新 Topic 创建前先查这里，避免多 Agent 产生同义分类。
+aliases:
+  AStar:
+    canonical: "A*"
+  A-Star:
+    canonical: "A*"
+  A星:
+    canonical: "A*"
+  ECS:
+    canonical: "Entity Component System"
+  InterestManagement:
+    canonical: "Interest Management"
+  GameAI:
+    canonical: "Game AI"
+  GAS:
+    canonical: "Gameplay Ability System"
+  Lyra:
+    canonical: "LyraStarterGame"
+  InitState:
+    canonical: "GameFramework InitState"
+  DS:
+    canonical: "Dedicated Server"
+  AOI:
+    canonical: "Area of Interest"
