@@ -449,8 +449,9 @@ foreach ($domain in $domainDefinitions) {
     }
 }
 
-# 知识成熟度门禁（W0-03）：阶段 A——既有正文缺成熟度仅 WARN，本次新增/修改正文缺成熟度 FAIL；
+# 知识成熟度门禁（W0-03）：阶段 B——既有正文与本次新增/修改正文缺成熟度均 FAIL；
 # L3 必须有 Evidence/Demo 入口，L4 必须有 Benchmark/Test 证据，L5 必须有工作日志/复盘/生产证据。
+# 豁免：README、维护目录（references/learning/scripts）、工作日志/笔记/方案（过程记录与规划）。
 $changedFiles = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 try {
     foreach ($cmd in @(
@@ -484,6 +485,7 @@ foreach ($file in $mdFiles) {
             Add-Failure "本次新增/修改正文缺少知识成熟度: $relative"
         } else {
             $maturityMissing++
+            Add-Failure "既有正文缺少知识成熟度（阶段 B 门禁）: $relative"
         }
         continue
     }
@@ -500,7 +502,7 @@ foreach ($file in $mdFiles) {
     }
 }
 if ($maturityMissing -gt 0 -or $maturityMissingChanged -gt 0) {
-    Add-Warning "正文缺少知识成熟度：既有 $maturityMissing 篇（阶段 A 仅警告，阶段 B 将升级为 FAIL）；本次新增/修改 $maturityMissingChanged 篇（已 FAIL）"
+    Add-Warning "正文缺少知识成熟度：既有 $maturityMissing 篇、本次新增/修改 $maturityMissingChanged 篇（阶段 B：均 FAIL）"
 }
 
 # P3 UE Dedicated Server 专项门禁：检查十一篇已登记专题（四篇核心 + 七篇扩展）、质量门禁说明和网络同步旧路径。

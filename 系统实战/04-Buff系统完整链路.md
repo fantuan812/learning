@@ -274,8 +274,6 @@ GAS 的 GE（GameplayEffect）就是 Buff 的引擎实现（Duration/Stack/Modif
 
 ## 9. 术语速查
 
-## 10. 关联阅读
-
 | 术语 | 含义 |
 | --- | --- |
 | BuffInstance | 运行期 Buff 实例（state / endTime / source / nextTick） |
@@ -283,6 +281,8 @@ GAS 的 GE（GameplayEffect）就是 Buff 的引擎实现（Duration/Stack/Modif
 | 冲突矩阵 | 九条刷新/叠加/替换/驱散语义的确定性裁决表 |
 | nextTick | 周期 Buff 下一跳时刻（由 GameClock 决定） |
 | 结算事件 | 每跳伤害/治疗的审计事件（可重放） |
+
+## 10. 关联阅读
 
 - [03-技能释放完整链路](03-技能释放完整链路.md)：Buff 的应用入口。
 - [游戏服务端/03-业务系统设计/08-技能与战斗框架](../游戏服务端/03-业务系统设计/08-技能与战斗框架.md)（§3.5）：服务端 Buff 实现。

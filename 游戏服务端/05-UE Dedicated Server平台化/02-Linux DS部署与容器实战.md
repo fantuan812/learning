@@ -2,6 +2,7 @@
 > 知识成熟度：L2（本轮审计修订时补标）。
 
 > 把 UE5.8 Dedicated Server 以无头进程、systemd 服务或容器镜像的形式部署到 Linux，覆盖构建、运行、信号、资源限制、日志、崩溃与验证。
+> 分工声明：构建/烘焙/打包机制（UBT/UAT、Server.Target.cs、BuildCookRun 语义）以 [UE Dedicated Server构建烘焙与运行](<../../游戏知识/08-工具链与打包发布/09-UE Dedicated Server构建烘焙与运行.md>) 为 canonical；本篇只引用其结论，聚焦 Linux 部署、容器、信号与平台视角，不重述构建机制细节。
 
 ## 元数据
 

@@ -1,4 +1,4 @@
-# UE Dedicated Server 联机验收与 Gauntlet
+# 06 · UE Dedicated Server 联机验收与 Gauntlet
 > 知识成熟度：L2（本轮审计修订时补标）。
 
 > 以 UE5.8 Dedicated Server 为被测对象，建立从启动冒烟、多人 E2E、网络异常到发布门禁的可追溯验收闭环。
@@ -797,6 +797,7 @@ Epic Gauntlet Overview 也提醒并发测试要特别注意 Server/Client 的唯
 - [网络同步](../游戏知识/06-网络同步/README.md)
 - [服务端测试与机器人压测](03-服务端测试与机器人压测.md)
 - [UE DS 机器人压测与容量评估](<07-UE DS机器人压测与容量评估.md>)：压测方法、容量评估与验收口径的量化侧（分工互指）
+- [DS自动扩缩容与容量规划](<../游戏服务端/05-UE Dedicated Server平台化/05-DS自动扩缩容与容量规划.md>)：容量模型的平台化契约与扩缩容演练（容量三角互指）
 - [性能兼容与网络异常测试](04-性能兼容与网络异常测试.md)
 - [系统实战/07-假人AI完整链路](../系统实战/07-假人AI完整链路.md)：假人/机器人驱动的完整联机验收链路（E2E 视角）
 - [Epic Gauntlet Overview](https://dev.epicgames.com/documentation/unreal-engine/gauntlet-automation-framework-overview-in-unreal-engine?lang=en-US)

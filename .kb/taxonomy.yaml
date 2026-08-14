@@ -1,50 +1,107 @@
-# Knowledge Base Taxonomy（初稿）
-# 与现有仓库顶层目录一一对应；首轮 kb_scanner + kb_architect 流程完成后修订为 active。
+# Knowledge Base Taxonomy
+# 与现有仓库顶层目录一一对应；R4（2026-08-14）审计后回填 subdomains 并升为 active。
 # 状态取值：draft（草案）/ active（已确认）/ archived（已归档）
-version: 1
+version: 2
 
 domains:
-  计算机与工程基础:
+  00-计算机与工程基础:
     description: C++、OS、Linux、网络、并发与性能底座。
-    status: draft
-    subdomains: {}
+    status: active
+    subdomains:
+      01-C++核心: C++ 对象生命周期、RAII、值语义。
+      04-C++并发与内存模型: 原子、内存序、无锁与缓存竞争。
+      07-Linux系统编程: Socket、Epoll、Reactor 等系统编程。
   游戏知识:
     description: UE 客户端开发与引擎源码分析（13 大分类，含引擎源码纵深层）。
-    status: draft
-    subdomains: {}
+    status: active
+    subdomains:
+      00-全栈运行闭环: 端到端协作总览。
+      01-引擎基础: UObject、反射、Actor 生命周期、World、流送。
+      02-渲染与图形: 渲染管线、材质、光照、Nanite、Lumen、后处理。
+      03-游戏玩法编程: GAS、输入、Tag、委托、移动、背包、存档。
+      04-动画系统: 动画蓝图、蒙太奇、IK、AnimNext。
+      05-AI系统: 行为树、感知、NavMesh、Mass、StateTree。
+      06-网络同步: 复制、RPC、预测、ReplicationGraph、回放。
+      07-UI与性能优化: UMG、MVVM、Profiling、调试。
+      08-工具链与打包发布: UBT/UAT、插件、GameFeatures、DS 构建。
+      09-物理系统: Chaos、碰撞、约束、破坏、车辆。
+      10-音频系统: 播放、衰减、MetaSound、Quartz。
+      11-VFX与Niagara: Niagara 粒子、流体与性能。
+      12-引擎源码分析: UE5.8 引擎源码纵深层（01-48）。
+      13-世界构建与过场: Landscape、Foliage、PCG、Sequencer、ICVFX。
   游戏服务端:
     description: 游戏服务端架构、网络、数据业务、DS 平台化与世界模拟运行时。
-    status: draft
-    subdomains: {}
+    status: active
+    subdomains:
+      01-架构与网络: 服务器架构、网络协议、帧同步、并发。
+      02-数据与业务: 数据库、缓存、排行榜、部署运维。
+      03-业务系统设计: 背包、任务、商城、匹配、战斗、活动。
+      04-平台与可靠性: 鉴权、限流、幂等、分布式事务、容灾、灰度。
+      05-UE Dedicated Server平台化: DS 生命周期、Linux 部署、扩缩容。
+      06-世界模拟与运行时: MainLoop、Entity、Scene、AOI、GameClock。
   游戏算法:
     description: 寻路图论、数学碰撞与工程技巧。
-    status: draft
-    subdomains: {}
+    status: active
+    subdomains:
+      01-寻路与图论: 图论、A*、流场、空间分区。
+      02-数学与碰撞: 向量、四元数、插值、碰撞、弹道。
+      03-工程与实用技巧: 随机、程序化生成、AOI、位运算、序列化。
+      04-确定性与基准工程: 动态寻路、NavMesh、RVO、联机确定性。
   游戏AI:
     description: 游戏 AI 决策架构、移动学习与服务端 AI。
-    status: draft
-    subdomains: {}
+    status: active
+    subdomains:
+      01-决策与架构: 感知、状态机、行为树、Utility、GOAP。
+      02-移动学习与服务端: 移动、战斗、学习型 AI、服务端 AI。
+      03-评测与安全: AI 评测回放、LLM 安全、自动测试玩家。
   游戏测试与质量:
     description: 测试策略、自动化、压测与 CI 门禁。
-    status: draft
+    status: active
     subdomains: {}
   系统实战:
     description: 项目树：技能、Buff、假人AI 等端到端业务链路。
-    status: draft
+    status: active
     subdomains: {}
   工作日志:
     description: 维护经验与复盘日志（只增不改）。
-    status: draft
+    status: active
     subdomains: {}
   笔记:
     description: 短笔记与实验记录。
-    status: draft
+    status: active
     subdomains: {}
   evidence:
     description: 实验证据链（src / scripts / results）。
-    status: draft
-    subdomains: {}
+    status: active
+    subdomains:
+      algorithms: 算法实验（AOI、A*）。
+      labs: 语言/系统实验（原子、move、epoll、false-sharing）。
+      server: 服务端实验（Tick Scheduler）。
   方案:
     description: 执行方案与规划。
-    status: draft
+    status: active
+    subdomains: {}
+  00_Index:
+    description: 全局导航索引与 MOC（非知识正文）。
+    status: active
+    subdomains: {}
+  Knowledge:
+    description: 通用知识新主题入口（当前骨架，待流入）。
+    status: active
+    subdomains: {}
+  Projects:
+    description: 项目专属知识入口（当前骨架，待流入）。
+    status: active
+    subdomains: {}
+  Inbox:
+    description: 未处理材料入口。
+    status: active
+    subdomains: {}
+  Archive:
+    description: 历史原材料与删除候选。
+    status: active
+    subdomains: {}
+  learning:
+    description: 稳定规则与维护经验（lessons / log）。
+    status: active
     subdomains: {}

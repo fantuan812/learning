@@ -26,3 +26,41 @@ aliases:
     canonical: "World Partition"
   GameplayTask:
     canonical: "GameplayTasks"
+  BehaviorTree:
+    canonical: "行为树"
+  BehaviourTree:
+    canonical: "行为树"
+  行为树:
+    canonical: "Behavior Tree"
+  NavMesh:
+    canonical: "NavMesh"
+  导航网格:
+    canonical: "NavMesh"
+  RVO:
+    canonical: "RVO / ORCA"
+  ORCA:
+    canonical: "RVO / ORCA"
+  PCG:
+    canonical: "Procedural Content Generation"
+  程序化内容生成:
+    canonical: "PCG"
+  能力系统:
+    canonical: "Gameplay Ability System"
+  背包:
+    canonical: "Inventory"
+  背包系统:
+    canonical: "Inventory"
+  Inventory:
+    canonical: "背包系统"
+  Buff:
+    canonical: "Buff"
+  GameClock:
+    canonical: "GameClock"
+  ReplicationGraph:
+    canonical: "Replication Graph"
+  兴趣管理:
+    canonical: "Interest Management"
+  Determinism:
+    canonical: "确定性"
+  确定性:
+    canonical: "Determinism"

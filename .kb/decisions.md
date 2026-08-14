@@ -2,6 +2,64 @@
 
 > 知识成熟度：L2（决策记录，只增不改历史条目）。
 
+## KD-012
+
+### Subject
+
+执行 review-queue 剩余四项结构性操作（2026-08-14 用户批准"将剩余这四项执行"）。
+
+### Options
+
+1. 仅登记不执行，四项保持 Pending。
+2. 全部执行：R4-OBS-01 性能笔记归位、R2-SPLIT-01 AI 03-01 拆分、R2-MOVE-01 GameplayDebugger 归属声明、R2-GATE-01 成熟度门禁阶段 B。
+
+### Decision
+
+Option 2，已执行：
+- R4-OBS-01：新建 `00-计算机与工程基础/07-Linux系统编程/03-性能工具：插桩与perf采样.md`（326 行 L2 canonical，占 07 目录规划 03 号）；笔记/插桩测试与笔记/perf性能分析 收敛为速查并加正式指向。
+- R2-SPLIT-01：`01-AI评测回放与LLM安全.md` → 改名收窄 `01-AI评测回放.md`（1649 行，§七 删改为指路节）；新建 `03-LLM-NPC安全.md`（419 行，原 §七 394 行逐字迁移，SHA-256 去空行归一后一致，7.x 重编号 1.x）；全库 13 处引用同步（LLM 语境改指 03，评测语境更新文件名），AI/03 README、游戏AI README 同步。
+- R2-MOVE-01：07 README 补"运行时调试"覆盖声明（低风险方案，文件不迁移）。
+- R2-GATE-01：check_repo.ps1 成熟度门禁阶段 A → 阶段 B（既有正文缺成熟度由 WARN 升级 FAIL）；全库复跑 FAIL 0；修复脚本 BOM（git 恢复后重新加 BOM 保证 Windows PowerShell 5.1 可解析）。
+
+### Reason
+
+四项均为 review-queue 遗留结构性操作，用户批准执行；拆分按 KD-007 先例（旧文收窄 + 新建分篇 + 逐字迁移 + 全库链接同步）；门禁升级前已确认全库缺成熟度正文为 0，升级无回归风险。
+
+### Confidence
+
+0.9
+
+### Status
+
+Accepted（已执行）
+
+## KD-011
+
+### Subject
+
+第四轮审计（R4，2026-08-14）结论与执行方式。
+
+### Options
+
+1. 只输出报告，不做任何文件修改。
+2. 报告 + 控制面登记（audit.md / review-queue / plans），P1 五项与 P2 六项修复待用户批准后分批执行；review-queue 新增 R4-DUP-01/02/03 不自动执行。
+
+### Decision
+
+Option 2：写入 .kb/audit.md（R4 报告，PASS_WITH_MINOR_WARNINGS）、.kb/plans/current.md（R4 执行计划）、.kb/review-queue.md（新增 3 项候选）；知识文件零修改。P1（R4-LINK-01/02/03、R4-STRUCT-01、R4-CTRL-03）与 P2 修复按用户批准批次执行，主线程串行写。
+
+### Reason
+
+R3 四项修复无回归、基线健康；但发现 3 处互链缺口（含 R3 健康项记录失真 1 处）、1 处结构问题、1 处控制面状态失真与 1 组真语义重叠候选。P1 为低风险增量编辑；R4-DUP 系列为结构性去重，需用户确认。审计阶段保持只读符合 AGENTS.md。
+
+### Confidence
+
+0.9
+
+### Status
+
+Accepted（报告已登记，修复待批准）
+
 ## KD-001
 
 ### Subject

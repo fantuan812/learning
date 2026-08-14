@@ -13,6 +13,7 @@
 > `Engine/Plugins/Runtime/ReplicationGraph/Source/Public/ReplicationGraph.h`（5.8 起节点类全部收拢于此）
 > 与 `Engine/Source/Runtime/Engine/Private/NetDriver.cpp`。
 > 前置：建议先读本分类 [01](01-网络架构与复制基础.md)（Relevancy、NetUpdateFrequency）与 [02](02-RPC与属性同步.md)（属性同步）。
+> 分工声明（AOI 三角）：本文=UE 5.8 ReplicationGraph 兴趣管理的引擎实现；通用 AOI 算法（九宫格/十字链表/Quadtree）见 [游戏算法/03-03](../../游戏算法/03-工程与实用技巧/03-AOI与视野计算.md)；服务器侧 AOI 运行时链路（Enter/Leave/限流/批量）见 [游戏服务端/06-05](../../游戏服务端/06-世界模拟与运行时/05-AOI与InterestManagement.md)，三篇分工互指不重复。
 
 ---
 
@@ -494,6 +495,8 @@ GridNode->ForceRebuild();
 - 本分类：[02-RPC与属性同步.md](02-RPC与属性同步.md) —— RepGraph 不管属性怎么同步，只管"谁相关"；4.2/4.4 示例中的复制属性写法见 02
 - 本分类：[03-客户端预测与延迟补偿.md](03-客户端预测与延迟补偿.md) —— 移动数据在客户端预测，RepGraph 决定预测对象何时对客户端可见
 - 本分类：[04-多人游戏框架与玩家状态.md](04-多人游戏框架与玩家状态.md) —— GameState/PlayerController 等常驻对象的复制与登录流程
+- 跨域（AOI 三角）：[游戏服务端/06-世界模拟与运行时/05-AOI与InterestManagement.md](../../游戏服务端/06-世界模拟与运行时/05-AOI与InterestManagement.md) —— 服务器侧 AOI 的 Enter/Leave 事件与限流批量（RepGraph 的 UE 实现层对应）
+- 跨域（AOI 三角）：[游戏算法/03-工程与实用技巧/03-AOI与视野计算.md](../../游戏算法/03-工程与实用技巧/03-AOI与视野计算.md) —— 九宫格/十字链表等通用 AOI 算法（与 UE RepGraph 网格兴趣管理的算法对照）
 - 本仓库：[../01-引擎基础/README.md](../01-引擎基础/README.md) —— UObject 生命周期与反射（RepGraph 节点是 UObject）
 - 官方文档：Unreal Engine 5 官方 Replication Graph 章节（Overview / Node Graph / Grid 网格兴趣管理）
 - 引擎源码（本机 5.8）：

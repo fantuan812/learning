@@ -14,6 +14,7 @@
 - **数据驱动**：从传统的属性绑定（Binding）到事件驱动刷新，再到 UE5.1+ 原生 MVVM（Model-View-ViewModel）框架，解决 UI 与游戏逻辑解耦、数据变更自动刷新、列表虚拟化等问题。
 - **性能分析**：Unreal Insights、`stat` 系列控制台命令、`stat unit` / `stat gpu`、`ProfileGPU`、内存分析（LLM、MemReport）等工具链的完整用法与判读方法。
 - **性能优化**：Draw Call 合并与归组（Batching）、材质复杂度控制、UI 剔除（Culling）、异步加载（Async Loading）、软引用 vs 硬引用、内存预算与移动端限制等工程实践。
+- **运行时调试**：GameplayDebugger 分类架构与网络调试、VisualLogger 可视日志记录与回放、编辑器内调试工具链（05 篇）；该篇为通用运行时调试能力，虽归入本分类（与 UI/性能排查配套使用），亦服务于玩法、AI 与网络调试场景，属分类边界内的覆盖声明。
 
 ### 适合读者
 

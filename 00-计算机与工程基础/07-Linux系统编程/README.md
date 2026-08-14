@@ -7,11 +7,12 @@
 | 文件 | 简介 | 成熟度 |
 | --- | --- | --- |
 | [01-Socket-Epoll与Reactor](01-Socket-Epoll与Reactor.md) | 阻塞/非阻塞、select/poll/epoll、LT/ET、Reactor、partial read/write、背压；实验代码就绪待 Linux 执行 | L3 |
+| [03-性能工具：插桩与perf采样](<03-性能工具：插桩与perf采样.md>) | 耗时点测试方法：C++ 插桩（steady_clock/RAII/编译器插桩）与 Linux perf 采样（record/report/火焰图/关键指标）；服务端场景统计模式与容量衔接 | L2 |
 
 ## 规划
 
 - `02-Linux信号与进程管理`（规划）：信号、daemon、systemd 集成；
-- `03-Linux性能工具`（规划）：perf/strace/ss 等（与 08 体系结构篇互补）。
+- `04-Linux诊断工具`（规划）：strace/ss/netstat 等（与 08 体系结构篇互补；perf 已落地为 03 篇）。
 
 ## 与 UE/服务端的对接
 

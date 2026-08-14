@@ -1,4 +1,28 @@
-# Knowledge Base Manifest
+     "00-计算机与工程基础/07-Linux系统编程/03-性能工具：插桩与perf采样.md":
+    kind: doc
+    maturity: L2
+    bytes: 18849
+    lines: 326
+
+  "游戏AI/03-评测与安全/03-LLM-NPC安全.md":
+    kind: doc
+    maturity: L2
+    bytes: 11879
+    lines: 419
+
+"00-计算机与工程基础/07-Linux系统编程/03-性能工具：插桩与perf采样.md":
+    kind: doc
+    maturity: L2
+    bytes: 18849
+    lines: 326
+
+ "游戏AI/03-评测与安全/03-LLM-NPC安全.md":
+    kind: doc
+    maturity: L2
+    bytes: 11879
+    lines: 419
+
+ Knowledge Base Manifest
 # 索引文件，不存放正文；由 kb_scanner/kb_analyzer 流程增量维护。
 # 生成：2026-08-14（R3 审计，机械回填 R2-MANIFEST-01）
 version: 2
@@ -99,6 +123,12 @@ documents:
     maturity: L3
     bytes: 21548
     lines: 306
+  "00-计算机与工程基础/07-Linux系统编程/03-性能工具：插桩与perf采样.md":
+    kind: doc
+    maturity: L2
+    bytes: 18849
+    lines: 326
+
   "00-计算机与工程基础/07-Linux系统编程/README.md":
     kind: README
     maturity: L0
@@ -1494,11 +1524,11 @@ documents:
     maturity: L0
     bytes: 9782
     lines: 142
-  "游戏AI/03-评测与安全/01-AI评测回放与LLM安全.md":
+  "游戏AI/03-评测与安全/01-AI评测回放.md":
     kind: doc
     maturity: L2
-    bytes: 52471
-    lines: 2035
+    bytes: 45865
+    lines: 1649
   "游戏AI/03-评测与安全/02-自动测试玩家与AI回归基准.md":
     kind: doc
     maturity: L2
