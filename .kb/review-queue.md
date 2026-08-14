@@ -78,6 +78,8 @@ Suggested action: 填充（机械生成，主线程执行）
 
 Status: Pending
 
+> 2026-08-14 决策：**已执行**（R3）。机械回填 320 个文档（kind/maturity/bytes/lines），版本升至 2；check_repo 复跑 PASS。
+
 ## R2-DEDUP-01（概念层双写收敛）
 
 Current: 01-07/08/09 与 01-04、02-03/04/08/10、04-01/02、04-00 FAQ/清单双源、08-08 与服务端 04 系列等多组概念层重复详述。

@@ -796,6 +796,7 @@ Epic Gauntlet Overview 也提醒并发测试要特别注意 Server/Client 的唯
 - [全栈质量门禁与灰度回滚](<../游戏知识/08-工具链与打包发布/08-全栈质量门禁与灰度回滚.md>)
 - [网络同步](../游戏知识/06-网络同步/README.md)
 - [服务端测试与机器人压测](03-服务端测试与机器人压测.md)
+- [UE DS 机器人压测与容量评估](<07-UE DS机器人压测与容量评估.md>)：压测方法、容量评估与验收口径的量化侧（分工互指）
 - [性能兼容与网络异常测试](04-性能兼容与网络异常测试.md)
 - [系统实战/07-假人AI完整链路](../系统实战/07-假人AI完整链路.md)：假人/机器人驱动的完整联机验收链路（E2E 视角）
 - [Epic Gauntlet Overview](https://dev.epicgames.com/documentation/unreal-engine/gauntlet-automation-framework-overview-in-unreal-engine?lang=en-US)
