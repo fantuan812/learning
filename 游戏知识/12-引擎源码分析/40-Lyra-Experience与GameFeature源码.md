@@ -790,6 +790,8 @@ PawnClass、PawnData、动态组件、能力和输入都可能来自 Experience/
 - [45-Lyra-相机音频与游戏阶段源码](45-Lyra-相机音频与游戏阶段源码.md)：GamePhase 阶段能力如何承接 Experience 之后的玩法流程。
 - [46-Lyra-AI机器人与队伍源码](46-Lyra-AI机器人与队伍源码.md)：队伍归属与 Bot 补位如何配合 Experience 玩法。
 - [44-Lyra-前端会话网络与扩展源码](44-Lyra-前端会话网络与扩展源码.md)：从前端 UserFacingExperience 到 Host Request/Travel URL 构造的完整闭环（本篇只保留入口摘要）。
+- [47-Lyra-调试工具与扩展源码](47-Lyra-调试工具与扩展源码.md)：调试命令与开发者设置（Experience 相关调试的 Cheat 入口）。
+- [48-Lyra扩展插件源码](48-Lyra扩展插件源码.md)：GameFeature 相关扩展插件（AsyncMixin/PocketWorlds 等）实现。
 
 ## 三十二、权威来源
 
@@ -2794,3 +2796,4 @@ void ULyraGameFeature_AddGameplayCuePaths::OnGameFeatureUnregistering(const UGam
 
 - 2026-08-13：基于本机 Lyra 5.8 与 UE 5.8 源码，核对 Experience 选择优先级、资产 Bundle、GameFeature 激活、Actions、Loaded 屏障、玩家出生和卸载路径。
 - 2026-08-13：关联阅读补充 45-47 系列篇目。
+- 2026-08-14：关联阅读补链 47（调试/开发者设置）与 48（扩展插件），同步 47 拆分出 48 的系列变更（R4-LYRA）。

@@ -12,11 +12,11 @@
 | Lyra 基线 | 本机 `LyraStarterGame.uproject` 的 `EngineAssociation=5.8` |
 | 项目源码根 | `C:\Users\zhaozhiqi\Documents\Unreal Projects\LyraStarterGame` |
 | 引擎源码根 | `C:\Program Files\Epic Games\UE_5.8\Engine` |
-| 适用范围 | Lyra 5.8 背包、拾取、快捷栏、装备实例、GAS 授权、GameplayMessageRouter、UIExtension |
+| 适用范围 | Lyra 5.8 背包、拾取、快捷栏、装备实例、GAS 授权、GameplayMessageRouter、VerbMessage 游戏语义消息协议、UIExtension |
 | 运行角色 | 服务器权威写入；拥有者客户端发起输入；所有客户端读取复制结果和表现消息 |
 | 知识成熟度 | L2：项目源码、插件源码和配置已静态核对；文中的 PIE/联机实验是可复现步骤，不宣称已经执行 |
 | 官方参考 | [Lyra Inventory and Equipment](https://dev.epicgames.com/documentation/en-us/unreal-engine/lyra-inventory-and-equipment-in-unreal-engine)、[Lyra Sample Game](https://dev.epicgames.com/documentation/en-us/unreal-engine/lyra-sample-game-in-unreal-engine)、[Gameplay Ability System](https://dev.epicgames.com/documentation/en-us/unreal-engine/gameplay-ability-system-for-unreal-engine)、[Game Features and Modular Gameplay](https://dev.epicgames.com/documentation/en-us/unreal-engine/game-features-and-modular-gameplay-in-unreal-engine) |
-| 最后更新 | 2026-08-13 |
+| 最后更新 | 2026-08-14 |
 
 ## 一、先给结论
 
@@ -2341,6 +2341,7 @@ git -C 'C:\project\git' status --short -- '游戏知识/12-引擎源码分析/43
 - [13-背包与装备系统](../03-游戏玩法编程/13-背包与装备系统.md)：玩法层的库存建模与扩展建议。
 - [46-Lyra-AI机器人与队伍源码](46-Lyra-AI机器人与队伍源码.md)：队伍颜色与 UI 展示数据的来源。
 - [47-Lyra-调试工具与扩展源码](47-Lyra-调试工具与扩展源码.md)：生成物品与调试命令的 Cheat 入口。
+- [48-Lyra扩展插件源码](48-Lyra扩展插件源码.md)：UIExtension/GameplayMessageRouter 等消息与 UI 相关扩展插件实现。
 
 ## 四十、权威来源
 
@@ -2357,6 +2358,8 @@ git -C 'C:\project\git' status --short -- '游戏知识/12-引擎源码分析/43
 
 > 收录原则：本附录把正文直接分析的 LyraStarterGame 5.8 项目源码文件逐字完整收录（未删改，保留 Epic 版权头），正文中的"节选"负责解释调用链，本附录提供全文，二者配合阅读。引擎层（`Engine/`）文件体量过大且不属于项目教程主体，仍按正文的路径+符号检索方式引用，不在此收录；`.uasset/.umap` 资产也不在收录范围。
 > 版权提示：以下代码来自 Epic Games 的 LyraStarterGame 样例（UE 5.8），随 Unreal Engine EULA 的样例代码条款提供，仅作本地学习收录；对外发布前请自行核对许可条款。
+>
+> 批次覆盖说明：装备/背包批次（上述 1-37 附录）只收录 Inventory/Equipment/GameplayMessageRouter/UIExtension 相关文件。LYRA 批次 1（Messages 协议补深析，追加附录文件 38-42）在本批补入"游戏语义消息协议（VerbMessage）"层：`LyraVerbMessage.h` 定义消息结构、`LyraVerbMessageHelpers.h/.cpp` 提供对象→PlayerState/PlayerController/GameplayCue 的转换工具、`LyraVerbMessageReplication.h` 提供跨服务器向客户端的 VerbMessage 广播容器、`GameplayMessageProcessor.h` 提供消息处理器基类。`LyraVerbMessageReplication.cpp`、`GameplayMessageProcessor.cpp`、`LyraNotificationMessage.h/.cpp` 体量较小，交由正文节选 + 符号检索引用，不入附录。
 
 | # | 文件（相对 LyraStarterGame 根） | 行数 |
 | --- | --- | --- |
@@ -2397,6 +2400,11 @@ git -C 'C:\project\git' status --short -- '游戏知识/12-引擎源码分析/43
 | 35 | `Plugins/UIExtension/Source/Private/UIExtensionSystem.cpp` | 372 |
 | 36 | `Plugins/UIExtension/Source/Public/Widgets/UIExtensionPointWidget.h` | 70 |
 | 37 | `Plugins/UIExtension/Source/Private/Widgets/UIExtensionPointWidget.cpp` | 177 |
+| 38 | `Source/LyraGame/Messages/LyraVerbMessage.h` | 39 |
+| 39 | `Source/LyraGame/Messages/LyraVerbMessageHelpers.h` | 39 |
+| 40 | `Source/LyraGame/Messages/LyraVerbMessageHelpers.cpp` | 97 |
+| 41 | `Source/LyraGame/Messages/LyraVerbMessageReplication.h` | 87 |
+| 42 | `Source/LyraGame/Messages/GameplayMessageProcessor.h` | 47 |
 
 ### 附录文件 1：`Source/LyraGame/Inventory/LyraInventoryItemDefinition.h`
 
@@ -6872,7 +6880,352 @@ void UUIExtensionPointWidget::ValidateCompiledDefaults(IWidgetCompilerLog& Compi
 
 ```
 
+### 附录文件 38：`Source/LyraGame/Messages/LyraVerbMessage.h`
+
+> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+
+```cpp
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
+
+#include "LyraVerbMessage.generated.h"
+
+// Represents a generic message of the form Instigator Verb Target (in Context, with Magnitude)
+USTRUCT(BlueprintType)
+struct FLyraVerbMessage
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, Category=Gameplay)
+	FGameplayTag Verb;
+
+	UPROPERTY(BlueprintReadWrite, Category=Gameplay)
+	TObjectPtr<UObject> Instigator = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, Category=Gameplay)
+	TObjectPtr<UObject> Target = nullptr;
+
+	UPROPERTY(BlueprintReadWrite, Category=Gameplay)
+	FGameplayTagContainer InstigatorTags;
+
+	UPROPERTY(BlueprintReadWrite, Category=Gameplay)
+	FGameplayTagContainer TargetTags;
+
+	UPROPERTY(BlueprintReadWrite, Category=Gameplay)
+	FGameplayTagContainer ContextTags;
+
+	UPROPERTY(BlueprintReadWrite, Category=Gameplay)
+	double Magnitude = 1.0;
+
+	// Returns a debug string representation of this message
+	LYRAGAME_API FString ToString() const;
+};
+```
+
+### 附录文件 39：`Source/LyraGame/Messages/LyraVerbMessageHelpers.h`
+
+> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+
+```cpp
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#pragma once
+
+#include "Kismet/BlueprintFunctionLibrary.h"
+
+#include "LyraVerbMessageHelpers.generated.h"
+
+#define UE_API LYRAGAME_API
+
+struct FGameplayCueParameters;
+struct FLyraVerbMessage;
+
+class APlayerController;
+class APlayerState;
+class UObject;
+struct FFrame;
+
+
+UCLASS(MinimalAPI)
+class ULyraVerbMessageHelpers : public UBlueprintFunctionLibrary
+{
+	GENERATED_BODY()
+
+public:
+	UFUNCTION(BlueprintCallable, Category = "Lyra")
+	static UE_API APlayerState* GetPlayerStateFromObject(UObject* Object);
+
+	UFUNCTION(BlueprintCallable, Category = "Lyra")
+	static UE_API APlayerController* GetPlayerControllerFromObject(UObject* Object);
+
+	UFUNCTION(BlueprintCallable, Category = "Lyra")
+	static UE_API FGameplayCueParameters VerbMessageToCueParameters(const FLyraVerbMessage& Message);
+
+	UFUNCTION(BlueprintCallable, Category = "Lyra")
+	static UE_API FLyraVerbMessage CueParametersToVerbMessage(const FGameplayCueParameters& Params);
+};
+
+#undef UE_API
+```
+
+### 附录文件 40：`Source/LyraGame/Messages/LyraVerbMessageHelpers.cpp`
+
+> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+
+```cpp
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#include "LyraVerbMessageHelpers.h"
+
+#include "GameFramework/Pawn.h"
+#include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerState.h"
+#include "GameplayEffectTypes.h"
+#include "Messages/LyraVerbMessage.h"
+
+#include UE_INLINE_GENERATED_CPP_BY_NAME(LyraVerbMessageHelpers)
+
+//////////////////////////////////////////////////////////////////////
+// FLyraVerbMessage
+
+FString FLyraVerbMessage::ToString() const
+{
+	FString HumanReadableMessage;
+	FLyraVerbMessage::StaticStruct()->ExportText(/*out*/ HumanReadableMessage, this, /*Defaults=*/ nullptr, /*OwnerObject=*/ nullptr, PPF_None, /*ExportRootScope=*/ nullptr);
+	return HumanReadableMessage;
+}
+
+//////////////////////////////////////////////////////////////////////
+// 
+
+APlayerState* ULyraVerbMessageHelpers::GetPlayerStateFromObject(UObject* Object)
+{
+	if (APlayerController* PC = Cast<APlayerController>(Object))
+	{
+		return PC->PlayerState;
+	}
+
+	if (APlayerState* TargetPS = Cast<APlayerState>(Object))
+	{
+		return TargetPS;
+	}
+	
+	if (APawn* TargetPawn = Cast<APawn>(Object))
+	{
+		if (APlayerState* TargetPS = TargetPawn->GetPlayerState())
+		{
+			return TargetPS;
+		}
+	}
+	return nullptr;
+}
+
+APlayerController* ULyraVerbMessageHelpers::GetPlayerControllerFromObject(UObject* Object)
+{
+	if (APlayerController* PC = Cast<APlayerController>(Object))
+	{
+		return PC;
+	}
+
+	if (APlayerState* TargetPS = Cast<APlayerState>(Object))
+	{
+		return TargetPS->GetPlayerController();
+	}
+
+	if (APawn* TargetPawn = Cast<APawn>(Object))
+	{
+		return Cast<APlayerController>(TargetPawn->GetController());
+	}
+
+	return nullptr;
+}
+
+FGameplayCueParameters ULyraVerbMessageHelpers::VerbMessageToCueParameters(const FLyraVerbMessage& Message)
+{
+	FGameplayCueParameters Result;
+
+	Result.OriginalTag = Message.Verb;
+	Result.Instigator = Cast<AActor>(Message.Instigator);
+	Result.EffectCauser = Cast<AActor>(Message.Target);
+	Result.AggregatedSourceTags = Message.InstigatorTags;
+	Result.AggregatedTargetTags = Message.TargetTags;
+	//@TODO: = Message.ContextTags;
+	Result.RawMagnitude = Message.Magnitude;
+
+	return Result;
+}
+
+FLyraVerbMessage ULyraVerbMessageHelpers::CueParametersToVerbMessage(const FGameplayCueParameters& Params)
+{
+	FLyraVerbMessage Result;
+	
+	Result.Verb = Params.OriginalTag;
+	Result.Instigator = Params.Instigator.Get();
+	Result.Target = Params.EffectCauser.Get();
+	Result.InstigatorTags = Params.AggregatedSourceTags;
+	Result.TargetTags = Params.AggregatedTargetTags;
+	//@TODO: Result.ContextTags = ???;
+	Result.Magnitude = Params.RawMagnitude;
+
+	return Result;
+}
+
+```
+
+### 附录文件 41：`Source/LyraGame/Messages/LyraVerbMessageReplication.h`
+
+> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+
+```cpp
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#pragma once
+
+#include "GameplayTagContainer.h"
+#include "LyraVerbMessage.h"
+#include "Net/Serialization/FastArraySerializer.h"
+
+#include "LyraVerbMessageReplication.generated.h"
+
+class UObject;
+struct FLyraVerbMessageReplication;
+struct FNetDeltaSerializeInfo;
+
+/**
+ * Represents one verb message
+ */
+USTRUCT(BlueprintType)
+struct FLyraVerbMessageReplicationEntry : public FFastArraySerializerItem
+{
+	GENERATED_BODY()
+
+	FLyraVerbMessageReplicationEntry()
+	{}
+
+	FLyraVerbMessageReplicationEntry(const FLyraVerbMessage& InMessage)
+		: Message(InMessage)
+	{
+	}
+
+	FString GetDebugString() const;
+
+private:
+	friend FLyraVerbMessageReplication;
+
+	UPROPERTY()
+	FLyraVerbMessage Message;
+};
+
+/** Container of verb messages to replicate */
+USTRUCT(BlueprintType)
+struct FLyraVerbMessageReplication : public FFastArraySerializer
+{
+	GENERATED_BODY()
+
+	FLyraVerbMessageReplication()
+	{
+	}
+
+public:
+	void SetOwner(UObject* InOwner) { Owner = InOwner; }
+
+	// Broadcasts a message from server to clients
+	void AddMessage(const FLyraVerbMessage& Message);
+
+	//~FFastArraySerializer contract
+	void PreReplicatedRemove(const TArrayView<int32> RemovedIndices, int32 FinalSize);
+	void PostReplicatedAdd(const TArrayView<int32> AddedIndices, int32 FinalSize);
+	void PostReplicatedChange(const TArrayView<int32> ChangedIndices, int32 FinalSize);
+	//~End of FFastArraySerializer contract
+
+	bool NetDeltaSerialize(FNetDeltaSerializeInfo& DeltaParms)
+	{
+		return FFastArraySerializer::FastArrayDeltaSerialize<FLyraVerbMessageReplicationEntry, FLyraVerbMessageReplication>(CurrentMessages, DeltaParms, *this);
+	}
+
+private:
+	void RebroadcastMessage(const FLyraVerbMessage& Message);
+
+private:
+	// Replicated list of gameplay tag stacks
+	UPROPERTY()
+	TArray<FLyraVerbMessageReplicationEntry> CurrentMessages;
+	
+	// Owner (for a route to a world)
+	UPROPERTY()
+	TObjectPtr<UObject> Owner = nullptr;
+};
+
+template<>
+struct TStructOpsTypeTraits<FLyraVerbMessageReplication> : public TStructOpsTypeTraitsBase2<FLyraVerbMessageReplication>
+{
+	enum
+	{
+		WithNetDeltaSerializer = true,
+	};
+};
+```
+
+### 附录文件 42：`Source/LyraGame/Messages/GameplayMessageProcessor.h`
+
+> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+
+```cpp
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#pragma once
+
+#include "Components/ActorComponent.h"
+#include "GameFramework/GameplayMessageSubsystem.h"
+
+#include "GameplayMessageProcessor.generated.h"
+
+#define UE_API LYRAGAME_API
+
+namespace EEndPlayReason { enum Type : int; }
+
+class UObject;
+
+/**
+ * UGameplayMessageProcessor
+ * 
+ * Base class for any message processor which observes other gameplay messages
+ * and potentially re-emits updates (e.g., when a chain or combo is detected)
+ * 
+ * Note that these processors are spawned on the server once (not per player)
+ * and should do their own internal filtering if only relevant for some players.
+ */
+UCLASS(MinimalAPI, BlueprintType, Blueprintable, meta=(BlueprintSpawnableComponent))
+class UGameplayMessageProcessor : public UActorComponent
+{
+	GENERATED_BODY()
+
+public:
+	//~UActorComponent interface
+	UE_API virtual void BeginPlay() override;
+	UE_API virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	//~End of UActorComponent interface
+
+	UE_API virtual void StartListening();
+	UE_API virtual void StopListening();
+
+protected:
+	UE_API void AddListenerHandle(FGameplayMessageListenerHandle&& Handle);
+	UE_API double GetServerTime() const;
+
+private:
+	TArray<FGameplayMessageListenerHandle> ListenerHandles;
+};
+
+#undef UE_API
+```
+
 ## 四十一、更新日志
+- 2026-08-14：LYRA 批次 1（Messages 协议补深挖）——新增正文"四十四、游戏语义消息协议（VerbMessage）"，覆盖 Messages 目录 9 个文件，并把 `LyraVerbMessage.h`、`LyraVerbMessageHelpers.h/.cpp`、`LyraVerbMessageReplication.h`、`GameplayMessageProcessor.h` 逐字收录进附录（附录文件 38-42，本批次新增 5 个文件）；在第四十二节"术语速查"补充 VerbMessage、VerbMessageReplication、NotificationMessage、GameplayMessageProcessor 词条。
 - 2026-08-13：按用户要求补入核心文件完整源码附录（共 37 个文件，逐字收录），正文分析不变。
 
 
@@ -6898,6 +7251,10 @@ void UUIExtensionPointWidget::ValidateCompiledDefaults(IWidgetCompilerLog& Compi
 | UIExtension | 按 GameplayTag 把控件注册到扩展点的系统 |
 | ChangeContext | GameFeature Action 一次状态变更的清理上下文 |
 | ReplicatedSubobject | 通过 Actor 复制通道同步的 UObject 子对象 |
+| VerbMessage | 游戏语义事件消息：Verb（事件 Tag）+ Instigator/Target + 来源/目标/上下文 Tag + Magnitude 数值 |
+| VerbMessageReplication | 用 FastArraySerializer 把 VerbMessage 从服务器复制到客户端的容器 |
+| NotificationMessage | 面向临时消息流（击杀播报/拾取提示）的通知消息结构 |
+| GameplayMessageProcessor | 监听并再发射游戏语义消息的服务器端组件基类 |
 
 ## 四十三、最终复盘
 
@@ -6930,3 +7287,206 @@ UIExtension 解决的是动态控件装配。
 商业项目仍要补上容量、堆叠、事务、持久化、安全和性能证据。
 
 这两个层面的结论必须同时保留，才不会把 Lyra 源码读成错误的生产承诺。
+
+## 四十四、游戏语义消息协议（VerbMessage）
+
+### 44.1 分工声明：本篇补"协议层"，第十二/二十三篇讲"路由层"
+
+第四十四节定位为"游戏语义消息协议"，是整个 Messages 功能域的上层语义层：
+
+第十二篇 `UGameplayMessageSubsystem` 讲的是**底层按 Tag 路由**——`BroadcastMessage(Channel, Payload)` 在当前进程内按频率匹配分发给监听者，它只关心"Tag 匹配 + USTRUCT 载荷类型契约"，不知道"击杀""拾取""装备"这些游戏语义是什么。
+
+第二十三篇《消息不是 RPC：两层通信模型》已经点出 Lyra 有三条显式跨网路径（`MulticastMessageToClients`、`ClientBroadcastMessage`、`FLyraVerbMessageReplication::RebroadcastMessage`），但未展开这些路径共同承载的*消息结构*与*语义约定*。
+
+本批（LYRA 批次 1）在 43 篇**只追加第 44 节**，补齐"路由之上如何定义游戏语义事件协议"这一层：
+
+```
+路由层（第十二篇）：UGameplayMessageSubsystem 按 GameplayTag 分发 USTRUCT
+        │  BroadcastMessage(Channel, Payload)
+        ▼
+协议层（本批）：FLyraVerbMessage / FLyraNotificationMessage 定义"一个游戏语义事件长什么样"
+        │  工具：ULyraVerbMessageHelpers 负责对象→PlayerState/Controller/GameplayCue 的换算
+        │  跨网：FLyraVerbMessageReplication、RPC 桥、GameplayMessageProcessor
+        ▼
+表现层（第 49 篇）：AccoladeHostWidget 等订阅 Tag 频道，把消息转成 UI 播报
+```
+
+分工一句话：**路由层解决"消息如何送到监听者手里"；协议层解决"监听到的消息字段代表什么游戏语义，以及如何由服务器权威地发到客户端"**。二者是分层关系，不是两条平行实现。
+
+### 44.2 Messages 目录地图
+
+`Source\LyraGame\Messages` 共 9 个文件：
+
+| 文件 | 职责 |
+| --- | --- |
+| `LyraVerbMessage.h` | 游戏语义消息结构 `FLyraVerbMessage`（Verb + Instigator + Target + Tag 容器 + Magnitude） |
+| `LyraVerbMessageHelpers.h/.cpp` | 工具库：对象→PlayerState/PlayerController 换算、VerbMessage↔GameplayCueParameters 互转 |
+| `LyraVerbMessageReplication.h/.cpp` | 用 FastArraySerializer 把 VerbMessage 从服务器复制到客户端的容器 |
+| `GameplayMessageProcessor.h/.cpp` | 消息处理器基类：BeginPlay 监听、EndPlay 注销、服务器侧组件 |
+| `LyraNotificationMessage.h/.cpp` | 面向"临时消息流"的通知消息 + 其频道 Tag |
+
+这批文件不依赖 Inventory/Equipment 的具体玩法，是通用可复用的"游戏语义事件"基础设施。
+
+### 44.3 LyraVerbMessage：游戏语义事件的载荷形状
+
+`LyraVerbMessage.h` 定义一个普通 USTRUCT，用字段组成"谁、做了什么、对谁、在什么上下文、多少数值"：
+
+```cpp
+// 节选：Source/LyraGame/Messages/LyraVerbMessage.h
+USTRUCT(BlueprintType)
+struct FLyraVerbMessage
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, Category=Gameplay)
+	FGameplayTag Verb;                          // 语义事件本身，如击杀/拾取/装备
+
+	UPROPERTY(BlueprintReadWrite, Category=Gameplay)
+	TObjectPtr<UObject> Instigator = nullptr;    // 发起者（常为 Pawn/Character）
+
+	UPROPERTY(BlueprintReadWrite, Category=Gameplay)
+	TObjectPtr<UObject> Target = nullptr;        // 承受者
+
+	UPROPERTY(BlueprintReadWrite, Category=Gameplay)
+	FGameplayTagContainer InstigatorTags;        // 发起者当前 StateTag 快照
+
+	UPROPERTY(BlueprintReadWrite, Category=Gameplay)
+	FGameplayTagContainer TargetTags;            // 承受者当前 StateTag 快照
+
+	UPROPERTY(BlueprintReadWrite, Category=Gameplay)
+	FGameplayTagContainer ContextTags;           // 附加上下文（如武器/伤害类型），源码多处 @TODO
+
+	UPROPERTY(BlueprintReadWrite, Category=Gameplay)
+	double Magnitude = 1.0;                      // 数值（伤害量、次数等）
+};
+```
+
+要点：
+
+- `Verb` 是路由的核心频道：`RebroadcastMessage`/GameState/PlayerState 都用 `Message.Verb` 作为 `BroadcastMessage` 的 Channel。
+- `Instigator`/`Target` 保存的是 `UObject*`（不一定是 AActor），配合 Helper 才能解析成 PlayerState/Controller。
+- `InstigatorTags`/`TargetTags` 把"事件发生瞬间的状态"打成快照随事件走，避免监听者去查询可能会变化的当前状态。
+- `ContextTags` 在本机多个生产点仍留 `@TODO`，语义（武器、伤害类型等）尚未在原版完整填充——产品化时需要明确约定。
+- `ToString()` 用 `StaticStruct()->ExportText` 输出人类可读调试串，供日志和 FastArray 的 `GetDebugString` 复用。
+
+### 44.4 LyraVerbMessageHelpers：对象到玩家身份的换算工具
+
+`LyraVerbMessageHelpers.h/.cpp` 是静态工具类（`UBlueprintFunctionLibrary`），在事件生产端把抽象 `UObject*` 换算成游戏关心的玩家身份，或与 GameplayCue 参数互相转换。
+
+- `GetPlayerStateFromObject(UObject*)`：按 `PlayerController→PlayerState`、`PlayerState` 直接返回、`Pawn→GetPlayerState()` 的顺序解析出 `APlayerState*`。在 `LyraHealthComponent` 消灭处理里，用它把 `AbilitySystemComponent->GetAvatarActor()` 换算成 `Message.Target` 的 PlayerState。
+```cpp
+// 节选：Source/LyraGame/Messages/LyraVerbMessageHelpers.cpp
+APlayerState* ULyraVerbMessageHelpers::GetPlayerStateFromObject(UObject* Object)
+{
+	if (APlayerController* PC = Cast<APlayerController>(Object))   { return PC->PlayerState; }
+	if (APlayerState* TargetPS = Cast<APlayerState>(Object))       { return TargetPS; }
+	if (APawn* TargetPawn = Cast<APawn>(Object))                   { return TargetPawn->GetPlayerState(); }
+	return nullptr;
+}
+```
+
+- `GetPlayerControllerFromObject(UObject*)`：反向解析 `APlayerController*`（Controller→自己、PlayerState→GetPlayerController、Pawn→GetController）。
+
+- `VerbMessageToCueParameters(const FLyraVerbMessage&)` / `CueParametersToVerbMessage(const FGameplayCueParameters&)`：在 VerbMessage 与 `FGameplayCueParameters` 之间互转——`Verb→OriginalTag`、`Instigator→Instigator`、`Target→EffectCauser`、`InstigatorTags→AggregatedSourceTags`、`TargetTags→AggregatedTargetTags`、`Magnitude→RawMagnitude`。两处都留 `//@TODO: ContextTags` 未映射。这组函数的意义是把"游戏语义消息"桥接到 GAS 的 GameplayCue 表现管线（第 49 篇讲表现层时用到同一套参数上下文）。
+
+> 版本口径：本批以本机 Lyra 5.8 源码为准。较早期 Lyra 教程里 `LyraVerbMessageHelpers` 还出现过 `FindInstigator`/`GetVerbMessageContext` 之类的辅助函数；本机 5.8 实际只保留下述四个 `UFUNCTION`。以本机源码为事实来源。
+
+### 44.5 LyraVerbMessageReplication：跨服务器向客户端的广播通道
+
+`LyraVerbMessageReplication.h/.cpp` 提供"服务器 → 客户端"的 VerbMessage 广播容器。
+
+核心是 `FLyraVerbMessageReplication : public FFastArraySerializer`：它维护一个 `TArray<FLyraVerbMessageReplicationEntry> CurrentMessages`，每个 Entry 内嵌一条完整 `FLyraVerbMessage`。
+
+```cpp
+// 节选：Source/LyraGame/Messages/LyraVerbMessageReplication.h
+bool NetDeltaSerialize(FNetDeltaSerializeInfo& DeltaParms)
+{
+	return FFastArraySerializer::FastArrayDeltaSerialize<
+		FLyraVerbMessageReplicationEntry, FLyraVerbMessageReplication>(
+		CurrentMessages, DeltaParms, *this);
+}
+// 并特化 TStructOpsTypeTraits<FLyraVerbMessageReplication>：
+// WithNetDeltaSerializer = true
+```
+
+要点：
+
+- **用 FastArray 而非普通 UPROPERTY(Replicated)**：`WithNetDeltaSerializer=true` 让容器走条目标量复制，服务器往 `CurrentMessages` 里 `AddMessage` 时 `MarkItemDirty`，客户端按条目增量接收入队，而非整包同步（这与第 7 篇 Inventory FastArray 是同一机制）。
+- `AddMessage(const FLyraVerbMessage&)`：服务器侧把消息挂进 `CurrentMessages` 并标记脏。
+- 复制回调 `PostReplicatedAdd`/`PostReplicatedChange` 在客户端每收到/变更一条就调用 `RebroadcastMessage`，后者用所属 `Owner` 取到 `UGameplayMessageSubsystem`，按 `Message.Verb` 做**进程内**再次广播：
+```cpp
+// 节选：Source/LyraGame/Messages/LyraVerbMessageReplication.cpp
+void FLyraVerbMessageReplication::RebroadcastMessage(const FLyraVerbMessage& Message)
+{
+	check(Owner);
+	UGameplayMessageSubsystem& MessageSystem = UGameplayMessageSubsystem::Get(Owner);
+	MessageSystem.BroadcastMessage(Message.Verb, Message);
+}
+```
+- `PreReplicatedRemove` 原实现被注释屏蔽，说明该使用方目前只做追加型播报，不依赖删除时的 Tag 台账维护。
+- `Owner`（通常是拥有该容器的 UObject）用于提供一条取 `World/Get()` 的路径。`GetDebugString()` 转调 `FLyraVerbMessage::ToString()`。
+
+需要区分三者：
+- `FLyraVerbMessageReplication` 是"**可嵌入的跨网复制容器**"，由需要播报的 Actor/组件作为 `UPROPERTY(Replicated)` 成员持有（本机 5.8 在 Messages 域内作为独立基建提供；第 23.4 节三条跨网路径里的 GameState/PlayerState RPC 是另一套按调用直发的路）。
+- `AddMessage + PostReplicated*` 是"服务器写入、客户端接收并本地再分发"的标准 FastArray 通知形态。
+- 它不改变消息是不可靠的：FastArray 增量复制只在复制时刻把当前队列表送达，不保证"每个事件恰好一次且有序"，高频率/需可靠的通知应改用 `MulticastReliableMessageToClients` 或 `ClientBroadcastMessage`（可靠 RPC）。
+
+### 44.6 GameplayMessageProcessor：服务器侧消息处理基类
+
+`GameplayMessageProcessor.h/.cpp` 定义 `UGameplayMessageProcessor : public UActorComponent`，是"监听其他游戏语义消息、可能再发射更新（例如发现连击/连锁）"的处理器基类。
+
+```cpp
+// 节选：Source/LyraGame/Messages/GameplayMessageProcessor.h 头注释
+// Base class for any message processor which observes other gameplay messages
+// and potentially re-emits updates (e.g., when a chain or combo is detected)
+// Note that these processors are spawned on the server once (not per player)
+// and should do their own internal filtering if only relevant for some players.
+```
+
+生命周期与管理：
+- `BeginPlay()` → `StartListening()`；`EndPlay()` → `StopListening()`，随后遍历 `ListenerHandles` 调 `UGameplayMessageSubsystem::UnregisterListener` 并清空，避免悬挂回调。
+- 子类重写 `StartListening/StopListening`，在其中 `RegisterListener` 后用受保护方法 `AddListenerHandle` 登记句柄。
+- `GetServerTime()` 从 GameState 取服务器世界时间，供处理器做时序判断（如"多快算连击"）。
+- **关键约束在头注释**：处理器**只在服务器生成一次（不是每玩家一份）**；若只对部分玩家相关，处理器自己做过滤，而不是按玩家复制多份。
+
+这构成"路由之上做语义聚合"的一层：底层 `UGameplayMessageSubsystem` 只负责把原始 VerbMessage 分发给监听者，`GameplayMessageProcessor` 子类负责在服务器的集中处检测更高层模式，再发射出新的消息给下一层消费。
+
+### 44.7 LyraNotificationMessage：通往临时消息流（与 49 篇表现衔接）
+
+`LyraNotificationMessage.h` 定义 `FLyraNotificationMessage`，面向"临时日志/消息流"形态的 UI 通知：
+
+```cpp
+// 节选：Source/LyraGame/Messages/LyraNotificationMessage.h
+LYRAGAME_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Lyra_AddNotification_Message);
+USTRUCT(BlueprintType)
+struct FLyraNotificationMessage
+{
+	GENERATED_BODY()
+	UPROPERTY(BlueprintReadWrite, Category=Notification) FGameplayTag TargetChannel;  // 目标频道
+	UPROPERTY(BlueprintReadWrite, Category=Notification) TObjectPtr<APlayerState> TargetPlayer = nullptr; // 目标玩家（空=所有本地玩家）
+	UPROPERTY(BlueprintReadWrite, Category=Notification) FText PayloadMessage;        // 显示文本
+	UPROPERTY(BlueprintReadWrite, Category=Notification) FGameplayTag PayloadTag;     // 附加语义 Tag（如风格/定义资源标识）
+	UPROPERTY(BlueprintReadWrite, Category=Notification) TObjectPtr<UObject> PayloadObject = nullptr; // 附加对象
+};
+```
+
+`LyraNotificationMessage.cpp` 定义频道 Tag：`TAG_Lyra_AddNotification_Message = "Lyra.AddNotification.Message"`。
+
+与 49 篇 UI 表现衔接的落点是 ShooterCore 插件里的 `ULyraAccoladeHostWidget`：
+- `NativeConstruct` 里 `RegisterListener(TAG_Lyra_AddNotification_Message, ...)` 订阅该频道；
+- 回调 `OnNotificationMessage` 先按 `TargetChannel` 过滤（示例只处理 `Lyra.ShooterGame.Accolade`），再按 `TargetPlayer` 决定是否仅当本地玩家匹配才展示；
+- 用 `PayloadTag` 去 `DataRegistrySubsystem` 载入对应 Accolade 行，驱动击杀/成就播报 UI。
+
+因此 `FLyraNotificationMessage` 是"游戏逻辑生产 → 进程内 GameplayMessage → UI 订阅消费"的端到端通道，字段设计（TargetChannel/TargetPlayer/PayloadTag）正是为了支持 UI 侧的多频道过滤与按玩家定向展示。
+
+### 44.8 协议层与现有正文的衔接小结
+
+- 第十二篇：底层路由。`UGameplayMessageSubsystem::BroadcastMessage(Channel, Payload)`。
+- 第四十四节（本批）：在路由之上定义 `FLyraVerbMessage` 语义、提供 `Helpers` 换算、`Replication` 跨网容器、`Processor` 聚合、`NotificationMessage` 通知流。
+- 第二十三篇 23.4：三条显式跨网路径——`MulticastMessageToClients`（GameState，全玩家广播）、`ClientBroadcastMessage`（PlayerState，单玩家定向）、`FLyraVerbMessageReplication::RebroadcastMessage`（FastArray 复制再本地分发）。它们都遵守"网络层显式传输，接收端按 Verb Tag 进程内分发"。
+- 生产端样板：`LyraHealthComponent` 在消灭事件里用 `ULyraVerbMessageHelpers::GetPlayerStateFromObject` 填 `Message.Target`，然后用 `BroadcastMessage(Message.Verb, Message)` 本地广播——这是"读语义字段 → 组 VerbMessage → 交给路由"的标准写法。
+
+产品化提示：
+- Verb Tag 就是协议的一部分，需收敛为受控表（类似频道命名规范，见第十二节 12.3）；改名会同时影响 RPC 监听端与被复制容器。
+- `ContextTags` 两处 `@TODO` 应产品化补齐。
+- `FLyraVerbMessageReplication` 只保证"到复制时刻当前队列表"，不保证每条恰好一次；可靠且需保障到达的通知应走可靠 RPC。

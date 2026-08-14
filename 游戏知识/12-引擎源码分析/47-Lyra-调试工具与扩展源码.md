@@ -1014,8 +1014,8 @@ Test-Path -LiteralPath 'C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime
 | 材质/蓝图验证误报 | 引用者尚未编译或忽略列表外告警 | 核对 `FLyraValidationMessageGatherer` 忽略模式 |
 | Gauntlet 测试瞬间结束 | `IsBootProcessComplete` 时间判定过早（BootTest） | 观察 `TestDelay` 与进程焦点时序 |
 | HTTP Cheat 请求失败 | 非 Shipping 但端口未监听；`GetPlayerController` 为空 | 检查 `WITH_RPC_REGISTRY`、`/core/cheatcommand` 路径与 JSON 字段 |
-| PocketWorld 重复创建 | 调用方没走 `GetOrCreatePocketLevelFor` 复用逻辑 | 断点 `PocketInstances` 数组 |
-| RedRoom/GreenRoom 找不到引用 | 当前 checkout 中确实无文本引用 | 只能靠编辑器资产核对 |
+
+> 插件域失败模式（PocketWorld 重复创建、RedRoom/GreenRoom 无文本引用等）已随插件正文迁至 [48-Lyra扩展插件源码](48-Lyra扩展插件源码.md) §十 失败模式排查表。
 
 ## 二十、常见反模式
 
@@ -4840,7 +4840,7 @@ bool ULyraGameplayRpcRegistrationComponent::HttpGetPlayerVitalsCommand(const FHt
 
 ## 二十六、更新日志
 - 2026-08-13：扩展插件部分拆分为独立 48 篇《UE5.8 Lyra 源码解析 48：扩展插件源码》（原 §十八~§二十五 正文、插件断点实验 26.5 与附录 #34-#58 共 25 个插件文件迁出），本篇收窄为调试工具与测试，章节重编号为 十八~二十八。
-- 2026-08-13：按用户要求补入核心文件完整源码附录（共 58 个文件，逐字收录），正文分析不变。
+- 2026-08-13：按用户要求补入核心文件完整源码附录（共 58 个文件，逐字收录，正文分析不变；2026-08-14 修正口径：拆分后本篇附录为 33 个调试/编辑/测试文件，25 个插件文件已随 48 迁出，见上条）。
 
 - 2026-08-13：基于本机 UE 5.8 / Lyra 5.8 源码整理运行时调试（CheatManager/DeveloperSettings/BotCheats/CosmeticCheats/调试相机）、LyraEditor 验证器族与 Commandlet、LyraGame/Tests 测试层、AsyncMixin/PocketWorlds/GameSubtitles/LyraExtTool/ModularGameplayActors/测试房间插件。
 - 2026-08-13：明确记录事实边界：CheatManager 无生成物品命令；`AutoExportMCPTemplates/AutoExportDadContent/AutoPersistDadContent` 仅头文件声明；RedRoom/GreenRoom 无源码文本引用；PocketWorlds 在 LyraGame C++ 中无直接调用点。
@@ -4861,13 +4861,11 @@ bool ULyraGameplayRpcRegistrationComponent::HttpGetPlayerVitalsCommand(const FHt
 | Gauntlet | 引擎自动化测试框架 |
 | AutomationDriver | 驱动真实 UI 交互的自动化模块 |
 | RPC Registry | 引擎外部 RPC 注册框架（`Engine/Source/Runtime/ExternalRPCRegistry`） |
-| FAsyncMixin | 异步加载生命周期混合类 |
-| PocketWorld | 按 LocalPlayer 实例化的流送子关卡 |
 | SceneCapture | 场景捕获组件，用于生成渲染目标 |
-| Modular Actor | 支持 GameFeature 扩展的 Actor 基类 |
-| PreLoadScreen | 引擎启动早期显示的加载屏 |
 | Uncooked Folder | 打包时永不 Cook 的目录（`DirectoriesToNeverCook`） |
 | Data-Only Blueprint | 无图表逻辑、仅数据的蓝图 |
+
+> 插件域术语（FAsyncMixin/PocketWorld/Modular Actor/PreLoadScreen 等）已随插件正文迁至 [48-Lyra扩展插件源码](48-Lyra扩展插件源码.md)，术语见 48 篇 §十八 术语速查。
 
 ## 二十八、最终复盘
 

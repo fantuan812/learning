@@ -1,28 +1,4 @@
-     "00-计算机与工程基础/07-Linux系统编程/03-性能工具：插桩与perf采样.md":
-    kind: doc
-    maturity: L2
-    bytes: 18849
-    lines: 326
-
-  "游戏AI/03-评测与安全/03-LLM-NPC安全.md":
-    kind: doc
-    maturity: L2
-    bytes: 11879
-    lines: 419
-
-"00-计算机与工程基础/07-Linux系统编程/03-性能工具：插桩与perf采样.md":
-    kind: doc
-    maturity: L2
-    bytes: 18849
-    lines: 326
-
- "游戏AI/03-评测与安全/03-LLM-NPC安全.md":
-    kind: doc
-    maturity: L2
-    bytes: 11879
-    lines: 419
-
- Knowledge Base Manifest
+# Knowledge Base Manifest
 # 索引文件，不存放正文；由 kb_scanner/kb_analyzer 流程增量维护。
 # 生成：2026-08-14（R3 审计，机械回填 R2-MANIFEST-01）
 version: 2
@@ -179,6 +155,12 @@ documents:
     maturity: L0
     bytes: 6420
     lines: 106
+  "工作日志/2026-08-14-时装三品质进阶与升级系统.md":
+    kind: doc
+    maturity: L0
+    bytes: 4301
+    lines: 64
+
   "工作日志/README.md":
     kind: README
     maturity: L0
@@ -1357,8 +1339,8 @@ documents:
   "游戏知识/12-引擎源码分析/39-Lyra源码总览与阅读路线.md":
     kind: doc
     maturity: L2
-    bytes: 163469
-    lines: 4113
+    bytes: 165424
+    lines: 4127
   "游戏知识/12-引擎源码分析/40-Lyra-Experience与GameFeature源码.md":
     kind: doc
     maturity: L2
@@ -1372,13 +1354,13 @@ documents:
   "游戏知识/12-引擎源码分析/42-Lyra-输入GAS与武器战斗源码.md":
     kind: doc
     maturity: L2
-    bytes: 228330
-    lines: 6700
+    bytes: 257481
+    lines: 7339
   "游戏知识/12-引擎源码分析/43-Lyra-背包装备消息与UI源码.md":
     kind: doc
     maturity: L2
-    bytes: 206836
-    lines: 6932
+    bytes: 232272
+    lines: 7492
   "游戏知识/12-引擎源码分析/44-Lyra-前端会话网络与扩展源码.md":
     kind: doc
     maturity: L2
@@ -1404,6 +1386,22 @@ documents:
     maturity: L2
     bytes: 106214
     lines: 3223
+  "游戏知识/12-引擎源码分析/49-Lyra-UI控件与表现源码.md":
+    kind: doc
+    maturity: L2
+    bytes: 109518
+    lines: 2484
+  "游戏知识/12-引擎源码分析/50-Lyra-设置系统与GameSettings源码.md":
+    kind: doc
+    maturity: L2
+    bytes: 105174
+    lines: 2508
+  "游戏知识/12-引擎源码分析/51-Lyra-GAS扩展与能力费用源码.md":
+    kind: doc
+    maturity: L2
+    bytes: 80421
+    lines: 1936
+
   "游戏知识/12-引擎源码分析/README.md":
     kind: README
     maturity: L0
@@ -1534,6 +1532,11 @@ documents:
     maturity: L2
     bytes: 17085
     lines: 303
+  "游戏AI/03-评测与安全/03-LLM-NPC安全.md":
+    kind: doc
+    maturity: L2
+    bytes: 11879
+    lines: 419
   "游戏AI/03-评测与安全/README.md":
     kind: README
     maturity: L0

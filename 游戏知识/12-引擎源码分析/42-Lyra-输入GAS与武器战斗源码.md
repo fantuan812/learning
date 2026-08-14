@@ -845,7 +845,166 @@ Sweep 辅助又可能增加查询。
 - [ ] 能解释 DeathState 两阶段；
 - [ ] 能列出至少五项服务器校验。
 
-## 四十六、关联阅读
+## 四十六、武器实例与生成器（LYRA 批次 1 补深挖）
+
+> 本批次（R4-LYRA-COVERAGE，2026-08-14）针对 `Source/LyraGame/Weapons` 目录内"实例数据与表现配置"一侧补深析。前三章（十九~二十六）讲的是**能力与命中验证**（Ability/TargetData/Commit/执行），本篇改讲**背负实例与表现层**：`ULyraWeaponInstance` 的装备生命周期、`ULyraRangedWeaponInstance` 的 Spread（散布）模型与距离衰减、`ALyraWeaponSpawner` 的地图拾取生成器，以及两个调试辅助类。成熟度口径同前（L2，本机静态核对，未断言运行时实测）。
+
+### 46.1 三类武器实例的分层关系
+
+Weapons 目录里武器实例不是单一类，而是三层继承：
+
+- `ULyraEquipmentInstance`（Equipment 层，见 43 篇）——装备实例基类，承担"装备即对外发消息"的生命周期。
+- `ULyraWeaponInstance`（继承上者，见附录文件 27）——武器这一"装备种类"的通用状态：动画层选择、输入设备属性、最近装备/开火时间。
+- `ULyraRangedWeaponInstance`（继承上者并实现 `ILyraAbilitySourceInterface`，头/实现在附录文件 17/18）——远程武器的具体数值模型：散布、热度、伤害距离衰减、物理材质倍率。
+
+能力侧（`ULyraGameplayAbility_RangedWeapon`，附录文件 15/16）通过 `SourceObject` 拿到的是 `ULyraRangedWeaponInstance`（第十九章已述）。也就是说：**"这把枪现在散布多大、能打多远"由实例回答，"开火是否合法、命中怎么结算"由能力回答**。两侧分工明确。
+
+### 46.2 装备生命周期：OnEquipped / OnUnequipped
+
+`ULyraWeaponInstance` 只薄薄包一层 Equipment 生命周期：
+
+```cpp
+// 节选：LyraWeaponInstance.cpp 的装备/卸下勾子（示意）
+void ULyraWeaponInstance::OnEquipped()
+{
+    Super::OnEquipped();
+    TimeLastEquipped = World->GetTimeSeconds();  // 记录最近装备时刻
+    ApplyDeviceProperties();                       // 装备时激活输入设备属性
+}
+
+void ULyraWeaponInstance::OnUnequipped()
+{
+    Super::OnUnequipped();
+    RemoveDeviceProperties();                      // 卸下时移除设备属性
+}
+```
+
+要点（节选里未展示，但来自同文件整段实现）：
+
+- 构造函数里，仅对**玩家控制的 Pawn** 订阅 `ULyraHealthComponent` 的 `OnDeathStarted`，死后 `RemoveDeviceProperties` 兜底——因为死了未必走正常卸下路径。AI/非玩家不订阅（客户端没有输入设备）。
+- `UpdateFiringTime()` 被远程武器能力在激活时调用（见第十九章第 3 步），记录 `TimeLastFired`。
+- `GetTimeSinceLastInteractedWith()` 返回"离最近一次装备或开火"的经过秒数，取两者中更近者（`FMath::Min`）。
+- 输入设备属性（`ApplicableDeviceProperties`）由 `UInputDeviceSubsystem` 以 Looping 方式激活，句柄存 `DevicePropertyHandles`，装备期间持续生效，直到卸下/死亡才移除。这属于"手感反馈"（如触觉扳机），与服务端权威无关。
+- 动画层选择：`PickBestAnimLayer` 依据 `EquippedAnimSet`/`UneuippedAnimSet` 与外观 GameplayTag 选出 `UAnimInstance` 子类，供上层（Hero 动画层，见 41 篇）使用。
+
+### 46.3 与 Inventory 装备 Fragment 的关系（衔接 43 篇）
+
+`ULyraWeaponInstance.is-a ULyraEquipmentInstance`，因此**它不是一个单独的新体系，而是 43 篇 Equipment 在"武器"子类上的落点**：
+
+1. `InventoryItemDefinition`（背包定义）上挂 Fragment 描述能力侧与表现侧（如 `InventoryFragment_ReticleConfig` 指定准星 Widget，见本目录同名的 `.h`）。
+2. `EquipmentDefinition` 决定生成哪种表现 Actor、以及**授予哪套 AbilitySet**。
+3. `EquipmentInstance` 被创建/授予时，武器实例 `OnEquipped/OnUnequipped` 随装备消息链触发。
+
+远程武器 Ability 通过 `Cast<ULyraRangedWeaponInstance>(SourceObject)` 取得实例，因此**不需要在 Pawn 上搜索当前枪支**（第十八章结论）。装备侧与能力侧以"装备实例即 SourceObject"这一约定耦合，`Inventory` 侧只决定"能否/何时装备"，不直接参与散布结算。
+
+### 46.4 ULyraRangedWeaponInstance 深析：Spread 散布模型（补空心覆盖）
+
+> 本文件头/正文已在附录文件 17/18 全文收录，但旧正文仅在 40.3 用一句话概括。本节补逐函数深析，填充该覆盖空白。
+
+#### 46.4.1 Heat（热度）是中间状态，Spread（散布角）是导出量
+
+远程武器不开"散布变量直接涨落"，而是维护一个**Heat 热度**，再由曲线把它翻译成散布角：
+
+- 内存状态：`LastFireTime`、`CurrentHeat`、`CurrentSpreadAngle`、`CurrentSpreadAngleMultiplier`，以及四个次级倍率（瞄准/静止/跳跃坠落/下蹲）。
+- 三条 `FRuntimeFloatCurve` 全是"Heat→某量"：`HeatToSpreadCurve`（热度→散布角）、`HeatToHeatPerShotCurve`（当前热度→每发增加的热度）、`HeatToCoolDownPerSecondCurve`（当前热度→每秒冷却热速）。
+- 热度上下限由三条曲线 **X 轴时间范围求并集**得到（`ComputeHeatRange`）；散布角的上下限由 `HeatToSpreadCurve` 的 **Y 轴值范围**得到（`ComputeSpreadRange`）。默认构造给 `HeatToHeatPerShotCurve` 打一个 `(0,1)` 点、给冷却曲线打一个 `(0,2)` 点（示意：每发 +1 热、每秒 -2 热）。
+
+#### 46.4.2 开火/冷却的时序
+
+`AddSpread()`（能力 Commit 成功后由 Ability 调用，呼应第二十五章"武器实例增加 Spread"）：
+
+```cpp
+// 节选：AddSpread（示意）
+const float HeatPerShot = HeatToHeatPerShotCurve.Eval(CurrentHeat);
+CurrentHeat = ClampHeat(CurrentHeat + HeatPerShot);        // 当前热度采样"升温曲线"
+CurrentSpreadAngle = HeatToSpreadCurve.Eval(CurrentHeat);  // 再映射成散布角
+```
+
+按帧冷却 `UpdateSpread(DeltaSeconds)`：
+
+```cpp
+// 节选：UpdateSpread（示意）
+const float TimeSinceFired = GetWorld()->TimeSince(LastFireTime);
+if (TimeSinceFired > SpreadRecoveryCooldownDelay)
+{
+    const float CooldownRate = HeatToCoolDownPerSecondCurve.Eval(CurrentHeat);
+    CurrentHeat = ClampHeat(CurrentHeat - (CooldownRate * DeltaSeconds));
+    CurrentSpreadAngle = HeatToSpreadCurve.Eval(CurrentHeat);
+}
+```
+
+即**每开一枪热度上升→散布变大；停止开火经过 `SpreadRecoveryCooldownDelay` 后热度按当前热度对应的速率回落**。曲线是"非线性发散/惩罚"的开关——把升温曲线或冷却曲线做成非平坦形状，就能实现"过热后越来越热"或"高温恢复变慢"这类手感。
+
+#### 46.4.3 First Shot Accuracy：首枪精准
+
+`Tick` 里把"散布到达最小"与"全部倍率到达最小"两个布尔相与：
+
+```cpp
+// 节选：Tick（示意）
+bHasFirstShotAccuracy = bAllowFirstShotAccuracy && bMinMultipliers && bMinSpread;
+```
+
+`GetCalculatedSpreadAngleMultiplier()` 在 `bHasFirstShotAccuracy` 时返回 `0.0f`，即**弹道完全收拢到中心线**，配合 `HasFirstShotAccuracy()` 供视线表现（如准星收束）。这是可选能力，由 `bAllowFirstShotAccuracy` 开关。
+
+#### 46.4.4 玩家状态对散布的倍率
+
+`UpdateMultipliers(DeltaSeconds)` 汇总四路倍率，全部用 `FInterpTo` 平滑过渡：
+
+| 倍率 | 触发方式 | 平滑速率 |
+| --- | --- | --- |
+| `SpreadAngleMultiplier_StandingStill` | Pawn 速度经 `StandingStillSpeedThreshold` 与 `StandingStillToMovingSpeedRange` 做映射（≤阈值取倍率，跨过区间线性回到 1.0） | `TransitionRate_StandingStill` |
+| `SpreadAngleMultiplier_Crouching` | `UCharacterMovementComponent::IsCrouching()` | `TransitionRate_Crouching` |
+| `SpreadAngleMultiplier_JumpingOrFalling` | `IsFalling()`（跳跃坠落加重散布） | `TransitionRate_JumpingOrFalling` |
+| `SpreadAngleMultiplier_Aiming` | 通过 `ULyraCameraComponent::GetBlendInfo` 读当前顶相机 Tag 是否 `Lyra.Weapon.SteadyAimingCamera`，用其权重做瞄镜插入量 | 由相机混合权重给出 |
+
+最终产品倍率 = 四者相乘，存入 `CurrentSpreadAngleMultiplier`；`Tick` 由此推导 `bHasFirstShotAccuracy`。注意瞄准与 45 篇摄像机模式栈直接联动（沿用 `SteadyAimingCamera` 这一 Tag）。
+
+#### 46.4.5 距离衰减与物理材质倍率（ILyraAbilitySourceInterface）
+
+`ULyraRangedWeaponInstance` 实现 `ILyraAbilitySourceInterface`，向 `ULyraDamageExecution`（第二十七~二十八章）提供两种倍率，**在伤害执行层相乘**：
+
+```cpp
+// 节选：两类 Attenuation（示意）
+float GetDistanceAttenuation(Distance) const
+    { return DistanceDamageFalloff.HasAnyData() ? Curve->Eval(Distance) : 1.0f; }
+// 无数据 = 无距离衰减
+
+float GetPhysicalMaterialAttenuation(PhysicalMaterial) const
+{
+    // 命中物若是 UPhysicalMaterialWithTags，逐 Tag 查 MaterialDamageMultiplier 相乘
+}
+```
+
+- `DistanceDamageFalloff`：一条"距离(cm)→伤害倍率"曲线，无数据视为不随距离衰减。
+- `MaterialDamageMultiplier`：`TMap<FGameplayTag,float>`，命中物的 `PhysicalMaterialWithTags` 上的 Tag 逐一查倍率**累乘**。多个命中 Tag 时倍率相乘，构成"爆头/弱点"这类材质特化伤害。
+- 两者都在 DamageExecution 的服务器代码路径里被用作 BaseDamage 的倍率（见 27 篇），**客户端散不散、倍率对不对由服务器权威结算**。
+
+`Tick` 还维护 `Debug_*`（`#if WITH_EDITOR` 可见）用于编辑器内可视化当前热度/散布角/倍率（`UpdateDebugVisualization`）。
+
+### 46.5 ALyraWeaponSpawner：地图拾取生成器（与实例解耦的表现层）
+
+`ALyraWeaponSpawner` 是 `AActor`，**与 `ULyraWeaponInstance` 不共享出生/生命周期**，只负责"地图上摆一把可拾取的武器"的表现与发放逻辑（头/实现在附录文件 28/29）：
+
+- 三个组件：`CollisionVolume`（`UCapsuleComponent`，触发 Overlap）、`PadMesh`（台座网格）、`WeaponMesh`（漂浮的武器展示网格，Tick 里绕 Y 轴自转）。
+- 静态网格/音效/Niagara：都从 `ULyraWeaponPickupDefinition` 数据资产读——`DisplayMesh`（构造时 `OnConstruction` 设置 `WeaponMesh`）、`PickedUpSound/Effect`、`RespawnedSound/Effect`（见 `PlayPickupEffects/PlayRespawnEffects_Implementation`）。
+- 授予流程：`OnOverlapBegin`（仅 `ROLE_Authority` 且 `bIsWeaponAvailable`）→ `AttemptPickUpWeapon` → 蓝图 `GiveWeapon`（把对应 `ULyraInventoryItemDefinition` 类交给接受者背包）。成功后 `bIsWeaponAvailable=false`、收起网格、播拾取效果、进入冷却。
+- 复现：只有 `bIsWeaponAvailable` 一个变量 `DOREPLIFETIME`；`OnRep_WeaponAvailability` 在客户端切换可见/效果，`CheckExistingOverlapsDelay` 用于"重生后那一下本地 ON 动画还没收盘就有人站着"的边界（延迟检查已有重叠）。
+- 冷却驱动 `CoolDownPercentage` 供 UI 显示重生进度；`GetDefaultStatFromItemDef` 从 ItemDef 的 `InventoryFragment_SetStats` 读统计值（接背包 Fragment）。
+
+它在实例体系里的定位：**制造者/投放者，不持有武器数值**。拿到手后武器真正玩法仍落在 `ULyraRangedWeaponInstance` 上。
+
+### 46.6 调试辅助（简析）
+
+- `ULyraDamageLogDebuggerComponent`（附录文件 31）：`UActorComponent`，订阅 `GameplayMessageSubsystem` 的伤害消息通道，按帧聚合 `FFrameDamageEntry`（命中数/累计伤害/首击时间），`SecondsBetweenDamageBeforeLogging` 控制多久内的伤害合并记录。属于观察/诊断，不参与结算。
+- `ULyraWeaponDebugSettings`（附录文件 30）：`UDeveloperSettingsBackedByCVars`，暴露三个 CVar——`lyra.Weapon.DrawBulletTraceDuration`、`lyra.Weapon.DrawBulletHitDuration`、`lyra.Weapon.DrawBulletHitRadius`（单位 s/s/cm）。用于编辑器里可视化弹道与命中调试，与 47 篇调试命令配套。
+
+### 46.7 本节与 42 篇既有内容的关系
+
+- 能力与命中验证（十九~二十六）讲"怎么合法开火"，本节讲"实例存什么、怎么从数据配置算出当前散布/伤害倍率、装备生命周期怎么搭"。
+- 41 篇（Hero 动画层）消费 `PickBestAnimLayer`；43 篇（Equipment）是三个武器实例的上级框架；45 篇（摄像机模式栈）通过 `SteadyAimingCamera` Tag 喂给瞄准倍率；27~28 篇（DamageExecution/Team）消费 `ILyraAbilitySourceInterface` 的两种 Attenuation。
+- 新补附录文件 27~31 使"武器表现一侧"也有全文可查；RangedWeaponInstance 的深析补上了旧 40.3 的空心覆盖。
+
+## 四十七、关联阅读
 
 - [39-Lyra源码总览与阅读路线](39-Lyra源码总览与阅读路线.md)：系列总览、项目插件地图与阅读路线。
 - [41-Lyra-Pawn初始化与模块化组件源码](41-Lyra-Pawn初始化与模块化组件源码.md)：ASC Owner/Avatar 与输入准备。
@@ -856,8 +1015,10 @@ Sweep 辅助又可能增加查询。
 - [13-背包与装备系统](../03-游戏玩法编程/13-背包与装备系统.md)：使用层建模。
 - [45-Lyra-相机音频与游戏阶段源码](45-Lyra-相机音频与游戏阶段源码.md)：摄像机与能力联动的模式栈细节。
 - [46-Lyra-AI机器人与队伍源码](46-Lyra-AI机器人与队伍源码.md)：Team 伤害过滤的 `CanCauseDamage` 实现。
+- [47-Lyra-调试工具与扩展源码](47-Lyra-调试工具与扩展源码.md)：武器/伤害相关调试命令入口。
+- [48-Lyra扩展插件源码](48-Lyra扩展插件源码.md)：战斗相关扩展插件（GameplayMessageRouter/UIExtension 等）实现。
 
-## 四十七、权威来源
+## 四十八、权威来源
 
 - [Abilities in Lyra](https://dev.epicgames.com/documentation/en-us/unreal-engine/abilities-in-lyra-in-unreal-engine)
 - [Lyra Input Settings](https://dev.epicgames.com/documentation/en-us/unreal-engine/lyra-input-settings-in-unreal-engine)
@@ -868,6 +1029,8 @@ Sweep 辅助又可能增加查询。
 ## 附录：核心文件完整源码
 
 > 收录原则：本附录把正文直接分析的 LyraStarterGame 5.8 项目源码文件逐字完整收录（未删改，保留 Epic 版权头），正文中的"节选"负责解释调用链，本附录提供全文，二者配合阅读。引擎层（`Engine/`）文件体量过大且不属于项目教程主体，仍按正文的路径+符号检索方式引用，不在此收录；`.uasset/.umap` 资产也不在收录范围。
+> 覆盖边界声明（2026-08-14，R4-LYRA-COVERAGE）：附录 `LyraRangedWeaponInstance.h/.cpp`（468 行）与 `LyraPlayerController.h/.cpp`（792 行）为**全文收录但正文仅概述**（Heat 热度→散布模型、距离衰减、CheatManager/相机管理等未逐函数深析），读者需自行按需精读；`ULyraWeaponStateComponent` 的 HitMarker RPC 细节见 49 篇 UI 表现侧。
+> 覆盖边界补充（2026-08-14，LYRA 批次 1）：`LyraRangedWeaponInstance.h/.cpp` 的"正文仅概述"空白已在正文 46.4 逐函数深析补齐（Heat→Spread 曲线、升温/冷却时序、首枪精准、四路玩家倍率、距离/物理材质 Attenuation）；本批次另在附录追加文件 27~31（`LyraWeaponInstance.h/.cpp`、`LyraWeaponSpawner.h`、`LyraWeaponDebugSettings.h`、`LyraDamageLogDebuggerComponent.h`），把"武器实例与表现配置"一侧也纳入全文可查。正文 46.6 已给出调试类的覆盖说明。
 > 版权提示：以下代码来自 Epic Games 的 LyraStarterGame 样例（UE 5.8），随 Unreal Engine EULA 的样例代码条款提供，仅作本地学习收录；对外发布前请自行核对许可条款。
 
 | # | 文件（相对 LyraStarterGame 根） | 行数 |
@@ -898,6 +1061,11 @@ Sweep 辅助又可能增加查询。
 | 24 | `Source/LyraGame/Character/LyraHealthComponent.cpp` | 312 |
 | 25 | `Source/LyraGame/AbilitySystem/Abilities/LyraGameplayAbility_Death.h` | 48 |
 | 26 | `Source/LyraGame/AbilitySystem/Abilities/LyraGameplayAbility_Death.cpp` | 91 |
+| 27 | `Source/LyraGame/Weapons/LyraWeaponInstance.h` | 92 |
+| 28 | `Source/LyraGame/Weapons/LyraWeaponInstance.cpp` | 139 |
+| 29 | `Source/LyraGame/Weapons/LyraWeaponSpawner.h` | 118 |
+| 30 | `Source/LyraGame/Weapons/LyraWeaponDebugSettings.h` | 38 |
+| 31 | `Source/LyraGame/Weapons/LyraDamageLogDebuggerComponent.h` | 47 |
 
 ### 附录文件 1：`Source/LyraGame/Input/LyraInputConfig.h`
 
@@ -6692,9 +6860,480 @@ void ULyraGameplayAbility_Death::FinishDeath()
 
 ```
 
+### 附录文件 27：`Source/LyraGame/Weapons/LyraWeaponInstance.h`
+
+> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。正文 46.1~46.3 分析该文件。
+
+```cpp
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#pragma once
+
+#include "Cosmetics/LyraCosmeticAnimationTypes.h"
+#include "Equipment/LyraEquipmentInstance.h"
+#include "GameFramework/InputDevicePropertyHandle.h"
+
+#include "LyraWeaponInstance.generated.h"
+
+#define UE_API LYRAGAME_API
+
+class UAnimInstance;
+class UObject;
+struct FFrame;
+struct FGameplayTagContainer;
+class UInputDeviceProperty;
+
+/**
+ * ULyraWeaponInstance
+ *
+ * A piece of equipment representing a weapon spawned and applied to a pawn
+ */
+UCLASS(MinimalAPI)
+class ULyraWeaponInstance : public ULyraEquipmentInstance
+{
+	GENERATED_BODY()
+
+public:
+	UE_API ULyraWeaponInstance(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+
+	//~ULyraEquipmentInstance interface
+	UE_API virtual void OnEquipped() override;
+	UE_API virtual void OnUnequipped() override;
+	//~End of ULyraEquipmentInstance interface
+
+	UFUNCTION(BlueprintCallable)
+	UE_API void UpdateFiringTime();
+
+	// Returns how long it's been since the weapon was interacted with (fired or equipped)
+	UFUNCTION(BlueprintPure)
+	UE_API float GetTimeSinceLastInteractedWith() const;
+
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Animation)
+	FLyraAnimLayerSelectionSet EquippedAnimSet;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Animation)
+	FLyraAnimLayerSelectionSet UneuippedAnimSet;
+
+	/**
+	 * Device properties that should be applied while this weapon is equipped.
+	 * These properties will be played in with the "Looping" flag enabled, so they will
+	 * play continuously until this weapon is unequipped! 
+	 */
+	UPROPERTY(EditDefaultsOnly, Instanced, BlueprintReadOnly, Category = "Input Devices")
+	TArray<TObjectPtr<UInputDeviceProperty>> ApplicableDeviceProperties;
+	
+	// Choose the best layer from EquippedAnimSet or UneuippedAnimSet based on the specified gameplay tags
+	UFUNCTION(BlueprintCallable, BlueprintPure=false, Category=Animation)
+	UE_API TSubclassOf<UAnimInstance> PickBestAnimLayer(bool bEquipped, const FGameplayTagContainer& CosmeticTags) const;
+
+	/** Returns the owning Pawn's Platform User ID */
+	UFUNCTION(BlueprintCallable)
+	UE_API const FPlatformUserId GetOwningUserId() const;
+
+	/** Callback for when the owning pawn of this weapon dies. Removes all spawned device properties. */
+	UFUNCTION()
+	UE_API void OnDeathStarted(AActor* OwningActor);
+
+	/**
+	 * Apply the ApplicableDeviceProperties to the owning pawn of this weapon.
+	 * Populate the DevicePropertyHandles so that they can be removed later. This will
+	 * Play the device properties in Looping mode so that they will share the lifetime of the
+	 * weapon being Equipped.
+	 */
+	UE_API void ApplyDeviceProperties();
+
+	/** Remove any device proeprties that were activated in ApplyDeviceProperties. */
+	UE_API void RemoveDeviceProperties();
+
+private:
+
+	/** Set of device properties activated by this weapon. Populated by ApplyDeviceProperties */
+	UPROPERTY(Transient)
+	TSet<FInputDevicePropertyHandle> DevicePropertyHandles;
+
+	double TimeLastEquipped = 0.0;
+	double TimeLastFired = 0.0;
+};
+
+#undef UE_API
+```
+
+### 附录文件 28：`Source/LyraGame/Weapons/LyraWeaponInstance.cpp`
+
+> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。正文 46.2 分析该文件。
+
+```cpp
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#include "LyraWeaponInstance.h"
+
+#include "GameFramework/Pawn.h"
+#include "Engine/World.h"
+#include "Math/UnrealMathUtility.h"
+#include "Misc/AssertionMacros.h"
+#include "GameFramework/InputDeviceSubsystem.h"
+#include "GameFramework/InputDeviceProperties.h"
+#include "Character/LyraHealthComponent.h"
+
+#include UE_INLINE_GENERATED_CPP_BY_NAME(LyraWeaponInstance)
+
+class UAnimInstance;
+struct FGameplayTagContainer;
+
+ULyraWeaponInstance::ULyraWeaponInstance(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	// Listen for death of the owning pawn so that any device properties can be removed if we
+	// die and can't unequip
+	if (APawn* Pawn = GetPawn())
+	{
+		// We only need to do this for player controlled pawns, since AI and others won't have input devices on the client
+		if (Pawn->IsPlayerControlled())
+		{
+			if (ULyraHealthComponent* HealthComponent = ULyraHealthComponent::FindHealthComponent(GetPawn()))
+			{
+				HealthComponent->OnDeathStarted.AddDynamic(this, &ThisClass::OnDeathStarted);
+			}
+		}
+	}
+}
+
+void ULyraWeaponInstance::OnEquipped()
+{
+	Super::OnEquipped();
+
+	UWorld* World = GetWorld();
+	check(World);
+	TimeLastEquipped = World->GetTimeSeconds();
+
+	ApplyDeviceProperties();
+}
+
+void ULyraWeaponInstance::OnUnequipped()
+{
+	Super::OnUnequipped();
+
+	RemoveDeviceProperties();
+}
+
+void ULyraWeaponInstance::UpdateFiringTime()
+{
+	UWorld* World = GetWorld();
+	check(World);
+	TimeLastFired = World->GetTimeSeconds();
+}
+
+float ULyraWeaponInstance::GetTimeSinceLastInteractedWith() const
+{
+	UWorld* World = GetWorld();
+	check(World);
+	const double WorldTime = World->GetTimeSeconds();
+
+	double Result = WorldTime - TimeLastEquipped;
+
+	if (TimeLastFired > 0.0)
+	{
+		const double TimeSinceFired = WorldTime - TimeLastFired;
+		Result = FMath::Min(Result, TimeSinceFired);
+	}
+
+	return Result;
+}
+
+TSubclassOf<UAnimInstance> ULyraWeaponInstance::PickBestAnimLayer(bool bEquipped, const FGameplayTagContainer& CosmeticTags) const
+{
+	const FLyraAnimLayerSelectionSet& SetToQuery = (bEquipped ? EquippedAnimSet : UneuippedAnimSet);
+	return SetToQuery.SelectBestLayer(CosmeticTags);
+}
+
+const FPlatformUserId ULyraWeaponInstance::GetOwningUserId() const
+{
+	if (const APawn* Pawn = GetPawn())
+	{
+		return Pawn->GetPlatformUserId();
+	}
+	return PLATFORMUSERID_NONE;
+}
+
+void ULyraWeaponInstance::ApplyDeviceProperties()
+{
+	const FPlatformUserId UserId = GetOwningUserId();
+
+	if (UserId.IsValid())
+	{
+		if (UInputDeviceSubsystem* InputDeviceSubsystem = UInputDeviceSubsystem::Get())
+		{
+			for (TObjectPtr<UInputDeviceProperty>& DeviceProp : ApplicableDeviceProperties)
+			{
+				FActivateDevicePropertyParams Params = {};
+				Params.UserId = UserId;
+
+				// By default, the device property will be played on the Platform User's Primary Input Device.
+				// If you want to override this and set a specific device, then you can set the DeviceId parameter.
+				//Params.DeviceId = <some specific device id>;
+				
+				// Don't remove this property it was evaluated. We want the properties to be applied as long as we are holding the 
+				// weapon, and will remove them manually in OnUnequipped
+				Params.bLooping = true;
+			
+				DevicePropertyHandles.Emplace(InputDeviceSubsystem->ActivateDeviceProperty(DeviceProp, Params));
+			}
+		}	
+	}
+}
+
+void ULyraWeaponInstance::RemoveDeviceProperties()
+{
+	const FPlatformUserId UserId = GetOwningUserId();
+	
+	if (UserId.IsValid() && !DevicePropertyHandles.IsEmpty())
+	{
+		// Remove any device properties that have been applied
+		if (UInputDeviceSubsystem* InputDeviceSubsystem = UInputDeviceSubsystem::Get())
+		{
+			InputDeviceSubsystem->RemoveDevicePropertyHandles(DevicePropertyHandles);
+			DevicePropertyHandles.Empty();
+		}
+	}
+}
+
+void ULyraWeaponInstance::OnDeathStarted(AActor* OwningActor)
+{
+	// Remove any possibly active device properties when we die to make sure that there aren't any lingering around
+	RemoveDeviceProperties();
+}
+```
+
+### 附录文件 29：`Source/LyraGame/Weapons/LyraWeaponSpawner.h`
+
+> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。正文 46.5 分析该文件。
+
+```cpp
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#pragma once
+
+#include "GameFramework/Actor.h"
+
+#include "LyraWeaponSpawner.generated.h"
+
+#define UE_API LYRAGAME_API
+
+namespace EEndPlayReason { enum Type : int; }
+
+class APawn;
+class UCapsuleComponent;
+class ULyraInventoryItemDefinition;
+class ULyraWeaponPickupDefinition;
+class UObject;
+class UPrimitiveComponent;
+class UStaticMeshComponent;
+struct FFrame;
+struct FGameplayTag;
+struct FHitResult;
+
+UCLASS(MinimalAPI, Blueprintable,BlueprintType)
+class ALyraWeaponSpawner : public AActor
+{
+	GENERATED_BODY()
+	
+public:	
+	// Sets default values for this actor's properties
+	UE_API ALyraWeaponSpawner();
+
+protected:
+	// Called when the game starts or when spawned
+	UE_API virtual void BeginPlay() override;
+	UE_API virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+public:	
+	// Called every frame
+	UE_API virtual void Tick(float DeltaTime) override;
+
+	UE_API void OnConstruction(const FTransform& Transform) override;
+
+protected:
+	//Data asset used to configure a Weapon Spawner
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Lyra|WeaponPickup")
+	TObjectPtr<ULyraWeaponPickupDefinition> WeaponDefinition;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, ReplicatedUsing = OnRep_WeaponAvailability, Category = "Lyra|WeaponPickup")
+	bool bIsWeaponAvailable;
+
+	//The amount of time between weapon pickup and weapon spawning in seconds
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lyra|WeaponPickup")
+	float CoolDownTime;
+
+	//Delay between when the weapon is made available and when we check for a pawn standing in the spawner. Used to give the bIsWeaponAvailable OnRep time to fire and play FX. 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lyra|WeaponPickup")
+	float CheckExistingOverlapDelay;
+
+	//Used to drive weapon respawn time indicators 0-1
+	UPROPERTY(BlueprintReadOnly, Transient, Category = "Lyra|WeaponPickup")
+	float CoolDownPercentage;
+
+public:
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lyra|WeaponPickup")
+	TObjectPtr<UCapsuleComponent> CollisionVolume;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lyra|WeaponPickup")
+	TObjectPtr<UStaticMeshComponent> PadMesh;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Lyra|WeaponPickup")
+	TObjectPtr<UStaticMeshComponent> WeaponMesh;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Lyra|WeaponPickup")
+	float WeaponMeshRotationSpeed;
+
+	FTimerHandle CoolDownTimerHandle;
+
+	FTimerHandle CheckOverlapsDelayTimerHandle;
+
+	UFUNCTION()
+	UE_API void OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepHitResult);
+
+	//Check for pawns standing on pad when the weapon is spawned. 
+	UE_API void CheckForExistingOverlaps();
+
+	UFUNCTION(BlueprintNativeEvent)
+	UE_API void AttemptPickUpWeapon(APawn* Pawn);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Lyra|WeaponPickup")
+	UE_API bool GiveWeapon(TSubclassOf<ULyraInventoryItemDefinition> WeaponItemClass, APawn* ReceivingPawn);
+
+	UE_API void StartCoolDown();
+
+	UFUNCTION(BlueprintCallable, Category = "Lyra|WeaponPickup")
+	UE_API void ResetCoolDown();
+
+	UFUNCTION()
+	UE_API void OnCoolDownTimerComplete();
+
+	UE_API void SetWeaponPickupVisibility(bool bShouldBeVisible);
+
+	UFUNCTION(BlueprintNativeEvent, Category = "Lyra|WeaponPickup")
+	UE_API void PlayPickupEffects();
+
+	UFUNCTION(BlueprintNativeEvent, Category = "Lyra|WeaponPickup")
+	UE_API void PlayRespawnEffects();
+
+	UFUNCTION()
+	UE_API void OnRep_WeaponAvailability();
+
+	/** Searches an item definition type for a matching stat and returns the value, or 0 if not found */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Lyra|WeaponPickup")
+	static UE_API int32 GetDefaultStatFromItemDef(const TSubclassOf<ULyraInventoryItemDefinition> WeaponItemClass, FGameplayTag StatTag);
+};
+
+#undef UE_API
+```
+
+### 附录文件 30：`Source/LyraGame/Weapons/LyraWeaponDebugSettings.h`
+
+> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。正文 46.6 分析该文件。
+
+```cpp
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#pragma once
+
+#include "Engine/DeveloperSettingsBackedByCVars.h"
+
+#include "LyraWeaponDebugSettings.generated.h"
+
+class UObject;
+
+/**
+ * Developer debugging settings for weapons
+ */
+UCLASS(config=EditorPerProjectUserSettings)
+class ULyraWeaponDebugSettings : public UDeveloperSettingsBackedByCVars
+{
+	GENERATED_BODY()
+
+public:
+	ULyraWeaponDebugSettings();
+
+	//~UDeveloperSettings interface
+	virtual FName GetCategoryName() const override;
+	//~End of UDeveloperSettings interface
+
+public:
+	// Should we do debug drawing for bullet traces (if above zero, sets how long (in seconds)
+	UPROPERTY(config, EditAnywhere, Category=General, meta=(ConsoleVariable="lyra.Weapon.DrawBulletTraceDuration", ForceUnits=s))
+	float DrawBulletTraceDuration;
+
+	// Should we do debug drawing for bullet impacts (if above zero, sets how long (in seconds)
+	UPROPERTY(config, EditAnywhere, Category = General, meta = (ConsoleVariable = "lyra.Weapon.DrawBulletHitDuration", ForceUnits = s))
+	float DrawBulletHitDuration;
+
+	// When bullet hit debug drawing is enabled (see DrawBulletHitDuration), how big should the hit radius be? (in cm)
+	UPROPERTY(config, EditAnywhere, Category = General, meta = (ConsoleVariable = "lyra.Weapon.DrawBulletHitRadius", ForceUnits=cm))
+	float DrawBulletHitRadius;
+};
+```
+
+### 附录文件 31：`Source/LyraGame/Weapons/LyraDamageLogDebuggerComponent.h`
+
+> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。正文 46.6 分析该文件。
+
+```cpp
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#pragma once
+
+#include "Components/ActorComponent.h"
+#include "GameFramework/GameplayMessageSubsystem.h"
+
+#include "LyraDamageLogDebuggerComponent.generated.h"
+
+namespace EEndPlayReason { enum Type : int; }
+
+class UObject;
+struct FGameplayTag;
+struct FLyraVerbMessage;
+
+struct FFrameDamageEntry
+{
+	int32 NumImpacts = 0;
+	double SumDamage = 0.0;
+	double TimeOfFirstHit = 0.0;
+};
+
+UCLASS(Blueprintable, meta=(BlueprintSpawnableComponent))
+class ULyraDamageLogDebuggerComponent : public UActorComponent
+{
+	GENERATED_BODY()
+
+public:
+
+	ULyraDamageLogDebuggerComponent(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+
+	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+	UPROPERTY(EditAnywhere)
+	double SecondsBetweenDamageBeforeLogging = 1.0;
+
+private:
+	FGameplayMessageListenerHandle ListenerHandle;
+
+	double LastDamageEntryTime = 0.0;
+	TMap<int64, FFrameDamageEntry> DamageLog;
+
+private:
+	void OnDamageMessage(FGameplayTag Channel, const FLyraVerbMessage& Payload);
+};
+```
+
 ## 更新日志
 - 2026-08-13：按用户要求补入核心文件完整源码附录（共 26 个文件，逐字收录），正文分析不变。
+- 2026-08-14（LYRA 批次 1）：新增正文"## 四十六、武器实例与生成器"（补深析 `ULyraRangedWeaponInstance` 空心覆盖：Heat→Spread 模型、首枪精准、四路玩家倍率、距离/物理材质 Attenuation；及 `ULyraWeaponInstance` 生命周期、`ALyraWeaponSpawner`、调试辅助）；原关联阅读/权威来源顺延为四十七/四十八；附录追加文件 27~31（Weapons 表现一侧全文，配合第 17/18 篇），更新覆盖边界声明。
 
 
 - 2026-08-13：基于本机 Lyra 5.8 源码核对 InputAction→InputTag→AbilitySpec、每帧激活策略、武器 TargetData 预测、Commit、DamageExecution、HealthSet 与死亡链。
 - 2026-08-13：关联阅读补充 45-47 系列篇目。
+- 2026-08-14：关联阅读补链 47（武器/伤害调试命令）与 48（战斗相关扩展插件），同步 47 拆分出 48 的系列变更（R4-LYRA）。

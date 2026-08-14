@@ -841,6 +841,8 @@ void UMyPawnFeature::CheckDefaultInitialization()
 - [08-ModularGameplay模块化玩法](../03-游戏玩法编程/08-ModularGameplay模块化玩法.md)：概念层实践。
 - [45-Lyra-相机音频与游戏阶段源码](45-Lyra-相机音频与游戏阶段源码.md)：Hero 绑定摄像机模式的模式栈实现。
 - [46-Lyra-AI机器人与队伍源码](46-Lyra-AI机器人与队伍源码.md)：Bot 不需要 LocalPlayer 的控制器与队伍实现。
+- [47-Lyra-调试工具与扩展源码](47-Lyra-调试工具与扩展源码.md)：Pawn/组件调试与开发者设置入口。
+- [48-Lyra扩展插件源码](48-Lyra扩展插件源码.md)：ModularGameplayActors 等扩展插件实现（模块化组件概念的插件侧）。
 
 ## 三十八、权威来源
 
@@ -852,6 +854,7 @@ void UMyPawnFeature::CheckDefaultInitialization()
 ## 附录：核心文件完整源码
 
 > 收录原则：本附录把正文直接分析的 LyraStarterGame 5.8 项目源码文件逐字完整收录（未删改，保留 Epic 版权头），正文中的"节选"负责解释调用链，本附录提供全文，二者配合阅读。引擎层（`Engine/`）文件体量过大且不属于项目教程主体，仍按正文的路径+符号检索方式引用，不在此收录；`.uasset/.umap` 资产也不在收录范围。
+> 覆盖边界声明（2026-08-14，R4-LYRA-COVERAGE）：附录 `ALyraCharacter.h/.cpp`（682+231 行）与 `GameFeatureAction_AddAbilities.h/.cpp`（425 行）为**全文收录但正文仅概述**（ALyraCharacter 正文只给回调转发表，位移/FastSharedReplication/死亡主体未逐函数深析），读者需自行按需精读。
 > 版权提示：以下代码来自 Epic Games 的 LyraStarterGame 样例（UE 5.8），随 Unreal Engine EULA 的样例代码条款提供，仅作本地学习收录；对外发布前请自行核对许可条款。
 
 | # | 文件（相对 LyraStarterGame 根） | 行数 |
@@ -4852,3 +4855,4 @@ void UGameFeatureAction_AddInputBinding::RemoveInputMapping(APawn* Pawn, FPerCon
 
 - 2026-08-13：基于本机 Lyra 5.8 源码核对 PawnData、PawnExtension/Hero 四段 InitState、角色视角门槛、PlayerState ASC Owner/Avatar、扩展输入和卸载清理。
 - 2026-08-13：关联阅读补充 45-47 系列篇目。
+- 2026-08-14：关联阅读补链 47（Pawn/组件调试）与 48（ModularGameplayActors 插件），同步 47 拆分出 48 的系列变更（R4-LYRA）。

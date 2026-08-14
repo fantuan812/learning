@@ -1,7 +1,7 @@
 # UE5.8 Lyra 源码解析 39：架构总览与阅读路线
 
 > Lyra 最值得学习的不是某一个“射击游戏功能”，而是它如何把资产、插件、网络、角色、能力、输入和 UI 组织成可装配、可卸载、可多人同步的项目骨架。
-> 本篇先建立全局地图，再给出一条可以逐断点复现的阅读路线；40-48 篇分别深入关键调用链。
+> 本篇先建立全局地图，再给出一条可以逐断点复现的阅读路线；40-48 篇分别深入关键调用链，49-51 篇分别深挖 UI 表现、设置系统与 GAS 扩展。
 > 知识成熟度：L2（本机 UE 5.8 与 Lyra 5.8 源码、配置已静态核对；运行实验作为后续验证步骤）。
 
 ## 元数据
@@ -33,8 +33,11 @@
 | 46 | AI 机器人与队伍 | 机器人如何补位，队伍如何决定伤害和展示 | Bot 创建组件、PlayerBotController、Team Subsystem |
 | 47 | 调试工具与扩展 | Cheat、开发者设置、编辑器验证和插件如何支撑开发 | `ULyraCheatManager`、LyraEditor 校验器、扩展插件 |
 | 48 | 扩展插件 | 8 个扩展插件各自解决什么问题，如何与主项目解耦 | AsyncMixin、PocketWorlds、GameSubtitles、加载屏等 |
+| 49 | UI 控件与表现 | Lyra 自有 UI 控件族如何组织与渲染（补 LYRA-COV-01 缺口） | `ULyraHUD`/`ULyraHUDLayout`、Foundation 控件、IndicatorSystem、武器 UI |
+| 50 | 设置系统 | 设置从定义到 UI 的完整链路（补 LYRA-COV-02 缺口） | GameSettings 插件、`ULyraSettingsLocal/Shared`、`ULyraSettingScreen` |
+| 51 | GAS 扩展与能力费用 | AbilityCost 如何按装备/背包/标签扣费，Lyra 属性集、伤害执行与全局能力路由如何落地（补 LYRA 批次 1 GAS 缺口） | `ULyraAbilityCost` 三实现、`ULyraAttributeSet/CombatSet`、`ULyraHealExecution`、`ULyraGlobalAbilitySystem` |
 
-建议按 39 → 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47 → 48 顺序阅读。
+建议按 39 → 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47 → 48 → 49 → 50 → 51 顺序阅读。
 
 如果只排查角色初始化，先读 40 的玩家出生门控，再直接读 41。
 
@@ -70,16 +73,26 @@ LyraStarterGame/
 │  ├─ LyraGame/                    项目运行时核心模块
 │  └─ LyraEditor/                  编辑器扩展模块
 └─ Plugins/
-   ├─ CommonGame/                  通用 GameInstance、UI 布局等
-   ├─ CommonUser/                  登录、权限、会话与 OSS 抽象
-   ├─ GameplayMessageRouter/       按 GameplayTag 路由结构化消息
-   ├─ GameSettings/                设置数据模型与界面支持
-   ├─ UIExtension/                 UI 扩展点注册与动态注入
+   ├─ CommonGame/                  通用 GameInstance、UI 布局等（44 篇深挖）
+   ├─ CommonUser/                  登录、权限、会话与 OSS 抽象（44 篇深挖）
+   ├─ CommonLoadingScreen/         通用加载屏管理（44 篇深挖）
+   ├─ CommonStartupLoadingScreen/  启动早期加载屏（48 篇收录）
+   ├─ GameplayMessageRouter/       按 GameplayTag 路由结构化消息（43 篇深挖）
+   ├─ GameSettings/                设置数据模型与界面支持（50 篇深挖）
+   ├─ GameSubtitles/               字幕显示子系统（48 篇深挖）
+   ├─ UIExtension/                 UI 扩展点注册与动态注入（43 篇深挖）
+   ├─ AsyncMixin/                  异步加载生命周期混合（48 篇深挖）
+   ├─ PocketWorlds/                按 LocalPlayer 流送的独立小世界（48 篇深挖）
+   ├─ ModularGameplayActors/       模块化 Gameplay Actor 基类（41 篇使用、48 篇收录）
+   ├─ LyraExtTool/                 编辑器批量工具（48 篇深挖）
+   ├─ RedRoom/                     测试房间（仅资产 + uplugin，48 篇记录）
+   ├─ GreenRoom/                   测试房间（仅资产 + uplugin，48 篇记录）
+   ├─ LyraExampleContent/          示例内容资产
    └─ GameFeatures/
       ├─ ShooterCore/              射击规则、能力、组件与 UI
       ├─ ShooterMaps/              射击地图和展示内容
       ├─ TopDownArena/             俯视玩法
-      ├─ ShooterTests/             自动化射击测试内容
+      ├─ ShooterTests/             自动化射击测试内容（44 篇深挖）
       └─ ShooterExplorer/          实验与探索内容
 ```
 
@@ -4111,3 +4124,4 @@ public:
 - 2026-08-13：基于本机 UE 5.8.0 / CL 55116800 与 EngineAssociation 5.8 的 LyraStarterGame，建立六篇教程总入口、完整运行主链、证据边界、断点集与递进实验。
 - 2026-08-13：系列扩展至 39-47，总览同步九条运行链与 45-47 阅读顺序，并在关联阅读补入三篇新教程。
 - 2026-08-13：47 拆分出 48 扩展插件篇，总览同步十条运行链与 39-48 阅读顺序。
+- 2026-08-14：系列扩展至 39-51（新增 49 UI 控件与表现、50 设置系统、51 GAS 扩展与能力费用），并为 42 武器实例/生成器、43 VerbMessage 消息协议、49 NumberPop/ContextEffects 补深挖；总览同步系列表与阅读顺序。

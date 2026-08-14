@@ -4,6 +4,102 @@
 
 低于 0.75 confidence 的结构性操作登记在此，人工确认后才执行。
 
+## LYRA-COV-01（LyraGame/UI 专项缺口）
+
+Current: LyraGame/UI（79 文件）仅 3 覆盖（4%）。43 篇的"UI"实为插件注入机制；Lyra 自有控件（HUD 布局/Foundation 控件族/IndicatorSystem 头顶指示器/Weapons UI 准星与命中标记/LyraUIManagerSubsystem/LyraSettingScreen）完全未分析。
+
+Suggested: 补 1 篇专项（量级与 43 篇相当，编号 49 或并入 43 扩展）。
+
+Confidence: 0.85
+
+Reason: R4-LYRA-COVERAGE 审查；UI 是游戏表现层实际内容，不属间接覆盖。
+
+Suggested action: 新建专项篇
+
+Status: 已执行（2026-08-14：新建 49-Lyra-UI控件与表现源码.md，558 行正文 + 11 文件附录逐字一致，12 README/19 路线图/39 总览同步）
+
+---
+
+## LYRA-COV-02（Plugins/GameSettings 专项缺口）
+
+Current: GameSettings 插件（59 文件）0 覆盖。它是 Lyra 设置系统唯一实现（GameSetting/Registry/Value*/Action/Collection 抽象），LyraSettingScreen 直接搭载；LyraSettingScreen/GameSettingRegistry/LyraSettingsLocal 全库零提及。
+
+Suggested: 补 1 篇专项（或并入 UI 专项篇的设置章节）。
+
+Confidence: 0.85
+
+Reason: R4-LYRA-COVERAGE 审查；设置系统是 Lyra 区别于裸引擎的完整子系统。
+
+Suggested action: 新建专项篇
+
+Status: 已执行（2026-08-14：新建 50-Lyra-设置系统与GameSettings源码.md，342 行正文 + 10 文件附录行数全 OK，12 README/19 路线图/39 总览同步）
+
+---
+
+## LYRA-COV-03（空心覆盖标注 + 39 插件地图补全）
+
+Current: 44-CommonUserSubsystem.cpp（2684 行）/42-RangedWeaponInstance/41-ALyraCharacter 等附录收录但正文分析不足（空心）；39 篇插件地图缺失 GreenRoom/RedRoom/LyraExampleContent/LyraExtTool。
+
+Suggested: 附录清单注明"仅收录未深析"；39 插件地图补 4 个缺失插件名；12 README/19 路线图新增覆盖边界声明列。
+
+Confidence: 0.75
+
+Reason: R4-LYRA-COVERAGE 审查；空心标注与地图补全是低风险增量编辑。
+
+Suggested action: 增量编辑
+
+Status: 已执行（2026-08-14：39 插件地图补全 16 插件；41/42/44 附录补覆盖边界声明（空心标注）；12 README 覆盖口径 47→49 篇）
+
+---
+
+## LYRA-BATCH-01（批次 1+3：GAS 扩展新篇 + 三篇补深挖 + 边界声明）
+
+Current: R4-LYRA-COVERAGE 建议中优先项（AbilitySystem 未覆盖子集/Feedback NumberPop/Messages 协议/Weapons 实例）与 12 README/19 路线图边界声明（批次 3）。
+
+Suggested: 新建 51 篇（AbilityCost/AttributeSet/CombatSet/HealExecution/TagRelationshipMapping/GlobalAbilitySystem/GameplayCueManager/Jump/Reset）；42/43/49 分别追加 Weapons 实例、VerbMessage 消息协议、NumberPop/ContextEffects 章节；边界声明三分类 + 批次 2 登记。
+
+Confidence: 0.9
+
+Reason: 2026-08-14 用户批准执行批次 1 + 批次 3；全部为可复用范式价值项，不追求穷举覆盖。
+
+Suggested action: 新建 + 追加 + 声明
+
+Status: 已执行（2026-08-14：51 篇 551 行正文 + 附录 A 22 文件逐字一致；42 篇 +5 附录、43 篇 +5 附录、49 篇 +6 附录逐字一致；12 README/19 路线图/39 总览 50 篇口径 + 51 登记；manifest 326 条目同步；覆盖率 35.4%→40.5%；check_repo PASS）
+
+---
+
+## LYRA-DUP-01（46/47 BotCheats 重复）
+
+Current: ULyraBotCheats 与 ULyraDeveloperSettings（机器人数目字段）在 46 §八.1-8.2（正文级）与 47 §八/§7.2（正文级详解）重复覆盖，互不转发；BotCheats.h/.cpp 附录仅收 46。
+
+Suggested: 46 §八 收敛为"机器人组件如何被 Cheat 驱动"的机器人视角并显式转发 47（调试域详解），附录保留（KD-004 完整收录）。
+
+Confidence: 0.85
+
+Reason: KD-005 调试主题归 47；双篇同组件详讲使读者无法判定权威章节（R4-LYRA 专项审查）。
+
+Suggested action: 收敛 + 转发（正文编辑，附录不动）
+
+Status: 已执行（2026-08-14：46 §八 补分工声明与 47 转发，正文保留机器人视角，附录未动）
+
+---
+
+## LYRA-LINK-01/02/03/LOG-01（Lyra 导航与口径）
+
+Current: 19 路线图 L189"39-44"过时；40-43 未链 47/48；44 重复链 47 缺 45；40-42 更新日志未登记 48、47 日志"58 文件"陈旧。
+
+Suggested: 19 路线图改 39-48；40/41/42/43 关联阅读补链 47/48；44 去重 47 补 45；40-42 更新日志补登记 48、47 日志改"33 + 25 迁出"。
+
+Confidence: 0.9
+
+Reason: R4-LYRA 专项审查；均为低风险增量编辑，无内容删改。
+
+Suggested action: 批量增量编辑
+
+Status: 已执行（2026-08-14：19 路线图 L189 改 39-48；40-43 补链 47/48；44 去重 47 补 45；40-42 更新日志补登记 48、47 日志口径修正；45/46 补链 48；47 术语表/失败模式表插件残留清理）
+
+---
+
 ## R4-OBS-01（性能分析族笔记无正式家）
 
 Current: 笔记/插桩测试.md、笔记/perf性能分析.md 为通用服务端/Linux C++ 插桩与 perf 采样方法（与 游戏知识/07-03 性能分析 无内容重叠，后者为 UE stat/Insights/ProfileGPU 专用），自述应归六大知识域但无 canonical 正文吸收。

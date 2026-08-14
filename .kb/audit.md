@@ -75,3 +75,149 @@
 - 语义验证（4 个只读子代理并行，模型 deepseek-v4-flash）：S1 回归与互链（R3 4/4 + R2 8 组：6 PASS、2 FAIL、1 记录失真）；S2 控制面（taxonomy/aliases/MOC/review-queue/decisions/K-P 边界/manifest）；S3 语义重复（8 热点族：1 组真重叠 + 2 组收敛候选）；S4 质量抽样（12 篇正文 + 5 目录 H1/编号扫描）。
 - 子代理均按 AGENTS.md 只读约束执行，未写任何文件；本轮唯一写入为本控制面（.kb/audit.md、.kb/plans/current.md、.kb/decisions.md、.kb/review-queue.md）。
 - 已知边界：互链判定以"篇级链接存在性"为准，分类 README 级链接不算双向互链（R4-LINK-03 据此判失真）。
+
+---
+
+# Lyra 专项审查（R4-LYRA，2026-08-14）
+
+> 范围：游戏知识/12-引擎源码分析/39-48 十篇 + 12 README Lyra 段 + 19 路线图 Lyra 条目 + 全库 Lyra 引用。
+> 模式：audit（只读）。主线程机械扫描（编号/H1/元数据/断链/附录围栏对/引用矩阵）+ 4 个只读子代理并行语义审查（A: 39-42、B: 43-45、C: 46-48、D: 跨篇一致性）。
+
+## 结论
+
+状态：**PASS_WITH_MINOR_WARNINGS**（十篇中 9 篇无 P0/P1；1 处 P1 组件重复 + 4 处 P2 导航/口径 + 若干 P3 观察）。
+
+## 通过项（机械 + 子代理交叉验证）
+
+- H1 模板 39-48 全部"UE5.8 Lyra 源码解析 NN：主题"统一；章节编号每篇连续无跳号。
+- 元数据：版本基准 CL55116800 / UE5.8 / L2 / 最后更新 2026-08-13 / 官方参考全部齐全。
+- 源码附录：10 篇共 243 个文件逐字收录（14/14/18/26/37/24/24/28/33/25），围栏对数=文件数全部命中；子代理 A/B 独立复核行数表 100% 吻合；均带"收录原则+版权提示+行数清单"。
+- 事实边界纪律良好：各篇区分"静态核对事实 vs 待编辑器复核 vs 示意"；44 §十一 RepGraph/Iris 与 §十四 Gauntlet 口径与 34 篇、测试 06 篇一致，证据链闭合。
+- KD-004 附录决策：47/48 拆分分摊明确（47=调试/编辑/测试 33 文件，48=插件 25 文件，双向注明 #1-#33 归属），48 的 CommonLoadingScreen 归类正确。
+- KD-005 改名：全库无 `46-Lyra-AI队伍` 旧名残留（仅 .kb 决策档案历史描述）。
+- 篇数口径："47 篇源码正文"正确（01-18 + 20-48 = 47）；"39-48 十篇"统一，无"九篇"旧口径。
+- 关键互链双向存活：40↔44 Travel、42↔46 伤害过滤、45↔41、46↔47、47↔48。
+
+## P1 —— 组件重复（建议修复）
+
+| ID | 位置 | 问题 | 证据 | 置信度 |
+| --- | --- | --- | --- | --- |
+| LYRA-DUP-01 | 46 §八.1-8.2（L611-655）+ 附录 #5/#6 ↔ 47 §八（L433-483）/§7.2 | `ULyraBotCheats` 与 `ULyraDeveloperSettings`（机器人数目字段）双篇正文级重复详讲且互不转发；BotCheats.h/.cpp 附录仅收 46，调试域组件归属（KD-005 调试归 47）定位不一致 | 46 L613-632 命令/构造详解；47 L433-483 同类详解；46 §八 无"详见 47" | 0.85 |
+
+## P2 —— 导航与口径（建议修复）
+
+| ID | 位置 | 问题 | 置信度 |
+| --- | --- | --- | --- |
+| LYRA-LINK-01 | 19-高优先级源码覆盖路线图.md L189 | "39-44 阅读路线"过时，应改 39-48 | 0.95 |
+| LYRA-LINK-02 | 40/41/42/43 关联阅读 | 未链拆分新篇 47/48（43 有 47 无 48；40/41/42 两者皆无）——旧篇查不到新篇，链单向 | 0.9 |
+| LYRA-LINK-03 | 44 关联阅读 L1971/L1979 | 47 重复列出两次；缺 45 | 0.9 |
+| LYRA-LOG-01 | 40/41/42 更新日志；47 更新日志 L4843 | 40-42 未登记 48 拆分（39 已登记）；47 写"共 58 个文件"陈旧（现 33 + 25 迁出） | 0.85 |
+
+## P3 —— 观察（可不改）
+
+- 45/46 未链 48；39 关联阅读仅列 45/48（正文有全表缓解）；44 缺 45（并入 LINK-03）。
+- 成熟度行位置三风格并存（39-44 头部+元数据节双标、45/46 头部、47/48 元数据节）。
+- 43 更新日志位于文中（§四十一）而非文末；45 元数据用引注块、43/44 用表格。
+- 47 §27 术语表/§28 复盘残留 AsyncMixin/PocketWorlds 等已迁出插件术语。
+- 39 证据分级 A/B 标签可在正文结论处更显式。
+
+## 修复状态
+
+- 审查只读完成；修复已执行（2026-08-14 用户批准）：
+  - LYRA-DUP-01：46 §八 补分工声明（机器人视角）与 47 转发，附录未动。
+  - LYRA-LINK-01：19 路线图 L189 "39-44"→"39-48"。
+  - LYRA-LINK-02：40/41/42/43 关联阅读补链 47/48（各 +2 条）。
+  - LYRA-LINK-03：44 关联阅读去重 47（2→1）、补 45。
+  - LYRA-LOG-01：40-42 更新日志补登记 48（各 +1 条）；47 日志"58 文件"改"33 + 25 迁出"。
+  - P3：45/46 补链 48；47 术语表删除 4 个已迁出插件词 + 指路注；47 失败模式表插件 2 行改指路注。
+  - 复验：check_repo PASS / FAIL 0；修复点逐一确认。
+
+---
+
+# Lyra 源码覆盖率专项审查（R4-LYRA-COVERAGE，2026-08-14）
+
+> 范围：39-48 十篇对 LyraStarterGame 5.8 项目源码（C:\Users\zhaozhiqi\Documents\Unreal Projects\LyraStarterGame）的覆盖完整性。
+> 模式：audit（只读）。主线程机械比对（707 项目文件 vs 附录 228 收录 + 正文引用）+ 2 只读子代理（未覆盖模块重要度评估、正文分析深度核查）。
+
+## 结论
+
+状态：**PARTIAL_COVERAGE**（总覆盖率 32.4%，核心运行链深读达标，但存在 2 个高重要度模块缺口与若干空心覆盖）。
+
+## 一、覆盖率数据（机械比对，归一化忽略大小写）
+
+- 项目源码：Source 482 + Plugins 225 = **707** 个 .h/.cpp 文件。
+- 知识库覆盖：附录逐字收录 **228** 唯一文件（0 个收录但项目不存在的伪路径）+ 正文引用，合计覆盖 **229/707 = 32.4%**。
+- 附录结构：39-41/45-47 纯 Source（10/14/18/24/28/33）、42 全 Source 26、43 混合 28+9、44 混合 9+13（CommonUser/CommonGame/LoadingScreen/ShooterTests）、48 纯 Plugins 25。
+- 模块 100% 覆盖：Audio、Camera、Inventory、Teams、Tests（LyraGame）+ CommonStartupLoadingScreen、PocketWorlds(91%)。
+
+## 二、高重要度缺口（2 个，建议补深挖）
+
+| 模块 | 覆盖 | 缺口内容 | 建议 |
+| --- | --- | --- | --- |
+| **LyraGame/UI** | 3/79（4%） | 43 篇的"UI"实为插件注入机制（UIExtension/GameplayMessageRouter）；Lyra 自有控件完全空白：HUD 布局（LyraHUD/LyraHUDLayout）、Foundation 控件族（按钮/确认屏/断线屏）、IndicatorSystem 头顶指示器（11 文件）、Weapons UI（Reticle 准星/HitMarker 命中标记，12 文件）、LyraUIManagerSubsystem/LyraSettingScreen | 补 1 篇专项（量级与 43 相当） |
+| **Plugins/GameSettings** | 0/59（0%） | 47/48 均未收录；它是 Lyra 设置系统唯一实现（GameSetting/Registry/Value*/Action/Collection 抽象 + 响应式面板），LyraSettingScreen 直接搭载；`LyraSettingScreen`/`GameSettingRegistry`/`LyraSettingsLocal` 全库零提及 | 补 1 篇专项 |
+
+## 三、中重要度部分缺口（建议选择性补充）
+
+- **AbilitySystem 子集**（17/51）：未覆盖 `LyraAbilityCost_*`（三种 GAS 费用抽象）、`LyraHealExecution`、`LyraCombatSet`/`LyraAttributeSet`、`LyraAbilityTagRelationshipMapping`（Tag 关系映射）、`LyraGlobalAbilitySystem`、`LyraGameplayCueManager`、Jump/Reset 能力——AbilityCost 与 TagRelationshipMapping 是 Lyra 区别于裸 GAS 的复用设计点。
+- **Feedback**（0/19）：NumberPop 伤害数字弹出（MeshText/Niagara 两套）是已验证链路，42 篇仅文字提及。
+- **Messages**（0/9）：VerbMessage/VerbMessageHelpers 规范事件消息协议，是 43 篇的"上层协议"。
+- **Weapons**（6/16）：`LyraWeaponInstance`/`LyraWeaponSpawner` 武器实例核心未覆盖。
+- **Plugins/CommonGame**（2/29）：GameUIManagerSubsystem/GameUIPolicy/PrimaryGameLayout 是 CommonUI 落地承托层。
+- **Plugins/GameFeatures**（3/53）：GameFeatureAction 家族动作（AddAbilities/AddInputBinding/AddGameplayCuePath）可复用。
+
+## 四、空心覆盖（附录收录但正文分析不足，按严重度）
+
+| 严重度 | 文件 | 附录行数 | 正文分析情况 |
+| --- | --- | --- | --- |
+| 严重 | 44-CommonUserSubsystem.cpp | 2684（全系列最大） | 正文仅 5 次提及（时序图/表格），OSSv1/v2 登录管线零深读 |
+| 严重 | 44-LyraGameInstance.cpp | 339 | 主体网络加密/DTLS 代码，正文零次提及加密 |
+| 严重 | 42-LyraRangedWeaponInstance.h/.cpp | 468 | Heat 热度→散布模型/衰减/生命周期全文未析，正文仅 2 次 |
+| 严重 | 42-LyraPlayerController.h/.cpp | 792 | CheatManager/ServerCheat/相机管理大面积未分析 |
+| 严重 | 41-ALyraCharacter.cpp/.h | 682+231 | 正文仅回调转发映射表，位移/FastSharedReplication/死亡主体零分析（仅 1 次） |
+| 中 | 43-AsyncAction_ListenForGameplayMessage + UIExtensionPointWidget（4 文件） | ~431 | 仅附录索引列名，实现未析（43 篇约 22% 附录文件空心，按行数约 6%） |
+| 中 | 41-GameFeatureAction_AddAbilities | 425 | 正文一句带过 |
+| 中 | 47-EditorValidator_* 子类（6 文件） | — | 正文仅一行表格概括 |
+| 中 | 48-CommonStartupLoadingScreen + SubtitleDisplay | — | 收录即空，自承"44 篇已深挖只交叉引用" |
+| 中 | 40-LyraExperienceDefinition.cpp | — | "禁止二次继承"设计约束全文收录未讲解 |
+| 中 | 46-LyraBotCheats.cpp | 59 | 正文委托 47 篇，实质逻辑未析（与 LYRA-DUP-01 修复相关） |
+
+## 五、39 篇插件地图缺口
+
+- 16 插件覆盖 12：正文目录树仅画 6 个，其余靠启用列表/附录补全。
+- **完全缺失 4 个**：GreenRoom、RedRoom、LyraExampleContent、LyraExtTool（正文+附录零命中）；39/48 以"8 个扩展插件"概述但未点名这 4 个。
+
+## 六、已覆盖部分的名实判定
+
+- **核心链路类深读达标**：ExperienceManagerComponent、PawnExtension+Hero、CameraModeStack、TeamSubsystem、GAS-ASC、InventoryManager 均有调用链+生命周期+数据流真正深读（核心类正文出现 40-83 次）。
+- 附录逐字收录声明成立（228 文件全部存在、行数表 100% 命中、0 伪路径）。
+- 5 个"题眼类"在 5.8 源码中不存在（非缺陷）；2 个主题相关但未收录（ULyraWeaponStateComponent 正文自认未追踪、ULyraGameSession 全委任 CommonSession）。
+
+## 七、建议（待用户批准）
+
+1. **高优先**：补 LyraGame/UI 专项篇 + Plugins/GameSettings 专项篇（预计覆盖率 32.4% → ~40%）。
+2. **中优先**：AbilitySystem 未覆盖子集（AbilityCost/TagRelationshipMapping 等）、Feedback NumberPop、Messages 协议、Weapons 实例、CommonGame UIManager、GameFeatureAction 家族选择性补充。
+3. **低优先**：空心覆盖标注——在附录清单注明"仅收录未深析"；39 插件地图补 4 个缺失插件名。
+4. 建议在 12 README/19 路线图新增"覆盖边界声明"列，区分未覆盖是"已隐式覆盖/薄壳/真遗漏"。
+
+## 补篇执行状态（2026-08-14 用户批准，已执行）
+
+- LYRA-COV-01 已执行：新建 `49-Lyra-UI控件与表现源码.md`（558 行正文 + 11 文件附录逐字一致；HUD/Layout/Foundation/IndicatorSystem/Weapons UI/性能统计）。
+- LYRA-COV-02 已执行：新建 `50-Lyra-设置系统与GameSettings源码.md`（342 行正文 + 10 文件附录行数全 OK；GameSettings 插件抽象 + Lyra 注册表/载体/设置屏）。
+- LYRA-COV-03 已执行：39 插件地图补全 16 插件；41/42/44 附录补覆盖边界声明（空心标注）；12 README/19 路线图/39 总览篇数口径 47→49 更新。
+- 导航同步：12 README（映射表/文件列表/学习顺序/篇数）、19 路线图（L12/L124/L136 + 49/50 登记行）、39 总览（系列表 + 阅读顺序）、manifest（325 条目与磁盘一致）。
+- 覆盖率提升：新增 49（11 文件）+ 50（10 文件）= 21 个新覆盖文件 → 250/707 = **35.4%**（补充后）。
+- 复验：check_repo PASS / FAIL 0；49 附录逐字比对一致；git diff --check 通过。
+
+## 批次 1 + 批次 3 执行状态（2026-08-14 用户批准，已执行）
+
+- LYRA 批次 1：新建 `51-Lyra-GAS扩展与能力费用源码.md`（551 行正文 + 附录 A 12 逻辑单元/22 文件逐字一致；AbilityCost 接口与三实现、LyraAttributeSet/CombatSet、LyraHealExecution、AbilityTag 关系映射、全局能力系统、GameplayCue 管理器、Jump/Reset 能力）；42 篇追加"武器实例与生成器"章节（5 附录文件逐字一致）；43 篇追加"游戏语义消息协议（VerbMessage）"章节（5 附录文件逐字一致，含 5.8 版本口径校正：Helpers 仅四函数，FindInstigator/GetVerbMessageContext 不存在）；49 篇追加"伤害数字弹出（NumberPop）与上下文特效（ContextEffects）"章节（6 附录文件逐字一致，含 MeshText.cpp 尾随空行修复）。
+- LYRA 批次 3：12 README/19 路线图"Lyra 系列覆盖边界声明"（已隐式覆盖/薄壳/示例玩法专属/待补批次 2）。
+- 覆盖率提升：批次 1 新增 42(+5) + 43(+5) + 49(+6) + 51(+22) = 38 个新覆盖文件（去重叠后净 +36）→ 286/707 = **40.5%**（基线 250/35.4%）。AbilitySystem 模块 39 文件覆盖、Weapons 10、Messages 7、Feedback 6。
+- 复验：check_repo PASS / FAIL 0；43/49/51 新增附录 16 文件程序化逐字比对一致（51 的 22 文件经围栏级比对 + 尾随空行修复）；manifest 326 条目与磁盘一致（顺带清理 R3 遗留 24 行垃圾前缀并补录 `03-LLM-NPC安全.md` 缺失条目）；12 README/19 路线图/39 总览篇数口径 49→50 篇。
+
+## 方法、边界与证据
+
+- 机械比对：PowerShell 脚本提取附录表格行（`| N | \`路径\` | 行数 |`）+ 正文路径正则（Source/Plugins 前缀 .h/.cpp），与项目文件全量枚举归一化比对；-Include 与 -Recurse 组合统计陷阱已修正（目录文件数以 Where-Object Extension 为准）。
+- 语义验证：子代理 1 抽样实读 22 个未覆盖模块（每目录 2-3 头文件）；子代理 2 逐篇核查附录-正文对应 + 内部 2 个深度子代理（40/41 篇）交叉验证，结论一致。
+- 已知边界：覆盖判定为"文件级"（收录或正文引用即计覆盖）；"深读 vs 仅提及"以子代理抽样判定；正文引用正则可能遗漏少数非常规格式路径（如换行断开的路径）。

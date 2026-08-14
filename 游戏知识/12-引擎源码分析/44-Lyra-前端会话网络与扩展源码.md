@@ -1968,15 +1968,15 @@ Beacon 在正式 Travel 前预约服务器容量，减少 Lobby 显示可加入�
 - [43-Lyra-背包装备消息与UI源码](43-Lyra-背包装备消息与UI源码.md)：Inventory、Equipment、GameplayMessage 和 UIExtension。
 - [32-UE Dedicated Server启动与监听源码](<32-UE Dedicated Server启动与监听源码.md>)：服务器启动、监听和部署边界。
 - [33-UNetDriver与连接通道源码](33-UNetDriver与连接通道源码.md)：连接、通道和 Travel 失败排查。
-- [47-Lyra-调试工具与扩展源码](47-Lyra-调试工具与扩展源码.md)：测试层/调试工具（ShooterTests/Gauntlet 深挖在 47，本篇只交叉引用）。
+- [47-Lyra-调试工具与扩展源码](47-Lyra-调试工具与扩展源码.md)：测试层/调试工具与 LyraEditor 校验工具，衔接 Gauntlet 与内容验证（ShooterTests/Gauntlet 深挖在 47，本篇只交叉引用）。
 - [48-Lyra扩展插件源码](48-Lyra扩展插件源码.md)：加载屏等插件实现。
+- [45-Lyra-相机音频与游戏阶段源码](45-Lyra-相机音频与游戏阶段源码.md)：进入对局后的相机/音频/游戏阶段表现流程。
 - [游戏服务端/05-UE Dedicated Server平台化/01-UE Dedicated Server实例生命周期与平台化](<../../游戏服务端/05-UE Dedicated Server平台化/01-UE Dedicated Server实例生命周期与平台化.md>)：就绪门禁/健康检查/优雅停机/会话回收的平台化实践（分工互指）。
 - [34-ReplicationGraph源码](34-ReplicationGraph源码.md)：复制图概念和条件创建的引擎背景。
 - [20-Iris复制源码](20-Iris复制源码.md)：Iris 状态描述、过滤与序列化边界。
 - [26-CommonUI源码](26-CommonUI源码.md)：CommonUI 激活栈和输入路由。
 - [28-UnrealInsights与Trace源码](28-UnrealInsights与Trace源码.md)：把登录、Travel、加载屏和复制事件变成可观测证据。
 - [46-Lyra-AI机器人与队伍源码](46-Lyra-AI机器人与队伍源码.md)：Bot 会话与队伍规则补充。
-- [47-Lyra-调试工具与扩展源码](47-Lyra-调试工具与扩展源码.md)：测试控制器与 LyraEditor 校验工具，衔接 Gauntlet 与内容验证。
 
 ## 三十、权威来源与验证命令
 
@@ -2061,6 +2061,7 @@ ShooterTests、Gauntlet 和回放把静态调用链转成可复现证据。
 
 > 收录原则：本附录把正文直接分析的 LyraStarterGame 5.8 项目源码文件逐字完整收录（未删改，保留 Epic 版权头），正文中的"节选"负责解释调用链，本附录提供全文，二者配合阅读。引擎层（`Engine/`）文件体量过大且不属于项目教程主体，仍按正文的路径+符号检索方式引用，不在此收录；`.uasset/.umap` 资产也不在收录范围。
 > 版权提示：以下代码来自 Epic Games 的 LyraStarterGame 样例（UE 5.8），随 Unreal Engine EULA 的样例代码条款提供，仅作本地学习收录；对外发布前请自行核对许可条款。
+> 覆盖边界声明（2026-08-14，R4-LYRA-COVERAGE）：附录 #13 `CommonUserSubsystem.cpp`（2684 行）与 #6 `LyraGameInstance.cpp`（339 行）为**全文收录但正文仅概念级分析**（OSSv1/v2 登录管线、网络加密/DTLS 实现未逐函数深析），读者需自行按需精读；其余附录文件均有对应正文深读。
 
 | # | 文件（相对 LyraStarterGame 根） | 行数 |
 | --- | --- | --- |

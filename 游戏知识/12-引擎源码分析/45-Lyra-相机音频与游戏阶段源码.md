@@ -1387,6 +1387,7 @@ rg -n 'ShooterGame.GamePhase' "$Lyra\Plugins\GameFeatures\ShooterCore\Config\Tag
 - [44-Lyra-前端会话网络与扩展源码](44-Lyra-前端会话网络与扩展源码.md)：进入对局、加载屏与服务器启动链路。
 - [46-Lyra-AI机器人与队伍源码](46-Lyra-AI机器人与队伍源码.md)：AI 与队伍系统的并行阅读（本篇写作时同步落盘）。
 - [47-Lyra-调试工具与扩展源码](47-Lyra-调试工具与扩展源码.md)：调试工具与扩展点（本篇写作时同步落盘）。
+- [48-Lyra扩展插件源码](48-Lyra扩展插件源码.md)：加载屏等扩展插件实现（GamePhase/相机相关的插件侧）。
 - [05-GAS能力系统源码](05-GAS能力系统源码.md)：AbilitySpec、实例化策略与能力激活的引擎底层。
 - [16-音频系统源码](16-音频系统源码.md)：引擎混音器、Submix 与 AudioModulation 底层。
 - [19-高优先级源码覆盖路线图](19-高优先级源码覆盖路线图.md)：Lyra 系列在总路线图中的位置。
