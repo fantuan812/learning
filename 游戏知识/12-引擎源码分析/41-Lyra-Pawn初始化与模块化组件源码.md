@@ -15,7 +15,7 @@
 | 适用范围 | 多人 Pawn 初始化、PlayerState ASC、模块化组件、重生/换 Pawn、复制乱序排障 |
 | 知识成熟度 | L2：项目与引擎源码静态核对完成；双端 PIE 实验步骤明确列出但未宣称已执行 |
 | 官方参考 | [Game Framework Component Manager](https://dev.epicgames.com/documentation/en-us/unreal-engine/game-framework-component-manager-in-unreal-engine)、[Abilities in Lyra](https://dev.epicgames.com/documentation/en-us/unreal-engine/abilities-in-lyra-in-unreal-engine) |
-| 最后更新 | 2026-08-13 |
+| 最后更新 | 2026-08-14 |
 
 ## 一、问题模型：为什么 BeginPlay 不够
 
@@ -831,7 +831,170 @@ void UMyPawnFeature::CheckDefaultInitialization()
 - [ ] 能解释 `NAME_BindInputsNow` 的早到/晚到兼容；
 - [ ] 能设计一个不使用 Tick/Delay 的新 Feature。
 
-## 三十七、关联阅读
+## 三十七、动画实例基类与 Tag 属性映射（LYRA 批次 2 补深挖）
+
+> 本篇批次 2 补深挖两件小事，但它们解释了 Lyra 的一条复用范式：GAS 的 Gameplay Tag 应该如何驱动动画蓝图层。
+> 覆盖 `Source\LyraGame\Animation\` 下仅有的两个文件 `LyraAnimInstance.h`（46 行）与 `LyraAnimInstance.cpp`（65 行），全文见附录文件 19/20。
+> 知识成熟度：L2。本行源布局与调用链基于本机 Lyra 5.8 + UE 5.8 源码静态核对（A 级来源）；动画资产内的具体 Tag 接线为引擎运行态行为，需在真实动画蓝图层中验证（待验证）。
+
+### 37.1 为什么需要这个基类
+
+动画蓝图层通常需要知道一叠“当前状态”才能挑姿态：
+
+- 是否活着 / 是否受控；
+- 移动模式（行走/飞行/游泳）与地面距离；
+- 是否蹲伏、是否在状态 Tag 覆盖中。
+
+Lyra 的做法不是让每个动画蓝图层手动去 `GetAbilitySystemComponent` 再查 Tag，而是用 `ULyraAnimInstance` 作统一基类，把“GAS Tag → 动画属性”的桥放在一个可复用的位置。
+
+它只做两件确定的事：
+
+1. 用一个 `FGameplayTagBlueprintPropertyMap` 把 Gameplay Tag 映射到动画蓝图层属性；
+2. 每帧从 `ULyraCharacterMovementComponent` 拉取 `GroundDistance`。
+
+### 37.2 桥：FGameplayTagBlueprintPropertyMap
+
+`ULyraAnimInstance.h` 声明（节选）：
+
+```cpp
+// Gameplay tags that can be mapped to blueprint variables. The variables will automatically update as the tags are added or removed.
+// These should be used instead of manually querying for the gameplay tags.
+UPROPERTY(EditDefaultsOnly, Category = "GameplayTags")
+FGameplayTagBlueprintPropertyMap GameplayTagPropertyMap;
+
+UPROPERTY(BlueprintReadOnly, Category = "Character State Data")
+float GroundDistance = -1.0f;
+```
+
+`FGameplayTagBlueprintPropertyMap` 是引擎（UE 5.8，`GameplayEffectTypes.h` 约 1480 行）提供的映射容器：
+
+- 每一项 `FGameplayTagBlueprintPropertyMapping` 记录一个 `TagToMap` 与要写入的蓝图层属性；
+- 仅支持 **bool / int / float** 三种属性类型；
+- `Initialize(Owner, ASC)` 后会在 ASC 上绑定委托，Tag 计数变化时自动把新计数写入对应属性，无需动画蓝图层每帧查询；
+- 它内含裸委托句柄指针，不能放进 `TArray` 等会搬移地址的容器。
+
+这套机制把“Tag 存在/计数”变成动画蓝图层可直接读的布尔或数值属性，正是“GAS 状态 → 动画表现”的标准桥。
+
+### 37.3 InitializeWithAbilitySystem 调用链
+
+`NativeInitializeAnimation` 首次初始化动画时自动探测 ASC（`LyraAnimInstance.cpp`）：
+
+```cpp
+void ULyraAnimInstance::NativeInitializeAnimation()
+{
+	Super::NativeInitializeAnimation();
+
+	if (AActor* OwningActor = GetOwningActor())
+	{
+		if (UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(OwningActor))
+		{
+			InitializeWithAbilitySystem(ASC);
+		}
+	}
+}
+```
+
+`UAbilitySystemGlobals::GetAbilitySystemComponentFromActor` 通过 `IAbilitySystemInterface`（并回退到 FindComponent）自动找 Ownership Actor 上的 ASC，因此动画实例基类**无需手动接线**，只要 Owner Pawn 有 ASC 即可触发。随后送入：
+
+```cpp
+void ULyraAnimInstance::InitializeWithAbilitySystem(UAbilitySystemComponent* ASC)
+{
+	check(ASC);
+
+	GameplayTagPropertyMap.Initialize(this, ASC);
+}
+```
+
+这里 `Initialize` 完成属性映射与 ASC 委托的绑定。
+
+**与 41 篇 ASC 初始化屏障的关系**：`NativeInitializeAnimation` 是被动探测路径。另一条主动路径在 `ULyraAbilitySystemComponent::InitAbilityActorInfo` 内——当 Pawn avatar 变化（`bHasNewPawnAvatar`）时，代码对 `ActorInfo->GetAnimInstance()` 做 `Cast<ULyraAnimInstance>` 后直接调用 `InitializeWithAbilitySystem`（本机 `LyraAbilitySystemComponent.cpp` 第 76–79 行）：
+
+```cpp
+if (ULyraAnimInstance* LyraAnimInst = Cast<ULyraAnimInstance>(ActorInfo->GetAnimInstance()))
+{
+	LyraAnimInst->InitializeWithAbilitySystem(this);
+}
+```
+
+这条路径由 41 篇主角事件串联：Hero 在 `DataAvailable → DataInitialized` 调 `PawnExtComp->InitializeAbilitySystem(ASC, PlayerState)`（见第十七、十九、二十部分），其中 PawnExtension 对 ASC 调 `InitAbilityActorInfo(OwnerActor, Pawn)`，进入上面的 AnimInstance 桥接。即动画蓝图层之所以“一 Possess 就有 Tag 属性”，实质建在四段 InitState 的会合点上。
+
+### 37.4 NativeUpdateAnimation：GroundDistance
+
+每帧更新只负责一小块表现数据：
+
+```cpp
+void ULyraAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
+{
+	Super::NativeUpdateAnimation(DeltaSeconds);
+
+	const ALyraCharacter* Character = Cast<ALyraCharacter>(GetOwningActor());
+	if (!Character)
+	{
+		return;
+	}
+
+	ULyraCharacterMovementComponent* CharMoveComp = CastChecked<ULyraCharacterMovementComponent>(Character->GetCharacterMovement());
+	const FLyraCharacterGroundInfo& GroundInfo = CharMoveComp->GetGroundInfo();
+	GroundDistance = GroundInfo.GroundDistance;
+}
+```
+
+- Owner 不是 `ALyraCharacter`（如载具）则直接返回，不假设任何角色；
+- `GetGroundInfo` 来自 `ULyraCharacterMovementComponent`，返回带 `LastUpdateFrame` 缓存的 `FLyraCharacterGroundInfo`（内含 `GroundDistance` 与一次 `GroundHitResult`），只在需要时刷新，避免每帧重复物理查询；
+- `GroundDistance` 初值 `-1.0f`，未更新前即可作为“未知/无效距离”的哨兵值。
+
+### 37.5 WITH_EDITOR 下的资产校验
+
+编辑器构建里重写 `IsDataValid`，把 Tag→属性映射的配置错误提前暴露：
+
+```cpp
+EDataValidationResult ULyraAnimInstance::IsDataValid(FDataValidationContext& Context) const
+{
+	Super::IsDataValid(Context);
+
+	GameplayTagPropertyMap.IsDataValid(this, Context);
+
+	return ((Context.GetNumErrors() > 0) ? EDataValidationResult::Invalid : EDataValidationResult::Valid);
+}
+```
+
+`GameplayTagPropertyMap.IsDataValid(this, Context)` 会校验每个映射的 Tag 是否有效、目标属性是否存在且类型合法。错误被写入 `FDataValidationContext`，最终反馈为 `Invalid`。
+
+这正是 **UObject::IsDataValid 资产校验链**上的一环，与 47 篇的 LyraEditor 校验器互补：47 篇的 `UEditorValidator`（`LyraEditor` 模块）面向项目级/批处理（P4 变更集、`EDataValidationUsecase::Commandlet`）的资产集合；这里的 `IsDataValid` 是单资产在编辑器内保存/校验时由 `DataValidation` 子系统调用的资产内建校验。两者归入同一引擎校验生态。
+
+### 37.6 分工边界声明
+
+动画蓝图层（资产侧）与 C++ 基类的边界明确：
+
+| 侧 | 负责 | 不负责 |
+| --- | --- | --- |
+| `ULyraAnimInstance`（C++ 基类） | 探测 ASC、绑 Tag→属性桥、维护数据来源 | 具体姿态逻辑、混合权重、状态机节点 |
+| 动画蓝图层（资产） | 用映射出来的 bool/float 属性挑选/混合姿态 | 查询 Tag、拉取 ASC、每帧地面查询 |
+
+基类只保证“数据以可读属性形式存在”，动画蓝图层只消费属性，不碰 GAS 查询细节。
+
+### 37.7 复用范式小结：为什么桥放在 AnimInstance 基类
+
+- **一处接线，多处复用**：所有继承 `ULyraAnimInstance` 的动画蓝图层自动获得 Tag 属性映射能力，不需要各自写探测代码；
+- **资产编辑器可见**：`EditDefaultsOnly` + 编辑器校验让美术/动画在蓝图层里直接配置 Tag 映射并得到反馈；
+- **与 GAS 生命周期对齐**：桥的绑定与 ASC 初始化/新 Pawn avatar 绑定同源，避免动画蓝图层在 ASC 尚未就绪时拿到空指针或漏读 Tag；
+- **表现与逻辑解耦**：GAS 负责状态语义，动画消费标量/布尔，两者只通过 Tag 映射（配置）和 `GroundDistance`（C++ 属性）衔接。
+
+## 三十八、术语速查
+
+| 术语 | 含义 |
+| --- | --- |
+| AnimInstance | 动画蓝图层实例，驱动骨骼网格的动画状态机 |
+| GameplayTagBlueprintPropertyMap | GAS 把 Gameplay Tag 映射到蓝图动画属性（bool/int/float）的引擎容器 |
+| GameplayTagBlueprintPropertyMapping | 上述容器中的单条 Tag→属性映射条目 |
+| InitializeWithAbilitySystem | ULyraAnimInstance 把 GameplayTagPropertyMap 绑定到 ASC 的入口 |
+| NativeInitializeAnimation | AnimInstance 首次初始化回调，本文用它经 UAbilitySystemGlobals 探测 ASC |
+| NativeUpdateAnimation | AnimInstance 每帧更新回调，本文用它拉取 GroundDistance |
+| GroundDistance | 角色到地面的距离，供动画蓝图层做落地/悬空姿态 |
+| FLyraCharacterGroundInfo | LyraCharacterMovementComponent 的带缓存地面信息结构（LastUpdateFrame + GroundHitResult + GroundDistance） |
+| IsDataValid | UObject 编辑器资产校验钩子，编辑器校验子系统在保存/校验时调用 |
+
+## 三十九、关联阅读
 
 - [39-Lyra源码总览与阅读路线](39-Lyra源码总览与阅读路线.md)：教程入口。
 - [40-Lyra-Experience与GameFeature源码](40-Lyra-Experience与GameFeature源码.md)：Pawn 出生前的装配屏障。
@@ -844,7 +1007,7 @@ void UMyPawnFeature::CheckDefaultInitialization()
 - [47-Lyra-调试工具与扩展源码](47-Lyra-调试工具与扩展源码.md)：Pawn/组件调试与开发者设置入口。
 - [48-Lyra扩展插件源码](48-Lyra扩展插件源码.md)：ModularGameplayActors 等扩展插件实现（模块化组件概念的插件侧）。
 
-## 三十八、权威来源
+## 四十、权威来源
 
 - [Game Framework Component Manager](https://dev.epicgames.com/documentation/en-us/unreal-engine/game-framework-component-manager-in-unreal-engine)
 - [Abilities in Lyra](https://dev.epicgames.com/documentation/en-us/unreal-engine/abilities-in-lyra-in-unreal-engine)
@@ -877,6 +1040,8 @@ void UMyPawnFeature::CheckDefaultInitialization()
 | 16 | `Source\LyraGame\GameFeatures\GameFeatureAction_AddAbilities.cpp` | 298 |
 | 17 | `Source\LyraGame\GameFeatures\GameFeatureAction_AddInputBinding.h` | 59 |
 | 18 | `Source\LyraGame\GameFeatures\GameFeatureAction_AddInputBinding.cpp` | 175 |
+| 19 | `Source\LyraGame\Animation\LyraAnimInstance.h` | 46 |
+| 20 | `Source\LyraGame\Animation\LyraAnimInstance.cpp` | 65 |
 
 ### 附录文件 1：`Source\LyraGame\System\LyraGameInstance.h`
 
@@ -4850,7 +5015,134 @@ void UGameFeatureAction_AddInputBinding::RemoveInputMapping(APawn* Pawn, FPerCon
 
 ```
 
+### 附录文件 19：`Source\LyraGame\Animation\LyraAnimInstance.h`
+
+> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+
+```cpp
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#pragma once
+
+#include "Animation/AnimInstance.h"
+#include "GameplayEffectTypes.h"
+#include "LyraAnimInstance.generated.h"
+
+class UAbilitySystemComponent;
+
+
+/**
+ * ULyraAnimInstance
+ *
+ *	The base game animation instance class used by this project.
+ */
+UCLASS(Config = Game)
+class ULyraAnimInstance : public UAnimInstance
+{
+	GENERATED_BODY()
+
+public:
+
+	ULyraAnimInstance(const FObjectInitializer& ObjectInitializer);
+
+	virtual void InitializeWithAbilitySystem(UAbilitySystemComponent* ASC);
+
+protected:
+
+#if WITH_EDITOR
+	virtual EDataValidationResult IsDataValid(class FDataValidationContext& Context) const override;
+#endif // WITH_EDITOR
+
+	virtual void NativeInitializeAnimation() override;
+	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
+
+protected:
+
+	// Gameplay tags that can be mapped to blueprint variables. The variables will automatically update as the tags are added or removed.
+	// These should be used instead of manually querying for the gameplay tags.
+	UPROPERTY(EditDefaultsOnly, Category = "GameplayTags")
+	FGameplayTagBlueprintPropertyMap GameplayTagPropertyMap;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Character State Data")
+	float GroundDistance = -1.0f;
+};
+```
+
+### 附录文件 20：`Source\LyraGame\Animation\LyraAnimInstance.cpp`
+
+> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+
+```cpp
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#include "LyraAnimInstance.h"
+#include "AbilitySystemGlobals.h"
+#include "Character/LyraCharacter.h"
+#include "Character/LyraCharacterMovementComponent.h"
+
+#if WITH_EDITOR
+#include "Misc/DataValidation.h"
+#endif
+
+#include UE_INLINE_GENERATED_CPP_BY_NAME(LyraAnimInstance)
+
+
+ULyraAnimInstance::ULyraAnimInstance(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+}
+
+void ULyraAnimInstance::InitializeWithAbilitySystem(UAbilitySystemComponent* ASC)
+{
+	check(ASC);
+
+	GameplayTagPropertyMap.Initialize(this, ASC);
+}
+
+#if WITH_EDITOR
+EDataValidationResult ULyraAnimInstance::IsDataValid(FDataValidationContext& Context) const
+{
+	Super::IsDataValid(Context);
+
+	GameplayTagPropertyMap.IsDataValid(this, Context);
+
+	return ((Context.GetNumErrors() > 0) ? EDataValidationResult::Invalid : EDataValidationResult::Valid);
+}
+#endif // WITH_EDITOR
+
+void ULyraAnimInstance::NativeInitializeAnimation()
+{
+	Super::NativeInitializeAnimation();
+
+	if (AActor* OwningActor = GetOwningActor())
+	{
+		if (UAbilitySystemComponent* ASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(OwningActor))
+		{
+			InitializeWithAbilitySystem(ASC);
+		}
+	}
+}
+
+void ULyraAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
+{
+	Super::NativeUpdateAnimation(DeltaSeconds);
+
+	const ALyraCharacter* Character = Cast<ALyraCharacter>(GetOwningActor());
+	if (!Character)
+	{
+		return;
+	}
+
+	ULyraCharacterMovementComponent* CharMoveComp = CastChecked<ULyraCharacterMovementComponent>(Character->GetCharacterMovement());
+	const FLyraCharacterGroundInfo& GroundInfo = CharMoveComp->GetGroundInfo();
+	GroundDistance = GroundInfo.GroundDistance;
+}
+
+```
+
 ## 更新日志
+- 2026-08-14（LYRA 批次 2：动画实例基类补深挖）：新增正文"三十七、动画实例基类与 Tag 属性映射"与"三十八、术语速查"，覆盖 `Source\LyraGame\Animation\` 的 `LyraAnimInstance.h`、`LyraAnimInstance.cpp`，并把两个文件逐字收录进附录（附录文件 19/20，本批次新增 2 个文件）；同步附录清单表（18→20 个文件）与"最后更新"。（原"三十七、关联阅读""三十八、权威来源"顺延为"三十九、四十"。）
+
 - 2026-08-13：按用户要求补入核心文件完整源码附录（共 18 个文件，逐字收录），正文分析不变。
 
 - 2026-08-13：基于本机 Lyra 5.8 源码核对 PawnData、PawnExtension/Hero 四段 InitState、角色视角门槛、PlayerState ASC Owner/Avatar、扩展输入和卸载清理。

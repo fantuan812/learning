@@ -216,6 +216,15 @@
 - 覆盖率提升：批次 1 新增 42(+5) + 43(+5) + 49(+6) + 51(+22) = 38 个新覆盖文件（去重叠后净 +36）→ 286/707 = **40.5%**（基线 250/35.4%）。AbilitySystem 模块 39 文件覆盖、Weapons 10、Messages 7、Feedback 6。
 - 复验：check_repo PASS / FAIL 0；43/49/51 新增附录 16 文件程序化逐字比对一致（51 的 22 文件经围栏级比对 + 尾随空行修复）；manifest 326 条目与磁盘一致（顺带清理 R3 遗留 24 行垃圾前缀并补录 `03-LLM-NPC安全.md` 缺失条目）；12 README/19 路线图/39 总览篇数口径 49→50 篇。
 
+## 批次 2 执行状态（2026-08-14 用户批准，已执行）
+
+- 新建 `52-Lyra-交互系统源码.md`（600 行正文 + 17 文件附录逐字一致；IInteractableTarget/IInteractionInstigator 接口、InteractionQuery/Option 数据层、InteractionStatics、GAS 交互能力与任务族、持续时间交互消息；事实校正：5.8 接口仅 GatherInteractionOptions/CustomizeInteractionEventData、真实现者是 ShooterCore `ALyraWorldCollectable` 而非 WeaponSpawner、持续时间消息无 C++ 生产端）。
+- 40 篇追加"GameFeatureAction 家族"章节（529 行正文 + 6 附录文件逐字一致；WorldActionBase 四阶段钩子、AddAbilities/AddInputBinding/AddInputContextMapping/AddWidget/AddGameplayCuePath/SplitscreenConfig、Policy 补深；版本口径：AddAbilities 无 bAllowGrantingToNonInstigatedActors、激活锁定在引擎 GameFeaturesSubsystem）。
+- 49 篇追加"CommonGame UI 管理层"章节（约 390 行正文 + 6 附录文件逐字一致；GameUIManagerSubsystem/GameUIPolicy/PrimaryGameLayout/CommonUIExtensions/AsyncAction/Messaging；版本口径：无 UCommonGameUIPolicy 子类、PushContentToLayer 在 Extensions/Layout 而非 Policy）。
+- 41 篇追加"动画实例基类与 Tag 属性映射"章节（149 行正文 + 2 附录文件逐字一致；GameplayTagPropertyMap 桥、ASC→AnimInstance 调用链、GroundDistance、编辑器校验）。
+- 覆盖率提升：批次 2 净 +17 → 303/707 = **42.9%**（基线 286/40.5%）。Interaction 17 文件全覆盖、CommonGame 8、GameFeatures 10、Animation 2。
+- 复验：check_repo PASS / FAIL 0（52 篇"预留"占位词 5 处改为"保留"后归零）；四篇新增附录 31 文件程序化逐字比对一致；52 附录路径补全 `Source/LyraGame/` 前缀与系列口径统一；manifest 327 条目与磁盘一致；12 README/19 路线图/39 总览篇数口径 50→51 篇、边界声明"批次 2 已执行、暂无已登记待补项"。
+
 ## 方法、边界与证据
 
 - 机械比对：PowerShell 脚本提取附录表格行（`| N | \`路径\` | 行数 |`）+ 正文路径正则（Source/Plugins 前缀 .h/.cpp），与项目文件全量枚举归一化比对；-Include 与 -Recurse 组合统计陷阱已修正（目录文件数以 Where-Object Extension 为准）。

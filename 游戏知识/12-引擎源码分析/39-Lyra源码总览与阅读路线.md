@@ -1,7 +1,7 @@
 # UE5.8 Lyra 源码解析 39：架构总览与阅读路线
 
 > Lyra 最值得学习的不是某一个“射击游戏功能”，而是它如何把资产、插件、网络、角色、能力、输入和 UI 组织成可装配、可卸载、可多人同步的项目骨架。
-> 本篇先建立全局地图，再给出一条可以逐断点复现的阅读路线；40-48 篇分别深入关键调用链，49-51 篇分别深挖 UI 表现、设置系统与 GAS 扩展。
+> 本篇先建立全局地图，再给出一条可以逐断点复现的阅读路线；40-48 篇分别深入关键调用链，49-52 篇分别深挖 UI 表现、设置系统、GAS 扩展与交互系统。
 > 知识成熟度：L2（本机 UE 5.8 与 Lyra 5.8 源码、配置已静态核对；运行实验作为后续验证步骤）。
 
 ## 元数据
@@ -36,8 +36,9 @@
 | 49 | UI 控件与表现 | Lyra 自有 UI 控件族如何组织与渲染（补 LYRA-COV-01 缺口） | `ULyraHUD`/`ULyraHUDLayout`、Foundation 控件、IndicatorSystem、武器 UI |
 | 50 | 设置系统 | 设置从定义到 UI 的完整链路（补 LYRA-COV-02 缺口） | GameSettings 插件、`ULyraSettingsLocal/Shared`、`ULyraSettingScreen` |
 | 51 | GAS 扩展与能力费用 | AbilityCost 如何按装备/背包/标签扣费，Lyra 属性集、伤害执行与全局能力路由如何落地（补 LYRA 批次 1 GAS 缺口） | `ULyraAbilityCost` 三实现、`ULyraAttributeSet/CombatSet`、`ULyraHealExecution`、`ULyraGlobalAbilitySystem` |
+| 52 | 交互系统 | 可交互目标如何被查询、授予并执行（补 LYRA 批次 2 Interaction 缺口） | `IInteractableTarget`、`AbilityTask_GrantNearbyInteraction`、`ULyraGameplayAbility_Interact` |
 
-建议按 39 → 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47 → 48 → 49 → 50 → 51 顺序阅读。
+建议按 39 → 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47 → 48 → 49 → 50 → 51 → 52 顺序阅读。
 
 如果只排查角色初始化，先读 40 的玩家出生门控，再直接读 41。
 
@@ -4125,3 +4126,4 @@ public:
 - 2026-08-13：系列扩展至 39-47，总览同步九条运行链与 45-47 阅读顺序，并在关联阅读补入三篇新教程。
 - 2026-08-13：47 拆分出 48 扩展插件篇，总览同步十条运行链与 39-48 阅读顺序。
 - 2026-08-14：系列扩展至 39-51（新增 49 UI 控件与表现、50 设置系统、51 GAS 扩展与能力费用），并为 42 武器实例/生成器、43 VerbMessage 消息协议、49 NumberPop/ContextEffects 补深挖；总览同步系列表与阅读顺序。
+- 2026-08-14：批次 2 落地——系列扩展至 39-52（新增 52 交互系统），并为 40 GameFeatureAction 家族、41 动画实例基类、49 CommonGame UI 管理层补深挖；总览同步系列表与阅读顺序。

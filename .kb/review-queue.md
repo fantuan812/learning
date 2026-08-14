@@ -68,6 +68,22 @@ Status: 已执行（2026-08-14：51 篇 551 行正文 + 附录 A 22 文件逐字
 
 ---
 
+## LYRA-BATCH-02（批次 2：CommonGame UIManager / GameFeatureAction 家族 / Interaction / Animation）
+
+Current: 边界声明登记的四项待补价值项；Interaction 全系列 0 覆盖（17 文件），GameFeatureAction 家族与 CommonGame UI 管理层仅路过提及，Animation 仅 2 文件（111 行）。
+
+Suggested: Interaction 新建 52 篇；GameFeatureAction 家族追加 40 篇；CommonGame UI 管理层追加 49 篇；Animation（体量小）追加 41 篇。
+
+Confidence: 0.9
+
+Reason: 2026-08-14 用户指示"现在去处理批次2"；四项均按体量选择落点（成篇/追加），不强行凑篇。
+
+Suggested action: 新建 + 三篇追加
+
+Status: 已执行（2026-08-14：新建 52 篇 600 行正文 + 17 附录逐字一致；40 篇 +529 行正文 + 6 附录、49 篇 +390 行正文 + 6 附录、41 篇 +149 行正文 + 2 附录逐字一致；12 README/19 路线图/39 总览 51 篇口径 + 52 登记、边界声明批次 2 完成；manifest 327 条目同步；覆盖率 40.5%→42.9%；check_repo PASS）
+
+---
+
 ## LYRA-DUP-01（46/47 BotCheats 重复）
 
 Current: ULyraBotCheats 与 ULyraDeveloperSettings（机器人数目字段）在 46 §八.1-8.2（正文级）与 47 §八/§7.2（正文级详解）重复覆盖，互不转发；BotCheats.h/.cpp 附录仅收 46。

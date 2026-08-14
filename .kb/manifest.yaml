@@ -1344,13 +1344,13 @@ documents:
   "游戏知识/12-引擎源码分析/40-Lyra-Experience与GameFeature源码.md":
     kind: doc
     maturity: L2
-    bytes: 93119
-    lines: 2796
+    bytes: 156343
+    lines: 4055
   "游戏知识/12-引擎源码分析/41-Lyra-Pawn初始化与模块化组件源码.md":
     kind: doc
     maturity: L2
-    bytes: 156723
-    lines: 4854
+    bytes: 170220
+    lines: 5150
   "游戏知识/12-引擎源码分析/42-Lyra-输入GAS与武器战斗源码.md":
     kind: doc
     maturity: L2
@@ -1389,8 +1389,8 @@ documents:
   "游戏知识/12-引擎源码分析/49-Lyra-UI控件与表现源码.md":
     kind: doc
     maturity: L2
-    bytes: 109518
-    lines: 2484
+    bytes: 162809
+    lines: 3583
   "游戏知识/12-引擎源码分析/50-Lyra-设置系统与GameSettings源码.md":
     kind: doc
     maturity: L2
@@ -1401,6 +1401,11 @@ documents:
     maturity: L2
     bytes: 80421
     lines: 1936
+  "游戏知识/12-引擎源码分析/52-Lyra-交互系统源码.md":
+    kind: doc
+    maturity: L2
+    bytes: 89059
+    lines: 1849
 
   "游戏知识/12-引擎源码分析/README.md":
     kind: README
