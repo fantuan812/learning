@@ -1,5 +1,6 @@
 # UE 引擎源码分析 20：Iris ReplicationSystem 与 EngineReplicationBridge 源码分析
 > 知识成熟度：L2（本轮审计修订时补标）
+> 分工声明：本文为 UE5.8 源码层深读；概念/使用层知识见本目录 README 映射表及各篇关联阅读（不重复使用层教程）。
 
 ## 运行时调用链与对象生命周期
 
@@ -279,18 +280,6 @@ rg -n "UE_WITH_IRIS|PreferredReplicationSystem|bCanUseIris|UseIrisReplication" "
 rg -n "NetTraceAnalyzer|UE_NET_TRACE|RemoveConnection|ProtocolMismatch" "C:\Program Files\Epic Games\UE_5.8\Engine\Source"
 ```
 
-### 关联阅读
-
-[运行时调用链与对象生命周期](20-Iris复制源码.md#运行时调用链与对象生命周期)
-[过滤、优先级与 ReplicationGraph 迁移](20-Iris复制源码.md#过滤优先级与-replicationgraph-迁移)
-[状态、序列化、调试与失败路径](20-Iris复制源码.md#状态序列化调试与失败路径)
-[源码覆盖路线图](19-高优先级源码覆盖路线图.md)
-[UE 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)
-
-- 关联阅读应按本文件中的运行时调用链、过滤迁移和失败路径顺序使用，并以 UE5.8 本机源码复核版本敏感结论。
-
-- 交付验收至少保留源码路径、配置选择、连接号、NetRefHandle 与 Trace 证据。
-
 ## 关联阅读与版本核对清单
 
 > 本清单以本机 UE 5.8.0、CL 55116800、++UE5+Release-5.8 为唯一当前基线。
@@ -303,7 +292,10 @@ rg -n "NetTraceAnalyzer|UE_NET_TRACE|RemoveConnection|ProtocolMismatch" "C:\Prog
 - [状态、序列化、调试与失败路径](20-Iris复制源码.md#状态序列化调试与失败路径)
 - [最佳实践、FAQ 与关联阅读](20-Iris复制源码.md#最佳实践faq-与关联阅读)
 - [源码覆盖路线图](19-高优先级源码覆盖路线图.md)
+- [34-ReplicationGraph源码](34-ReplicationGraph源码.md)：ReplicationGraph 引擎侧实现与迁移对照。
 - 官方入口：[Unreal Engine Documentation](https://dev.epicgames.com/documentation/en-us/unreal-engine)
+- 关联阅读应按本文件中的运行时调用链、过滤迁移和失败路径顺序使用，并以 UE5.8 本机源码复核版本敏感结论。
+- 交付验收至少保留源码路径、配置选择、连接号、NetRefHandle 与 Trace 证据。
 
 ### 版本核对
 

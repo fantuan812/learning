@@ -5,7 +5,7 @@
 > 适用范围：Buff/状态效果的端到端设计、冲突语义评审与测试。
 > 官方参考：[UE5.8 GAS 文档（GameplayEffects）](https://dev.epicgames.com/documentation/en-us/unreal-engine/gameplay-effects-in-unreal-engine)。
 > 最后更新：2026-08-13（首版）。
-> 知识成熟度：L4（冲突矩阵 + 验证规范已定义；**矩阵用例执行与原始数据待回填**——证据边界见 6.2）。
+> 知识成熟度：L3（冲突矩阵 + 验证规范已定义；**矩阵用例执行与原始数据待回填**——证据边界见 6.2，回填后再升 L4）。
 
 ## 1. 概述
 

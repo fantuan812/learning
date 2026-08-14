@@ -1,5 +1,6 @@
 # UE 引擎源码分析 25：Enhanced Input 与 Gameplay Tags 源码分析
 > 知识成熟度：L2（本轮审计修订时补标）
+> 分工声明：本文为 UE5.8 源码层深读；概念/使用层知识见本目录 README 映射表及各篇关联阅读（不重复使用层教程）。
 
 版本基准：UE5.8.0 / CL55116800 / ++UE5+Release-5.8
 - 最后更新：2026-08-06（本轮元数据维护）
@@ -237,7 +238,7 @@ const bool bMatch = OwnedTags.MatchesQuery(Query);
 - UE5.8 将 `CallOrRegister_OnDoneAddingNativeTagsDelegate` 标记为 Deprecated，推荐新增回调接口或直接调用 `AddNativeGameplayTag`。
 - 不要把旧版输入消费选项、旧版标签注册时序直接当作 UE5.8 的当前行为。
 
-### FAQ
+### 输入求值 FAQ
 
 - **Q：添加 Context 后动作仍无响应？** A：检查 `UEnhancedPlayerInput` 是否生效、优先级、动作消费设置，并确认重建请求已经发生。
 - **Q：注入的动作为什么远端没有？** A：注入入口属于本地 PlayerInput 求值；远端效果必须由项目网络层传递并由权威端处理。
@@ -289,7 +290,7 @@ const bool bMatch = OwnedTags.MatchesQuery(Query);
 - [ ] `GameplayTagContainer.cpp` 核对容器匹配、Query 求值和序列化实现。
 - [ ] 发现版本差异时，先记录对应 UE5.8 源码行/函数，再决定是否写迁移说明。
 
-### 关联阅读
+### 关键源码路径
 
 - Enhanced Input 接口：`Engine/Plugins/EnhancedInput/Source/EnhancedInput/Public/EnhancedInputSubsystemInterface.h`。
 - 本地玩家子系统：`Engine/Plugins/EnhancedInput/Source/EnhancedInput/Public/EnhancedInputSubsystems.h`。

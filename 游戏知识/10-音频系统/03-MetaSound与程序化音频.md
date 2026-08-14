@@ -1,4 +1,5 @@
 # 03 MetaSound 与程序化音频
+> 知识成熟度：L2（本轮审计修订时补标）。
 
 > 所属系列：10-音频系统（UE 客户端）
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。

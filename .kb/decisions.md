@@ -56,6 +56,33 @@ Option 2，已执行：三处均"旧文改总览/收窄 + 新建分篇"，正文
 
 Accepted（已执行）
 
+## KD-010
+
+### Subject
+
+执行第二轮审计修复三批（P0 正确性 → P1 边界互链 → P2 成熟度/命名/README，2026-08-13）。
+
+### Options
+
+1. 仅登记不执行。
+2. 按 audit.md 的 P0/P1/P2 清单分批执行；review-queue 中拆分/门禁/清单类（R2-SPLIT-01/02、R2-GATE-01、R2-MANIFEST-01）不自动执行。
+
+### Decision
+
+Option 2，已执行（208 文件）：P0 消除 1 处版本事实冲突（r.Mobile.ShadingPath 默认 Forward=0，以本机 RendererSettings.h 为准）与 11 处残留；P1 落地 23 项分工声明/互链/收敛；P2 完成 110 篇成熟度补标、01-10 改名、40 个 H1 前缀统一、12 个 README/控制面同步。
+
+### Reason
+
+用户批准"按批次执行 P0→P1→P2"；结构性拆分与门禁行为变更仍留 review-queue 单独确认。
+
+### Confidence
+
+0.9
+
+### Status
+
+Accepted（已执行）
+
 ## KD-009
 
 ### Subject

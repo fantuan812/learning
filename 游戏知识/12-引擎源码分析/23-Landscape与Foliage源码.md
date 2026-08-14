@@ -1,5 +1,6 @@
 # UE 引擎源码分析 23：Landscape 与 Foliage 源码分析
 > 知识成熟度：L2（本轮审计修订时补标）
+> 分工声明：本文为 UE5.8 源码层深读；概念/使用层知识见本目录 README 映射表及各篇关联阅读（不重复使用层教程）。
 
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：Major 5 / Minor 8 / Patch 0 / CL 55116800，分支 `++UE5+Release-5.8`）。
 > 源码依据：本机只读安装目录 `C:\Program Files\Epic Games\UE_5.8\Engine`，重点覆盖 `Runtime/Landscape`、`Runtime/Foliage`、`Runtime/Engine` 的 ISM/HISM 与 World Partition Landscape 适配代码。
@@ -331,8 +332,6 @@ Component->UpdateCollisionData();
 - 源码行号会随分支变化，引用行号时必须同时保留文件路径和核对命令。
 - 发生分区、LOD Group、材质或变换变化时，应重新验证 HLOD hash 与生成资产。
 
-### 关联阅读
-- [源码覆盖路线图](19-高优先级源码覆盖路线图.md)：查看 Landscape/Foliage 源码覆盖状态。
 - [渲染与图形](../02-渲染与图形/README.md)：衔接 SceneProxy、材质和渲染性能知识。
 - [世界构建与过场](../13-世界构建与过场/README.md)：衔接 World Partition、Landscape 与 HLOD。
 - [引擎基础](../01-引擎基础/README.md)：补充 Actor、Component 和生命周期背景。
@@ -382,6 +381,7 @@ flowchart LR
 
 ### 关联阅读
 - [源码覆盖路线图](19-高优先级源码覆盖路线图.md)：查看本主题的源码覆盖状态与证据。
+- [31-ProceduralVegetationEditor源码](31-ProceduralVegetationEditor源码.md)：植被生成器与 Foliage/World Partition 输出边界。
 - [渲染与图形](../02-渲染与图形/README.md)：补充 SceneProxy、材质和 GPU 剔除背景。
 - [世界构建与过场](../13-世界构建与过场/README.md)：补充 World Partition、Landscape 和 HLOD 背景。
 - [引擎基础](../01-引擎基础/README.md)：补充 Actor、Component 和注册生命周期。

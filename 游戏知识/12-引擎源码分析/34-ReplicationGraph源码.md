@@ -1,5 +1,6 @@
 # UE 引擎源码分析 34：ReplicationGraph 插件源码
 > 知识成熟度：L2（本轮审计修订时补标）
+> 分工声明：本文为 UE5.8 源码层深读；概念/使用层知识见本目录 README 映射表及各篇关联阅读（不重复使用层教程）。
 
 > 以本机 UE5.8 源码锚点解释 ReplicationGraph 插件如何替代经典 `ServerReplicateActors` 全量遍历，
 > 覆盖插件定位、类与节点体系、Actor 注册路由、每帧复制主循环与调试观测。

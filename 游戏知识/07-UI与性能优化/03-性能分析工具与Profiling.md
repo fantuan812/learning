@@ -1,4 +1,5 @@
-# 03 · 性能分析工具与 Profiling
+# 03 性能分析工具与 Profiling
+> 知识成熟度：L2（本轮审计修订时补标）。
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
 > 兼容性边界：适用于 UE5.8 编辑器/运行时，UE4.27 与早期 UE5 仅作迁移背景，具体模块以正文为准。
 > 最后更新：2026-08-06（本轮元数据维护）。
@@ -433,7 +434,7 @@ void AMyGameMode::Tick(float DeltaSeconds)
 - [UE 5.8 官方文档：RenderDoc](https://dev.epicgames.com/documentation/en-us/unreal-engine/using-renderdoc-with-unreal-engine)（GPU 单帧捕获）
 - 本知识库：`01-UMG框架与控件系统.md`（UI 机制与 stat 关联命令）
 - 本知识库：`04-渲染与加载性能优化.md`（基于分析结论的优化手段）
-- 本知识库：`09-调试与工具链`（控制台命令与调试技巧）
+- 本知识库：[08-工具链与打包发布](../08-工具链与打包发布/README.md)（控制台命令、打包与工具链）
 
 ---
 

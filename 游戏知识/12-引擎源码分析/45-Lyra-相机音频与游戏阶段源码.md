@@ -1379,7 +1379,7 @@ rg -n 'ShooterGame.GamePhase' "$Lyra\Plugins\GameFeatures\ShooterCore\Config\Tag
 
 ## 二十一、关联阅读
 
-- [39-Lyra源码总览与阅读路线](39-Lyra源码总览与阅读路线.md)：项目插件地图与七篇 Lyra 文章的总览。
+- [39-Lyra源码总览与阅读路线](39-Lyra源码总览与阅读路线.md)：项目插件地图与 39-48 十篇 Lyra 文章的总览。
 - [40-Lyra-Experience与GameFeature源码](40-Lyra-Experience与GameFeature源码.md)：Experience 加载与阶段/出生门控的上下文。
 - [41-Lyra-Pawn初始化与模块化组件源码](41-Lyra-Pawn初始化与模块化组件源码.md)：HeroComponent 绑定 `DetermineCameraModeDelegate` 的初始化状态机。
 - [42-Lyra-输入GAS与武器战斗源码](42-Lyra-输入GAS与武器战斗源码.md)：Ability 的 `SetCameraMode`/`ClearCameraMode` 与瞄准散布联动。

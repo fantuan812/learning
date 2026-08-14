@@ -1,4 +1,5 @@
 # 05 Chaos 破坏系统与 Field System
+> 知识成熟度：L2（本轮审计修订时补标）。
 
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
 > 适用范围：UE 客户端 · 物理破坏（Geometry Collection / Field System / 断裂与碎片模拟）。
@@ -38,7 +39,7 @@
 
 ## 原理详解
 
-### 4.1 破坏系统的整体链路
+### 3.1 破坏系统的整体链路
 
 ```mermaid
 flowchart LR
@@ -52,7 +53,7 @@ flowchart LR
 
 链路分两段：**编辑段**把静态网格加工成可破坏资产；**运行段**由组件 + 求解器 + 力场驱动断裂与飞散，并通过事件把"破坏"反馈给玩法（得分、音效、粒子）。
 
-### 4.2 资产层：Geometry Collection 与层级碎块
+### 3.2 资产层：Geometry Collection 与层级碎块
 
 Geometry Collection 是破坏的"资产契约"：编辑器用 Fracture 工具把静态网格切成若干**碎块**，碎块按**层级（Hierarchy）**组织成簇（Cluster）——大簇由小簇组成。层级的意义：
 
@@ -62,7 +63,7 @@ Geometry Collection 是破坏的"资产契约"：编辑器用 Fracture 工具把
 
 运行时承载类是 `UGeometryCollectionComponent`（本机 `GeometryCollectionComponent.h`）：继承自网格组件体系，提供 `SetSimulatePhysics(bool)`（`GeometryCollectionComponent.h` 约 657 行）、`ApplyPhysicsField(...)`（约 1141 行）、`OnChaosBreakEvent`/`OnRootBreakEvent`（约 1269/1278 行）、`DispatchBreakEvent`（约 1286 行）等接口。`AGeometryCollectionActor` 是标准的"组件 + 求解器"容器 Actor。
 
-### 4.3 求解层：Chaos Solver
+### 3.3 求解层：Chaos Solver
 
 碎块的动力学由 Chaos Solver 承担（`ChaosSolverEngine`）：`UChaosSolver` 持有物理求解配置，`AChaosSolverActor` 是场景中的求解器 Actor（`ChaosSolverActor.h/.cpp`），`ChaosSolverComponentTypes.h` 提供组件与求解器的类型桥接。要点：
 
@@ -84,7 +85,7 @@ sequenceDiagram
     G->>G: 音效/粒子/得分/网络同步
 ```
 
-### 4.4 驱动层：Field System
+### 3.4 驱动层：Field System
 
 Field System 是"按空间施加物理影响"的通用机制：在场景中放置**场节点（Field Node）**，定义"哪些区域、施加什么影响（力/速度/损坏）"，运行时由场系统求值后作用于物理代理（碎块刚体等）。本机 5.8 证据：
 
@@ -94,7 +95,7 @@ Field System 是"按空间施加物理影响"的通用机制：在场景中放�
 
 场节点的典型组合（示意，节点名以目标版本编辑器为准）：径向力（Radial）、噪声（Noise）、衰减（Falloff）与"损坏"（Damage）类节点叠加，得到"爆炸中心强、边缘弱、形态不规则"的冲击场。
 
-### 4.5 事件层：破坏事件的玩法接入
+### 3.5 事件层：破坏事件的玩法接入
 
 破坏系统把"物理发生了什么"通过事件暴露给玩法：
 
@@ -105,7 +106,7 @@ Field System 是"按空间施加物理影响"的通用机制：在场景中放�
 
 ## 代码 / 示例
 
-### 5.1 施加爆炸力场（C++ 示意）
+### 4.1 施加爆炸力场（C++ 示意）
 
 > 节选/示意：`UFieldSystemComponent`、`UGeometryCollectionComponent` 为真实类名（本机头文件已核对）；字段类型与函数签名以目标版本为准。
 
@@ -128,7 +129,7 @@ void UMyDestructionManager::ApplyExplosion(UGeometryCollectionComponent* GC, FVe
 }
 ```
 
-### 5.2 监听破坏事件（蓝图/C++ 示意）
+### 4.2 监听破坏事件（蓝图/C++ 示意）
 
 ```cpp
 // 示意：订阅破坏事件（真实委托名见 GeometryCollectionComponent.h）
@@ -146,7 +147,7 @@ void UMyDestructionManager::BindBreakEvents(UGeometryCollectionComponent* GC)
 
 蓝图侧同样可以绑定 `On Chaos Break Event`（事件图入口名以目标版本为准），事件回调里播放碎裂音效、生成 Niagara 碎片粒子并同步网络状态（服务器权威判定破坏结果，客户端播放表现，见 06-网络同步）。
 
-### 5.3 开启编辑器插件（示意）
+### 4.3 开启编辑器插件（示意）
 
 ```json
 {
@@ -160,7 +161,7 @@ void UMyDestructionManager::BindBreakEvents(UGeometryCollectionComponent* GC)
 
 （示意；按工程需要开启。注意 `FieldSystemPlugin`/`GeometryCollectionPlugin` 默认关闭且标 Beta，开启后需回归验证。）
 
-### 5.4 破坏资产的物理参数（示意）
+### 4.4 破坏资产的物理参数（示意）
 
 碎块行为由资产级与求解器级参数共同决定（参数名以目标版本编辑器为准，此处为工作流示意）：
 
@@ -172,7 +173,7 @@ void UMyDestructionManager::BindBreakEvents(UGeometryCollectionComponent* GC)
 | 休眠策略 | 落定后进入休眠省算力 | 配合清理策略防止碎块堆积 |
 | 求解器迭代 | 接触/约束求解精度 | 默认值起步，仅在穿模/抖动时上调 |
 
-### 5.5 蓝图接入流程（示意）
+### 4.5 蓝图接入流程（示意）
 
 1. 场景放置 `AGeometryCollectionActor`（或给 Actor 添加 `UGeometryCollectionComponent`）；
 2. 资产指定 Geometry Collection，初始不激活模拟（由玩法触发）；

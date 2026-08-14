@@ -1,10 +1,11 @@
 # 游戏AI评测、回放与 LLM NPC 安全
+> 知识成熟度：L2（本轮审计修订时补标）。
 
 > 游戏 AI 从“看起来会动”走向“可以证明、可以回滚、可以负责”的工程专题。
 
 > 知识基线：引擎无关的游戏 AI 通用原理，结合客户端、服务端、数据平台和内容安全的工程落地；示意 schema、命令、伪代码和阈值不代表仓库已有实现。
 > 适用范围：适用于手写决策 AI、强化学习/模仿学习策略、群体 AI、服务端权威 AI、LLM NPC 对话、离线回放、仿真测试、灰度上线和事故复盘。
-> 事实边界：指标定义、回放证据链、确定性约束、低权限工具和分阶段上线属于通用方案；具体引擎 API、训练框架能力、模型效果、平台容量、延迟和合规要求必须以项目版本、压测和官方资料为准。
+> 事实边界：指标定义、回放证据链、确定性约束、低权限工具和分阶段上线属于通用方案；回放可复现到行为层，调度层是否可复现需按环境验证（见 §6.4）；具体引擎 API、训练框架能力、模型效果、平台容量、延迟和合规要求必须以项目版本、压测和官方资料为准。
 > 最后更新：2026-08-06。
 > 真实来源：[Unity ML-Agents 官方仓库](https://github.com/Unity-Technologies/ml-agents)；[Unity ML-Agents Releases](https://github.com/Unity-Technologies/ml-agents/releases)；[OpenTelemetry 官方文档](https://opentelemetry.io/docs/)；[Unreal Engine 官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
 
@@ -1106,8 +1107,6 @@ AI 公平性不是让每个 Agent 获得相同算力。
 记录被延迟的原因。
 
 如果调度本身不要求确定，可以只记录统计。
-
-但要在事实边界中明确“回放可复现到行为层还是到调度层”。
 
 ### 6.5 AOI 与寻路联动
 

@@ -16,6 +16,11 @@
 ## 项目树（Project）
 
 - [系统实战](../系统实战/README.md)
+- [Projects](../Projects/README.md)：项目专属知识（当前骨架，待流入）
+
+## 通用知识入口（Knowledge）
+
+- [Knowledge](../Knowledge/README.md)：通用知识新主题入口（当前骨架，待流入）
 
 ## 证据与方案（Evidence / Plans）
 

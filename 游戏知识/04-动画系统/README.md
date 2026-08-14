@@ -28,6 +28,8 @@ flowchart LR
 | 03-IK与程序化动画 | TwoBoneIK / FABRIK 原理、Foot IK 落地、Control Rig（UE5）、程序化动画、动画驱动、Root Motion、Motion Matching 简述 |
 | 04-动画性能与预算分配 | 骨骼动画成本构成、AnimationBudgetAllocator 预算分配与三档降级、AnimationSharing 动画共享 |
 | 05-AnimNext动画框架（UAF） | AnimNext/UAF 新一代动画框架、功能数据流与图驱动求值、Trait 与 StateTree 协同（实验性，UE5.8 以 UAF 插件提供） |
+| 06-动画重定向与IKRetargeter | 重定向源/目标骨骼映射、IK Retargeter 链与 Pivot、跨体型动画复用 |
+| 07-动画资产与骨骼基础 | Skeleton / SkeletalMesh / AnimSequence 资产关系、骨骼层级与参考姿势、导入与命名规范 |
 
 ### 与其他分类的关系
 

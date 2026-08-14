@@ -1,4 +1,5 @@
-# 06-动画重定向与 IK Retargeter
+# 06 动画重定向与 IK Retargeter
+> 知识成熟度：L2（本轮审计修订时补标）。
 
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
 > 源码依据：`C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Animation\IKRig\Source\IKRig\Public\Retargeter\`（`IKRetargeter.h`、`IKRetargetProcessor.h`、`IKRetargetSettings.h`、`IKRetargetChainMapping.h`、`IKRetargetOps.h`、`RetargetOps\`）与 `Public\Rig\IKRigDefinition.h`。

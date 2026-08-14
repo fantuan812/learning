@@ -1,5 +1,6 @@
 # UE 引擎源码分析 36：AnimNext 与 UAF 源码剖析（UE5.8）
 > 知识成熟度：L2（本轮审计修订时补标）
+> 分工声明：本文为 UE5.8 源码层深读；概念/使用层知识见本目录 README 映射表及各篇关联阅读（不重复使用层教程）。
 
 > 以本机 UE5.8 源码锚点解释 AnimNext 新一代动画框架在 5.8 的实际载体——UAF（Unreal Animation
 > Framework）插件：插件定位与版本边界、资产与运行时对象模型（`UUAFRigVMAsset`/`UUAFSystem`/

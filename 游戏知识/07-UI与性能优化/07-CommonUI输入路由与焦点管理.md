@@ -1,4 +1,5 @@
-# 07 · CommonUI 输入路由与焦点管理（CommonUI Input Routing & Focus Management）
+# 07 CommonUI 输入路由与焦点管理（CommonUI Input Routing & Focus Management）
+> 知识成熟度：L2（本轮审计修订时补标）。
 
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
 > 适用范围：CommonUI 插件的使用层：插件启用、激活栈（Activatable Widget Stack）、输入路由（Input Routing）、焦点与手柄导航、与 EnhancedInput 的协作、调试命令；源码层细节见 `../12-引擎源码分析/26-CommonUI源码.md`。

@@ -1,4 +1,5 @@
 # 06 Chaos 车辆系统
+> 知识成熟度：L1（本轮审计修订时补标）。
 
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
 > 适用范围：UE 客户端 · 载具玩法（ChaosVehicles 插件 / WheeledVehiclePawn / 车辆调校 / 载具网络同步）。

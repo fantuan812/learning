@@ -1961,13 +1961,16 @@ Beacon 在正式 Travel 前预约服务器容量，减少 Lobby 显示可加入�
 
 ## 二十九、关联阅读
 
-- [39-Lyra源码总览与阅读路线](39-Lyra源码总览与阅读路线.md)：六篇教程的总地图和证据分级。
+- [39-Lyra源码总览与阅读路线](39-Lyra源码总览与阅读路线.md)：39-48 十篇教程的总地图和证据分级。
 - [40-Lyra-Experience与GameFeature源码](40-Lyra-Experience与GameFeature源码.md)：体验选择、插件激活和玩家出生门控。
 - [41-Lyra-Pawn初始化与模块化组件源码](41-Lyra-Pawn初始化与模块化组件源码.md)：网络角色、PawnExtension 和组件初始化。
 - [42-Lyra-输入GAS与武器战斗源码](42-Lyra-输入GAS与武器战斗源码.md)：输入、能力授权、预测和伤害链。
 - [43-Lyra-背包装备消息与UI源码](43-Lyra-背包装备消息与UI源码.md)：Inventory、Equipment、GameplayMessage 和 UIExtension。
 - [32-UE Dedicated Server启动与监听源码](<32-UE Dedicated Server启动与监听源码.md>)：服务器启动、监听和部署边界。
 - [33-UNetDriver与连接通道源码](33-UNetDriver与连接通道源码.md)：连接、通道和 Travel 失败排查。
+- [47-Lyra-调试工具与扩展源码](47-Lyra-调试工具与扩展源码.md)：测试层/调试工具（ShooterTests/Gauntlet 深挖在 47，本篇只交叉引用）。
+- [48-Lyra扩展插件源码](48-Lyra扩展插件源码.md)：加载屏等插件实现。
+- [游戏服务端/05-UE Dedicated Server平台化/01-UE Dedicated Server实例生命周期与平台化](<../../游戏服务端/05-UE Dedicated Server平台化/01-UE Dedicated Server实例生命周期与平台化.md>)：就绪门禁/健康检查/优雅停机/会话回收的平台化实践（分工互指）。
 - [34-ReplicationGraph源码](34-ReplicationGraph源码.md)：复制图概念和条件创建的引擎背景。
 - [20-Iris复制源码](20-Iris复制源码.md)：Iris 状态描述、过滤与序列化边界。
 - [26-CommonUI源码](26-CommonUI源码.md)：CommonUI 激活栈和输入路由。

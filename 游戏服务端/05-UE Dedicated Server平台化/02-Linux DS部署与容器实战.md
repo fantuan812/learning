@@ -1,4 +1,5 @@
 # Linux Dedicated Server 部署与容器实战
+> 知识成熟度：L2（本轮审计修订时补标）。
 
 > 把 UE5.8 Dedicated Server 以无头进程、systemd 服务或容器镜像的形式部署到 Linux，覆盖构建、运行、信号、资源限制、日志、崩溃与验证。
 

@@ -1113,31 +1113,13 @@ Lyra 提供的是项目级规则与静态入口。
 
 `InPath`、`OfType`、`Packages` 参数可以脱离 P4 指定资产；P4 相关参数只在需要按变更集校验时使用。
 
-### Q8：FAsyncMixin 为什么说“不增加实例内存”？
-
-`FLoadingState` 存在静态 `TMap` 中，按需创建、完成即销毁。
-
-继承 `FAsyncMixin` 的类本身只多一个查询入口，不直接持有加载句柄数组。
-
-### Q9：PocketWorlds 和普通 Level Streaming 的区别？
-
-`UPocketLevelInstance` 按 LocalPlayer 复用、按 `Bounds.Z` 垂直堆叠，并把子关卡标记为客户端本地可见（`bClientOnlyVisible` 与 `bExchangedRoles`）。
-
-普通 `ULevelStreamingDynamic` 没有这套按玩家实例化的语义。
-
-### Q10：RedRoom/GreenRoom 到底用来做什么？
-
-验证边界：只有资产名与 uplugin 字段可证明。
-
-它们很可能是测试房间地图，但当前 checkout 中没有任何 C++/配置文本引用，需打开地图确认。
-
-### Q11：WITH_RPC_REGISTRY 在 Shipping 是什么状态？
+### Q8：WITH_RPC_REGISTRY 在 Shipping 是什么状态？
 
 `LyraGame.Build.cs` 在 Shipping 定义 `WITH_RPC_REGISTRY=0`、`WITH_HTTPSERVER_LISTENERS=0`、`WITH_AUTOMATION_DRIVER=0`。
 
 对应代码全部不编译，这是“默认剥离外部调试入口”的设计。
 
-### Q12：MenuStartElimination.spec 和 ShooterTests 的测试有什么区别？
+### Q9：MenuStartElimination.spec 和 ShooterTests 的测试有什么区别？
 
 Spec 用 AutomationDriver 驱动真实 UI 点击（前端路径）；ShooterTests 是 CQTest 地图/网络行为测试。
 
@@ -1198,10 +1180,7 @@ rg -n 'Lyra\.CheckChaosMeshCollision|Lyra\.CreateRedirectorPackage|Lyra\.DiffCol
 rg -n 'IsBootProcessComplete|Elimination|SCommonButton' "$Lyra\Source\LyraGame\Tests" -g '*.cpp'
 rg -n 'WITH_RPC_REGISTRY|WITH_AUTOMATION_DRIVER' "$Lyra\Source\LyraGame\LyraGame.Build.cs"
 
-# 插件
-rg -n 'AsyncLoad|OnFinishedLoading' "$Lyra\Plugins\AsyncMixin\Source\Public\AsyncMixin.h"
-rg -n 'GetOrCreatePocketLevelFor|bClientOnlyVisible' "$Lyra\Plugins\PocketWorlds\Source\Private" -g '*.cpp'
-rg -n 'AModular' "$Lyra\Plugins\ModularGameplayActors\Source\ModularGameplayActors\Public\*.h"
+# 插件（AsyncMixin/PocketWorlds/ModularGameplayActors 等已迁至 48 篇，验证命令见 48-Lyra扩展插件源码.md 静态验证小节）
 ```
 
 ## 二十五、验收清单
@@ -1214,8 +1193,7 @@ rg -n 'AModular' "$Lyra\Plugins\ModularGameplayActors\Source\ModularGameplayActo
 - [ ] 四个 EditorValidator 的行为与各自 .cpp 一致。
 - [ ] ContentValidationCommandlet 参数与实现一致，未把声明当实现。
 - [ ] 测试层三个入口（Gauntlet/Spec/RPC）的分工清楚。
-- [ ] AsyncMixin 与 PocketWorlds 的关键方法名与头文件一致。
-- [ ] RedRoom/GreenRoom 只写了资产存在与用途推断，未越界声称行为已验证。
+- [ ] 插件相关验收（AsyncMixin/PocketWorlds/RedRoom/GreenRoom/ModularGameplayActors）见 48 篇验收清单。
 
 ### 25.2 文档门禁
 

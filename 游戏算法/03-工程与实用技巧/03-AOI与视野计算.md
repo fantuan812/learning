@@ -1,4 +1,5 @@
 # 03-AOI 与视野计算
+> 知识成熟度：L2（本轮审计修订时补标）。
 
 > MMO 场景同步的命门是广播：全量广播是 O(n²) 的灾难。AOI（Area of Interest，兴趣管理）决定"谁该看到谁"，把广播压到局部；视野锥、遮挡与战争迷雾决定"谁真正看到谁"，把渲染与表现压到合理。本篇覆盖九宫格/灯塔/十字链表三种 AOI、进入/离开/移动事件、视野计算与服务端客户端分工。
 
@@ -329,3 +330,4 @@ void updateVision(Player* p, const std::vector<TileCoord>& oldTiles,
 - 《Game Programming Gems 4》：Interest Management 相关章节；
 - 云风《游戏之旅：我的编程感悟》及博客（AOI 十字链表、服务端架构讨论）；
 - MMO 同步综述：Bernier, "Latency Compensating Methods in Client/Server In-game Protocol Design"。
+- [服务端/06-世界模拟与运行时/05-AOI与InterestManagement](../../游戏服务端/06-世界模拟与运行时/05-AOI与InterestManagement.md)：Enter/Leave/限流/批量在真实服务器 Tick/Scene 流程中的运行时语义（本文=算法与通用实现层，分工互指）。

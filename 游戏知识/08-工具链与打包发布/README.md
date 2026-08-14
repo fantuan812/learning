@@ -57,6 +57,8 @@ flowchart LR
 3. **第三步：09-UE Dedicated Server 构建烘焙与运行**（服务端发布必读）
    在 UAT 基础上理解 Server.Target.cs、Server/NoClient 参数、ServerDefaultMap、Win64/Linux 产物、Pak/IoStore/Archive 和双客户端冒烟。
 4. **第四步：10-UE Dedicated Server 运行参数与性能调优 + 11-DS 内容裁剪与服务器资源预算**（服务端调优必读）
+
+> 其余按需查阅：05-GameFeatures 特性插件、06-Interchange 与 DataValidation、07-Shader 编译管线与 PSO、08-全栈质量门禁与灰度回滚、12-版本控制与资产协作、13-本地化发布工作流、14-Python 编辑器脚本与资产自动化；其中 08 篇前置要求 05 与 03-性能分析工具。
    在构建链路之上掌握服务器帧率/带宽/连接参数与内容裁剪方法，把"能跑"推进到"跑得好、省资源"。
 5. **第五步：03-插件开发与编辑器扩展**（建议）
    团队工具链建设依赖插件化思维：把工具做成插件、把通用代码做成 Runtime 插件，是多人协作与代码复用的最佳实践。

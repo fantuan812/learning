@@ -1,5 +1,6 @@
 # UE 引擎源码分析 31：Procedural Vegetation Editor 源码分析
 > 知识成熟度：L2（本轮审计修订时补标）
+> 分工声明：本文为 UE5.8 源码层深读；概念/使用层知识见本目录 README 映射表及各篇关联阅读（不重复使用层教程）。
 
 > 专题定位：以 UE5.8.0 的 Experimental Procedural Vegetation Editor 插件源码为中心，分析 Runtime/Editor 模块边界、PCG 图/资产/实例生命周期，以及到 Foliage 与 World Partition 的可验证适配边界。
 
@@ -20,30 +21,14 @@
 - 本专题的执行主线是“插件模块启动 → 编辑器设置与图模型 → 资产/实例生命周期 → 项目输出适配 → Foliage/World Partition 承载”。
 - 每个结论按“源码存在、符号存在、调用链存在”分级，避免把数据类型或编辑器颜色设置误读成自动生成能力。
 
-## 核心概念
+## 速览（TL;DR）
 
-- `ProceduralVegetation` 是 Runtime 模块，`ProceduralVegetationEditor` 是 Editor 模块；`UProceduralVegetationGraph` 建立在 `UPCGGraph` 上，`UProceduralVegetation`、GraphInstance 与 Instance 组成资产关系链。
-
-## 原理
-
-- 编辑器负责注册设置、菜单和图编辑入口，图/实例承载生成数据，项目适配层显式把网格与变换交给 Foliage 或 Actor，再由 World Partition 管理已保存的分区内容。
-
-## 示例
-
-- 可执行检查：先核对 `.uplugin`、两个 Build.cs 和 `FProceduralVegetationEditorModule::StartupModule`，再沿 `UProceduralVegetationGraph` → 资产/实例 → 显式输出适配验证；示意代码不替代已核实 API。
-
-## 最佳实践
-
-- 保持 Runtime 与 Editor 依赖方向单向，固定版本、种子和 Cell 边界，并在生成结果进入 Foliage 或 World Partition 前记录显式适配与保存证据。
-
-## FAQ
-
-- `FoliageMeshDataPinColor` 只表达编辑器引脚颜色，不代表已经创建 Foliage 实例。
-- 当前源码未证明图执行会自动写入 `AInstancedFoliageActor` 或 Runtime Cell，需检查项目适配层和保存流程。
-
-## 关联阅读
-
-- [源码覆盖路线图](19-高优先级源码覆盖路线图.md)、[引擎源码分析导航](README.md)以及文末列出的 PCG 官方页面和本机源码证据。
+- **核心概念**：`ProceduralVegetation` 是 Runtime 模块，`ProceduralVegetationEditor` 是 Editor 模块；`UProceduralVegetationGraph` 建立在 `UPCGGraph` 上，`UProceduralVegetation`、GraphInstance 与 Instance 组成资产关系链。
+- **原理**：编辑器负责注册设置、菜单和图编辑入口，图/实例承载生成数据，项目适配层显式把网格与变换交给 Foliage 或 Actor，再由 World Partition 管理已保存的分区内容。
+- **示例**：可执行检查——先核对 `.uplugin`、两个 Build.cs 和 `FProceduralVegetationEditorModule::StartupModule`，再沿 `UProceduralVegetationGraph` → 资产/实例 → 显式输出适配验证；示意代码不替代已核实 API。
+- **最佳实践**：保持 Runtime 与 Editor 依赖方向单向，固定版本、种子和 Cell 边界，并在生成结果进入 Foliage 或 World Partition 前记录显式适配与保存证据。
+- **FAQ**：`FoliageMeshDataPinColor` 只表达编辑器引脚颜色，不代表已经创建 Foliage 实例；当前源码未证明图执行会自动写入 `AInstancedFoliageActor` 或 Runtime Cell，需检查项目适配层和保存流程。
+- **关联阅读**：[源码覆盖路线图](19-高优先级源码覆盖路线图.md)、[引擎源码分析导航](README.md)以及文末列出的 PCG 官方页面和本机源码证据。
 
 ## 源码证据与核心概念
 
@@ -173,7 +158,7 @@
 - 在没有 WP 适配或分区保存步骤时，生成结果不会自动进入 Runtime Cell。
 - 跨 Cell 的植物、碰撞和依赖未处理时，独立生成可能产生接缝或重复实例。
 
-### 示例（伪代码，非 UE5.8 API）
+### 编辑器边界伪代码（示意）
 
 ```text
 [Editor 模块启动] -> [读取 UPVEditorSettings] -> [编辑 UProceduralVegetationGraph]
@@ -233,13 +218,6 @@
 - 每次输出后应记录生成输入、版本基线和目标承载类型，便于回滚与验收。
 - 插件声明 `IsExperimentalVersion=true`、`EnabledByDefault=false`，并依赖 PCG 等插件。
 - 实验性状态意味着项目应固定版本、保留迁移验证，并为输出数据准备回退方案。
-
-### FAQ
-
-- 问：编辑器设置里的 `FoliageMeshDataPinColor` 会自动生成 Foliage 吗？答：不会，它只是节点引脚颜色。
-- 问：Procedural Vegetation 图会自动进入 World Partition Cell 吗？答：当前已核实源码没有这条直接调用链。
-- 问：可以把编辑器模块打进运行时包吗？答：应保持 Editor 模块与 Runtime 模块分离。
-- 问：生成结果不一致先查什么？答：先查图/资产加载、种子、Cell 边界和显式输出适配，而不是臆测 API。
 
 ## 最佳实践、FAQ、Mermaid 与关联阅读
 

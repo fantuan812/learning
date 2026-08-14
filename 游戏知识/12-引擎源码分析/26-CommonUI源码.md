@@ -1,5 +1,6 @@
 # UE 引擎源码分析 26：CommonUI 源码专题
 > 知识成熟度：L2（本轮审计修订时补标）
+> 分工声明：本文为 UE5.8 源码层深读；概念/使用层知识见本目录 README 映射表及各篇关联阅读（不重复使用层教程）。
 
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：Major 5 / Minor 8 / Patch 0 / CL 55116800，分支 `++UE5+Release-5.8`）。
 > 源码依据：本机只读安装目录 `C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Runtime\CommonUI`，重点覆盖 CommonUI、CommonInput Runtime 和 CommonUIEditor 分界。
@@ -87,6 +88,7 @@ CommonUI 是建立在 UMG/Slate 之上的 Runtime 插件：它把页面激活状
 - 蓝图设计、细节面板和编辑器定制属于 Editor 路径；激活、路由、焦点和映射属于 Runtime 路径。
 - 插件清单的 `EnabledByDefault` 为 false，项目需要显式启用插件后再使用这些模块。
 - 打包验证应同时覆盖 Editor 编译与 Shipping/Development Runtime 编译，避免编辑器依赖漏入或运行时缺模块。
+- Editor 可验证资产与绑定，Shipping/Development 仍需单独验证 Runtime 路由和 Enhanced Input。
 
 ### 7. 源码与模块验证命令
 
@@ -161,14 +163,6 @@ rg -n 'ProcessInput\(|ActivateWidget\(|GetDesiredFocusTarget|FUIInputConfig' "$c
 - `CommonActionWidget.cpp` 使用 `UInputAction`，并监听 `ControlMappingsRebuiltDelegate` 更新显示。
 - `IsEnhancedInputSupportEnabled` 关闭时，Back/Click Action 与映射上下文路径会被跳过。
 - Mapping Context 优先级属于 Enhanced Input 层；Router 的动作域和 UI 绑定仍负责消费边界。
-
-### 6. 编辑器/运行时边界
-- `CommonUI.uplugin` 将 CommonUI、CommonInput 声明为 Runtime，将 CommonUIEditor 声明为 Editor。
-- `CommonUIEditor.Build.cs` 面向编辑器模块，不能作为游戏 Runtime 模块的依赖。
-- Runtime Build.cs 含 `Target.Type == TargetType.Editor` 分支，编辑器附加依赖必须留在目标分支内。
-- 运行时页面应只调用 CommonUI/CommonInput 的可打包接口，不依赖编辑器定制类。
-- 插件 `EnabledByDefault` 已核实为 false，项目需显式启用后再编译和加载模块。
-- Editor 可验证资产与绑定，Shipping/Development 仍需单独验证 Runtime 路由和 Enhanced Input。
 
 ### 7. 失败路径与标注伪代码
 以下调用关系是伪代码（仅表达源码职责，不是可直接编译的 UE5.8 示例）：

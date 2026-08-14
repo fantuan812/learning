@@ -870,3 +870,4 @@ flowchart TD
 - [03-游戏玩法编程/05-蓝图与C++协作](../03-游戏玩法编程/05-蓝图与C++协作.md)（能力类蓝图事件与 C++ 虚函数的协作方式）
 - [01-引擎基础/01-UObject与反射系统](../01-引擎基础/01-UObject与反射系统.md)（FGameplayAbilitySpecHandle 的序列化/复制依赖反射）
 - [12-引擎源码分析/06-委托与事件系统源码](./06-委托与事件系统源码.md)（`OnGameplayAbilityEnded`、`OnActiveGameplayEffectAdded` 等委托机制源码）
+- [29-GameplayTasks源码](29-GameplayTasks源码.md)：AbilityTask 与 GameplayTask 的边界（任务框架源码）。

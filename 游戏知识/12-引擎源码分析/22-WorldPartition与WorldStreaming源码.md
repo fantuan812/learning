@@ -1,5 +1,6 @@
 # UE 引擎源码分析 22：World Partition 与 World Streaming 源码分析
 > 知识成熟度：L2（本轮审计修订时补标）
+> 分工声明：本文为 UE5.8 源码层深读；概念/使用层知识见本目录 README 映射表及各篇关联阅读（不重复使用层教程）。
 
 - 引擎版本：UE5.8.0
 - 变更列表：CL 55116800
@@ -9,18 +10,6 @@
 ## 概述
 
 本文用于梳理 UE5.8 World Partition 与 World Streaming 的源码结构和运行流程。
-
-## 核心概念
-
-## 原理
-
-## 示例
-
-## 最佳实践
-
-## FAQ
-
-## 关联阅读
 
 ## 源码证据与核心概念
 
@@ -319,6 +308,7 @@
 - [World Partition - Hierarchical Level of Detail](https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition---hierarchical-level-of-detail-in-unreal-engine?lang=en-US)
 - [Developer Guide to Tracing](https://dev.epicgames.com/documentation/en-us/unreal-engine/developer-guide-to-tracing-in-unreal-engine)
 - [Unreal Insights Reference](https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-insights-reference-in-unreal-engine-5)
+- [源码覆盖路线图](19-高优先级源码覆盖路线图.md)：查看本主题的源码覆盖状态与证据。
 
 ## 补充 Mermaid、示意代码与关联阅读
 
@@ -365,9 +355,3 @@ MyGame.exe -trace=default
 验收时应同时看到 WorldInitialization、ContainerDescription、ContainerStateChange 和 StreamingSourceUpdate。
 
 若启用 Priority 或 Dependencies 通道，还应检查 ContainerPriorityUpdate、PackageNameMapping 和 ContainerDependencies。
-
-### 关联阅读
-
-- [高优先级源码覆盖路线图](19-高优先级源码覆盖路线图.md)
-- [World Partition in Unreal Engine](https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition-in-unreal-engine)
-- [Developer Guide to Tracing](https://dev.epicgames.com/documentation/en-us/unreal-engine/developer-guide-to-tracing-in-unreal-engine)

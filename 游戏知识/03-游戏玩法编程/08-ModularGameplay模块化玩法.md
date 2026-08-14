@@ -1,4 +1,5 @@
-# 08 · Modular Gameplay 模块化玩法
+# 08 Modular Gameplay 模块化玩法
+> 知识成熟度：L2（本轮审计修订时补标）。
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
 > 兼容性边界：适用于 UE5.8 编辑器/运行时，UE4.27 与早期 UE5 仅作迁移背景，具体模块以正文为准。
 > 官方参考：[Unreal Engine UE5.8 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
@@ -402,3 +403,4 @@ UGameFrameworkComponentManager::SendGameFrameworkComponentExtensionEvent(
 - [04-委托事件与对象通信](04-委托事件与对象通信.md)：扩展事件机制与委托绑定/解绑模式同源。
 - [05-蓝图与C++协作](05-蓝图与C++协作.md)：`FActorInitStateChangedBPDelegate` 是把 C++ 状态机暴露给蓝图的标准样例。
 - [09-GameplayTask任务框架](09-GameplayTask任务框架.md)：组件在 `HandleChangeInitState` 中常启动 GameplayTask 执行持续逻辑。
+- Lyra 项目实现细节（InitState 状态机等）以 [12-引擎源码分析/41-Lyra-Pawn初始化与模块化组件源码](../12-引擎源码分析/41-Lyra-Pawn初始化与模块化组件源码.md) 为源码依据（本文为通用概念层）。

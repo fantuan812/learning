@@ -1,4 +1,5 @@
 # 04 Niagara 流体模拟（Niagara Fluids）
+> 知识成熟度：L2（本轮审计修订时补标）。
 
 ## 元数据
 

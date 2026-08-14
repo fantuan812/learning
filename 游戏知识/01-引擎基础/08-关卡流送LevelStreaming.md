@@ -1,4 +1,5 @@
 # 08 关卡流送（Level Streaming）
+> 知识成熟度：L2（本轮审计修订时补标）。
 
 ## 一、概述
 
@@ -189,18 +190,10 @@ flowchart LR
 
 ### 3.7 与传统流送 vs World Partition
 
-| 维度 | Level Streaming（本文） | World Partition（见 09 篇） |
-| --- | --- | --- |
-| 划分粒度 | 整个关卡文件（.umap） | 单个 Actor（运行时自动装箱成 Cell） |
-| 谁划分 | 开发者手动拆关卡、配置体积 | 引擎按空间哈希自动划分 |
-| 编辑体验 | 一次只能编辑一个关卡（子关卡模式） | 整个大世界在同一关卡中编辑、多人协同 |
-| 加载单元 | 关卡（可能很大） | Cell（由 Actor 数量决定，可很小） |
-| 判定方式 | 体积/距离/手动/始终加载 | 流送源（位置+形状）驱动距离查询 |
-| 运行时底层 | `ULevelStreaming` 状态机 | 运行时把 Cell 转成流送关卡，复用 LevelStreaming 机制 |
-| 适合场景 | 中小型关卡、模块化子关卡、副本 | 超大型开放世界、无缝大地图 |
-| 动态加载 | `LoadLevelInstance` 支持多实例 | Cell 自动管理，另配 Level Instance 做子区域 |
-| 数据分层 | 无原生概念（需自行管理） | DataLayer 数据层 |
-| 远景优化 | 手动做 LOD/代理 | HLOD 自动生成（合并 ISM） |
+对比表以 [09-WorldPartition大世界](09-WorldPartition大世界.md) §3.7 为准（切分粒度/加载单元/DataLayer/HLOD 等逐项对比），本文只保留一句话口径：
+
+- **Level Streaming**：手动按关卡（.umap）划分、`ULevelStreaming` 状态机驱动，适合中小型关卡与模块化子关卡；
+- **World Partition**：按 Actor 自动装箱 Cell、流送源驱动距离查询，适合超大型开放世界；运行时仍复用 LevelStreaming 机制。
 
 ## 四、蓝图与 C++ 示例
 

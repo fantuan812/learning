@@ -1,4 +1,5 @@
 # 12 SaveGame 存档系统与序列化
+> 知识成熟度：L2（本轮审计修订时补标）。
 
 | 项目 | 内容 |
 |---|---|
@@ -130,7 +131,7 @@ flowchart TD
 - **跨关卡持有**：存档对象建议由 `UGameInstance`（或其子类）持有，关卡切换（Level Streaming / Seamless Travel）不销毁，加载存档后统一把数据分发给各系统（玩家状态、背包、任务）。
 - **关卡数据配合**：需要保存的关卡状态（可破坏物、开关、NPC 位置）先收敛为"可序列化快照"（USTRUCT 列表），再写进存档对象；不要直接尝试序列化 Actor。
 - **Subsystem 分工**：`UGameInstanceSubsystem` 适合做"存档管理器"（保存/加载编排、自动存档节流）；`UWorldSubsystem` 适合做关卡内"存档应用器"（进关卡后把快照落回场景）。存档管理器持 `ULocalPlayerSaveGame`，按玩家索引路由。
-- 关联阅读：World/Subsystem 体系见 `../01-引擎基础/07-World关卡与Subsystem体系.md`；字符串类型选型见 `../01-引擎基础/10-FName与FText底层.md`。
+- 关联阅读：World/Subsystem 体系见 `../01-引擎基础/07-World关卡与Subsystem体系.md`；字符串类型选型见 `../01-引擎基础/10-FName与FString底层.md`。
 
 ### 8. 平台差异与云存档
 
@@ -291,7 +292,7 @@ void UMySaveManager::MigrateV1ToV2(UMySaveGame* Save)
 6. **Q：游戏更新后旧存档怎么办？** A：自建 `SaveVersion` + 链式迁移；引擎级 `FSaveGameHeader` 只管引擎版本，游戏版本必须自己管（GameplayStatics.cpp 注释）。
 7. **Q：同步与异步可以混用吗？** A：可以但建议统一；混用时注意同时读写约束与回调线程（异步完成回调回到游戏线程，但不应依赖其顺序）。
 8. **Q：存档能加密吗？** A：引擎默认明文；可用 `SaveDataToSlot` 自行加密字节再写入（方案示意），注意平台合规与性能。
-9. **Q：存档里放 `FText` 安全吗？** A：`FText` 可序列化，但涉及本地化键；纯展示文本建议存 key 或 `FString`，详见 `../01-引擎基础/10-FName与FText底层.md`。
+9. **Q：存档里放 `FText` 安全吗？** A：`FText` 可序列化，但涉及本地化键；纯展示文本建议存 key 或 `FString`，详见 `../01-引擎基础/10-FName与FString底层.md`。
 10. **Q：GAS 角色属性要存档吗？** A：可存 AttributeSet 快照（数值/标签），加载后应用；注意与网络权威（服务器）配合，详见 `01-GameplayAbilitySystem能力系统.md`。
 11. **Q：云存档与本地存档冲突怎么办？** A：引擎不内置云存档；接入平台云同步时需自定冲突策略（方案示意）：时间戳合并、保留双版本供选择，或"本地优先 + 云端备份"。
 12. **Q：多存档槽位怎么管理？** A：槽名即文件名（PC 口径）；槽列表可用 `GetSaveGameNames`（`ISaveGameSystem`）枚举，或自建"槽位索引存档"记录各槽元数据（时间戳/截图/摘要）。
@@ -300,7 +301,7 @@ void UMySaveManager::MigrateV1ToV2(UMySaveGame* Save)
 
 - [01-GameplayAbilitySystem能力系统.md](01-GameplayAbilitySystem能力系统.md)（GAS 状态与存档配合）
 - [05-蓝图与C++协作.md](05-蓝图与C++协作.md)（反射/UPROPERTY 序列化基础）
-- [../01-引擎基础/10-FName与FText底层.md](../01-引擎基础/10-FName与FText底层.md)（字符串类型选型）
+- [../01-引擎基础/10-FName与FString底层.md](../01-引擎基础/10-FName与FString底层.md)（字符串类型选型）
 - [../01-引擎基础/07-World关卡与Subsystem体系.md](../01-引擎基础/07-World关卡与Subsystem体系.md)（GameInstance/Subsystem 持有与分发）
 - [13-背包与装备系统.md](13-背包与装备系统.md)（存档数据的典型消费方）
 

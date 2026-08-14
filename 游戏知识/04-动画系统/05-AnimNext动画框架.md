@@ -1,4 +1,5 @@
 # 05 AnimNext 动画框架（新一代动画系统）
+> 知识成熟度：L1（本轮审计修订时补标）。
 
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
 > 源码依据/本机核对：本机 `C:\Program Files\Epic Games\UE_5.8\Engine` 中**没有独立 AnimNext.uplugin**，但 AnimNext 生态以 **UAF 插件**（`Plugins\Experimental\UAF\UAF\UAF.uplugin`，FriendlyName "Unreal Animation Framework (UAF)"）形式提供，其运行时头文件仍以 `AnimNext*` 命名（`AnimNextRigVMAsset.h`、`AnimNextComponent.h`、`AnimNextFunctionHandle.h` 等），并有 `MoverAnimNext` 等集成插件；本文类名/API 以官方文档与上述本机头文件为准并标注出处，**凡无法在本机源码核对的具体符号一律标注"待核对"**，不虚构类名/函数名/CVar。

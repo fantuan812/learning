@@ -1,5 +1,6 @@
 # UE 引擎源码分析 38：PCG 程序化内容生成源码剖析
 > 知识成熟度：L2（本轮审计修订时补标）
+> 分工声明：本文为 UE5.8 源码层深读；概念/使用层知识见本目录 README 映射表及各篇关联阅读（不重复使用层教程）。
 
 > 本文为 `12-引擎源码分析` 系列第 38 篇，聚焦 **PCG（Procedural Content Generation Framework，程序化内容生成框架）** 的引擎侧实现：数据模型、图资产结构、执行引擎、Component/Volume/WorldPartition 集成、确定性保证与 PCGCompute 并行计算。
 

@@ -1,4 +1,5 @@
-# 02 · Enhanced Input 增强输入
+# 02 Enhanced Input 增强输入
+> 知识成熟度：L2（本轮审计修订时补标）。
 
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
 > 源码依据：`C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\EnhancedInput\Source\EnhancedInput`；以本机 5.8 源码为准。

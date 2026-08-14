@@ -1,4 +1,5 @@
-# UE Dedicated Server 构建、烘焙与运行
+# 09 UE Dedicated Server 构建、烘焙与运行
+> 知识成熟度：L2（本轮审计修订时补标）。
 
 > 以本机 UE5.8 源码已核对的 UBT/UAT 事实为边界，串起 Server.Target.cs、Build、Cook、Stage、Package、Archive/Deploy 与运行冒烟。
 

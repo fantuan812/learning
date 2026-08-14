@@ -847,6 +847,7 @@ Sweep 辅助又可能增加查询。
 
 ## 四十六、关联阅读
 
+- [39-Lyra源码总览与阅读路线](39-Lyra源码总览与阅读路线.md)：系列总览、项目插件地图与阅读路线。
 - [41-Lyra-Pawn初始化与模块化组件源码](41-Lyra-Pawn初始化与模块化组件源码.md)：ASC Owner/Avatar 与输入准备。
 - [43-Lyra-背包装备消息与UI源码](43-Lyra-背包装备消息与UI源码.md)：Equipment 如何授予武器 Ability。
 - [05-GAS能力系统源码](05-GAS能力系统源码.md)：GAS 引擎底层调用链。

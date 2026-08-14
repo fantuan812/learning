@@ -21,6 +21,9 @@
 | 时间预算 | Tick 预算、AI Tick Budget、服务器寻路预算 |
 | 世界时间 / GameClock | wall/monotonic/game/tick 时间分类、暂停/减速、跨服对齐 |
 | 背压与过载保护 | 队列积压、高水位、降级阶梯、滞回恢复 |
+| 世界 Snapshot / 故障恢复 | 快照+增量事件、崩溃恢复状态机、客户端 Reconcile、事件日志幂等 |
+
+> 编号映射：02=Timer（规划）、06=Entity Ownership（规划）、07=跨 Zone 迁移（规划）、08=动态负载均衡（规划）、09=大规模战斗/降级（规划）、10=Spatial Partition（规划）；已落地篇为 01/03/04/05/11/12/13/14。
 
 ## 核心链路示例（AOI）
 

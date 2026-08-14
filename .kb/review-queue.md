@@ -20,6 +20,78 @@ Status: Pending
 
 > 2026-08-13 决策：**已执行**（KD-009）。用户"继续处理剩余事项"确认后，01-38 H1 统一为"UE 引擎源码分析 NN：主题"（33 个文件；05/06/07/38 原已达标），39-48 Lyra 系列保持"UE5.8 Lyra 源码解析 NN：主题"；全库 grep 无旧标题残留。
 
+---
+
+## R2-SPLIT-01（AI 03-01 拆分）
+
+Current: 游戏AI/03-评测与安全/01-AI评测回放与LLM安全.md（2036 行双主题）。
+
+Suggested: 拆为《AI 评测与回放》《LLM NPC 安全》两篇；§四 回放与确定性压缩为指路节并与算法 04-05 双向互链。
+
+Confidence: 0.75
+
+Reason: §七（LLM NPC 安全，约 395 行）可独立成篇；§四 与算法 04-05 实质重叠仅单向链。
+
+Suggested action: 拆分（需迁移计划）
+
+Status: Pending
+
+## R2-MOVE-01（07-05 调试工具归属）
+
+Current: 游戏知识/07-UI与性能优化/05-GameplayDebugger与运行时调试.md。
+
+Suggested: 迁至引擎基础/独立调试分类，或 README 补覆盖声明（33KB 通用运行时调试内容，README 覆盖范围未提调试主题）。
+
+Confidence: 0.7
+
+Reason: 分类名与内容错位；迁移涉及跨分类导航与链接更新。
+
+Suggested action: 迁移 / 声明
+
+Status: Pending
+
+## R2-GATE-01（成熟度字段入门禁 + 批量补标）
+
+Current: 全库约 129 篇正文缺"知识成熟度"行；check_repo.ps1 不检查该字段，只查知识基线/最后更新/官方链接。
+
+Suggested: check_repo 增加"本次新增/修改正文必须带成熟度行"（已有逻辑）扩展为"既有正文缺成熟度按目录分批 FAIL 阈值"；同时按 L0-L5 口径批量补标约 129 篇。
+
+Confidence: 0.9（门禁缺口事实）/ 0.7（是否本轮执行）
+
+Reason: 写作规范 §2 要求每篇标注；门禁与规范脱节导致欠账长期不可见。
+
+Suggested action: 先补标后加固门禁（或反向，需用户定序）
+
+Status: Pending
+
+## R2-MANIFEST-01（manifest 索引填充）
+
+Current: .kb/manifest.yaml 为空骨架（documents: {}）。
+
+Suggested: 由 kb_scanner 回填文档索引（路径/域/成熟度/大小），作为 RAG 与后续审计基线。
+
+Confidence: 0.8
+
+Reason: Phase 1 要求维护 manifest；空索引使控制面无法回答"仓库当前有哪些文档"。
+
+Suggested action: 填充（机械生成，主线程执行）
+
+Status: Pending
+
+## R2-DEDUP-01（概念层双写收敛）
+
+Current: 01-07/08/09 与 01-04、02-03/04/08/10、04-01/02、04-00 FAQ/清单双源、08-08 与服务端 04 系列等多组概念层重复详述。
+
+Suggested: 主责篇保留详述，他篇收敛为摘要+链接；04-00 问答/清单改为单一来源（分篇）并注明同步规则。
+
+Confidence: 0.7-0.95（按组）
+
+Reason: 收敛涉及正文删改与互链，属于结构性去重；与"每篇完整可读"的既有要求需平衡。
+
+Suggested action: 分批去重（先 exact 级：01-08/09 对比表、04-00 FAQ）
+
+Status: Pending
+
 > 2026-08-13 决策：**维持现状**（KD-004）。用户此前明确要求"每篇都出现完整源码"；去重方案与该要求冲突，不执行。跨篇重复作为已知成本记录，后续若用户改变要求再执行。
 
 ## SPLIT-01（47 篇拆分）

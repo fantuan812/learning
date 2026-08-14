@@ -1,4 +1,5 @@
 # 06 虚拟制片与 ICVFX（Virtual Production & In-Camera VFX）
+> 知识成熟度：L2（本轮审计修订时补标）。
 
 ## 元数据
 

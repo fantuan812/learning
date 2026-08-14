@@ -1,10 +1,11 @@
-# 01 · UMG 框架与控件系统
+# 01 UMG 框架与控件系统
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
 > 兼容性边界：适用于 UE5.8 编辑器/运行时，UE4.27 与早期 UE5 仅作迁移背景，具体模块以正文为准。
 > 最后更新：2026-08-06（本轮元数据维护）。
 
 ## 1. 概述
 
+> 知识成熟度：L2（本轮审计修订时补标）。
 UMG（Unreal Motion Graphics）是 Unreal Engine 面向游戏 UI 的控件系统，构建在底层 Slate UI 框架之上。它提供了所见即所得的 **Widget Blueprint** 编辑器、丰富的内置控件（Widget）、灵活的锚点（Anchor）与布局（Layout）机制，以及基于 `UUserWidget` 的事件与动画系统，是绝大多数 UE 游戏（大厅、HUD、背包、商城、设置界面）的首选 UI 方案。
 
 本章回答三个核心问题：

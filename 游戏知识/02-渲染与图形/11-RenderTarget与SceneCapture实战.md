@@ -1,4 +1,5 @@
 # 11 RenderTarget 与 SceneCapture 实战
+> 知识成熟度：L1（本轮审计修订时补标）。
 
 > 版本基线：UE5.8.0 / CL55116800 / ++UE5+Release-5.8（本机 `C:\Program Files\Epic Games\UE_5.8\Engine`）。
 > 适用范围：客户端渲染功能开发（小地图、镜子/监控屏、动态纹理、画面后处理、抓屏读回等）使用层实战。

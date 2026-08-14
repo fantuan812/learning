@@ -11,6 +11,8 @@
 
 这四个主题是所有上层知识（网络同步、动画、AI、UMG、GameplayAbility 等）的共同前提。建议按顺序阅读，并在自己的小工程中动手验证文中代码示例。
 
+> 本分类现含 11 篇正文：四块地基（对象/生命周期/框架/模块与启动）+ 场景组件与变换、定时器与 Ticker、World 关卡与 Subsystem、关卡流送、World Partition、字符串底层、多线程与任务系统；文件清单见下。
+
 ## 文件列表
 
 | 文件 | 一句话简介 |
@@ -24,7 +26,7 @@
 | [07-World关卡与Subsystem体系.md](./07-World关卡与Subsystem体系.md) | UWorld/ULevel 组成、关卡与流送概念，以及 UWorld/GameInstance/Engine/LocalPlayer 四种子系统生命周期。 |
 | [08-关卡流送LevelStreaming.md](./08-关卡流送LevelStreaming.md) | 传统 Level Streaming：Persistent/Streaming Level、流送体积、Load/Unload 流程、性能与网络注意点。 |
 | [09-WorldPartition大世界.md](./09-WorldPartition大世界.md) | World Partition：ActorDesc 分散、DataLayer、运行时流送策略、HLOD 与大型开放世界实践。 |
-| [10-FName与FText底层.md](./10-FName与FText底层.md) | FName（FNamePool/全局名表）、FString 堆分配陷阱、FText 本地化管线与三者选型。 |
+| [10-FName与FString底层.md](./10-FName与FString底层.md) | FName（FNamePool/全局名表）、FString 堆分配陷阱、FText 本地化管线与三者选型。 |
 | [11-多线程与任务系统.md](./11-多线程与任务系统.md) | 线程模型与任务系统使用层：FRunnable/FThread、FAsyncTask、Async()/ParallelFor、TaskGraph 与 ENamedThreads、线程安全原语与 UObject 线程限制。 |
 
 ## 学习顺序建议

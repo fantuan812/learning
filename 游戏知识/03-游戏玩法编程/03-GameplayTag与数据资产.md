@@ -1,4 +1,5 @@
-# 03 · GameplayTag 与数据资产（DataAsset / DataTable）
+# 03 GameplayTag 与数据资产（DataAsset / DataTable）
+> 知识成熟度：L2（本轮审计修订时补标）。
 
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
 > 源码依据：`C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\GameplayTags`；数据资产部分另参考 `CoreUObject`/`Engine` 运行时模块。

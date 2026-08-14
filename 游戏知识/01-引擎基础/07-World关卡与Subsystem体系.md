@@ -1,4 +1,5 @@
 # 07 World 关卡与 Subsystem 体系
+> 知识成熟度：L2（本轮审计修订时补标）。
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
 > 兼容性边界：适用于 UE5.8 编辑器/运行时，UE4.27 与早期 UE5 仅作迁移背景，具体模块以正文为准。
 > 官方参考：[Unreal Engine UE5.8 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
@@ -76,6 +77,8 @@ Level 的"状态机"（传统流送视角）：
 - **Loaded**：资源已加载，Actor 存在但不可见、不 Tick；
 - **Visible**：进入渲染，仍不 Tick（`bIsVisible`）；
 - **Active**：完全激活，Actor `BeginPlay`、参与 Tick；`Level->Actors` 中所有 Actor 的世界状态生效；
+
+> 状态机细节（事件回调、异步加载、可见性判定）以 [08-关卡流送LevelStreaming](08-关卡流送LevelStreaming.md) 为准；World Partition 的 Cell/DataLayer/HLOD 见 [09-WorldPartition大世界](09-WorldPartition大世界.md)。
 - 卸载时逆序：Actor `EndPlay`（原因 `RemovedFromWorld`）→ 移除渲染/物理 → 释放资源。
 
 `World->GetCurrentLevel()` 返回当前上下文关卡（游戏运行时通常是 PersistentLevel）；流送关卡的 Actor 通过 `Actor->GetLevel()` 知道自己属于哪个关卡。

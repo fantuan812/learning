@@ -2326,11 +2326,9 @@ git -C 'C:\project\git' status --short -- '游戏知识/12-引擎源码分析/43
 
 本篇只允许新增目标文件。
 
-仓库其他未提交改动属于用户现有工作，不应在本篇任务中覆盖。
-
 ## 三十九、关联阅读
 
-- [39-Lyra源码总览与阅读路线](39-Lyra源码总览与阅读路线.md)：项目插件地图、Experience 入口和六篇阅读顺序。
+- [39-Lyra源码总览与阅读路线](39-Lyra源码总览与阅读路线.md)：项目插件地图、Experience 入口和 39-48 十篇阅读顺序。
 - [40-Lyra-Experience与GameFeature源码](40-Lyra-Experience与GameFeature源码.md)：GameFeature 如何激活本篇的 UI Action 和组件。
 - [41-Lyra-Pawn初始化与模块化组件源码](41-Lyra-Pawn初始化与模块化组件源码.md)：Pawn、PlayerState、ASC 和组件初始化会合。
 - [42-Lyra-输入GAS与武器战斗源码](42-Lyra-输入GAS与武器战斗源码.md)：Equipment 授予的 Ability 如何接收输入并产生伤害。

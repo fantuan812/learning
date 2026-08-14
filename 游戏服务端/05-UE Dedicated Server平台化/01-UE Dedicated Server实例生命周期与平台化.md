@@ -1,4 +1,5 @@
 # UE Dedicated Server 实例生命周期与平台化
+> 知识成熟度：L2（本轮审计修订时补标）。
 
 > 把 UE Dedicated Server 进程放进匹配、分配、调度、部署、观测与发布系统，形成可验证、可回收、可回滚的实例闭环。
 
@@ -968,6 +969,8 @@ DS 重新校验 ticket、expiry、instanceId 代数和房间绑定。
 - [游戏服务端 03-业务系统设计](../03-业务系统设计/README.md)
 - [游戏服务端 04-平台与可靠性](../04-平台与可靠性/README.md)
 - [Kubernetes probes 官方文档](https://kubernetes.io/docs/concepts/workloads/pods/probes/)
+- [UNetDriver与连接通道源码](<../../游戏知识/12-引擎源码分析/33-UNetDriver与连接通道源码.md>)：连接状态/超时的引擎实现（平台化篇只确认符号与契约）
+- [44-Lyra-前端会话网络与扩展源码](<../../游戏知识/12-引擎源码分析/44-Lyra-前端会话网络与扩展源码.md>)：Lyra 就绪门禁/会话回收视角（分工互指）
 - [Agones GameServerAllocation 官方文档](https://agones.dev/site/docs/reference/gameserverallocation/)
 - [Amazon GameLift Servers 官方文档](https://docs.aws.amazon.com/gameliftservers/)
 - [OpenTelemetry 官方文档](https://opentelemetry.io/docs/)

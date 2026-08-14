@@ -1,4 +1,5 @@
 # 03 Gameplay 框架与游戏模式
+> 知识成熟度：L2（本轮审计修订时补标）。
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
 > 兼容性边界：适用于 UE5.8 编辑器/运行时，UE4.27 与早期 UE5 仅作迁移背景，具体模块以正文为准。
 > 官方参考：[Unreal Engine UE5.8 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
@@ -510,3 +511,4 @@ RPC 只能定义在 Actor 上。GameState/PlayerState/PlayerController/Pawn/Char
 - 官方文档：Unreal Engine 5 Documentation → Programming and Scripting → Gameplay Framework；
 - 引擎源码：`Engine/Source/Runtime/Engine/Classes/GameFramework/`（GameMode、GameState、PlayerController、Pawn、Character、PlayerState）；
 - 后续分类：网络同步与 RPC 深入（属性复制通道、RPC 通道）、UMG 与 HUD、AI 控制（`AIController` 与 `Possess` 的对应）。
+- 网络机制细节以 [06-网络同步/01-网络架构与复制基础](../06-网络同步/01-网络架构与复制基础.md) 为准（本文的 DOREPLIFETIME/OnRep 示例只说明框架职责）。

@@ -294,7 +294,7 @@ Map 的只读数据（实体定义、刷怪表）；Scene 实例只持有"已加
 - [03-Entity生命周期与组件模型](03-Entity生命周期与组件模型.md)：实体归属与迁移的生命周期。
 - [05-AOI与InterestManagement](05-AOI与InterestManagement.md)：Zone 级 AOI 网格。
 - [12-世界时间确定性与GameClock](12-世界时间确定性与GameClock.md)：跨实例时间基准。
-- `13-世界Snapshot与故障恢复`（规划）：跨进程迁移的状态快照。
+- [13-世界Snapshot与故障恢复](13-世界Snapshot与故障恢复.md)：跨进程迁移的状态快照。
 - [游戏知识/13-世界构建与过场](../../游戏知识/13-世界构建与过场/README.md)：UE 大世界（World Partition）客户端侧。
 - [05-UE Dedicated Server平台化](<../05-UE Dedicated Server平台化/README.md>)：DS 实例生命周期。
 - `08-跨Zone与跨服迁移`（规划）：跨进程迁移的协议细节。

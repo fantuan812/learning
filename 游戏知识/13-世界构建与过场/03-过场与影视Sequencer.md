@@ -1,4 +1,5 @@
-# 03-过场与影视 Sequencer
+# 03 过场与影视 Sequencer
+> 知识成熟度：L2（本轮审计修订时补标）。
 
 > 适用范围：UE 客户端 · 过场动画与影视级演出
 > 版本基准：UE 5.8（关键 API 已对照本机源码：`Runtime\LevelSequence\Public\LevelSequence.h`、`Runtime\MovieScene\Public\MovieSceneSequence.h`、`Runtime\CinematicCamera\Public\CineCameraActor.h`、`Runtime\MovieSceneCapture\Public\MovieSceneCapture.h`）
