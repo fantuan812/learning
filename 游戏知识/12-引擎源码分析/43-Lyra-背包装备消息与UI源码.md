@@ -257,19 +257,22 @@ UIExtension 负责控件装配，不负责背包数值校验。
 
 不要把玩家可变值写回共享 CDO。
 
-### 5.5 Definition 读取示意
+### 5.5 Definition 读取：实际 Fragment 查找实现
 
 ```cpp
-// 示意：不改变 CDO，不假设 Fragment 一定存在
-const UInventoryFragment_EquippableItem* Equippable =
-    ItemInstance->FindFragmentByClass<UInventoryFragment_EquippableItem>();
-if (Equippable && Equippable->EquipmentDefinition)
+const ULyraInventoryItemFragment* ULyraInventoryItemInstance::FindFragmentByClass(
+	TSubclassOf<ULyraInventoryItemFragment> FragmentClass) const
 {
-    // 只读取装备定义，具体 EquipItem 仍由权威路径执行
+	if ((ItemDef != nullptr) && (FragmentClass != nullptr))
+	{
+		return GetDefault<ULyraInventoryItemDefinition>(ItemDef)->FindFragmentByClass(FragmentClass);
+	}
+
+	return nullptr;
 }
 ```
 
-这段代码的关键是空指针检查。
+这段来自 `LyraInventoryItemInstance.cpp` 的真实实现：实例不复制/修改 Definition CDO，而是在有 `ItemDef` 和目标 Fragment 类时把查询转发到 Definition 的默认对象。
 
 ItemDefinition 可能没有 Equippable 片段。
 
@@ -773,28 +776,18 @@ Inventory 和 QuickBar 当前使用静态频道 Tag。
 
 如果需要多种消息，创建不同子 Tag。
 
-### 12.5 监听示意
+### 12.5 监听：实际 Processor 注册代码
 
 ```cpp
-// 节选：在初始化阶段登记，在结束阶段解除
-ListenerHandle = UGameplayMessageSubsystem::Get(this).RegisterListener<FLyraInventoryChangeMessage>(
-    TAG_Lyra_Inventory_Message_StackChanged,
-    this,
-    &UMyInventoryWidgetController::HandleInventoryChanged);
-
-void UMyInventoryWidgetController::HandleInventoryChanged(
-    FGameplayTag Channel,
-    const FLyraInventoryChangeMessage& Message)
+void UAssistProcessor::StartListening()
 {
-    if (!Message.Instance || Message.NewCount < 0)
-    {
-        return;
-    }
-    RefreshEntry(Message.Instance, Message.NewCount, Message.Delta);
+	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(this);
+	AddListenerHandle(MessageSubsystem.RegisterListener(TAG_Lyra_Elimination_Message, this, &ThisClass::OnEliminationMessage));
+	AddListenerHandle(MessageSubsystem.RegisterListener(TAG_Lyra_Damage_Message, this, &ThisClass::OnDamageMessage));
 }
 ```
 
-这段代码只描述消息观察。
+这段来自 ShooterCore 的 `AssistProcessor.cpp`，是 Lyra 生产侧真实的成员函数注册：组件保存由 `AddListenerHandle` 管理的句柄，结束时由基类统一注销，而不是伪造 `UMyInventoryWidgetController`。
 
 它不应该在回调里直接给服务器发未校验的消费请求。
 
@@ -1608,37 +1601,66 @@ if (HasAuthority() && InventoryComponent && ItemDefinition)
 
 示例没有实现重复请求去重。
 
-### 24.2 QuickBar 消息监听
+### 24.2 QuickBar 消息广播：实际 OnRep 代码
 
 ```cpp
-// 节选：注册后必须在销毁阶段注销
-SlotsChangedHandle = UGameplayMessageSubsystem::Get(this)
-    .RegisterListener<FLyraQuickBarSlotsChangedMessage>(
-        TAG_Lyra_QuickBar_Message_SlotsChanged,
-        this,
-        &UMyQuickBarViewModel::OnSlotsChanged);
-```
-
-监听函数应检查 Owner 是否为当前 LocalPlayer 的 Controller。
-
-不要在一个全局 HUD 中误处理其他玩家的 Slots 消息。
-
-### 24.3 服务器校验槽位
-
-```cpp
-// 示意：产品服务器应验证归属关系
-bool IsOwnedItem(const ULyraInventoryManagerComponent* Inventory,
-                 const ULyraInventoryItemInstance* Item)
+void ULyraQuickBarComponent::OnRep_Slots()
 {
-    if (!Inventory || !Item)
-    {
-        return false;
-    }
-    return Inventory->GetAllItems().Contains(Item);
+	FLyraQuickBarSlotsChangedMessage Message;
+	Message.Owner = GetOwner();
+	Message.Slots = Slots;
+
+	UGameplayMessageSubsystem& MessageSystem = UGameplayMessageSubsystem::Get(this);
+	MessageSystem.BroadcastMessage(TAG_Lyra_QuickBar_Message_SlotsChanged, Message);
+}
+
+void ULyraQuickBarComponent::OnRep_ActiveSlotIndex()
+{
+	FLyraQuickBarActiveIndexChangedMessage Message;
+	Message.Owner = GetOwner();
+	Message.ActiveIndex = ActiveSlotIndex;
+
+	UGameplayMessageSubsystem& MessageSystem = UGameplayMessageSubsystem::Get(this);
+	MessageSystem.BroadcastMessage(TAG_Lyra_QuickBar_Message_ActiveIndexChanged, Message);
 }
 ```
 
-该示例是线性检查。
+UI 监听端必须按 `Message.Owner` 过滤当前玩家；生产侧的广播发生在复制回调，而不是在 UI 中轮询槽位。
+
+不要在一个全局 HUD 中误处理其他玩家的 Slots 消息。
+
+### 24.3 服务器校验：实际消费函数
+
+```cpp
+bool ULyraInventoryManagerComponent::ConsumeItemsByDefinition(
+	TSubclassOf<ULyraInventoryItemDefinition> ItemDef, int32 NumToConsume)
+{
+	AActor* OwningActor = GetOwner();
+	if (!OwningActor || !OwningActor->HasAuthority())
+	{
+		return false;
+	}
+
+	int32 TotalConsumed = 0;
+	while (TotalConsumed < NumToConsume)
+	{
+		if (ULyraInventoryItemInstance* Instance =
+			ULyraInventoryManagerComponent::FindFirstItemStackByDefinition(ItemDef))
+		{
+			InventoryList.RemoveEntry(Instance);
+			++TotalConsumed;
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	return TotalConsumed == NumToConsume;
+}
+```
+
+这是 Lyra 实际的服务器侧消费路径：先检查 Owner Authority，再按 Definition 查找并移除实例；找不到足够数量时返回 `false`。源码还明确标注当前查找是 `N squared`，并未伪造一个不在项目中的 `Contains` 归属检查。
 
 生产实现可以用服务器侧索引加速。
 
@@ -2328,7 +2350,7 @@ git -C 'C:\project\git' status --short -- '游戏知识/12-引擎源码分析/43
 
 ## 三十九、关联阅读
 
-- [39-Lyra源码总览与阅读路线](39-Lyra源码总览与阅读路线.md)：项目插件地图、Experience 入口和 39-48 十篇阅读顺序。
+- [39-Lyra源码总览与阅读路线](39-Lyra源码总览与阅读路线.md)：项目插件地图、Experience 入口和 39-52 阅读顺序。
 - [40-Lyra-Experience与GameFeature源码](40-Lyra-Experience与GameFeature源码.md)：GameFeature 如何激活本篇的 UI Action 和组件。
 - [41-Lyra-Pawn初始化与模块化组件源码](41-Lyra-Pawn初始化与模块化组件源码.md)：Pawn、PlayerState、ASC 和组件初始化会合。
 - [42-Lyra-输入GAS与武器战斗源码](42-Lyra-输入GAS与武器战斗源码.md)：Equipment 授予的 Ability 如何接收输入并产生伤害。
@@ -2356,7 +2378,7 @@ git -C 'C:\project\git' status --short -- '游戏知识/12-引擎源码分析/43
 
 ## 附录：核心文件完整源码
 
-> 收录原则：本附录把正文直接分析的 LyraStarterGame 5.8 项目源码文件逐字完整收录（未删改，保留 Epic 版权头），正文中的"节选"负责解释调用链，本附录提供全文，二者配合阅读。引擎层（`Engine/`）文件体量过大且不属于项目教程主体，仍按正文的路径+符号检索方式引用，不在此收录；`.uasset/.umap` 资产也不在收录范围。
+> 收录原则：本附录把正文直接分析的 LyraStarterGame 5.8 项目源码内容完整收录（代码字符、注释、条件编译和文件尾换行未删改；仅统一代码围栏内的行尾及缩进空白，保留 Epic 版权头），正文中的"节选"负责解释调用链，本附录提供全文，二者配合阅读。引擎层（`Engine/`）文件体量过大且不属于项目教程主体，仍按正文的路径+符号检索方式引用，不在此收录；`.uasset/.umap` 资产也不在收录范围。
 > 版权提示：以下代码来自 Epic Games 的 LyraStarterGame 样例（UE 5.8），随 Unreal Engine EULA 的样例代码条款提供，仅作本地学习收录；对外发布前请自行核对许可条款。
 >
 > 批次覆盖说明：装备/背包批次（上述 1-37 附录）只收录 Inventory/Equipment/GameplayMessageRouter/UIExtension 相关文件。LYRA 批次 1（Messages 协议补深析，追加附录文件 38-42）在本批补入"游戏语义消息协议（VerbMessage）"层：`LyraVerbMessage.h` 定义消息结构、`LyraVerbMessageHelpers.h/.cpp` 提供对象→PlayerState/PlayerController/GameplayCue 的转换工具、`LyraVerbMessageReplication.h` 提供跨服务器向客户端的 VerbMessage 广播容器、`GameplayMessageProcessor.h` 提供消息处理器基类。`LyraVerbMessageReplication.cpp`、`GameplayMessageProcessor.cpp`、`LyraNotificationMessage.h/.cpp` 体量较小，交由正文节选 + 符号检索引用，不入附录。
@@ -2408,7 +2430,7 @@ git -C 'C:\project\git' status --short -- '游戏知识/12-引擎源码分析/43
 
 ### 附录文件 1：`Source/LyraGame/Inventory/LyraInventoryItemDefinition.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -2472,7 +2494,7 @@ class ULyraInventoryFunctionLibrary : public UBlueprintFunctionLibrary
 
 ### 附录文件 2：`Source/LyraGame/Inventory/LyraInventoryItemDefinition.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -2524,7 +2546,7 @@ const ULyraInventoryItemFragment* ULyraInventoryFunctionLibrary::FindItemDefinit
 
 ### 附录文件 3：`Source/LyraGame/Inventory/LyraInventoryItemInstance.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -2608,7 +2630,7 @@ private:
 
 ### 附录文件 4：`Source/LyraGame/Inventory/LyraInventoryItemInstance.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -2685,7 +2707,7 @@ const ULyraInventoryItemFragment* ULyraInventoryItemInstance::FindFragmentByClas
 
 ### 附录文件 5：`Source/LyraGame/Inventory/LyraInventoryManagerComponent.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -2865,7 +2887,7 @@ private:
 
 ### 附录文件 6：`Source/LyraGame/Inventory/LyraInventoryManagerComponent.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -2952,7 +2974,7 @@ ULyraInventoryItemInstance* FLyraInventoryList::AddEntry(TSubclassOf<ULyraInvent
 	ULyraInventoryItemInstance* Result = nullptr;
 
 	check(ItemDef != nullptr);
- 	check(OwnerComponent);
+	check(OwnerComponent);
 
 	AActor* OwningActor = OwnerComponent->GetOwner();
 	check(OwningActor->HasAuthority());
@@ -3038,7 +3060,7 @@ ULyraInventoryItemInstance* ULyraInventoryManagerComponent::AddItemDefinition(TS
 	if (ItemDef != nullptr)
 	{
 		Result = InventoryList.AddEntry(ItemDef, StackCount);
-		
+
 		if (IsUsingRegisteredSubObjectList() && IsReadyForReplication() && Result)
 		{
 			AddReplicatedSubObject(Result);
@@ -3192,7 +3214,7 @@ bool ULyraInventoryManagerComponent::ReplicateSubobjects(UActorChannel* Channel,
 
 ### 附录文件 7：`Source/LyraGame/Inventory/IPickupable.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3288,7 +3310,7 @@ public:
 
 ### 附录文件 8：`Source/LyraGame/Inventory/IPickupable.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3349,7 +3371,7 @@ void UPickupableStatics::AddPickupToInventory(ULyraInventoryManagerComponent* In
 
 ### 附录文件 9：`Source/LyraGame/Inventory/InventoryFragment_EquippableItem.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3377,7 +3399,7 @@ public:
 
 ### 附录文件 10：`Source/LyraGame/Inventory/InventoryFragment_EquippableItem.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3390,7 +3412,7 @@ public:
 
 ### 附录文件 11：`Source/LyraGame/Inventory/InventoryFragment_PickupIcon.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3426,7 +3448,7 @@ public:
 
 ### 附录文件 12：`Source/LyraGame/Inventory/InventoryFragment_PickupIcon.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3443,7 +3465,7 @@ UInventoryFragment_PickupIcon::UInventoryFragment_PickupIcon()
 
 ### 附录文件 13：`Source/LyraGame/Inventory/InventoryFragment_QuickBarIcon.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3476,7 +3498,7 @@ public:
 
 ### 附录文件 14：`Source/LyraGame/Inventory/InventoryFragment_QuickBarIcon.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3489,7 +3511,7 @@ public:
 
 ### 附录文件 15：`Source/LyraGame/Inventory/InventoryFragment_SetStats.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3523,7 +3545,7 @@ public:
 
 ### 附录文件 16：`Source/LyraGame/Inventory/InventoryFragment_SetStats.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3555,7 +3577,7 @@ int32 UInventoryFragment_SetStats::GetItemStatByTag(FGameplayTag Tag) const
 
 ### 附录文件 17：`Source/LyraGame/Equipment/LyraQuickBarComponent.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3669,7 +3691,7 @@ struct FLyraQuickBarActiveIndexChangedMessage
 
 ### 附录文件 18：`Source/LyraGame/Equipment/LyraQuickBarComponent.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3900,7 +3922,7 @@ void ULyraQuickBarComponent::OnRep_ActiveSlotIndex()
 
 ### 附录文件 19：`Source/LyraGame/Equipment/LyraEquipmentDefinition.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3963,7 +3985,7 @@ public:
 
 ### 附录文件 20：`Source/LyraGame/Equipment/LyraEquipmentDefinition.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3983,7 +4005,7 @@ ULyraEquipmentDefinition::ULyraEquipmentDefinition(const FObjectInitializer& Obj
 
 ### 附录文件 21：`Source/LyraGame/Equipment/LyraEquipmentInstance.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -4062,7 +4084,7 @@ private:
 
 ### 附录文件 22：`Source/LyraGame/Equipment/LyraEquipmentInstance.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -4184,7 +4206,7 @@ void ULyraEquipmentInstance::OnRep_Instigator()
 
 ### 附录文件 23：`Source/LyraGame/Equipment/LyraEquipmentManagerComponent.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -4329,8 +4351,8 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure)
 	UE_API ULyraEquipmentInstance* GetFirstInstanceOfType(TSubclassOf<ULyraEquipmentInstance> InstanceType);
 
- 	/** Returns all equipped instances of a given type, or an empty array if none are found */
- 	UFUNCTION(BlueprintCallable, BlueprintPure)
+	/** Returns all equipped instances of a given type, or an empty array if none are found */
+	UFUNCTION(BlueprintCallable, BlueprintPure)
 	UE_API TArray<ULyraEquipmentInstance*> GetEquipmentInstancesOfType(TSubclassOf<ULyraEquipmentInstance> InstanceType) const;
 
 	template <typename T>
@@ -4349,7 +4371,7 @@ private:
 
 ### 附录文件 24：`Source/LyraGame/Equipment/LyraEquipmentManagerComponent.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -4381,14 +4403,14 @@ FString FLyraAppliedEquipmentEntry::GetDebugString() const
 
 void FLyraEquipmentList::PreReplicatedRemove(const TArrayView<int32> RemovedIndices, int32 FinalSize)
 {
- 	for (int32 Index : RemovedIndices)
- 	{
- 		const FLyraAppliedEquipmentEntry& Entry = Entries[Index];
+	for (int32 Index : RemovedIndices)
+	{
+		const FLyraAppliedEquipmentEntry& Entry = Entries[Index];
 		if (Entry.Instance != nullptr)
 		{
 			Entry.Instance->OnUnequipped();
 		}
- 	}
+	}
 }
 
 void FLyraEquipmentList::PostReplicatedAdd(const TArrayView<int32> AddedIndices, int32 FinalSize)
@@ -4424,9 +4446,9 @@ ULyraEquipmentInstance* FLyraEquipmentList::AddEntry(TSubclassOf<ULyraEquipmentD
 	ULyraEquipmentInstance* Result = nullptr;
 
 	check(EquipmentDefinition != nullptr);
- 	check(OwnerComponent);
+	check(OwnerComponent);
 	check(OwnerComponent->GetOwner()->HasAuthority());
-	
+
 	const ULyraEquipmentDefinition* EquipmentCDO = GetDefault<ULyraEquipmentDefinition>(EquipmentDefinition);
 
 	TSubclassOf<ULyraEquipmentInstance> InstanceType = EquipmentCDO->InstanceType;
@@ -4434,7 +4456,7 @@ ULyraEquipmentInstance* FLyraEquipmentList::AddEntry(TSubclassOf<ULyraEquipmentD
 	{
 		InstanceType = ULyraEquipmentInstance::StaticClass();
 	}
-	
+
 	FLyraAppliedEquipmentEntry& NewEntry = Entries.AddDefaulted_GetRef();
 	NewEntry.EquipmentDefinition = EquipmentDefinition;
 	NewEntry.Instance = NewObject<ULyraEquipmentInstance>(OwnerComponent->GetOwner(), InstanceType);  //@TODO: Using the actor instead of component as the outer due to UE-127172
@@ -4473,7 +4495,7 @@ void FLyraEquipmentList::RemoveEntry(ULyraEquipmentInstance* Instance)
 			}
 
 			Instance->DestroyEquipmentActors();
-			
+
 
 			EntryIt.RemoveCurrent();
 			MarkArrayDirty();
@@ -4558,7 +4580,7 @@ void ULyraEquipmentManagerComponent::UninitializeComponent()
 {
 	TArray<ULyraEquipmentInstance*> AllEquipmentInstances;
 
-	// gathering all instances before removal to avoid side effects affecting the equipment list iterator	
+	// gathering all instances before removal to avoid side effects affecting the equipment list iterator
 	for (const FLyraAppliedEquipmentEntry& Entry : EquipmentList.Entries)
 	{
 		AllEquipmentInstances.Add(Entry.Instance);
@@ -4628,7 +4650,7 @@ TArray<ULyraEquipmentInstance*> ULyraEquipmentManagerComponent::GetEquipmentInst
 
 ### 附录文件 25：`Source/LyraGame/AbilitySystem/LyraAbilitySet.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -4784,7 +4806,7 @@ protected:
 
 ### 附录文件 26：`Source/LyraGame/AbilitySystem/LyraAbilitySet.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -4868,7 +4890,7 @@ void ULyraAbilitySet::GiveToAbilitySystem(ULyraAbilitySystemComponent* LyraASC, 
 		// Must be authoritative to give or take ability sets.
 		return;
 	}
-	
+
 	// Grant the attribute sets.
 	for (int32 SetIndex = 0; SetIndex < GrantedAttributes.Num(); ++SetIndex)
 	{
@@ -4939,7 +4961,7 @@ void ULyraAbilitySet::GiveToAbilitySystem(ULyraAbilitySystemComponent* LyraASC, 
 
 ### 附录文件 27：`Source/LyraGame/GameFeatures/GameFeatureAction_AddWidget.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -5029,7 +5051,7 @@ private:
 	struct FPerContextData
 	{
 		TArray<TSharedPtr<FComponentRequestHandle>> ComponentRequests;
-		TMap<FObjectKey, FPerActorData> ActorData; 
+		TMap<FObjectKey, FPerActorData> ActorData;
 	};
 
 	TMap<FGameFeatureStateChangeContext, FPerContextData> ContextData;
@@ -5049,7 +5071,7 @@ private:
 
 ### 附录文件 28：`Source/LyraGame/GameFeatures/GameFeatureAction_AddWidget.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -5151,7 +5173,7 @@ void UGameFeatureAction_AddWidgets::AddToWorld(const FWorldContext& WorldContext
 	if ((GameInstance != nullptr) && (World != nullptr) && World->IsGameWorld())
 	{
 		if (UGameFrameworkComponentManager* ComponentManager = UGameInstance::GetSubsystem<UGameFrameworkComponentManager>(GameInstance))
-		{			
+		{
 			TSoftClassPtr<AActor> HUDActorClass = ALyraHUD::StaticClass();
 
 			TSharedPtr<FComponentRequestHandle> ExtensionRequestHandle = ComponentManager->AddExtensionHandler(
@@ -5249,7 +5271,7 @@ void UGameFeatureAction_AddWidgets::RemoveWidgets(AActor* Actor, FPerContextData
 
 ### 附录文件 29：`Plugins/GameplayMessageRouter/Source/GameplayMessageRuntime/Public/GameFramework/GameplayMessageSubsystem.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -5305,7 +5327,7 @@ private:
 	FGameplayMessageListenerHandle(UGameplayMessageSubsystem* InSubsystem, FGameplayTag InChannel, int32 InID) : Subsystem(InSubsystem), Channel(InChannel), ID(InID) {}
 };
 
-/** 
+/**
  * Entry information for a single registered listener
  */
 USTRUCT()
@@ -5472,7 +5494,7 @@ private:
 
 	// Internal helper for registering a message listener
 	UE_API FGameplayMessageListenerHandle RegisterListenerInternal(
-		FGameplayTag Channel, 
+		FGameplayTag Channel,
 		TFunction<void(FGameplayTag, const UScriptStruct*, const void*)>&& Callback,
 		const UScriptStruct* StructType,
 		EGameplayMessageMatch MatchType);
@@ -5496,7 +5518,7 @@ private:
 
 ### 附录文件 30：`Plugins/GameplayMessageRouter/Source/GameplayMessageRuntime/Private/GameFramework/GameplayMessageSubsystem.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -5694,7 +5716,7 @@ void UGameplayMessageSubsystem::UnregisterListenerInternal(FGameplayTag Channel,
 
 ### 附录文件 31：`Plugins/GameplayMessageRouter/Source/GameplayMessageRuntime/Public/GameFramework/GameplayMessageTypes2.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -5752,7 +5774,7 @@ struct FGameplayMessageListenerParams
 
 ### 附录文件 32：`Plugins/GameplayMessageRouter/Source/GameplayMessageRuntime/Public/GameFramework/AsyncAction_ListenForGameplayMessage.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -5833,7 +5855,7 @@ private:
 
 ### 附录文件 33：`Plugins/GameplayMessageRouter/Source/GameplayMessageRuntime/Private/GameFramework/AsyncAction_ListenForGameplayMessage.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -5950,7 +5972,7 @@ void UAsyncAction_ListenForGameplayMessage::HandleMessageReceived(FGameplayTag C
 
 ### 附录文件 34：`Plugins/UIExtension/Source/Public/UIExtensionSystem.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -6011,7 +6033,7 @@ public:
 };
 
 /**
- * 
+ *
  */
 struct FUIExtensionPoint : TSharedFromThis<FUIExtensionPoint>
 {
@@ -6028,7 +6050,7 @@ public:
 };
 
 /**
- * 
+ *
  */
 USTRUCT(BlueprintType)
 struct FUIExtensionPointHandle
@@ -6071,7 +6093,7 @@ struct TStructOpsTypeTraits<FUIExtensionPointHandle> : public TStructOpsTypeTrai
 };
 
 /**
- * 
+ *
  */
 USTRUCT(BlueprintType)
 struct FUIExtensionHandle
@@ -6114,7 +6136,7 @@ struct TStructOpsTypeTraits<FUIExtensionHandle> : public TStructOpsTypeTraitsBas
 };
 
 /**
- * 
+ *
  */
 USTRUCT(BlueprintType)
 struct FUIExtensionRequest
@@ -6141,7 +6163,7 @@ public:
 DECLARE_DYNAMIC_DELEGATE_TwoParams(FExtendExtensionPointDynamicDelegate, EUIExtensionAction, Action, const FUIExtensionRequest&, ExtensionRequest);
 
 /**
- * 
+ *
  */
 UCLASS(MinimalAPI)
 class UUIExtensionSubsystem : public UWorldSubsystem
@@ -6173,7 +6195,7 @@ protected:
 
 	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category="UI Extension", meta = (DisplayName = "Register Extension Point"))
 	UE_API FUIExtensionPointHandle K2_RegisterExtensionPoint(FGameplayTag ExtensionPointTag, EUIExtensionPointMatch ExtensionPointTagMatchType, const TArray<UClass*>& AllowedDataClasses, FExtendExtensionPointDynamicDelegate ExtensionCallback);
-	
+
 	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "UI Extension", meta = (DisplayName = "Register Extension (Widget)"))
 	UE_API FUIExtensionHandle K2_RegisterExtensionAsWidget(FGameplayTag ExtensionPointTag, TSubclassOf<UUserWidget> WidgetClass, int32 Priority = -1);
 
@@ -6242,7 +6264,7 @@ public:
 
 ### 附录文件 35：`Plugins/UIExtension/Source/Private/UIExtensionSystem.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -6283,7 +6305,7 @@ bool FUIExtensionPoint::DoesExtensionPassContract(const FUIExtension* Extension)
 {
 	if (UObject* DataPtr = Extension->Data)
 	{
-		const bool bMatchesContext = 
+		const bool bMatchesContext =
 			(ContextObject.IsExplicitlyNull() && Extension->ContextObject.IsExplicitlyNull()) ||
 			ContextObject == Extension->ContextObject;
 
@@ -6476,7 +6498,7 @@ void UUIExtensionSubsystem::NotifyExtensionPointsOfExtension(EUIExtensionAction 
 				}
 			}
 		}
-		
+
 		bOnInitialTag = false;
 	}
 }
@@ -6502,7 +6524,7 @@ void UUIExtensionSubsystem::UnregisterExtension(const FUIExtensionHandle& Extens
 			NotifyExtensionPointsOfExtension(EUIExtensionAction::Removed, Extension);
 
 			ListPtr->RemoveSwap(Extension);
-			
+
 			if (ListPtr->Num() == 0)
 			{
 				ExtensionMap.Remove(Extension->ExtensionPointTag);
@@ -6621,7 +6643,7 @@ bool UUIExtensionPointHandleFunctions::IsValid(FUIExtensionPointHandle& Handle)
 
 ### 附录文件 36：`Plugins/UIExtension/Source/Public/Widgets/UIExtensionPointWidget.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -6698,7 +6720,7 @@ protected:
 
 ### 附录文件 37：`Plugins/UIExtension/Source/Private/Widgets/UIExtensionPointWidget.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -6822,7 +6844,7 @@ void UUIExtensionPointWidget::OnAddOrRemoveExtension(EUIExtensionAction Action, 
 	if (Action == EUIExtensionAction::Added)
 	{
 		UObject* Data = Request.Data;
-		
+
 		TSubclassOf<UUserWidget> WidgetClass(Cast<UClass>(Data));
 		if (WidgetClass)
 		{
@@ -6882,7 +6904,7 @@ void UUIExtensionPointWidget::ValidateCompiledDefaults(IWidgetCompilerLog& Compi
 
 ### 附录文件 38：`Source/LyraGame/Messages/LyraVerbMessage.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -6928,7 +6950,7 @@ struct FLyraVerbMessage
 
 ### 附录文件 39：`Source/LyraGame/Messages/LyraVerbMessageHelpers.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -6974,7 +6996,7 @@ public:
 
 ### 附录文件 40：`Source/LyraGame/Messages/LyraVerbMessageHelpers.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -7000,7 +7022,7 @@ FString FLyraVerbMessage::ToString() const
 }
 
 //////////////////////////////////////////////////////////////////////
-// 
+//
 
 APlayerState* ULyraVerbMessageHelpers::GetPlayerStateFromObject(UObject* Object)
 {
@@ -7013,7 +7035,7 @@ APlayerState* ULyraVerbMessageHelpers::GetPlayerStateFromObject(UObject* Object)
 	{
 		return TargetPS;
 	}
-	
+
 	if (APawn* TargetPawn = Cast<APawn>(Object))
 	{
 		if (APlayerState* TargetPS = TargetPawn->GetPlayerState())
@@ -7062,7 +7084,7 @@ FGameplayCueParameters ULyraVerbMessageHelpers::VerbMessageToCueParameters(const
 FLyraVerbMessage ULyraVerbMessageHelpers::CueParametersToVerbMessage(const FGameplayCueParameters& Params)
 {
 	FLyraVerbMessage Result;
-	
+
 	Result.Verb = Params.OriginalTag;
 	Result.Instigator = Params.Instigator.Get();
 	Result.Target = Params.EffectCauser.Get();
@@ -7078,7 +7100,7 @@ FLyraVerbMessage ULyraVerbMessageHelpers::CueParametersToVerbMessage(const FGame
 
 ### 附录文件 41：`Source/LyraGame/Messages/LyraVerbMessageReplication.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -7154,7 +7176,7 @@ private:
 	// Replicated list of gameplay tag stacks
 	UPROPERTY()
 	TArray<FLyraVerbMessageReplicationEntry> CurrentMessages;
-	
+
 	// Owner (for a route to a world)
 	UPROPERTY()
 	TObjectPtr<UObject> Owner = nullptr;
@@ -7172,7 +7194,7 @@ struct TStructOpsTypeTraits<FLyraVerbMessageReplication> : public TStructOpsType
 
 ### 附录文件 42：`Source/LyraGame/Messages/GameplayMessageProcessor.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -7192,10 +7214,10 @@ class UObject;
 
 /**
  * UGameplayMessageProcessor
- * 
+ *
  * Base class for any message processor which observes other gameplay messages
  * and potentially re-emits updates (e.g., when a chain or combo is detected)
- * 
+ *
  * Note that these processors are spawned on the server once (not per player)
  * and should do their own internal filtering if only relevant for some players.
  */

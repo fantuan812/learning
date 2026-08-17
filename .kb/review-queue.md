@@ -4,6 +4,8 @@
 
 低于 0.75 confidence 的结构性操作登记在此，人工确认后才执行。
 
+> 条目中的 Current/Suggested 保留问题发现时的历史快照；只有 Status 为 Pending 的有效条目才可触发后续操作。已执行/已决策条目不可按旧快照重复执行。
+
 ## LYRA-COV-01（LyraGame/UI 专项缺口）
 
 Current: LyraGame/UI（79 文件）仅 3 覆盖（4%）。43 篇的"UI"实为插件注入机制；Lyra 自有控件（HUD 布局/Foundation 控件族/IndicatorSystem 头顶指示器/Weapons UI 准星与命中标记/LyraUIManagerSubsystem/LyraSettingScreen）完全未分析。
@@ -192,7 +194,7 @@ Reason: 用户此前明确要求"每篇都出现完整源码，而不是指向�
 
 Suggested action: 保持现状或按用户新决定执行
 
-Status: Pending
+Status: 已决策（维持现状）
 
 > 2026-08-14 决策：**维持现状**（KD-004）。用户此前明确要求"每篇都出现完整源码，而不是指向源码在哪"；去重方案与该要求冲突，不执行。跨篇重复作为已知成本记录，后续若用户改变要求再执行。
 
@@ -252,7 +254,7 @@ Reason: Phase 1 要求维护 manifest；空索引使控制面无法回答"仓库
 
 Suggested action: 填充（机械生成，主线程执行）
 
-Status: Pending
+Status: 已执行
 
 > 2026-08-14 决策：**已执行**（R3）。机械回填 320 个文档（kind/maturity/bytes/lines），版本升至 2；check_repo 复跑 PASS。
 
@@ -268,7 +270,7 @@ Reason: 收敛涉及正文删改与互链，属于结构性去重；与"每篇�
 
 Suggested action: 分批去重（先 exact 级：01-08/09 对比表、04-00 FAQ）
 
-Status: Pending
+Status: 已决策（维持现状）
 
 > 2026-08-13 决策：**维持现状**（KD-004）。用户此前明确要求"每篇都出现完整源码"；去重方案与该要求冲突，不执行。跨篇重复作为已知成本记录，后续若用户改变要求再执行。
 
@@ -326,7 +328,7 @@ Reason: 文件名与标题/内容范围不一致；改文件名需同步 39/44/R
 
 Suggested action: 改名 / 维持
 
-Status: Pending
+Status: 已执行
 
 > 2026-08-13 决策：**已执行**（KD-005）。`46-Lyra-AI队伍与调试源码.md` → `46-Lyra-AI机器人与队伍源码.md`，13 处引用（39/40/41/42/43/44/45/47、12 README、19 路线图、03 README、46 自查命令、.kb/audit.md）全部同步。
 

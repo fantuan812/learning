@@ -436,11 +436,25 @@ void AAIController::PostInitializeComponents()
 	{
 		InitPlayerState();
 	}
-	...
-	if (bWantsPlayerState)
+
+	if (BrainComponent == nullptr)
 	{
-		ChangeState(NAME_Playing);
+		BrainComponent = FindComponentByClass<UBrainComponent>();
 	}
+	if (Blackboard == nullptr)
+	{
+		Blackboard = FindComponentByClass<UBlackboardComponent>();
+	}
+
+#if ENABLE_VISUAL_LOG
+	for (UActorComponent* Component : GetComponents())
+	{
+		if (Component)
+		{
+			REDIRECT_OBJECT_TO_VLOG(Component, this);
+		}
+	}
+#endif // ENABLE_VISUAL_LOG
 }
 ```
 

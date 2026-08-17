@@ -15,7 +15,7 @@
 | 适用范围 | 编辑器、客户端、Listen Server、Dedicated Server、OSSv1、OSSv2、GameFeature、CommonUI 与自动化测试 |
 | 知识成熟度 | L2：项目源码、引擎源码、配置和测试资产已静态核对；本篇不把未执行的联机运行结果描述成已验证事实 |
 | 官方参考 | [Common User Plugin for Lyra](https://dev.epicgames.com/documentation/unreal-engine/common-user-plugin-in-unreal-engine-for-lyra-sample-game?lang=en-US)、[Lyra Sample Game](https://dev.epicgames.com/documentation/en-us/unreal-engine/lyra-sample-game-in-unreal-engine)、[Game Features](https://dev.epicgames.com/documentation/en-us/unreal-engine/game-features-and-modular-gameplay-in-unreal-engine)、[Online Services](https://dev.epicgames.com/documentation/en-us/unreal-engine/online-services-in-unreal-engine)、[Common UI](https://dev.epicgames.com/documentation/en-us/unreal-engine/common-ui-plugin-for-unreal-engine) |
-| 最后更新 | 2026-08-13 |
+| 最后更新 | 2026-08-17（补入 CommonUser 登录状态与 LyraGameInstance 实际源码分析） |
 
 ## 一、本文要解决的工程问题
 
@@ -133,7 +133,205 @@ sequenceDiagram
 | `Plugins/CommonLoadingScreen/Source/CommonLoadingScreen/Private/LoadingScreenManager.cpp` | 投票聚合、输入屏蔽和世界渲染 |
 | `Plugins/UIExtension/Source/Public/UIExtensionSystem.h` | GameFeature UI 扩展点和句柄 |
 
-### 3.3 测试和构建层
+### 3.3 源码补全：CommonUser 登录状态与 LyraGameInstance 接线
+
+CommonUser 不是只提供几个登录 API；它把输入设备、PlatformUser、LocalPlayerIndex 和请求权限绑定成一次不可中途改参的初始化事务。下面是 `CommonUserSubsystem.cpp` 的实际路径：
+
+```cpp
+void UCommonUserSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+	CreateOnlineContexts();
+	BindOnlineDelegates();
+
+	IPlatformInputDeviceMapper& DeviceMapper = IPlatformInputDeviceMapper::Get();
+	DeviceMapper.GetOnInputDeviceConnectionChange().AddUObject(
+		this, &ThisClass::HandleInputDeviceConnectionChanged);
+
+	SetMaxLocalPlayers(4);
+	ResetUserState();
+	bIsDedicatedServer = GetGameInstance()->IsDedicatedServerInstance();
+}
+```
+
+调用 `TryToInitializeForLocalPlay` 或 `TryToLoginForOnlinePlay` 最终都会进入 `TryToInitializeUser`。它先校验索引、设备与 PlatformUser 是否冲突，再把状态写成 `DoingInitialLogin`/`DoingNetworkLogin`，最后才创建异步登录请求：
+
+```cpp
+bool UCommonUserSubsystem::TryToLoginForOnlinePlay(int32 LocalPlayerIndex)
+{
+	FCommonUserInitializeParams Params;
+	Params.LocalPlayerIndex = LocalPlayerIndex;
+	Params.bCanCreateNewLocalPlayer = false;
+	Params.RequestedPrivilege = ECommonUserPrivilege::CanPlayOnline;
+	return TryToInitializeUser(Params);
+}
+
+bool UCommonUserSubsystem::TryToInitializeUser(FCommonUserInitializeParams Params)
+{
+	if (Params.LocalPlayerIndex < 0 || (!Params.bCanCreateNewLocalPlayer && Params.LocalPlayerIndex >= GetNumLocalPlayers()))
+	{
+		if (!bIsDedicatedServer)
+		{
+			UE_LOG(LogCommonUser, Error, TEXT("TryToInitializeUser %d failed with current %d and max %d, invalid index"),
+				Params.LocalPlayerIndex, GetNumLocalPlayers(), GetMaxLocalPlayers());
+			return false;
+		}
+	}
+
+	if (Params.LocalPlayerIndex > GetNumLocalPlayers() || Params.LocalPlayerIndex >= GetMaxLocalPlayers())
+	{
+		UE_LOG(LogCommonUser, Error, TEXT("TryToInitializeUser %d failed with current %d and max %d, can only create in order up to max players"),
+			Params.LocalPlayerIndex, GetNumLocalPlayers(), GetMaxLocalPlayers());
+		return false;
+	}
+
+	if (Params.ControllerId != INDEX_NONE && (!Params.PrimaryInputDevice.IsValid() || !Params.PlatformUser.IsValid()))
+	{
+		IPlatformInputDeviceMapper::Get().RemapControllerIdToPlatformUserAndDevice(
+			Params.ControllerId, Params.PlatformUser, Params.PrimaryInputDevice);
+	}
+
+	if (Params.PrimaryInputDevice.IsValid() && !Params.PlatformUser.IsValid())
+	{
+		Params.PlatformUser = GetPlatformUserIdForInputDevice(Params.PrimaryInputDevice);
+	}
+	else if (Params.PlatformUser.IsValid() && !Params.PrimaryInputDevice.IsValid())
+	{
+		Params.PrimaryInputDevice = GetPrimaryInputDeviceForPlatformUser(Params.PlatformUser);
+	}
+
+	UCommonUserInfo* LocalUserInfo = ModifyInfo(
+		GetUserInfoForLocalPlayerIndex(Params.LocalPlayerIndex));
+	UCommonUserInfo* LocalUserInfoForController =
+		ModifyInfo(GetUserInfoForInputDevice(Params.PrimaryInputDevice));
+
+	if (LocalUserInfoForController && LocalUserInfo && LocalUserInfoForController != LocalUserInfo)
+	{
+		UE_LOG(LogCommonUser, Error, TEXT("TryToInitializeUser %d failed because controller %d is already assigned to player %d"),
+			Params.LocalPlayerIndex, Params.PrimaryInputDevice.GetId(), LocalUserInfoForController->LocalPlayerIndex);
+		return false;
+	}
+
+	if (Params.LocalPlayerIndex == 0 && Params.bCanUseGuestLogin)
+	{
+		UE_LOG(LogCommonUser, Error, TEXT("TryToInitializeUser failed because player 0 cannot be a guest"));
+		return false;
+	}
+
+	if (!LocalUserInfo)
+	{
+		LocalUserInfo = CreateLocalUserInfo(Params.LocalPlayerIndex);
+	}
+	else
+	{
+		if (!Params.PrimaryInputDevice.IsValid())
+		{
+			Params.PrimaryInputDevice = LocalUserInfo->PrimaryInputDevice;
+		}
+		if (!Params.PlatformUser.IsValid())
+		{
+			Params.PlatformUser = LocalUserInfo->PlatformUser;
+		}
+	}
+
+	if (LocalUserInfo->InitializationState != ECommonUserInitializationState::Unknown &&
+		LocalUserInfo->InitializationState != ECommonUserInitializationState::FailedtoLogin)
+	{
+		if (LocalUserInfo->PrimaryInputDevice != Params.PrimaryInputDevice ||
+			LocalUserInfo->PlatformUser != Params.PlatformUser ||
+			LocalUserInfo->bCanBeGuest != Params.bCanUseGuestLogin)
+		{
+			UE_LOG(LogCommonUser, Error, TEXT("TryToInitializeUser failed because player %d has already started the login process with diffrent settings!"), Params.LocalPlayerIndex);
+			return false;
+		}
+	}
+
+	LocalUserInfo->PrimaryInputDevice = Params.PrimaryInputDevice;
+	LocalUserInfo->PlatformUser = Params.PlatformUser;
+	LocalUserInfo->bCanBeGuest = Params.bCanUseGuestLogin;
+	RefreshLocalUserInfo(LocalUserInfo);
+
+	if (LocalUserInfo->GetPrivilegeAvailability(ECommonUserPrivilege::CanPlay) ==
+		ECommonUserAvailability::NowAvailable &&
+		Params.RequestedPrivilege == ECommonUserPrivilege::CanPlayOnline)
+	{
+		LocalUserInfo->InitializationState = ECommonUserInitializationState::DoingNetworkLogin;
+	}
+	else
+	{
+		LocalUserInfo->InitializationState = ECommonUserInitializationState::DoingInitialLogin;
+	}
+
+	LoginLocalUser(LocalUserInfo, Params.RequestedPrivilege, Params.OnlineContext,
+		FOnLocalUserLoginCompleteDelegate::CreateUObject(
+			this, &ThisClass::HandleLoginForUserInitialize, Params));
+	return true;
+}
+```
+
+OSSv2 的自动登录也确实是异步句柄，而不是同步“登录成功”：
+
+```cpp
+bool UCommonUserSubsystem::AutoLoginOSSv2(
+	FOnlineContextCache* System,
+	TSharedRef<FUserLoginRequest> Request,
+	FPlatformUserId PlatformUser)
+{
+	FAuthLogin::Params LoginParameters;
+	LoginParameters.PlatformUserId = PlatformUser;
+	LoginParameters.CredentialsType = LoginCredentialsType::Auto;
+	TOnlineAsyncOpHandle<FAuthLogin> LoginHandle =
+		System->AuthService->Login(MoveTemp(LoginParameters));
+	LoginHandle.OnComplete(this, &ThisClass::HandleUserLoginCompletedV2,
+		PlatformUser, Request->CurrentContext);
+	return true;
+}
+```
+
+Lyra 自己的 `GameInstance` 把四段 InitState 注册到 `UGameFrameworkComponentManager`，同时订阅 CommonSession 的 Travel 回调；登录成功后才加载本地共享设置：
+
+```cpp
+void ULyraGameInstance::Init()
+{
+	Super::Init();
+	if (UGameFrameworkComponentManager* ComponentManager =
+		GetSubsystem<UGameFrameworkComponentManager>(this))
+	{
+		ComponentManager->RegisterInitState(LyraGameplayTags::InitState_Spawned, false, FGameplayTag());
+		ComponentManager->RegisterInitState(LyraGameplayTags::InitState_DataAvailable, false,
+			LyraGameplayTags::InitState_Spawned);
+		ComponentManager->RegisterInitState(LyraGameplayTags::InitState_DataInitialized, false,
+			LyraGameplayTags::InitState_DataAvailable);
+		ComponentManager->RegisterInitState(LyraGameplayTags::InitState_GameplayReady, false,
+			LyraGameplayTags::InitState_DataInitialized);
+	}
+
+	if (UCommonSessionSubsystem* SessionSubsystem = GetSubsystem<UCommonSessionSubsystem>())
+	{
+		SessionSubsystem->OnPreClientTravelEvent.AddUObject(
+			this, &ULyraGameInstance::OnPreClientTravelToSession);
+	}
+}
+
+void ULyraGameInstance::HandlerUserInitialized(
+	const UCommonUserInfo* UserInfo, bool bSuccess, FText Error,
+	ECommonUserPrivilege RequestedPrivilege, ECommonUserOnlineContext OnlineContext)
+{
+	Super::HandlerUserInitialized(UserInfo, bSuccess, Error, RequestedPrivilege, OnlineContext);
+	if (bSuccess && UserInfo)
+	{
+		if (ULyraLocalPlayer* LocalPlayer =
+			Cast<ULyraLocalPlayer>(GetLocalPlayerByIndex(UserInfo->LocalPlayerIndex)))
+		{
+			LocalPlayer->LoadSharedSettingsFromDisk();
+		}
+	}
+}
+```
+
+这组代码把“登录完成”“四段 Pawn 初始化”“会话 Travel”三个状态域连接起来；正文后续的 ControlFlow 现在有对应的 CommonUser 与 LyraGameInstance 实际实现，而不是只列源码路径。
+
+### 3.4 测试和构建层
 
 | 路径 | 阅读目标 |
 | --- | --- |
@@ -1961,7 +2159,7 @@ Beacon 在正式 Travel 前预约服务器容量，减少 Lobby 显示可加入�
 
 ## 二十九、关联阅读
 
-- [39-Lyra源码总览与阅读路线](39-Lyra源码总览与阅读路线.md)：39-48 十篇教程的总地图和证据分级。
+- [39-Lyra源码总览与阅读路线](39-Lyra源码总览与阅读路线.md)：39-52 教程的总地图和证据分级。
 - [40-Lyra-Experience与GameFeature源码](40-Lyra-Experience与GameFeature源码.md)：体验选择、插件激活和玩家出生门控。
 - [41-Lyra-Pawn初始化与模块化组件源码](41-Lyra-Pawn初始化与模块化组件源码.md)：网络角色、PawnExtension 和组件初始化。
 - [42-Lyra-输入GAS与武器战斗源码](42-Lyra-输入GAS与武器战斗源码.md)：输入、能力授权、预测和伤害链。
@@ -2061,7 +2259,7 @@ ShooterTests、Gauntlet 和回放把静态调用链转成可复现证据。
 
 > 收录原则：本附录把正文直接分析的 LyraStarterGame 5.8 项目源码文件逐字完整收录（未删改，保留 Epic 版权头），正文中的"节选"负责解释调用链，本附录提供全文，二者配合阅读。引擎层（`Engine/`）文件体量过大且不属于项目教程主体，仍按正文的路径+符号检索方式引用，不在此收录；`.uasset/.umap` 资产也不在收录范围。
 > 版权提示：以下代码来自 Epic Games 的 LyraStarterGame 样例（UE 5.8），随 Unreal Engine EULA 的样例代码条款提供，仅作本地学习收录；对外发布前请自行核对许可条款。
-> 覆盖边界声明（2026-08-14，R4-LYRA-COVERAGE）：附录 #13 `CommonUserSubsystem.cpp`（2684 行）与 #6 `LyraGameInstance.cpp`（339 行）为**全文收录但正文仅概念级分析**（OSSv1/v2 登录管线、网络加密/DTLS 实现未逐函数深析），读者需自行按需精读；其余附录文件均有对应正文深读。
+> 覆盖补全（2026-08-17）：附录 #13 `CommonUserSubsystem.cpp`（2684 行）与 #6 `LyraGameInstance.cpp`（339 行）仍全文收录；正文已补入 CommonUser 初始化参数校验、异步 OSSv2 登录、Lyra InitState 注册、登录后设置加载和 Travel 回调的实际 C++ 片段。网络加密/DTLS 的完整实现仍以附录和版本宏分支为证据边界，不把未运行的联机结果写成事实。
 
 | # | 文件（相对 LyraStarterGame 根） | 行数 |
 | --- | --- | --- |

@@ -15,7 +15,7 @@
 | 适用范围 | 多人 Pawn 初始化、PlayerState ASC、模块化组件、重生/换 Pawn、复制乱序排障 |
 | 知识成熟度 | L2：项目与引擎源码静态核对完成；双端 PIE 实验步骤明确列出但未宣称已执行 |
 | 官方参考 | [Game Framework Component Manager](https://dev.epicgames.com/documentation/en-us/unreal-engine/game-framework-component-manager-in-unreal-engine)、[Abilities in Lyra](https://dev.epicgames.com/documentation/en-us/unreal-engine/abilities-in-lyra-in-unreal-engine) |
-| 最后更新 | 2026-08-14 |
+| 最后更新 | 2026-08-17（补入 ALyraCharacter 与 GameFeatureAction_AddAbilities 实际源码分析） |
 
 ## 一、问题模型：为什么 BeginPlay 不够
 
@@ -166,10 +166,15 @@ SetIsReplicatedByDefault(true);
 
 `BeginPlay` 执行：
 
-```text
-BindOnActorInitStateChanged(NAME_None, ...)
-→ TryToChangeInitState(Spawned)
-→ CheckDefaultInitialization()
+```cpp
+void ULyraPawnExtensionComponent::BeginPlay()
+{
+	Super::BeginPlay();
+
+	BindOnActorInitStateChanged(NAME_None, FGameplayTag(), false);
+	ensure(TryToChangeInitState(LyraGameplayTags::InitState_Spawned));
+	CheckDefaultInitialization();
+}
 ```
 
 监听 `NAME_None` 表示关心该 Actor 上所有 Feature。
@@ -479,6 +484,120 @@ Character 不自己复制一套初始化状态机。
 
 这样无论服务器本地回调还是客户端 OnRep，最终都回到同一个 `CheckDefaultInitialization`。
 
+### 21.1 源码补全：角色本体的转发、死亡和快速复制
+
+前文不能只把 `ALyraCharacter` 当成“回调转发器”。它还承担死亡收尾、移动模式 Tag 和 FastSharedReplication 三类实际职责。下面直接展开本机 `LyraCharacter.cpp` 的关键实现：
+
+```cpp
+void ALyraCharacter::PossessedBy(AController* NewController)
+{
+	const FGenericTeamId OldTeamID = MyTeamID;
+
+	Super::PossessedBy(NewController);
+	PawnExtComponent->HandleControllerChanged();
+
+	if (ILyraTeamAgentInterface* ControllerAsTeamProvider = Cast<ILyraTeamAgentInterface>(NewController))
+	{
+		MyTeamID = ControllerAsTeamProvider->GetGenericTeamId();
+		ControllerAsTeamProvider->GetTeamChangedDelegateChecked().AddDynamic(this, &ThisClass::OnControllerChangedTeam);
+	}
+	ConditionalBroadcastTeamChanged(this, OldTeamID, MyTeamID);
+}
+
+void ALyraCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+	PawnExtComponent->HandlePlayerStateReplicated();
+}
+
+void ALyraCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
+	PawnExtComponent->SetupPlayerInputComponent();
+}
+```
+
+这段代码说明：服务器 `PossessedBy`、客户端 `OnRep_PlayerState` 和输入组件建立并不是三套初始化逻辑；它们都把事件交给 `PawnExtComponent`，由同一套 InitState 门控继续推进。`PossessedBy` 还同步 Controller 的队伍委托，避免 Pawn 自己维护一份会漂移的队伍来源。
+
+死亡路径也不是简单 `Destroy()`。先禁用输入、碰撞和移动，再等下一帧触发蓝图事件，最后只在自己仍是 ASC Avatar 时解绑：
+
+```cpp
+void ALyraCharacter::OnDeathStarted(AActor*)
+{
+	DisableMovementAndCollision();
+}
+
+void ALyraCharacter::OnDeathFinished(AActor*)
+{
+	GetWorld()->GetTimerManager().SetTimerForNextTick(this, &ThisClass::DestroyDueToDeath);
+}
+
+void ALyraCharacter::UninitAndDestroy()
+{
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		DetachFromControllerPendingDestroy();
+		SetLifeSpan(0.1f);
+	}
+
+	if (ULyraAbilitySystemComponent* LyraASC = GetLyraAbilitySystemComponent())
+	{
+		if (LyraASC->GetAvatarActor() == this)
+		{
+			PawnExtComponent->UninitializeAbilitySystem();
+		}
+	}
+
+	SetActorHiddenInGame(true);
+}
+```
+
+这里的 `GetAvatarActor() == this` 是关键保护：如果同一个 PlayerState 已经把 ASC 切换到新 Pawn，旧 Pawn 的 EndPlay 不能把新 Avatar 一起清掉。移动模式 Tag 和共享移动复制也由角色本体实际执行，而不是文档中的抽象名：
+
+```cpp
+void ALyraCharacter::SetMovementModeTag(EMovementMode MovementMode, uint8 CustomMovementMode, bool bTagEnabled)
+{
+	if (ULyraAbilitySystemComponent* LyraASC = GetLyraAbilitySystemComponent())
+	{
+		const FGameplayTag* MovementModeTag = nullptr;
+		if (MovementMode == MOVE_Custom)
+		{
+			MovementModeTag = LyraGameplayTags::CustomMovementModeTagMap.Find(CustomMovementMode);
+		}
+		else
+		{
+			MovementModeTag = LyraGameplayTags::MovementModeTagMap.Find(MovementMode);
+		}
+
+		if (MovementModeTag && MovementModeTag->IsValid())
+		{
+			LyraASC->SetLooseGameplayTagCount(*MovementModeTag, bTagEnabled ? 1 : 0);
+		}
+	}
+}
+
+bool ALyraCharacter::UpdateSharedReplication()
+{
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		FSharedRepMovement SharedMovement;
+		if (SharedMovement.FillForCharacter(this))
+		{
+			if (!SharedMovement.Equals(LastSharedReplication, this))
+			{
+				LastSharedReplication = SharedMovement;
+				SetReplicatedMovementMode(SharedMovement.RepMovementMode);
+				FastSharedReplication(SharedMovement);
+			}
+			return true;
+		}
+	}
+	return false;
+}
+```
+
+因此 41 篇的实际覆盖现在包括：状态机事件转发、死亡解绑、移动 Tag 写入和“仅变化才快速复制”的服务器路径；附录中的完整文件不再只是供读者自行回读的指针。
+
 ## 二十二、PlayerState 的 PawnData 与能力授予
 
 `ALyraPlayerState` 在 Experience Loaded 后由 GameMode 取得对应 PawnData，并调用 `SetPawnData`。
@@ -786,22 +905,20 @@ rg -n "GiveToAbilitySystem|TakeFromAbilitySystem" `
 9. `EndPlay` 撤销资源并 Unregister；
 10. 不用 Tick 等待其他 Feature。
 
-伪代码：
-
 ```cpp
-void UMyPawnFeature::CheckDefaultInitialization()
+void ULyraPawnExtensionComponent::CheckDefaultInitialization()
 {
-    static const TArray<FGameplayTag> Chain = {
-        InitState_Spawned,
-        InitState_DataAvailable,
-        InitState_DataInitialized,
-        InitState_GameplayReady
-    };
-    ContinueInitStateChain(Chain);
+	// Before checking our progress, try progressing any other features we might depend on
+	CheckDefaultInitializationForImplementers();
+
+	static const TArray<FGameplayTag> StateChain = { LyraGameplayTags::InitState_Spawned, LyraGameplayTags::InitState_DataAvailable, LyraGameplayTags::InitState_DataInitialized, LyraGameplayTags::InitState_GameplayReady };
+
+	// This will try to progress from spawned (which is only set in BeginPlay) through the data initialization stages until it gets to gameplay ready
+	ContinueInitStateChain(StateChain);
 }
 ```
 
-这是调用关系示意，Tag 名应使用项目真实 Native GameplayTag。
+这是项目 `LyraPawnExtensionComponent.cpp` 的真实实现：它先推进依赖的实现者，再用四个 Native GameplayTag 调 `ContinueInitStateChain`；新组件不能照抄不存在的 `UMyPawnFeature` 或自造 Tag。
 
 ## 三十五、反模式
 
@@ -973,6 +1090,100 @@ EDataValidationResult ULyraAnimInstance::IsDataValid(FDataValidationContext& Con
 
 基类只保证“数据以可读属性形式存在”，动画蓝图层只消费属性，不碰 GAS 查询细节。
 
+### 源码补全：GameFeatureAction_AddAbilities 的注册、授予与回收
+
+`GameFeatureAction_AddAbilities` 也不再只以附录形式存在。它的核心不是“配置表里有 GrantedAbilities”，而是把 Actor 扩展事件接到授予和回收两个对称路径：
+
+```cpp
+void UGameFeatureAction_AddAbilities::AddToWorld(
+	const FWorldContext& WorldContext,
+	const FGameFeatureStateChangeContext& ChangeContext)
+{
+	UWorld* World = WorldContext.World();
+	UGameInstance* GameInstance = WorldContext.OwningGameInstance;
+	FPerContextData& ActiveData = ContextData.FindOrAdd(ChangeContext);
+
+	if (GameInstance && World && World->IsGameWorld())
+	{
+		if (UGameFrameworkComponentManager* ComponentMan =
+			UGameInstance::GetSubsystem<UGameFrameworkComponentManager>(GameInstance))
+		{
+			int32 EntryIndex = 0;
+			for (const FGameFeatureAbilitiesEntry& Entry : AbilitiesList)
+			{
+				if (!Entry.ActorClass.IsNull())
+				{
+					UGameFrameworkComponentManager::FExtensionHandlerDelegate Delegate =
+						UGameFrameworkComponentManager::FExtensionHandlerDelegate::CreateUObject(
+							this, &UGameFeatureAction_AddAbilities::HandleActorExtension,
+							EntryIndex, ChangeContext);
+					ActiveData.ComponentRequests.Add(
+						ComponentMan->AddExtensionHandler(Entry.ActorClass, Delegate));
+					++EntryIndex;
+				}
+			}
+		}
+	}
+}
+```
+
+收到 `ExtensionAdded` 或 `LyraAbilityReady` 后，真正的授予只在 Authority 执行，并且用 `ActiveExtensions` 防止同一 Actor 重复授予：
+
+```cpp
+void UGameFeatureAction_AddAbilities::AddActorAbilities(
+	AActor* Actor,
+	const FGameFeatureAbilitiesEntry& AbilitiesEntry,
+	FPerContextData& ActiveData)
+{
+	check(Actor);
+	if (!Actor->HasAuthority() || ActiveData.ActiveExtensions.Find(Actor))
+	{
+		return;
+	}
+
+	if (UAbilitySystemComponent* ASC =
+		FindOrAddComponentForActor<UAbilitySystemComponent>(Actor, AbilitiesEntry, ActiveData))
+	{
+		FActorExtensions AddedExtensions;
+		for (const FLyraAbilityGrant& Ability : AbilitiesEntry.GrantedAbilities)
+		{
+			if (!Ability.AbilityType.IsNull())
+			{
+				AddedExtensions.Abilities.Add(
+					ASC->GiveAbility(FGameplayAbilitySpec(Ability.AbilityType.LoadSynchronous())));
+			}
+		}
+
+		for (const FLyraAttributeSetGrant& Grant : AbilitiesEntry.GrantedAttributes)
+		{
+			if (TSubclassOf<UAttributeSet> SetType = Grant.AttributeSetType.LoadSynchronous())
+			{
+				UAttributeSet* NewSet = NewObject<UAttributeSet>(ASC->GetOwner(), SetType);
+				if (UDataTable* InitData = Grant.InitializationData.LoadSynchronous())
+				{
+					NewSet->InitFromMetaDataTable(InitData);
+				}
+				AddedExtensions.Attributes.Add(NewSet);
+				ASC->AddAttributeSetSubobject(NewSet);
+			}
+		}
+
+		ULyraAbilitySystemComponent* LyraASC = CastChecked<ULyraAbilitySystemComponent>(ASC);
+		for (const TSoftObjectPtr<const ULyraAbilitySet>& SetPtr : AbilitiesEntry.GrantedAbilitySets)
+		{
+			if (const ULyraAbilitySet* Set = SetPtr.Get())
+			{
+				Set->GiveToAbilitySystem(LyraASC,
+					&AddedExtensions.AbilitySetHandles.AddDefaulted_GetRef());
+			}
+		}
+		ActiveData.ActiveExtensions.Add(Actor, AddedExtensions);
+	}
+}
+```
+
+停用时 `RemoveActorAbilities` 按同一批句柄清理 Ability、AttributeSet 和 AbilitySet。这样 GameFeature 的生命周期才真正闭合：扩展注册不是永久副作用，配置错误也不会在重复激活时叠加。
+
 ### 37.7 复用范式小结：为什么桥放在 AnimInstance 基类
 
 - **一处接线，多处复用**：所有继承 `ULyraAnimInstance` 的动画蓝图层自动获得 Tag 属性映射能力，不需要各自写探测代码；
@@ -1017,7 +1228,7 @@ EDataValidationResult ULyraAnimInstance::IsDataValid(FDataValidationContext& Con
 ## 附录：核心文件完整源码
 
 > 收录原则：本附录把正文直接分析的 LyraStarterGame 5.8 项目源码文件逐字完整收录（未删改，保留 Epic 版权头），正文中的"节选"负责解释调用链，本附录提供全文，二者配合阅读。引擎层（`Engine/`）文件体量过大且不属于项目教程主体，仍按正文的路径+符号检索方式引用，不在此收录；`.uasset/.umap` 资产也不在收录范围。
-> 覆盖边界声明（2026-08-14，R4-LYRA-COVERAGE）：附录 `ALyraCharacter.h/.cpp`（682+231 行）与 `GameFeatureAction_AddAbilities.h/.cpp`（425 行）为**全文收录但正文仅概述**（ALyraCharacter 正文只给回调转发表，位移/FastSharedReplication/死亡主体未逐函数深析），读者需自行按需精读。
+> 覆盖补全（2026-08-17）：附录 `ALyraCharacter.h/.cpp`（682+231 行）与 `GameFeatureAction_AddAbilities.h/.cpp`（425 行）仍全文收录；正文已补入角色回调转发、死亡解绑、移动 Tag、FastSharedReplication，以及 GameFeature 扩展注册、Authority 授予、AttributeSet/AbilitySet 句柄回收的实际 C++ 片段与分析，不再把这两组文件仅作为“自行精读”的路径指引。
 > 版权提示：以下代码来自 Epic Games 的 LyraStarterGame 样例（UE 5.8），随 Unreal Engine EULA 的样例代码条款提供，仅作本地学习收录；对外发布前请自行核对许可条款。
 
 | # | 文件（相对 LyraStarterGame 根） | 行数 |

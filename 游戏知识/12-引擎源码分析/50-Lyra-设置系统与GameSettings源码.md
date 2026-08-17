@@ -11,7 +11,7 @@
 > 适用范围：GameSettings 插件抽象层、Lyra 设置注册表、设置载体（Local/Shared）、以及设置 UI 屏的 Lyra 5.8 项目源码解析。
 > 兼容性边界：UE 4.27/早期 UE5 仅作为历史兼容性说明；GameSettings 是独立的可复用插件，不属于 Lyra 专有代码，可被其他 UE 项目引用。
 > 官方参考：[UE 5.8 官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
-> 最后更新：2026-08-14
+> 最后更新：2026-08-17（补入设置列表、详情扩展与响应式面板实际源码分析）
 > 知识成熟度：L2
 
 ## 阅读前的事实边界
@@ -177,10 +177,14 @@ void UGameSetting::Initialize(ULocalPlayer* InLocalPlayer)
 class FGameSettingDataSource : public TSharedFromThis<FGameSettingDataSource>
 {
 public:
-    virtual void Startup(ULocalPlayer*, FSimpleDelegate StartupCompleteCallback){ ... }
-    virtual bool Resolve(ULocalPlayer* InContext) = 0;                  // 解析目标对象
-    virtual FString GetValueAsString(ULocalPlayer* InContext) const = 0; // 读值
-    virtual void SetValue(ULocalPlayer*, const FString& Value) = 0;      // 写值
+    virtual ~FGameSettingDataSource() { }
+    virtual void Startup(ULocalPlayer* InLocalPlayer, FSimpleDelegate StartupCompleteCallback)
+    {
+        StartupCompleteCallback.ExecuteIfBound();
+    }
+    virtual bool Resolve(ULocalPlayer* InContext) = 0;
+    virtual FString GetValueAsString(ULocalPlayer* InContext) const = 0;
+    virtual void SetValue(ULocalPlayer* InContext, const FString& Value) = 0;
     virtual FString ToString() const = 0;
 };
 ```
@@ -370,6 +374,197 @@ flowchart LR
 
 图意：设置屏 → 面板（列表+详情）→ 列表视图按 VisualData 为每个设置挑选条目控件 → 详情视图按设置变量追加编辑扩展。左列选择哪项，右列详情跟随刷新。
 
+### 5.7 源码补全：列表、详情扩展与响应式布局的真实实现
+
+前面的类表现在补入对应 C++ 函数。`UGameSettingPanel` 用过滤状态栈实现子页导航，并用 `FTSTicker` 合并同帧刷新，避免设置事件连续触发时反复重建列表。下方 `RefreshSettingsList` 保留本机函数中影响“合并刷新→过滤→更新 ListView”的原文分支，选中恢复分支未重复展开：
+
+```cpp
+void UGameSettingPanel::SetFilterState(
+	const FGameSettingFilterState& InFilterState, bool bClearNavigationStack)
+{
+	FilterState = InFilterState;
+	if (bClearNavigationStack)
+	{
+		FilterNavigationStack.Reset();
+	}
+	RefreshSettingsList();
+}
+
+void UGameSettingPanel::HandleSettingNavigation(UGameSetting* Setting)
+{
+	if (VisibleSettings.Contains(Setting))
+	{
+		FilterNavigationStack.Push(FilterState);
+		FGameSettingFilterState NewPageFilterState;
+		NewPageFilterState.AddSettingToRootList(Setting);
+		SetFilterState(NewPageFilterState, false);
+	}
+}
+
+void UGameSettingPanel::RefreshSettingsList()
+{
+	if (RefreshHandle.IsValid())
+	{
+		return;
+	}
+	RefreshHandle = FTSTicker::GetCoreTicker().AddTicker(
+		FTickerDelegate::CreateWeakLambda(this, [this](float)
+		{
+			if (Registry->IsFinishedInitializing())
+			{
+				VisibleSettings.Reset();
+				Registry->GetSettingsForFilter(FilterState, MutableView(VisibleSettings));
+				ListView_Settings->SetListItems(VisibleSettings);
+				RefreshHandle.Reset();
+			}
+			return false;
+		}));
+}
+```
+
+`UGameSettingListView` 不在每个设置类里写一套 Widget 选择逻辑，而是把 `UGameSettingVisualData::GetEntryForSetting` 作为分派点：
+
+```cpp
+UUserWidget& UGameSettingListView::OnGenerateEntryWidgetInternal(
+	UObject* Item, TSubclassOf<UUserWidget> DesiredEntryClass,
+	const TSharedRef<STableViewBase>& OwnerTable)
+{
+	UGameSetting* SettingItem = Cast<UGameSetting>(Item);
+
+	TSubclassOf<UGameSettingListEntryBase> SettingEntryClass =
+		TSubclassOf<UGameSettingListEntryBase>(DesiredEntryClass);
+	if (VisualData)
+	{
+		if (const TSubclassOf<UGameSettingListEntryBase> EntryClassSetting =
+			VisualData->GetEntryForSetting(SettingItem))
+		{
+			SettingEntryClass = EntryClassSetting;
+		}
+		else
+		{
+			//UE_LOG(LogGameSettings, Error, TEXT("UGameSettingListView: No Entry Class Found!"));
+		}
+	}
+	else
+	{
+		//UE_LOG(LogGameSettings, Error, TEXT("UGameSettingListView: No VisualData Defined!"));
+	}
+
+	UGameSettingListEntryBase& EntryWidget = GenerateTypedEntry<UGameSettingListEntryBase>(SettingEntryClass, OwnerTable);
+	if (!IsDesignTime())
+	{
+		if (const FText* Override = NameOverrides.Find(SettingItem->GetDevName()))
+		{
+			EntryWidget.SetDisplayNameOverride(*Override);
+		}
+
+		EntryWidget.SetSetting(SettingItem);
+	}
+
+	return EntryWidget;
+}
+```
+
+VisualData 的实际优先级是“自定义逻辑 → DevName → 设置类继承链”，而详情扩展先取消旧异步加载、释放 WidgetPool，再从同一套 VisualData 收集软类：
+
+```cpp
+TSubclassOf<UGameSettingListEntryBase>
+UGameSettingVisualData::GetEntryForSetting(UGameSetting* InSetting)
+{
+	if (InSetting == nullptr)
+	{
+		return TSubclassOf<UGameSettingListEntryBase>();
+	}
+
+	TSubclassOf<UGameSettingListEntryBase> CustomEntry = GetCustomEntryForSetting(InSetting);
+	if (CustomEntry)
+	{
+		return CustomEntry;
+	}
+
+	{
+		TSubclassOf<UGameSettingListEntryBase> EntryWidgetClassPtr =
+			EntryWidgetForName.FindRef(InSetting->GetDevName());
+		if (EntryWidgetClassPtr)
+		{
+			return EntryWidgetClassPtr;
+		}
+	}
+
+	for (UClass* Class = InSetting->GetClass(); Class; Class = Class->GetSuperClass())
+	{
+		if (TSubclassOf<UGameSetting> SettingClass = TSubclassOf<UGameSetting>(Class))
+		{
+			TSubclassOf<UGameSettingListEntryBase> EntryWidgetClassPtr =
+				EntryWidgetForClass.FindRef(SettingClass);
+			if (EntryWidgetClassPtr)
+			{
+				return EntryWidgetClassPtr;
+			}
+		}
+	}
+
+	return TSubclassOf<UGameSettingListEntryBase>();
+}
+```
+
+`UGameSettingDetailView::FillSettingDetails` 的真实职责是解除旧设置事件、绑定新设置事件、刷新文字状态，并把详情扩展重新放回池中；这才是“列表选择 → 右侧详情”的实际代码链。
+
+```cpp
+void UGameSettingDetailView::FillSettingDetails(UGameSetting* InSetting)
+{
+	if (InSetting && InSetting == CurrentSetting)
+	{
+		return;
+	}
+	if (CurrentSetting)
+	{
+		CurrentSetting->OnSettingChangedEvent.RemoveAll(this);
+	}
+	CurrentSetting = InSetting;
+	if (CurrentSetting)
+	{
+		CurrentSetting->OnSettingChangedEvent.AddUObject(
+			this, &ThisClass::HandleCurrentSettingChanged);
+	}
+	if (Text_SettingName)
+	{
+		Text_SettingName->SetText(InSetting ? InSetting->GetDisplayName() : FText::GetEmpty());
+	}
+	if (RichText_Description)
+	{
+		RichText_Description->SetText(InSetting ? InSetting->GetDescriptionRichText() : FText::GetEmpty());
+	}
+	if (Box_DetailsExtension)
+	{
+		for (UWidget* Child : Box_DetailsExtension->GetAllChildren())
+		{
+			ExtensionWidgetPool.Release(Cast<UUserWidget>(Child));
+		}
+		Box_DetailsExtension->ClearChildren();
+	}
+}
+```
+
+最后，响应式面板的 Slate 桥也有实际实现：重建时把 `bCanStackVertically` 传给 `SGameResponsivePanel`，动态新增/移除子项时同步 live Slate slot。
+
+```cpp
+TSharedRef<SWidget> UGameResponsivePanel::RebuildWidget()
+{
+	MyGameResponsivePanel = SNew(SGameResponsivePanel);
+	MyGameResponsivePanel->EnableVerticalStacking(bCanStackVertically);
+	for (UPanelSlot* PanelSlot : Slots)
+	{
+		if (UGameResponsivePanelSlot* TypedSlot = Cast<UGameResponsivePanelSlot>(PanelSlot))
+		{
+			TypedSlot->Parent = this;
+			TypedSlot->BuildSlot(MyGameResponsivePanel.ToSharedRef());
+		}
+	}
+	return MyGameResponsivePanel.ToSharedRef();
+}
+```
+
 ## 六、Lyra 自定义设置项（CustomSettings）
 
 CustomSettings 子目录给抽象层提供 Lyra 专属的具体子类，一条规则：**凡是选项/值需要特殊来源或特殊副作用（平台枚举、异步、副作用应用）的，就写一个自定义设置子类**。逐个对照本机源码：
@@ -461,7 +656,7 @@ CustomSettings 子目录给抽象层提供 Lyra 专属的具体子类，一条�
 
 ### 收录原则与版权提示
 
-以下附录**逐字完整**收录本机 5.8 源码的核心头文件（KD-004 精神），保留 Epic 头注释 `// Copyright Epic Games, Inc. All Rights Reserved.`。这些文件来自 Epic 的开源样例项目 LyraStarterGame（UE 5.8 分支，CL 55116800），仅作知识库学习引用，版权归 Epic Games 所有，不得用于闭源商业再分发。行数与文件主体一一对应，收录时未做删改；正文解读基于这些文本。
+以下附录**完整**收录本机 5.8 源码的核心头文件（KD-004 精神），保留 Epic 头注释 `// Copyright Epic Games, Inc. All Rights Reserved.`。这些文件来自 Epic 的开源样例项目 LyraStarterGame（UE 5.8 分支，CL 55116800），仅作知识库学习引用，版权归 Epic Games 所有，不得用于闭源商业再分发。代码字符、注释、条件编译和文件尾换行均未删改，仅统一代码围栏内的行尾及缩进空白；正文解读基于这些文本。
 
 收录文件行数清单：
 
@@ -478,7 +673,7 @@ CustomSettings 子目录给抽象层提供 Lyra 专属的具体子类，一条�
 | 9 | `Plugins/GameSettings/Source/Public/Widgets/GameSettingScreen.h` | 85 | 抽象设置屏 |
 | 10 | `Source/LyraGame/Settings/CustomSettings/LyraSettingValueDiscrete_Resolution.h` | 73 | 分辨率为例的自定义设置项 |
 
-以下代码块均为**逐字收录**（非节选），每段保留 Epic 版权头。
+以下代码块均为**完整收录**（非节选；仅统一代码围栏内的行尾及缩进空白），每段保留 Epic 版权头。
 
 ---
 
@@ -508,7 +703,7 @@ class UGameSettingRegistry;
 DECLARE_DELEGATE_RetVal_OneParam(FText, FGetGameSettingsDetails, ULocalPlayer& /*InLocalPlayer*/);
 
 /**
- * 
+ *
  */
 UCLASS(MinimalAPI, Abstract, BlueprintType)
 class UGameSetting : public UObject
@@ -530,7 +725,7 @@ public:
 public:
 
 	/**
-	 * Gets the non-localized developer name for this setting.  This should remain constant, and represent a 
+	 * Gets the non-localized developer name for this setting.  This should remain constant, and represent a
 	 * unique identifier for this setting inside this settings registry.
 	 */
 	UFUNCTION(BlueprintCallable)
@@ -572,12 +767,12 @@ public:
 
 	/** Gets the owning local player for this setting - which all initialized settings will have. */
 	ULocalPlayer* GetOwningLocalPlayer() const { return LocalPlayer; }
-	
+
 	/** Set the dynamic details callback, we query this when building the description panel.  This text is not searchable.*/
 	void SetDynamicDetails(const FGetGameSettingsDetails& InDynamicDetails) { DynamicDetails = InDynamicDetails; }
 
 	/**
-	 * Gets the dynamic details about this setting.  This may be information like, how many refunds are remaining 
+	 * Gets the dynamic details about this setting.  This may be information like, how many refunds are remaining
 	 * on their account, or the account number.
 	 */
 	UFUNCTION(BlueprintCallable)
@@ -770,7 +965,7 @@ struct FGameSettingFilterState;
 enum class EGameSettingChangeReason : uint8;
 
 /**
- * 
+ *
  */
 UCLASS(MinimalAPI, Abstract, BlueprintType)
 class UGameSettingRegistry : public UObject
@@ -801,7 +996,7 @@ public:
 	UE_API virtual bool IsFinishedInitializing() const;
 
 	UE_API virtual void SaveChanges();
-	
+
 	UE_API void GetSettingsForFilter(const FGameSettingFilterState& FilterState, TArray<UGameSetting*>& InOutSettings);
 
 	UE_API UGameSetting* FindSettingByDevName(const FName& SettingDevName);
@@ -818,7 +1013,7 @@ protected:
 	virtual void OnInitialize(ULocalPlayer* InLocalPlayer) PURE_VIRTUAL(, )
 
 	virtual void OnSettingApplied(UGameSetting* Setting) { }
-	
+
 	UE_API void RegisterSetting(UGameSetting* InSetting);
 	UE_API void RegisterInnerSettings(UGameSetting* InSetting);
 
@@ -868,7 +1063,7 @@ UCLASS(MinimalAPI)
 class UGameSettingValueDiscreteDynamic : public UGameSettingValueDiscrete
 {
 	GENERATED_BODY()
-	
+
 public:
 	UE_API UGameSettingValueDiscreteDynamic();
 
@@ -1062,7 +1257,7 @@ public:
 	FLinearColor GetValue() const
 	{
 		const FString Value = GetValueAsString();
-		
+
 		FLinearColor ColorValue;
 		bool bSuccess = ColorValue.InitFromString(Value);
 		ensure(bSuccess);
@@ -1090,7 +1285,7 @@ public:
 	UGameSettingValueDiscreteDynamic_Vector2D() { }
 
 	void SetDefaultValue(const FVector2D& InValue)
-	{	
+	{
 		SetDefaultValueFromString(InValue.ToString());
 	}
 
@@ -1173,7 +1368,7 @@ public:
 	{
 		return SettingAllowList.Contains(InSetting);
 	}
-	
+
 	const TArray<UGameSetting*>& GetSettingRootList() const { return SettingRootList; }
 	bool IsSettingInRootList(const UGameSetting* InSetting) const
 	{
@@ -1268,7 +1463,7 @@ private:
 };
 
 /**
- * Edit conditions can monitor the state of the game or of other settings and adjust the 
+ * Edit conditions can monitor the state of the game or of other settings and adjust the
  * visibility.
  */
 class FGameSettingEditCondition : public TSharedFromThis<FGameSettingEditCondition>
@@ -1302,7 +1497,7 @@ public:
 	}
 
 	/**
-	 * Called when the setting needs to re-evaluate edit state. Usually this is in response to a 
+	 * Called when the setting needs to re-evaluate edit state. Usually this is in response to a
 	 * dependency changing, or if this edit condition emits an OnEditConditionChangedEvent.
 	 */
 	virtual void GatherEditState(const ULocalPlayer* InLocalPlayer, FGameSettingEditableState& InOutEditState) const
@@ -1355,7 +1550,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogLyraGameSettingRegistry, Log, Log);
 	}))
 
 /**
- * 
+ *
  */
 UCLASS()
 class ULyraGameSettingRegistry : public UGameSettingRegistry
@@ -1366,7 +1561,7 @@ public:
 	ULyraGameSettingRegistry();
 
 	static ULyraGameSettingRegistry* Get(ULyraLocalPlayer* InLocalPlayer);
-	
+
 	virtual void SaveChanges() override;
 
 protected:
@@ -1485,7 +1680,7 @@ private:
 public:
 	/** Returns the display mode for the specified performance stat */
 	ELyraStatDisplayMode GetPerfStatDisplayState(ELyraDisplayablePerformanceStat Stat) const;
-	
+
 	/** Sets the display mode for the specified performance stat */
 	void SetPerfStatDisplayState(ELyraDisplayablePerformanceStat Stat, ELyraStatDisplayMode DisplayMode);
 
@@ -1495,7 +1690,7 @@ public:
 
 	// Latency flash indicators
 	static bool DoesPlatformSupportLatencyMarkers();
-	
+
 	DECLARE_EVENT(ULyraSettingsLocal, FLatencyFlashInidicatorSettingChanged);
 	UFUNCTION()
 	void SetEnableLatencyFlashIndicators(const bool bNewVal);
@@ -1505,10 +1700,10 @@ public:
 
 	// Latency tracking stats
 	static bool DoesPlatformSupportLatencyTrackingStats();
-	
+
 	DECLARE_EVENT(ULyraSettingsLocal, FLatencyStatEnabledSettingChanged);
 	FLatencyStatEnabledSettingChanged& OnLatencyStatIndicatorSettingsChangedEvent() { return LatencyStatIndicatorSettingsChangedEvent; }
-	
+
 	UFUNCTION()
 	void SetEnableLatencyTrackingStats(const bool bNewVal);
 	UFUNCTION()
@@ -1517,7 +1712,7 @@ public:
 private:
 
 	void ApplyLatencyTrackingStatSetting();
-	
+
 	// List of stats to display in the HUD
 	UPROPERTY(Config)
 	TMap<ELyraDisplayablePerformanceStat, ELyraStatDisplayMode> DisplayStatList;
@@ -1551,7 +1746,7 @@ public:
 
 private:
 	void ApplyDisplayGamma();
-	
+
 	UPROPERTY(Config)
 	float DisplayGamma = 2.2f;
 
@@ -1597,7 +1792,7 @@ private:
 	//////////////////////////////////////////////////////////////////
 	// Display - Mobile quality settings
 public:
-	
+
 	static int32 GetDefaultMobileFrameRate();
 	static int32 GetMaxMobileFrameRate();
 
@@ -1621,7 +1816,7 @@ private:
 
 	void ClampMobileFPSQualityLevels(bool bWriteBack);
 	void ClampMobileQuality();
-	
+
 	int32 GetHighestLevelOfAnyScalabilityChannel() const;
 
 	/* Modifies the input levels based on the active mode's overrides */
@@ -1772,9 +1967,9 @@ public:
 private:
 	UPROPERTY(Config)
 	FString AudioOutputDeviceId;
-	
+
 	void SetVolumeForSoundClass(FName ChannelName, float InVolume);
-	
+
 
 	//////////////////////////////////////////////////////////////////
 	// Safezone
@@ -1793,7 +1988,7 @@ private:
 	//////////////////////////////////////////////////////////////////
 	// Keybindings
 public:
-	
+
 	// Sets the controller representation to use, a single platform might support multiple kinds of controllers.  For
 	// example, Win64 games could be played with both an XBox or Playstation controller.
 	UFUNCTION()
@@ -1968,7 +2163,7 @@ public:
 
 	/** Creates a temporary settings object, this will be replaced by one loaded from the user's save game */
 	static ULyraSettingsShared* CreateTemporarySettings(const ULyraLocalPlayer* LocalPlayer);
-	
+
 	/** Synchronously loads a settings object, this is not valid to call before login */
 	static ULyraSettingsShared* LoadOrCreateSettings(const ULyraLocalPlayer* LocalPlayer);
 
@@ -1982,7 +2177,7 @@ public:
 
 	/** Applies the current settings to the player */
 	void ApplySettings();
-	
+
 public:
 	////////////////////////////////////////////////////////
 	// Color Blind Options
@@ -2012,7 +2207,7 @@ public:
 
 	UFUNCTION()
 	void SetForceFeedbackEnabled(const bool NewValue) { ChangeValueAndDirty(bForceFeedbackEnabled, NewValue); }
-	
+
 private:
 	/** Is force feedback enabled when a controller is being used? */
 	UPROPERTY()
@@ -2048,7 +2243,7 @@ private:
 
 	/////////////////////////////////////////////////
 	// Gamepad Input API (only available on PC)
-	
+
 	UPROPERTY()
 	ELyraGamepadInputAPIOption GamepadInputAPIOptions;
 
@@ -2080,7 +2275,7 @@ public:
 	uint8 GetTriggerHapticStartPosition() const { return TriggerHapticStartPosition; }
 	UFUNCTION()
 	void SetTriggerHapticStartPosition(const uint8 NewValue) { ChangeValueAndDirty(TriggerHapticStartPosition, NewValue); }
-	
+
 private:
 	/** Are trigger haptics enabled? */
 	UPROPERTY()
@@ -2174,7 +2369,7 @@ public:
 
 	void ResetToDefaultCulture();
 	bool ShouldResetToDefaultCulture() const { return bResetToDefaultCulture; }
-	
+
 	void ApplyCultureSettings();
 	void ResetCultureToCurrentSettings();
 
@@ -2213,7 +2408,7 @@ public:
 	bool GetInvertHorizontalAxis() const { return bInvertHorizontalAxis; }
 	UFUNCTION()
 	void SetInvertHorizontalAxis(bool NewValue) { ChangeValueAndDirty(bInvertHorizontalAxis, NewValue); ApplyInputSensitivity(); }
-	
+
 private:
 	/** Holds the mouse horizontal sensitivity */
 	UPROPERTY()
@@ -2234,7 +2429,7 @@ private:
 	/** If true then the horizontal look axis should be inverted */
 	UPROPERTY()
 	bool bInvertHorizontalAxis = false;
-	
+
 	////////////////////////////////////////////////////////
 	// Gamepad Sensitivity
 public:
@@ -2249,13 +2444,13 @@ public:
 	void SetGamepadTargetingSensitivityPreset(ELyraGamepadSensitivity NewValue) { ChangeValueAndDirty(GamepadTargetingSensitivityPreset, NewValue); ApplyInputSensitivity(); }
 
 	void ApplyInputSensitivity();
-	
+
 private:
 	UPROPERTY()
 	ELyraGamepadSensitivity GamepadLookSensitivityPreset = ELyraGamepadSensitivity::Normal;
 	UPROPERTY()
 	ELyraGamepadSensitivity GamepadTargetingSensitivityPreset = ELyraGamepadSensitivity::Normal;
-	
+
 	////////////////////////////////////////////////////////
 	/// Dirty and Change Reporting
 private:
@@ -2267,7 +2462,7 @@ private:
 			CurrentValue = NewValue;
 			bIsDirty = true;
 			OnSettingChanged.Broadcast(this);
-			
+
 			return true;
 		}
 
@@ -2310,11 +2505,11 @@ protected:
 	void HandleCancelChangesAction();
 
 	virtual void OnSettingsDirtyStateChanged_Implementation(bool bSettingsDirty) override;
-	
+
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = Input, meta = (BindWidget, OptionalWidget = true, AllowPrivateAccess = true))
 	TObjectPtr<ULyraTabListWidgetBase> TopSettingsTabs;
-	
+
 	UPROPERTY(EditDefaultsOnly)
 	FDataTableRowHandle BackInputActionData;
 
@@ -2355,7 +2550,7 @@ struct FFrame;
 enum class EGameSettingChangeReason : uint8;
 
 /**
- * 
+ *
  */
 UCLASS(MinimalAPI, Abstract, meta = (Category = "Settings", DisableNativeTick))
 class UGameSettingScreen : public UCommonActivatableWidget
@@ -2371,7 +2566,7 @@ protected:
 
 	UFUNCTION(BlueprintCallable)
 	UE_API void NavigateToSetting(FName SettingDevName);
-	
+
 	UFUNCTION(BlueprintCallable)
 	UE_API void NavigateToSettings(const TArray<FName>& SettingDevNames);
 
@@ -2383,7 +2578,7 @@ protected:
 	UE_API bool AttemptToPopNavigation();
 
 	UFUNCTION(BlueprintCallable)
-	UE_API UGameSettingCollection* GetSettingCollection(FName SettingDevName, bool& HasAnySettings); 
+	UE_API UGameSettingCollection* GetSettingCollection(FName SettingDevName, bool& HasAnySettings);
 
 protected:
 	virtual UGameSettingRegistry* CreateRegistry() PURE_VIRTUAL(, return nullptr;);
@@ -2440,7 +2635,7 @@ UCLASS()
 class ULyraSettingValueDiscrete_Resolution : public UGameSettingValueDiscrete
 {
 	GENERATED_BODY()
-	
+
 public:
 
 	ULyraSettingValueDiscrete_Resolution();
@@ -2503,6 +2698,6 @@ protected:
 ### 附录核对记录
 
 - 以上 10 个文件按文件名与本机源码逐行对齐，行数见清单表，未省略任何成员。正文解读中所有类名/函数名/字段名均可在对应附录或前文源码事实中回溯到。
-- Lyra 的 UI 层其余行为（`UGameSettingPanel`/`UGameSettingListView`/`UGameSettingListEntryBase` 族/`UGameSettingDetailView`/`UGameResponsivePanel`/`UGameSettingVisualData`）在正文第五、六节以源码事实表格与 Mermaid 图呈现，篇幅需要未单独逐字收录，结构与上述附录一致，可在本机源码对应头文件直接复核。
+- Lyra 的 UI 层其余行为（`UGameSettingPanel`/`UGameSettingListView`/`UGameSettingListEntryBase` 族/`UGameSettingDetailView`/`UGameResponsivePanel`/`UGameSettingVisualData`）未整卷追加到附录，但正文 5.7 已展开过滤导航、列表分派、详情扩展池和响应式 Slate 重建的实际 C++ 片段；不再只留下“回读本机源码”的路径指引。
 
-> 覆盖说明：本篇覆盖 GameSettings 插件（`Plugins\GameSettings\Source\Public` 全部 24 个 .h 中与本任务相关的核心 10 个已逐字收录，其余以正文清单呈现）与 `Source\LyraGame\Settings` 全部 40 余文件、`Source\LyraGame\UI\LyraSettingScreen.h` 与 `CustomSettings` 全部分类。两目录合计约 100 文件的关键部分已核对。
+> 覆盖说明（2026-08-17 补全）：本篇覆盖 GameSettings 插件（`Plugins\GameSettings\Source\Public` 全部 24 个 .h 中与本任务相关的核心 10 个全文收录，其余 UI 类在正文 5.7 展开实际函数）与 `Source\LyraGame\Settings` 全部 40 余文件、`Source\LyraGame\UI\LyraSettingScreen.h` 与 `CustomSettings` 全部分类。两目录合计约 100 文件的关键部分已核对；概念性路径引用均配有源码片段或全文附录。

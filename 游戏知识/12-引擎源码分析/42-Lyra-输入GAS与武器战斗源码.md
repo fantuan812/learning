@@ -14,7 +14,7 @@
 | 适用范围 | Enhanced Input、Lyra GAS 扩展、武器能力、预测 TargetData、伤害和死亡排障 |
 | 知识成熟度 | L2：C++、配置和资产存在性静态核对完成；蓝图能力内部图需在编辑器中逐节点复核 |
 | 官方参考 | [Abilities in Lyra](https://dev.epicgames.com/documentation/en-us/unreal-engine/abilities-in-lyra-in-unreal-engine)、[Lyra Input Settings](https://dev.epicgames.com/documentation/en-us/unreal-engine/lyra-input-settings-in-unreal-engine) |
-| 最后更新 | 2026-08-13 |
+| 最后更新 | 2026-08-17（补充武器实例与生成器源码章节及附录） |
 
 ## 一、完整链路先览
 
@@ -864,22 +864,26 @@ Weapons 目录里武器实例不是单一类，而是三层继承：
 `ULyraWeaponInstance` 只薄薄包一层 Equipment 生命周期：
 
 ```cpp
-// 节选：LyraWeaponInstance.cpp 的装备/卸下勾子（示意）
 void ULyraWeaponInstance::OnEquipped()
 {
-    Super::OnEquipped();
-    TimeLastEquipped = World->GetTimeSeconds();  // 记录最近装备时刻
-    ApplyDeviceProperties();                       // 装备时激活输入设备属性
+	Super::OnEquipped();
+
+	UWorld* World = GetWorld();
+	check(World);
+	TimeLastEquipped = World->GetTimeSeconds();
+
+	ApplyDeviceProperties();
 }
 
 void ULyraWeaponInstance::OnUnequipped()
 {
-    Super::OnUnequipped();
-    RemoveDeviceProperties();                      // 卸下时移除设备属性
+	Super::OnUnequipped();
+
+	RemoveDeviceProperties();
 }
 ```
 
-要点（节选里未展示，但来自同文件整段实现）：
+以上是 `LyraWeaponInstance.cpp` 的实际实现。其余同文件代码也明确：
 
 - 构造函数里，仅对**玩家控制的 Pawn** 订阅 `ULyraHealthComponent` 的 `OnDeathStarted`，死后 `RemoveDeviceProperties` 兜底——因为死了未必走正常卸下路径。AI/非玩家不订阅（客户端没有输入设备）。
 - `UpdateFiringTime()` 被远程武器能力在激活时调用（见第十九章第 3 步），记录 `TimeLastFired`。
@@ -907,29 +911,47 @@ void ULyraWeaponInstance::OnUnequipped()
 
 - 内存状态：`LastFireTime`、`CurrentHeat`、`CurrentSpreadAngle`、`CurrentSpreadAngleMultiplier`，以及四个次级倍率（瞄准/静止/跳跃坠落/下蹲）。
 - 三条 `FRuntimeFloatCurve` 全是"Heat→某量"：`HeatToSpreadCurve`（热度→散布角）、`HeatToHeatPerShotCurve`（当前热度→每发增加的热度）、`HeatToCoolDownPerSecondCurve`（当前热度→每秒冷却热速）。
-- 热度上下限由三条曲线 **X 轴时间范围求并集**得到（`ComputeHeatRange`）；散布角的上下限由 `HeatToSpreadCurve` 的 **Y 轴值范围**得到（`ComputeSpreadRange`）。默认构造给 `HeatToHeatPerShotCurve` 打一个 `(0,1)` 点、给冷却曲线打一个 `(0,2)` 点（示意：每发 +1 热、每秒 -2 热）。
+- 热度上下限由三条曲线 **X 轴时间范围求并集**得到（`ComputeHeatRange`）；散布角的上下限由 `HeatToSpreadCurve` 的 **Y 轴值范围**得到（`ComputeSpreadRange`）。构造函数实际给 `HeatToHeatPerShotCurve` 打 `(0,1)` 点、给冷却曲线打 `(0,2)` 点。
 
 #### 46.4.2 开火/冷却的时序
 
 `AddSpread()`（能力 Commit 成功后由 Ability 调用，呼应第二十五章"武器实例增加 Spread"）：
 
 ```cpp
-// 节选：AddSpread（示意）
-const float HeatPerShot = HeatToHeatPerShotCurve.Eval(CurrentHeat);
-CurrentHeat = ClampHeat(CurrentHeat + HeatPerShot);        // 当前热度采样"升温曲线"
-CurrentSpreadAngle = HeatToSpreadCurve.Eval(CurrentHeat);  // 再映射成散布角
+void ULyraRangedWeaponInstance::AddSpread()
+{
+	// Sample the heat up curve
+	const float HeatPerShot = HeatToHeatPerShotCurve.GetRichCurveConst()->Eval(CurrentHeat);
+	CurrentHeat = ClampHeat(CurrentHeat + HeatPerShot);
+
+	// Map the heat to the spread angle
+	CurrentSpreadAngle = HeatToSpreadCurve.GetRichCurveConst()->Eval(CurrentHeat);
+
+#if WITH_EDITOR
+	UpdateDebugVisualization();
+#endif
+}
 ```
 
 按帧冷却 `UpdateSpread(DeltaSeconds)`：
 
 ```cpp
-// 节选：UpdateSpread（示意）
-const float TimeSinceFired = GetWorld()->TimeSince(LastFireTime);
-if (TimeSinceFired > SpreadRecoveryCooldownDelay)
+bool ULyraRangedWeaponInstance::UpdateSpread(float DeltaSeconds)
 {
-    const float CooldownRate = HeatToCoolDownPerSecondCurve.Eval(CurrentHeat);
-    CurrentHeat = ClampHeat(CurrentHeat - (CooldownRate * DeltaSeconds));
-    CurrentSpreadAngle = HeatToSpreadCurve.Eval(CurrentHeat);
+	const float TimeSinceFired = GetWorld()->TimeSince(LastFireTime);
+
+	if (TimeSinceFired > SpreadRecoveryCooldownDelay)
+	{
+		const float CooldownRate = HeatToCoolDownPerSecondCurve.GetRichCurveConst()->Eval(CurrentHeat);
+		CurrentHeat = ClampHeat(CurrentHeat - (CooldownRate * DeltaSeconds));
+		CurrentSpreadAngle = HeatToSpreadCurve.GetRichCurveConst()->Eval(CurrentHeat);
+	}
+
+	float MinSpread;
+	float MaxSpread;
+	ComputeSpreadRange(/*out*/ MinSpread, /*out*/ MaxSpread);
+
+	return FMath::IsNearlyEqual(CurrentSpreadAngle, MinSpread, KINDA_SMALL_NUMBER);
 }
 ```
 
@@ -940,8 +962,20 @@ if (TimeSinceFired > SpreadRecoveryCooldownDelay)
 `Tick` 里把"散布到达最小"与"全部倍率到达最小"两个布尔相与：
 
 ```cpp
-// 节选：Tick（示意）
-bHasFirstShotAccuracy = bAllowFirstShotAccuracy && bMinMultipliers && bMinSpread;
+void ULyraRangedWeaponInstance::Tick(float DeltaSeconds)
+{
+	APawn* Pawn = GetPawn();
+	check(Pawn != nullptr);
+
+	const bool bMinSpread = UpdateSpread(DeltaSeconds);
+	const bool bMinMultipliers = UpdateMultipliers(DeltaSeconds);
+
+	bHasFirstShotAccuracy = bAllowFirstShotAccuracy && bMinMultipliers && bMinSpread;
+
+#if WITH_EDITOR
+	UpdateDebugVisualization();
+#endif
+}
 ```
 
 `GetCalculatedSpreadAngleMultiplier()` 在 `bHasFirstShotAccuracy` 时返回 `0.0f`，即**弹道完全收拢到中心线**，配合 `HasFirstShotAccuracy()` 供视线表现（如准星收束）。这是可选能力，由 `bAllowFirstShotAccuracy` 开关。
@@ -964,14 +998,33 @@ bHasFirstShotAccuracy = bAllowFirstShotAccuracy && bMinMultipliers && bMinSpread
 `ULyraRangedWeaponInstance` 实现 `ILyraAbilitySourceInterface`，向 `ULyraDamageExecution`（第二十七~二十八章）提供两种倍率，**在伤害执行层相乘**：
 
 ```cpp
-// 节选：两类 Attenuation（示意）
-float GetDistanceAttenuation(Distance) const
-    { return DistanceDamageFalloff.HasAnyData() ? Curve->Eval(Distance) : 1.0f; }
-// 无数据 = 无距离衰减
-
-float GetPhysicalMaterialAttenuation(PhysicalMaterial) const
+float ULyraRangedWeaponInstance::GetDistanceAttenuation(
+	float Distance, const FGameplayTagContainer* SourceTags,
+	const FGameplayTagContainer* TargetTags) const
 {
-    // 命中物若是 UPhysicalMaterialWithTags，逐 Tag 查 MaterialDamageMultiplier 相乘
+	const FRichCurve* Curve = DistanceDamageFalloff.GetRichCurveConst();
+	return Curve->HasAnyData() ? Curve->Eval(Distance) : 1.0f;
+}
+
+float ULyraRangedWeaponInstance::GetPhysicalMaterialAttenuation(
+	const UPhysicalMaterial* PhysicalMaterial,
+	const FGameplayTagContainer* SourceTags,
+	const FGameplayTagContainer* TargetTags) const
+{
+	float CombinedMultiplier = 1.0f;
+	if (const UPhysicalMaterialWithTags* PhysMatWithTags =
+		Cast<const UPhysicalMaterialWithTags>(PhysicalMaterial))
+	{
+		for (const FGameplayTag MaterialTag : PhysMatWithTags->Tags)
+		{
+			if (const float* pTagMultiplier = MaterialDamageMultiplier.Find(MaterialTag))
+			{
+				CombinedMultiplier *= *pTagMultiplier;
+			}
+		}
+	}
+
+	return CombinedMultiplier;
 }
 ```
 
@@ -993,10 +1046,123 @@ float GetPhysicalMaterialAttenuation(PhysicalMaterial) const
 
 它在实例体系里的定位：**制造者/投放者，不持有武器数值**。拿到手后武器真正玩法仍落在 `ULyraRangedWeaponInstance` 上。
 
-### 46.6 调试辅助（简析）
+### 46.6 调试辅助：实际源码如何记录伤害和控制弹道可视化
 
 - `ULyraDamageLogDebuggerComponent`（附录文件 31）：`UActorComponent`，订阅 `GameplayMessageSubsystem` 的伤害消息通道，按帧聚合 `FFrameDamageEntry`（命中数/累计伤害/首击时间），`SecondsBetweenDamageBeforeLogging` 控制多久内的伤害合并记录。属于观察/诊断，不参与结算。
 - `ULyraWeaponDebugSettings`（附录文件 30）：`UDeveloperSettingsBackedByCVars`，暴露三个 CVar——`lyra.Weapon.DrawBulletTraceDuration`、`lyra.Weapon.DrawBulletHitDuration`、`lyra.Weapon.DrawBulletHitRadius`（单位 s/s/cm）。用于编辑器里可视化弹道与命中调试，与 47 篇调试命令配套。
+
+下面是两段实际实现。伤害调试器在 `BeginPlay` 注册消息，在 `EndPlay` 注销；收到消息时只接收自己的 Actor，并按全局帧号聚合，避免把一次爆炸的多次命中误判为多个独立 DPS 样本：
+
+```cpp
+void ULyraDamageLogDebuggerComponent::BeginPlay()
+{
+	Super::BeginPlay();
+
+	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(this);
+	ListenerHandle = MessageSubsystem.RegisterListener(
+		TAG_Lyra_Damage_Message, this, &ThisClass::OnDamageMessage);
+}
+
+void ULyraDamageLogDebuggerComponent::OnDamageMessage(
+	FGameplayTag Channel, const FLyraVerbMessage& Payload)
+{
+	if (Payload.Target == GetOwner())
+	{
+		FFrameDamageEntry& LogEntry = DamageLog.FindOrAdd(GFrameCounter);
+		if (LogEntry.TimeOfFirstHit == 0.0)
+		{
+			LogEntry.TimeOfFirstHit = GetWorld()->GetTimeSeconds();
+			LastDamageEntryTime = LogEntry.TimeOfFirstHit;
+		}
+		++LogEntry.NumImpacts;
+		LogEntry.SumDamage += -Payload.Magnitude;
+	}
+}
+```
+
+达到合并窗口后，`TickComponent` 把帧桶排序、汇总冲击数与伤害，并输出间隔和 DPS；它完全是观测链，不会回写 Health 或改变 Execution：
+
+```cpp
+if ((TimeSinceDamage >= SecondsBetweenDamageBeforeLogging) && (DamageLog.Num() > 0))
+{
+	TArray<FFrameDamageEntry> Entries;
+	DamageLog.GenerateValueArray(Entries);
+	DamageLog.Reset();
+	Entries.Sort([](const FFrameDamageEntry& A, const FFrameDamageEntry& B)
+	{
+		return A.TimeOfFirstHit < B.TimeOfFirstHit;
+	});
+
+	double TotalDamage = 0.0;
+	int32 NumImpacts = 0;
+	for (int32 i = 0; i < Entries.Num(); ++i)
+	{
+		NumImpacts += Entries[i].NumImpacts;
+		TotalDamage += Entries[i].SumDamage;
+	}
+	UE_LOG(LogLyra, Warning, TEXT("%d impacts in %d distinct frames did %.2f damage"),
+		NumImpacts, Entries.Num(), TotalDamage);
+}
+```
+
+弹道调试配置也是真实的 `UPROPERTY` 到 CVar 映射，而不是“有几个命令”的概念描述：
+
+```cpp
+UCLASS(config=EditorPerProjectUserSettings)
+class ULyraWeaponDebugSettings : public UDeveloperSettingsBackedByCVars
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(config, EditAnywhere, Category=General,
+		meta=(ConsoleVariable="lyra.Weapon.DrawBulletTraceDuration", ForceUnits=s))
+	float DrawBulletTraceDuration;
+
+	UPROPERTY(config, EditAnywhere, Category=General,
+		meta=(ConsoleVariable="lyra.Weapon.DrawBulletHitDuration", ForceUnits=s))
+	float DrawBulletHitDuration;
+
+	UPROPERTY(config, EditAnywhere, Category=General,
+		meta=(ConsoleVariable="lyra.Weapon.DrawBulletHitRadius", ForceUnits=cm))
+	float DrawBulletHitRadius;
+};
+```
+
+同理，`ALyraWeaponSpawner::OnOverlapBegin` 与 `AttemptPickUpWeapon_Implementation` 的实际权限边界是“服务器、可用、Pawn 有 ASC”，成功授予后才关闭拾取、启动冷却：
+
+```cpp
+void ALyraWeaponSpawner::OnOverlapBegin(
+	UPrimitiveComponent* OverlappedComponent,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex,
+	bool bFromSweep,
+	const FHitResult& SweepHitResult)
+{
+	APawn* OverlappingPawn = Cast<APawn>(OtherActor);
+	if (GetLocalRole() == ROLE_Authority && bIsWeaponAvailable && OverlappingPawn)
+	{
+		AttemptPickUpWeapon(OverlappingPawn);
+	}
+}
+
+void ALyraWeaponSpawner::AttemptPickUpWeapon_Implementation(APawn* Pawn)
+{
+	if (GetLocalRole() == ROLE_Authority && bIsWeaponAvailable &&
+		UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Pawn))
+	{
+		TSubclassOf<ULyraInventoryItemDefinition> ItemDefinition =
+			WeaponDefinition ? WeaponDefinition->InventoryItemDefinition : nullptr;
+		if (ItemDefinition && GiveWeapon(ItemDefinition, Pawn))
+		{
+			bIsWeaponAvailable = false;
+			SetWeaponPickupVisibility(false);
+			PlayPickupEffects();
+			StartCoolDown();
+		}
+	}
+}
+```
 
 ### 46.7 本节与 42 篇既有内容的关系
 
@@ -1028,8 +1194,8 @@ float GetPhysicalMaterialAttenuation(PhysicalMaterial) const
 
 ## 附录：核心文件完整源码
 
-> 收录原则：本附录把正文直接分析的 LyraStarterGame 5.8 项目源码文件逐字完整收录（未删改，保留 Epic 版权头），正文中的"节选"负责解释调用链，本附录提供全文，二者配合阅读。引擎层（`Engine/`）文件体量过大且不属于项目教程主体，仍按正文的路径+符号检索方式引用，不在此收录；`.uasset/.umap` 资产也不在收录范围。
-> 覆盖边界声明（2026-08-14，R4-LYRA-COVERAGE）：附录 `LyraRangedWeaponInstance.h/.cpp`（468 行）与 `LyraPlayerController.h/.cpp`（792 行）为**全文收录但正文仅概述**（Heat 热度→散布模型、距离衰减、CheatManager/相机管理等未逐函数深析），读者需自行按需精读；`ULyraWeaponStateComponent` 的 HitMarker RPC 细节见 49 篇 UI 表现侧。
+> 收录原则：本附录把正文直接分析的 LyraStarterGame 5.8 项目源码内容完整收录（代码字符、注释、条件编译和文件尾换行未删改；仅统一代码围栏内的行尾及缩进空白，保留 Epic 版权头），正文中的"节选"负责解释调用链，本附录提供全文，二者配合阅读。引擎层（`Engine/`）文件体量过大且不属于项目教程主体，仍按正文的路径+符号检索方式引用，不在此收录；`.uasset/.umap` 资产也不在收录范围。
+> 覆盖补全（2026-08-17）：附录 `LyraRangedWeaponInstance.h/.cpp`（468 行）与 `LyraPlayerController.h/.cpp`（792 行）仍全文收录；正文 46.4 已展开 Heat→Spread、距离衰减、首枪精准与玩家倍率，46.6 又补入 WeaponDebugSettings、DamageLogDebugger 和 WeaponSpawner 的实际 C++ 片段；`ULyraWeaponStateComponent` 的 HitMarker RPC 细节仍由 49 篇 UI 表现侧承接。
 > 覆盖边界补充（2026-08-14，LYRA 批次 1）：`LyraRangedWeaponInstance.h/.cpp` 的"正文仅概述"空白已在正文 46.4 逐函数深析补齐（Heat→Spread 曲线、升温/冷却时序、首枪精准、四路玩家倍率、距离/物理材质 Attenuation）；本批次另在附录追加文件 27~31（`LyraWeaponInstance.h/.cpp`、`LyraWeaponSpawner.h`、`LyraWeaponDebugSettings.h`、`LyraDamageLogDebuggerComponent.h`），把"武器实例与表现配置"一侧也纳入全文可查。正文 46.6 已给出调试类的覆盖说明。
 > 版权提示：以下代码来自 Epic Games 的 LyraStarterGame 样例（UE 5.8），随 Unreal Engine EULA 的样例代码条款提供，仅作本地学习收录；对外发布前请自行核对许可条款。
 
@@ -1069,7 +1235,7 @@ float GetPhysicalMaterialAttenuation(PhysicalMaterial) const
 
 ### 附录文件 1：`Source/LyraGame/Input/LyraInputConfig.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1137,7 +1303,7 @@ public:
 
 ### 附录文件 2：`Source/LyraGame/Input/LyraInputConfig.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1192,7 +1358,7 @@ const UInputAction* ULyraInputConfig::FindAbilityInputActionForTag(const FGamepl
 
 ### 附录文件 3：`Source/LyraGame/Input/LyraInputComponent.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1271,7 +1437,7 @@ void ULyraInputComponent::BindAbilityActions(const ULyraInputConfig* InputConfig
 
 ### 附录文件 4：`Source/LyraGame/Input/LyraInputComponent.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1318,7 +1484,7 @@ void ULyraInputComponent::RemoveBinds(TArray<uint32>& BindHandles)
 
 ### 附录文件 5：`Source/LyraGame/Character/LyraHeroComponent.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1378,7 +1544,7 @@ public:
 
 	/** True if this is controlled by a real player and has progressed far enough in initialization where additional input bindings can be added */
 	UE_API bool IsReadyToBindInputs() const;
-	
+
 	/** The name of the extension event sent via UGameFrameworkComponentManager when ability inputs are ready to bind */
 	static UE_API const FName NAME_BindInputsNow;
 
@@ -1413,10 +1579,10 @@ protected:
 	UE_API TSubclassOf<ULyraCameraMode> DetermineCameraMode() const;
 
 protected:
-	
+
 	UPROPERTY(EditAnywhere)
 	TArray<FInputMappingContextAndPriority> DefaultInputMappings;
-	
+
 	/** Camera mode set by an ability. */
 	UPROPERTY()
 	TSubclassOf<ULyraCameraMode> AbilityCameraMode;
@@ -1433,7 +1599,7 @@ protected:
 
 ### 附录文件 6：`Source/LyraGame/Character/LyraHeroComponent.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1495,11 +1661,11 @@ void ULyraHeroComponent::OnRegister()
 		{
 			static const FText Message = NSLOCTEXT("LyraHeroComponent", "NotOnPawnError", "has been added to a blueprint whose base class is not a Pawn. To use this component, it MUST be placed on a Pawn Blueprint. This will cause a crash if you PIE!");
 			static const FName HeroMessageLogName = TEXT("LyraHeroComponent");
-			
+
 			FMessageLog(HeroMessageLogName).Error()
 				->AddToken(FUObjectToken::Create(this, FText::FromString(GetNameSafe(this))))
 				->AddToken(FTextToken::Create(Message));
-				
+
 			FMessageLog(HeroMessageLogName).Open();
 		}
 #endif
@@ -1697,10 +1863,10 @@ void ULyraHeroComponent::InitializePlayerInput(UInputComponent* PlayerInputCompo
 							{
 								Settings->RegisterInputMappingContext(IMC);
 							}
-							
+
 							FModifyContextOptions Options = {};
 							Options.bIgnoreAllPressedKeysUntilRelease = false;
-							// Actually add the config to the local player							
+							// Actually add the config to the local player
 							Subsystem->AddMappingContext(IMC, Mapping.Priority, Options);
 						}
 					}
@@ -1716,7 +1882,7 @@ void ULyraHeroComponent::InitializePlayerInput(UInputComponent* PlayerInputCompo
 					LyraIC->AddInputMappings(InputConfig, Subsystem);
 
 					// This is where we actually bind and input action to a gameplay tag, which means that Gameplay Ability Blueprints will
-					// be triggered directly by these input actions Triggered events. 
+					// be triggered directly by these input actions Triggered events.
 					TArray<uint32> BindHandles;
 					LyraIC->BindAbilityActions(InputConfig, this, &ThisClass::Input_AbilityInputTagPressed, &ThisClass::Input_AbilityInputTagReleased, /*out*/ BindHandles);
 
@@ -1734,7 +1900,7 @@ void ULyraHeroComponent::InitializePlayerInput(UInputComponent* PlayerInputCompo
 	{
 		bReadyToBindInputs = true;
 	}
- 
+
 	UGameFrameworkComponentManager::SendGameFrameworkComponentExtensionEvent(const_cast<APlayerController*>(PC), NAME_BindInputsNow);
 	UGameFrameworkComponentManager::SendGameFrameworkComponentExtensionEvent(const_cast<APawn*>(Pawn), NAME_BindInputsNow);
 }
@@ -1748,7 +1914,7 @@ void ULyraHeroComponent::AddAdditionalInputConfig(const ULyraInputConfig* InputC
 	{
 		return;
 	}
-	
+
 	const APlayerController* PC = GetController<APlayerController>();
 	check(PC);
 
@@ -1788,7 +1954,7 @@ void ULyraHeroComponent::Input_AbilityInputTagPressed(FGameplayTag InputTag)
 			{
 				LyraASC->AbilityInputTagPressed(InputTag);
 			}
-		}	
+		}
 	}
 }
 
@@ -1819,7 +1985,7 @@ void ULyraHeroComponent::Input_Move(const FInputActionValue& InputActionValue)
 	{
 		LyraController->SetIsAutoRunning(false);
 	}
-	
+
 	if (Controller)
 	{
 		const FVector2D Value = InputActionValue.Get<FVector2D>();
@@ -1847,7 +2013,7 @@ void ULyraHeroComponent::Input_LookMouse(const FInputActionValue& InputActionVal
 	{
 		return;
 	}
-	
+
 	const FVector2D Value = InputActionValue.Get<FVector2D>();
 
 	if (Value.X != 0.0f)
@@ -1869,7 +2035,7 @@ void ULyraHeroComponent::Input_LookStick(const FInputActionValue& InputActionVal
 	{
 		return;
 	}
-	
+
 	const FVector2D Value = InputActionValue.Get<FVector2D>();
 
 	const UWorld* World = GetWorld();
@@ -1902,7 +2068,7 @@ void ULyraHeroComponent::Input_AutoRun(const FInputActionValue& InputActionValue
 		{
 			// Toggle auto running
 			Controller->SetIsAutoRunning(!Controller->GetIsAutoRunning());
-		}	
+		}
 	}
 }
 
@@ -1952,7 +2118,7 @@ void ULyraHeroComponent::ClearAbilityCameraMode(const FGameplayAbilitySpecHandle
 
 ### 附录文件 7：`Source/LyraGame/AbilitySystem/LyraAbilitySet.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -2108,7 +2274,7 @@ protected:
 
 ### 附录文件 8：`Source/LyraGame/AbilitySystem/LyraAbilitySet.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -2192,7 +2358,7 @@ void ULyraAbilitySet::GiveToAbilitySystem(ULyraAbilitySystemComponent* LyraASC, 
 		// Must be authoritative to give or take ability sets.
 		return;
 	}
-	
+
 	// Grant the attribute sets.
 	for (int32 SetIndex = 0; SetIndex < GrantedAttributes.Num(); ++SetIndex)
 	{
@@ -2263,7 +2429,7 @@ void ULyraAbilitySet::GiveToAbilitySystem(ULyraAbilitySystemComponent* LyraASC, 
 
 ### 附录文件 9：`Source/LyraGame/AbilitySystem/LyraAbilitySystemComponent.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -2334,7 +2500,7 @@ public:
 
 	/** Sets the current tag relationship mapping, if null it will clear it out */
 	UE_API void SetTagRelationshipMapping(ULyraAbilityTagRelationshipMapping* NewMapping);
-	
+
 	/** Looks at ability tags and gathers additional required and blocking tags */
 	UE_API void GetAdditionalActivationTagRequirements(const FGameplayTagContainer& AbilityTags, FGameplayTagContainer& OutActivationRequired, FGameplayTagContainer& OutActivationBlocked) const;
 
@@ -2380,7 +2546,7 @@ protected:
 
 ### 附录文件 10：`Source/LyraGame/AbilitySystem/LyraAbilitySystemComponent.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -2439,7 +2605,7 @@ void ULyraAbilitySystemComponent::InitAbilityActorInfo(AActor* InOwnerActor, AAc
 PRAGMA_DISABLE_DEPRECATION_WARNINGS
 			ensureMsgf(AbilitySpec.Ability && AbilitySpec.Ability->GetInstancingPolicy() != EGameplayAbilityInstancingPolicy::NonInstanced, TEXT("InitAbilityActorInfo: All Abilities should be Instanced (NonInstanced is being deprecated due to usability issues)."));
 PRAGMA_ENABLE_DEPRECATION_WARNINGS
-	
+
 			TArray<UGameplayAbility*> Instances = AbilitySpec.GetAbilityInstances();
 			for (UGameplayAbility* AbilityInstance : Instances)
 			{
@@ -2499,7 +2665,7 @@ void ULyraAbilitySystemComponent::CancelAbilitiesByFunc(TShouldCancelAbilityFunc
 PRAGMA_DISABLE_DEPRECATION_WARNINGS
 		ensureMsgf(AbilitySpec.Ability->GetInstancingPolicy() != EGameplayAbilityInstancingPolicy::NonInstanced, TEXT("CancelAbilitiesByFunc: All Abilities should be Instanced (NonInstanced is being deprecated due to usability issues)."));
 PRAGMA_ENABLE_DEPRECATION_WARNINGS
-			
+
 		// Cancel all the spawned instances.
 		TArray<UGameplayAbility*> Instances = AbilitySpec.GetAbilityInstances();
 		for (UGameplayAbility* AbilityInstance : Instances)
@@ -2786,7 +2952,7 @@ void ULyraAbilitySystemComponent::HandleAbilityFailed(const UGameplayAbility* Ab
 	if (const ULyraGameplayAbility* LyraAbility = Cast<const ULyraGameplayAbility>(Ability))
 	{
 		LyraAbility->OnAbilityFailedToActivate(FailureReason);
-	}	
+	}
 }
 
 bool ULyraAbilitySystemComponent::IsActivationGroupBlocked(ELyraAbilityActivationGroup Group) const
@@ -2915,7 +3081,7 @@ void ULyraAbilitySystemComponent::GetAbilityTargetData(const FGameplayAbilitySpe
 
 ### 附录文件 11：`Source/LyraGame/AbilitySystem/Abilities/LyraGameplayAbility.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3143,7 +3309,7 @@ protected:
 
 ### 附录文件 12：`Source/LyraGame/AbilitySystem/Abilities/LyraGameplayAbility.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3266,7 +3432,7 @@ void ULyraGameplayAbility::NativeOnAbilityFailedToActivate(const FGameplayTagCon
 				bSimpleFailureFound = true;
 			}
 		}
-		
+
 		if (UAnimMontage* pMontage = FailureTagToAnimMontage.FindRef(Reason))
 		{
 			FLyraAbilityMontageFailureMessage Message;
@@ -3495,7 +3661,7 @@ bool ULyraGameplayAbility::DoesAbilitySatisfyTagRequirements(const UAbilitySyste
 	if (AllBlockedTags.Num() || AllRequiredTags.Num())
 	{
 		static FGameplayTagContainer AbilitySystemComponentTags;
-		
+
 		AbilitySystemComponentTags.Reset();
 		AbilitySystemComponent.GetOwnedGameplayTags(AbilitySystemComponentTags);
 
@@ -3695,7 +3861,7 @@ void ULyraGameplayAbility::ClearCameraMode()
 
 ### 附录文件 13：`Source/LyraGame/Player/LyraPlayerController.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3791,7 +3957,7 @@ public:
 	//~ILyraCameraAssistInterface interface
 	UE_API virtual void OnCameraPenetratingTarget() override;
 	//~End of ILyraCameraAssistInterface interface
-	
+
 	//~ILyraTeamAgentInterface interface
 	UE_API virtual void SetGenericTeamId(const FGenericTeamId& NewTeamID) override;
 	UE_API virtual FGenericTeamId GetGenericTeamId() const override;
@@ -3829,7 +3995,7 @@ protected:
 	//~End of APlayerController interface
 
 	UE_API void OnSettingsChanged(ULyraSettingsShared* Settings);
-	
+
 	UE_API void OnStartAutoRun();
 	UE_API void OnEndAutoRun();
 
@@ -3870,7 +4036,7 @@ class ALyraReplayPlayerController : public ALyraPlayerController
 
 ### 附录文件 14：`Source/LyraGame/Player/LyraPlayerController.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3960,7 +4126,7 @@ void ALyraPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	// Disable replicating the PC target view as it doesn't work well for replays or client-side spectating.
-	// The engine TargetViewRotation is only set in APlayerController::TickActor if the server knows ahead of time that 
+	// The engine TargetViewRotation is only set in APlayerController::TickActor if the server knows ahead of time that
 	// a specific pawn is being spectated and it only replicates down for COND_OwnerOnly.
 	// In client-saved replays, COND_OwnerOnly is never true and the target pawn is not always known at the time of recording.
 	// To support client-saved replays, the replication of this was moved to ReplicatedViewRotation and updated in PlayerTick.
@@ -3983,7 +4149,7 @@ void ALyraPlayerController::PlayerTick(float DeltaTime)
 		{
 			const FRotator MovementRotation(0.0f, GetControlRotation().Yaw, 0.0f);
 			const FVector MovementDirection = MovementRotation.RotateVector(FVector::ForwardVector);
-			CurrentPawn->AddMovementInput(MovementDirection, 1.0f);	
+			CurrentPawn->AddMovementInput(MovementDirection, 1.0f);
 		}
 	}
 
@@ -4161,7 +4327,7 @@ void ALyraPlayerController::OnRep_PlayerState()
 	// When we're a client connected to a remote server, the player controller may replicate later than the PlayerState and AbilitySystemComponent.
 	// However, TryActivateAbilitiesOnSpawn depends on the player controller being replicated in order to check whether on-spawn abilities should
 	// execute locally. Therefore once the PlayerController exists and has resolved the PlayerState, try once again to activate on-spawn abilities.
-	// On other net modes the PlayerController will never replicate late, so LyraASC's own TryActivateAbilitiesOnSpawn calls will succeed. The handling 
+	// On other net modes the PlayerController will never replicate late, so LyraASC's own TryActivateAbilitiesOnSpawn calls will succeed. The handling
 	// here is only for when the PlayerState and ASC replicated before the PC and incorrectly thought the abilities were not for the local player.
 	if (GetWorld()->IsNetMode(NM_Client))
 	{
@@ -4314,7 +4480,7 @@ void ALyraPlayerController::OnStartAutoRun()
 	{
 		LyraASC->SetLooseGameplayTagCount(LyraGameplayTags::Status_AutoRunning, 1);
 		K2_OnStartAutoRun();
-	}	
+	}
 }
 
 void ALyraPlayerController::OnEndAutoRun()
@@ -4340,7 +4506,7 @@ void ALyraPlayerController::UpdateForceFeedback(IInputInterface* InputInterface,
 			}
 		}
 	}
-	
+
 	InputInterface->SetForceFeedbackChannelValues(ControllerId, FForceFeedbackValues());
 }
 
@@ -4501,7 +4667,7 @@ void ALyraReplayPlayerController::OnPlayerStatePawnSet(APlayerState* ChangedPlay
 
 ### 附录文件 15：`Source/LyraGame/Weapons/LyraGameplayAbility_RangedWeapon.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -4599,7 +4765,7 @@ protected:
 	// Does a single weapon trace, either sweeping or ray depending on if SweepRadius is above zero
 	FHitResult WeaponTrace(const FVector& StartTrace, const FVector& EndTrace, float SweepRadius, bool bIsSimulated, OUT TArray<FHitResult>& OutHitResults) const;
 
-	// Wrapper around WeaponTrace to handle trying to do a ray trace before falling back to a sweep trace if there were no hits and SweepRadius is above zero 
+	// Wrapper around WeaponTrace to handle trying to do a ray trace before falling back to a sweep trace if there were no hits and SweepRadius is above zero
 	FHitResult DoSingleBulletTrace(const FVector& StartTrace, const FVector& EndTrace, float SweepRadius, bool bIsSimulated, OUT TArray<FHitResult>& OutHits) const;
 
 	// Traces all of the bullets in a single cartridge
@@ -4631,7 +4797,7 @@ private:
 
 ### 附录文件 16：`Source/LyraGame/Weapons/LyraGameplayAbility_RangedWeapon.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -4779,7 +4945,7 @@ ECollisionChannel ULyraGameplayAbility_RangedWeapon::DetermineTraceChannel(FColl
 FHitResult ULyraGameplayAbility_RangedWeapon::WeaponTrace(const FVector& StartTrace, const FVector& EndTrace, float SweepRadius, bool bIsSimulated, OUT TArray<FHitResult>& OutHitResults) const
 {
 	TArray<FHitResult> HitResults;
-	
+
 	FCollisionQueryParams TraceParams(SCENE_QUERY_STAT(WeaponTrace), /*bTraceComplex=*/ true, /*IgnoreActor=*/ GetAvatarActorFromActorInfo());
 	TraceParams.bReturnPhysicalMaterial = true;
 	AddAdditionalTraceIgnoreActors(TraceParams);
@@ -4845,7 +5011,7 @@ FVector ULyraGameplayAbility_RangedWeapon::GetWeaponTargetingSourceLocation() co
 FTransform ULyraGameplayAbility_RangedWeapon::GetTargetingTransform(APawn* SourcePawn, ELyraAbilityTargetingSource Source) const
 {
 	check(SourcePawn);
-	AController* SourcePawnController = SourcePawn->GetController(); 
+	AController* SourcePawnController = SourcePawn->GetController();
 	ULyraWeaponStateComponent* WeaponStateComponent = (SourcePawnController != nullptr) ? SourcePawnController->FindComponentByClass<ULyraWeaponStateComponent>() : nullptr;
 
 	// The caller should determine the transform without calling this if the mode is custom!
@@ -4881,7 +5047,7 @@ FTransform ULyraGameplayAbility_RangedWeapon::GetTargetingTransform(APawn* Sourc
 			CamRot = Controller->GetControlRotation();
 		}
 
-		// Determine initial focal point to 
+		// Determine initial focal point to
 		FVector AimDir = CamRot.Vector().GetSafeNormal();
 		FocalLoc = CamLoc + (AimDir * FocalDistance);
 
@@ -5234,7 +5400,7 @@ void ULyraGameplayAbility_RangedWeapon::StartRangedWeaponTargeting()
 
 ### 附录文件 17：`Source/LyraGame/Weapons/LyraRangedWeaponInstance.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -5275,7 +5441,7 @@ public:
 	{
 		return BulletsPerCartridge;
 	}
-	
+
 	/** Returns the current spread angle (in degrees, diametrical) */
 	float GetCalculatedSpreadAngle() const
 	{
@@ -5350,7 +5516,7 @@ protected:
 	// but can be other shapes to do things like punish overheating by adding progressively more heat.
 	UPROPERTY(EditAnywhere, Category="Spread|Fire Params")
 	FRuntimeFloatCurve HeatToHeatPerShotCurve;
-	
+
 	// A curve that maps the current heat to the heat cooldown rate per second
 	// This is typically a flat curve with a single data point indicating how fast the heat
 	// wears off, but can be other shapes to do things like punish overheating by slowing down
@@ -5491,7 +5657,7 @@ private:
 
 ### 附录文件 18：`Source/LyraGame/Weapons/LyraRangedWeaponInstance.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -5570,7 +5736,7 @@ void ULyraRangedWeaponInstance::Tick(float DeltaSeconds)
 {
 	APawn* Pawn = GetPawn();
 	check(Pawn != nullptr);
-	
+
 	const bool bMinSpread = UpdateSpread(DeltaSeconds);
 	const bool bMinMultipliers = UpdateMultipliers(DeltaSeconds);
 
@@ -5651,7 +5817,7 @@ bool ULyraRangedWeaponInstance::UpdateSpread(float DeltaSeconds)
 		CurrentHeat = ClampHeat(CurrentHeat - (CooldownRate * DeltaSeconds));
 		CurrentSpreadAngle = HeatToSpreadCurve.GetRichCurveConst()->Eval(CurrentHeat);
 	}
-	
+
 	float MinSpread;
 	float MaxSpread;
 	ComputeSpreadRange(/*out*/ MinSpread, /*out*/ MaxSpread);
@@ -5716,7 +5882,7 @@ bool ULyraRangedWeaponInstance::UpdateMultipliers(float DeltaSeconds)
 
 ### 附录文件 19：`Source/LyraGame/AbilitySystem/Executions/LyraDamageExecution.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -5752,7 +5918,7 @@ protected:
 
 ### 附录文件 20：`Source/LyraGame/AbilitySystem/Executions/LyraDamageExecution.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -5899,7 +6065,7 @@ void ULyraDamageExecution::Execute_Implementation(const FGameplayEffectCustomExe
 
 ### 附录文件 21：`Source/LyraGame/AbilitySystem/Attributes/LyraHealthSet.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -5985,12 +6151,12 @@ private:
 	// Used to track when the health reaches 0.
 	bool bOutOfHealth;
 
-	// Store the health before any changes 
+	// Store the health before any changes
 	float MaxHealthBeforeAttributeChange;
 	float HealthBeforeAttributeChange;
 
 	// -------------------------------------------------------------------
-	//	Meta Attribute (please keep attributes that aren't 'stateful' below 
+	//	Meta Attribute (please keep attributes that aren't 'stateful' below
 	// -------------------------------------------------------------------
 
 	// Incoming healing. This is mapped directly to +Health
@@ -6007,7 +6173,7 @@ private:
 
 ### 附录文件 22：`Source/LyraGame/AbilitySystem/Attributes/LyraHealthSet.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -6057,7 +6223,7 @@ void ULyraHealthSet::OnRep_Health(const FGameplayAttributeData& OldValue)
 
 	const float CurrentHealth = GetHealth();
 	const float EstimatedMagnitude = CurrentHealth - OldValue.GetCurrentValue();
-	
+
 	OnHealthChanged.Broadcast(nullptr, nullptr, nullptr, EstimatedMagnitude, OldValue.GetCurrentValue(), CurrentHealth);
 
 	if (!bOutOfHealth && CurrentHealth <= 0.0f)
@@ -6248,7 +6414,7 @@ void ULyraHealthSet::ClampAttribute(const FGameplayAttribute& Attribute, float& 
 
 ### 附录文件 23：`Source/LyraGame/Character/LyraHealthComponent.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -6390,7 +6556,7 @@ protected:
 
 ### 附录文件 24：`Source/LyraGame/Character/LyraHealthComponent.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -6709,7 +6875,7 @@ void ULyraHealthComponent::DamageSelfDestruct(bool bFellOutOfWorld)
 
 ### 附录文件 25：`Source/LyraGame/AbilitySystem/Abilities/LyraGameplayAbility_Death.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -6764,7 +6930,7 @@ protected:
 
 ### 附录文件 26：`Source/LyraGame/AbilitySystem/Abilities/LyraGameplayAbility_Death.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -6862,7 +7028,7 @@ void ULyraGameplayAbility_Death::FinishDeath()
 
 ### 附录文件 27：`Source/LyraGame/Weapons/LyraWeaponInstance.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。正文 46.1~46.3 分析该文件。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。正文 46.1~46.3 分析该文件。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -6918,11 +7084,11 @@ protected:
 	/**
 	 * Device properties that should be applied while this weapon is equipped.
 	 * These properties will be played in with the "Looping" flag enabled, so they will
-	 * play continuously until this weapon is unequipped! 
+	 * play continuously until this weapon is unequipped!
 	 */
 	UPROPERTY(EditDefaultsOnly, Instanced, BlueprintReadOnly, Category = "Input Devices")
 	TArray<TObjectPtr<UInputDeviceProperty>> ApplicableDeviceProperties;
-	
+
 	// Choose the best layer from EquippedAnimSet or UneuippedAnimSet based on the specified gameplay tags
 	UFUNCTION(BlueprintCallable, BlueprintPure=false, Category=Animation)
 	UE_API TSubclassOf<UAnimInstance> PickBestAnimLayer(bool bEquipped, const FGameplayTagContainer& CosmeticTags) const;
@@ -6961,7 +7127,7 @@ private:
 
 ### 附录文件 28：`Source/LyraGame/Weapons/LyraWeaponInstance.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。正文 46.2 分析该文件。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。正文 46.2 分析该文件。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -7072,21 +7238,21 @@ void ULyraWeaponInstance::ApplyDeviceProperties()
 				// By default, the device property will be played on the Platform User's Primary Input Device.
 				// If you want to override this and set a specific device, then you can set the DeviceId parameter.
 				//Params.DeviceId = <some specific device id>;
-				
-				// Don't remove this property it was evaluated. We want the properties to be applied as long as we are holding the 
+
+				// Don't remove this property it was evaluated. We want the properties to be applied as long as we are holding the
 				// weapon, and will remove them manually in OnUnequipped
 				Params.bLooping = true;
-			
+
 				DevicePropertyHandles.Emplace(InputDeviceSubsystem->ActivateDeviceProperty(DeviceProp, Params));
 			}
-		}	
+		}
 	}
 }
 
 void ULyraWeaponInstance::RemoveDeviceProperties()
 {
 	const FPlatformUserId UserId = GetOwningUserId();
-	
+
 	if (UserId.IsValid() && !DevicePropertyHandles.IsEmpty())
 	{
 		// Remove any device properties that have been applied
@@ -7107,7 +7273,7 @@ void ULyraWeaponInstance::OnDeathStarted(AActor* OwningActor)
 
 ### 附录文件 29：`Source/LyraGame/Weapons/LyraWeaponSpawner.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。正文 46.5 分析该文件。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。正文 46.5 分析该文件。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -7137,8 +7303,8 @@ UCLASS(MinimalAPI, Blueprintable,BlueprintType)
 class ALyraWeaponSpawner : public AActor
 {
 	GENERATED_BODY()
-	
-public:	
+
+public:
 	// Sets default values for this actor's properties
 	UE_API ALyraWeaponSpawner();
 
@@ -7147,7 +7313,7 @@ protected:
 	UE_API virtual void BeginPlay() override;
 	UE_API virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-public:	
+public:
 	// Called every frame
 	UE_API virtual void Tick(float DeltaTime) override;
 
@@ -7165,7 +7331,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lyra|WeaponPickup")
 	float CoolDownTime;
 
-	//Delay between when the weapon is made available and when we check for a pawn standing in the spawner. Used to give the bIsWeaponAvailable OnRep time to fire and play FX. 
+	//Delay between when the weapon is made available and when we check for a pawn standing in the spawner. Used to give the bIsWeaponAvailable OnRep time to fire and play FX.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lyra|WeaponPickup")
 	float CheckExistingOverlapDelay;
 
@@ -7194,7 +7360,7 @@ public:
 	UFUNCTION()
 	UE_API void OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepHitResult);
 
-	//Check for pawns standing on pad when the weapon is spawned. 
+	//Check for pawns standing on pad when the weapon is spawned.
 	UE_API void CheckForExistingOverlaps();
 
 	UFUNCTION(BlueprintNativeEvent)
@@ -7232,7 +7398,7 @@ public:
 
 ### 附录文件 30：`Source/LyraGame/Weapons/LyraWeaponDebugSettings.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。正文 46.6 分析该文件。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。正文 46.6 分析该文件。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -7277,7 +7443,7 @@ public:
 
 ### 附录文件 31：`Source/LyraGame/Weapons/LyraDamageLogDebuggerComponent.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。正文 46.6 分析该文件。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。正文 46.6 分析该文件。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.

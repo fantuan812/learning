@@ -15,11 +15,11 @@
 | 适用范围 | 理解 Lyra 项目架构、确定源码入口、设计自己的模块化 UE 多人项目 |
 | 知识成熟度 | L2：源码与配置静态核对完成；本文不把未执行的 PIE、联机和打包步骤描述成运行结果 |
 | 官方参考 | [Lyra Sample Game](https://dev.epicgames.com/documentation/en-us/unreal-engine/lyra-sample-game-in-unreal-engine)、[Game Framework Component Manager](https://dev.epicgames.com/documentation/en-us/unreal-engine/game-framework-component-manager-in-unreal-engine) |
-| 最后更新 | 2026-08-13 |
+| 最后更新 | 2026-08-17 |
 
 ## 一、教程集交付什么
 
-本教程不是对目录逐文件翻译，而是围绕十条可以跟踪的运行链组织。
+本教程不是对目录逐文件翻译，而是围绕十四个可以跟踪的专题组织。
 
 | 篇号 | 主题 | 要回答的问题 | 主验证入口 |
 | --- | --- | --- | --- |
@@ -4127,3 +4127,4 @@ public:
 - 2026-08-13：47 拆分出 48 扩展插件篇，总览同步十条运行链与 39-48 阅读顺序。
 - 2026-08-14：系列扩展至 39-51（新增 49 UI 控件与表现、50 设置系统、51 GAS 扩展与能力费用），并为 42 武器实例/生成器、43 VerbMessage 消息协议、49 NumberPop/ContextEffects 补深挖；总览同步系列表与阅读顺序。
 - 2026-08-14：批次 2 落地——系列扩展至 39-52（新增 52 交互系统），并为 40 GameFeatureAction 家族、41 动画实例基类、49 CommonGame UI 管理层补深挖；总览同步系列表与阅读顺序。
+- 2026-08-17：源码证据补全——40/41/42/43/44/45/46/47/49/50/51/52 将原先正文仅概述、路径指引或伪代码的缺口改为真实 C++ 片段，并在 19 号路线图登记代码入口与剩余覆盖边界；39-52 仍不宣称穷举 Lyra 全部源码文件。

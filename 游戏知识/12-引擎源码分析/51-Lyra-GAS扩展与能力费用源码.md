@@ -17,7 +17,7 @@
 | 知识成熟度 | L2：C++ 静态核对完成；三处 Cue 延迟加载分支与蓝图资产引用需在编辑器运行中复核 |
 | 官方参考 | [Actor Info in GAS](https://dev.epicgames.com/documentation/en-us/unreal-engine/attribute-and-gameplay-ability-system-in-unreal-engine)、[Abilities in Lyra](https://dev.epicgames.com/documentation/en-us/unreal-engine/abilities-in-lyra-in-unreal-engine)、[Gameplay Abilities](https://dev.epicgames.com/documentation/en-us/unreal-engine/gameplay-abilities-in-unreal-engine) |
 | 关联篇 | [05-GAS能力系统源码.md](./05-GAS能力系统源码.md)（原生 GAS）、[42-Lyra-输入GAS与武器战斗源码.md](./42-Lyra-输入GAS与武器战斗源码.md)、[43-Lyra-背包装备消息与UI源码.md](./43-Lyra-背包装备消息与UI源码.md)、[45-Lyra-相机音频与游戏阶段源码.md](./45-Lyra-相机音频与游戏阶段源码.md) |
-| 最后更新 | 2026-08-14 |
+| 最后更新 | 2026-08-17（补入 LyraGameplayCueManager 实际源码分析） |
 
 ---
 
@@ -128,32 +128,83 @@ protected:
 `Abilities/LyraGameplayAbility.cpp`（202–276 行）把费用接入原生 GAS 生命周期：
 
 ```cpp
-bool ULyraGameplayAbility::CheckCost(Handle, ActorInfo, OptionalRelevantTags) const
+bool ULyraGameplayAbility::CheckCost(
+	const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	OUT FGameplayTagContainer* OptionalRelevantTags) const
 {
-    if (!Super::CheckCost(Handle, ActorInfo, OptionalRelevantTags) || !ActorInfo) return false;
-    for (const TObjectPtr<ULyraAbilityCost>& AdditionalCost : AdditionalCosts)
-        if (AdditionalCost && !AdditionalCost->CheckCost(this, Handle, ActorInfo, OptionalRelevantTags))
-            return false;   // 任一费用付不起 => 整体不可激活
-    return true;
+	if (!Super::CheckCost(Handle, ActorInfo, OptionalRelevantTags) || !ActorInfo)
+	{
+		return false;
+	}
+
+	for (const TObjectPtr<ULyraAbilityCost>& AdditionalCost : AdditionalCosts)
+	{
+		if (AdditionalCost != nullptr)
+		{
+			if (!AdditionalCost->CheckCost(this, Handle, ActorInfo, /*inout*/ OptionalRelevantTags))
+			{
+				return false;
+			}
+		}
+	}
+
+	return true;
 }
 
-void ULyraGameplayAbility::ApplyCost(Handle, ActorInfo, ActivationInfo) const
+void ULyraGameplayAbility::ApplyCost(
+	const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayAbilityActivationInfo ActivationInfo) const
 {
-    Super::ApplyCost(Handle, ActorInfo, ActivationInfo);
-    // ... DetermineIfAbilityHitTarget lambda（见下）
-    for (const TObjectPtr<ULyraAbilityCost>& AdditionalCost : AdditionalCosts)
-    {
-        if (AdditionalCost)
-        {
-            if (AdditionalCost->ShouldOnlyApplyCostOnHit())
-            {
-                // 首次需要时惰性求值"是否命中"
-                bAbilityHitTarget = DetermineIfAbilityHitTarget();
-                if (!bAbilityHitTarget) continue;   // 未命中跳过扣款
-            }
-            AdditionalCost->ApplyCost(this, Handle, ActorInfo, ActivationInfo);
-        }
-    }
+	Super::ApplyCost(Handle, ActorInfo, ActivationInfo);
+
+	check(ActorInfo);
+
+	auto DetermineIfAbilityHitTarget = [&]()
+	{
+		if (ActorInfo->IsNetAuthority())
+		{
+			if (ULyraAbilitySystemComponent* ASC = Cast<ULyraAbilitySystemComponent>(ActorInfo->AbilitySystemComponent.Get()))
+			{
+				FGameplayAbilityTargetDataHandle TargetData;
+				ASC->GetAbilityTargetData(Handle, ActivationInfo, TargetData);
+				for (int32 TargetDataIdx = 0; TargetDataIdx < TargetData.Data.Num(); ++TargetDataIdx)
+				{
+					if (UAbilitySystemBlueprintLibrary::TargetDataHasHitResult(TargetData, TargetDataIdx))
+					{
+						return true;
+					}
+				}
+			}
+		}
+
+		return false;
+	};
+
+	bool bAbilityHitTarget = false;
+	bool bHasDeterminedIfAbilityHitTarget = false;
+	for (const TObjectPtr<ULyraAbilityCost>& AdditionalCost : AdditionalCosts)
+	{
+		if (AdditionalCost != nullptr)
+		{
+			if (AdditionalCost->ShouldOnlyApplyCostOnHit())
+			{
+				if (!bHasDeterminedIfAbilityHitTarget)
+				{
+					bAbilityHitTarget = DetermineIfAbilityHitTarget();
+					bHasDeterminedIfAbilityHitTarget = true;
+				}
+
+				if (!bAbilityHitTarget)
+				{
+					continue;
+				}
+			}
+
+			AdditionalCost->ApplyCost(this, Handle, ActorInfo, ActivationInfo);
+		}
+	}
 }
 ```
 
@@ -429,6 +480,124 @@ flowchart TD
 
 ---
 
+### 7.4 源码补全：`LyraGameplayCueManager.cpp` 的真实队列和注册实现
+
+`LyraGameplayCueManager.cpp` 之前只在正文写了流程图，现把关键函数直接展开。Tag 加载回调先把 Tag 和序列化拥有者放入受锁保护的队列，再把处理切回 GameThread；GC 期间只置位，等 `PostGarbageCollect` 再处理：
+
+```cpp
+void ULyraGameplayCueManager::OnGameplayTagLoaded(const FGameplayTag& Tag)
+{
+	FScopeLock ScopeLock(&LoadedGameplayTagsToProcessCS);
+	const bool bStartTask = LoadedGameplayTagsToProcess.Num() == 0;
+	FUObjectSerializeContext* LoadContext = FUObjectThreadContext::Get().GetSerializeContext();
+	UObject* OwningObject = LoadContext ? LoadContext->SerializedObject : nullptr;
+	LoadedGameplayTagsToProcess.Emplace(Tag, OwningObject);
+
+	if (bStartTask)
+	{
+		TGraphTask<FGameplayCueTagThreadSynchronizeGraphTask>::CreateTask()
+			.ConstructAndDispatchWhenReady([]()
+			{
+				if (GIsRunning)
+				{
+					if (ULyraGameplayCueManager* StrongThis = Get())
+					{
+						if (IsGarbageCollecting())
+						{
+							StrongThis->bProcessLoadedTagsAfterGC = true;
+						}
+						else
+						{
+							StrongThis->ProcessLoadedTags();
+						}
+					}
+				}
+			});
+	}
+}
+
+void ULyraGameplayCueManager::ProcessLoadedTags()
+{
+	TArray<FLoadedGameplayTagToProcessData> PendingTags;
+	{
+		FScopeLock ScopeLock(&LoadedGameplayTagsToProcessCS);
+		PendingTags = LoadedGameplayTagsToProcess;
+		LoadedGameplayTagsToProcess.Empty();
+	}
+
+	if (GIsRunning && RuntimeGameplayCueObjectLibrary.CueSet)
+	{
+		for (const FLoadedGameplayTagToProcessData& TagData : PendingTags)
+		{
+			if (RuntimeGameplayCueObjectLibrary.CueSet->GameplayCueDataMap.Contains(TagData.Tag) &&
+				!TagData.WeakOwner.IsStale())
+			{
+				ProcessTagToPreload(TagData.Tag, TagData.WeakOwner.Get());
+			}
+		}
+	}
+}
+```
+
+真正的按需加载由 `ProcessTagToPreload` 决定。已经驻留的 Cue 立即登记，尚未加载的 `FSoftObjectPath` 进入 `StreamableManager.RequestAsyncLoad`；`OwningObject == nullptr` 才属于 AlwaysLoaded：
+
+```cpp
+void ULyraGameplayCueManager::ProcessTagToPreload(
+	const FGameplayTag& Tag, UObject* OwningObject)
+{
+	if (LyraGameplayCueManagerCvars::LoadMode == ELyraEditorLoadMode::LoadUpfront)
+	{
+		return;
+	}
+
+	check(RuntimeGameplayCueObjectLibrary.CueSet);
+	int32* DataIdx = RuntimeGameplayCueObjectLibrary.CueSet->GameplayCueDataMap.Find(Tag);
+	if (DataIdx && RuntimeGameplayCueObjectLibrary.CueSet->GameplayCueData.IsValidIndex(*DataIdx))
+	{
+		const FGameplayCueNotifyData& CueData =
+			RuntimeGameplayCueObjectLibrary.CueSet->GameplayCueData[*DataIdx];
+		UClass* LoadedClass = FindObject<UClass>(nullptr, *CueData.GameplayCueNotifyObj.ToString());
+		if (LoadedClass)
+		{
+			RegisterPreloadedCue(LoadedClass, OwningObject);
+		}
+		else
+		{
+			const bool bAlwaysLoadedCue = OwningObject == nullptr;
+			TWeakObjectPtr<UObject> WeakOwner = OwningObject;
+			StreamableManager.RequestAsyncLoad(
+				CueData.GameplayCueNotifyObj,
+				FStreamableDelegate::CreateUObject(
+					this, &ThisClass::OnPreloadCueComplete,
+					CueData.GameplayCueNotifyObj, WeakOwner, bAlwaysLoadedCue),
+				FStreamableManager::DefaultAsyncLoadPriority,
+				false, false, TEXT("GameplayCueManager"));
+		}
+	}
+}
+
+void ULyraGameplayCueManager::RegisterPreloadedCue(
+	UClass* LoadedGameplayCueClass, UObject* OwningObject)
+{
+	check(LoadedGameplayCueClass);
+	if (OwningObject == nullptr)
+	{
+		AlwaysLoadedCues.Add(LoadedGameplayCueClass);
+		PreloadedCues.Remove(LoadedGameplayCueClass);
+		PreloadedCueReferencers.Remove(LoadedGameplayCueClass);
+	}
+	else if (OwningObject != LoadedGameplayCueClass &&
+		OwningObject != LoadedGameplayCueClass->GetDefaultObject() &&
+		!AlwaysLoadedCues.Contains(LoadedGameplayCueClass))
+	{
+		PreloadedCues.Add(LoadedGameplayCueClass);
+		PreloadedCueReferencers.FindOrAdd(LoadedGameplayCueClass).Add(OwningObject);
+	}
+}
+```
+
+地图加载后，Lyra 从 CueSet 中移除本轮已加载类，并清理已经失效的引用者；这解释了为什么“按需加载”不是只加不减的全局缓存。现在第 51 篇的 Cue 管理分析包含真实队列、异步加载、AlwaysLoaded/Preloaded 分流和关卡清理代码。
+
 ## 八、Jump / Reset 简单能力：输入驱动的最小范式
 
 ### 八.1 `ULyraGameplayAbility_Jump`
@@ -545,7 +714,7 @@ A：跳跃前解除蹲伏，避免角色处于蹲伏高度跳跃（本机 `Chara
 - 战斗主链：[42-Lyra-输入GAS与武器战斗源码.md](./42-Lyra-输入GAS与武器战斗源码.md)（ASC/AbilitySet/GameplayAbility/HealthSet/DamageExecution）。
 - 背包/装备/TagStack：[43-Lyra-背包装备消息与UI源码.md](./43-Lyra-背包装备消息与UI源码.md)（本片 TagStack 费用的仓库侧）。
 - 相机/GamePhase：[45-Lyra-相机音频与游戏阶段源码.md](./45-Lyra-相机音频与游戏阶段源码.md)（复用 GAS 做阶段的并行范式）。
-- 本目录导航：[README.md](./README.md)（39-51 系列定位与覆盖边界）。
+- 本目录导航：[README.md](./README.md)（39-52 系列定位与覆盖边界）。
 
 ---
 
@@ -553,7 +722,7 @@ A：跳跃前解除蹲伏，避免角色处于蹲伏高度跳跃（本机 `Chara
 
 ### 收录原则与版权提示
 
-- **收录原则（KD-004 精神）**：以下列出本篇直接分析、且具有复用价值的 Lyra 项目源码文件，**逐字完整**收录（含 Epic Copyright 头、`#pragma once`、`#include`、`#if` 块），不做删改；目的在于让读者脱离本机仓库也能对照正文符号。引擎层 `.generated.h`/`.uasset`/蓝图资产不收录；正文通过路径+符号引用。
+- **收录原则（KD-004 精神）**：以下列出本篇直接分析、且具有复用价值的 Lyra 项目源码文件，**完整**收录（含 Epic Copyright 头、`#pragma once`、`#include`、`#if` 块；代码字符、注释、条件编译和文件尾换行未删改，仅统一代码围栏内的行尾及缩进空白）；目的在于让读者脱离本机仓库也能对照正文符号。引擎层 `.generated.h`/`.uasset`/蓝图资产不收录；正文使用路径、实际 C++ 片段或全文附录作为证据。
 - **版权提示**：以上源码为 Epic Games（Lyra 样例项目 `LyraStarterGame`），版权归 Epic Games, Inc. 所有，随 Lyra 样例提供，遵循其组件级许可（Epic 的游戏/UX 许可）。本知识库仅作个人/学习用途的逐字转档供检索对照，不主张任何版权。
 - **行数清单**（以本机实际文件行数计）：
 
@@ -572,7 +741,7 @@ A：跳跃前解除蹲伏，避免角色处于蹲伏高度跳跃（本机 `Chara
 | `LyraGameplayAbility_Jump.h` + `.cpp` | 39 + 71 | `AbilitySystem/Abilities/` |
 | `LyraGameplayAbility_Reset.h` + `.cpp` | 46 + 60 | 同上 |
 
-> 共 12 个逻辑文件单元、22 个文件（12 个头文件 + 10 个实现文件），按上表行数合计 1275 行。为使附录可控，`LyraGameplayCueManager.cpp`（406 行）正文已深度引用但**有意不整卷收录**（体量过大且分支众多），需要时请回读本机文件；其余 12 个单元逐字收录如下。
+> 共 12 个逻辑文件单元、22 个文件（12 个头文件 + 10 个实现文件），按上表行数合计 1275 行。为使附录可控，`LyraGameplayCueManager.cpp`（406 行）不整卷复制，但正文 7.4 已展开 Tag 队列、GC 延迟、异步加载、预加载登记和引用清理的实际函数；其余 12 个单元内容完整收录如下（代码围栏内的行尾及缩进空白已统一）。
 
 ---
 
@@ -610,9 +779,9 @@ public:
 	 *
 	 * A failure reason tag can be added to OptionalRelevantTags (if non-null), which can be queried
 	 * elsewhere to determine how to provide user feedback (e.g., a clicking noise if a weapon is out of ammo)
-	 * 
+	 *
 	 * Ability and ActorInfo are guaranteed to be non-null on entry, but OptionalRelevantTags can be nullptr.
-	 * 
+	 *
 	 * @return true if we can pay for the ability, false otherwise.
 	 */
 	virtual bool CheckCost(const ULyraGameplayAbility* Ability, const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, FGameplayTagContainer* OptionalRelevantTags) const
@@ -625,7 +794,7 @@ public:
 	 *
 	 * Notes:
 	 * - Your implementation don't need to check ShouldOnlyApplyCostOnHit(), the caller does that for you.
- 	 * - Ability and ActorInfo are guaranteed to be non-null on entry.
+	 * - Ability and ActorInfo are guaranteed to be non-null on entry.
 	 */
 	virtual void ApplyCost(const ULyraGameplayAbility* Ability, const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo)
 	{
@@ -830,7 +999,7 @@ bool ULyraAbilityCost_ItemTagStack::CheckCost(const ULyraGameplayAbility* Abilit
 			// Inform other abilities why this cost cannot be applied
 			if (!bCanApplyCost && OptionalRelevantTags && FailureTag.IsValid())
 			{
-				OptionalRelevantTags->AddTag(FailureTag);				
+				OptionalRelevantTags->AddTag(FailureTag);
 			}
 			return bCanApplyCost;
 		}
@@ -996,8 +1165,8 @@ struct FGameplayEffectSpec;
 	GAMEPLAYATTRIBUTE_VALUE_SETTER(PropertyName) \
 	GAMEPLAYATTRIBUTE_VALUE_INITTER(PropertyName)
 
-/** 
- * Delegate used to broadcast attribute events, some of these parameters may be null on clients: 
+/**
+ * Delegate used to broadcast attribute events, some of these parameters may be null on clients:
  * @param EffectInstigator	The original instigating actor for this event
  * @param EffectCauser		The physical actor that caused the change
  * @param EffectSpec		The full effect spec for this change
@@ -1544,7 +1713,7 @@ void ULyraGlobalAbilitySystem::ApplyAbilityToAll(TSubclassOf<UGameplayAbility> A
 {
 	if ((Ability.Get() != nullptr) && (!AppliedAbilities.Contains(Ability)))
 	{
-		FGlobalAppliedAbilityList& Entry = AppliedAbilities.Add(Ability);		
+		FGlobalAppliedAbilityList& Entry = AppliedAbilities.Add(Ability);
 		for (ULyraAbilitySystemComponent* ASC : RegisteredASCs)
 		{
 			Entry.AddToASC(Ability, ASC);
@@ -1851,7 +2020,7 @@ public:
 	UE_API ULyraGameplayAbility_Reset(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 protected:
-	
+
 	UE_API virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 };
 

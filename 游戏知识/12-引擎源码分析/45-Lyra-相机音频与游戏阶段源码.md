@@ -341,7 +341,13 @@ void ULyraCameraComponent::GetCameraView(float DeltaTime, FMinimalViewInfo& Desi
 	DesiredView.Location = CameraModeView.Location;
 	DesiredView.Rotation = CameraModeView.Rotation;
 	DesiredView.FOV = CameraModeView.FieldOfView;
-	// ... 正交参数与 PostProcess 透传
+	DesiredView.OrthoWidth = OrthoWidth;
+	DesiredView.OrthoNearClipPlane = OrthoNearClipPlane;
+	DesiredView.OrthoFarClipPlane = OrthoFarClipPlane;
+	DesiredView.AspectRatio = AspectRatio;
+	DesiredView.bConstrainAspectRatio = bConstrainAspectRatio;
+	DesiredView.bUseFieldOfViewForLOD = bUseFieldOfViewForLOD;
+	DesiredView.ProjectionMode = ProjectionMode;
 
 	if (IsXRHeadTrackedCamera())
 	{
@@ -412,10 +418,15 @@ void ULyraGameplayAbility::SetCameraMode(TSubclassOf<ULyraCameraMode> CameraMode
 	}
 }
 
-void ULyraGameplayAbility::EndAbility(...)
+void ULyraGameplayAbility::EndAbility(
+	const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayAbilityActivationInfo ActivationInfo,
+	bool bReplicateEndAbility,
+	bool bWasCancelled)
 {
-	ClearCameraMode(); // 能力结束自动清除
-	Super::EndAbility(...);
+	ClearCameraMode();
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 ```
 
@@ -769,11 +780,23 @@ if (UserMix)
 {
 	UAudioModulationStatics::ActivateBusMix(World, UserMix);
 
-	const FSoundControlBusMixStage OverallControlBusMixStage =
-		UAudioModulationStatics::CreateBusMixStage(World, OverallControlBus, LyraSettingsLocal->GetOverallVolume());
-	// ... Music / SoundFX / Dialogue / VoiceChat 同理
+	if (OverallControlBus && MusicControlBus && SoundFXControlBus && DialogueControlBus && VoiceChatControlBus)
+	{
+		const FSoundControlBusMixStage OverallControlBusMixStage = UAudioModulationStatics::CreateBusMixStage(World, OverallControlBus, LyraSettingsLocal->GetOverallVolume());
+		const FSoundControlBusMixStage MusicControlBusMixStage = UAudioModulationStatics::CreateBusMixStage(World, MusicControlBus, LyraSettingsLocal->GetMusicVolume());
+		const FSoundControlBusMixStage SoundFXControlBusMixStage = UAudioModulationStatics::CreateBusMixStage(World, SoundFXControlBus, LyraSettingsLocal->GetSoundFXVolume());
+		const FSoundControlBusMixStage DialogueControlBusMixStage = UAudioModulationStatics::CreateBusMixStage(World, DialogueControlBus, LyraSettingsLocal->GetDialogueVolume());
+		const FSoundControlBusMixStage VoiceChatControlBusMixStage = UAudioModulationStatics::CreateBusMixStage(World, VoiceChatControlBus, LyraSettingsLocal->GetVoiceChatVolume());
 
-	UAudioModulationStatics::UpdateMix(World, UserMix, ControlBusMixStageArray);
+		TArray<FSoundControlBusMixStage> ControlBusMixStageArray;
+		ControlBusMixStageArray.Add(OverallControlBusMixStage);
+		ControlBusMixStageArray.Add(MusicControlBusMixStage);
+		ControlBusMixStageArray.Add(SoundFXControlBusMixStage);
+		ControlBusMixStageArray.Add(DialogueControlBusMixStage);
+		ControlBusMixStageArray.Add(VoiceChatControlBusMixStage);
+
+		UAudioModulationStatics::UpdateMix(World, UserMix, ControlBusMixStageArray);
+	}
 }
 
 ApplyDynamicRangeEffectsChains(LyraSettingsLocal->IsHDRAudioModeEnabled());
@@ -1379,7 +1402,7 @@ rg -n 'ShooterGame.GamePhase' "$Lyra\Plugins\GameFeatures\ShooterCore\Config\Tag
 
 ## 二十一、关联阅读
 
-- [39-Lyra源码总览与阅读路线](39-Lyra源码总览与阅读路线.md)：项目插件地图与 39-48 十篇 Lyra 文章的总览。
+- [39-Lyra源码总览与阅读路线](39-Lyra源码总览与阅读路线.md)：项目插件地图与 39-52 Lyra 文章的总览。
 - [40-Lyra-Experience与GameFeature源码](40-Lyra-Experience与GameFeature源码.md)：Experience 加载与阶段/出生门控的上下文。
 - [41-Lyra-Pawn初始化与模块化组件源码](41-Lyra-Pawn初始化与模块化组件源码.md)：HeroComponent 绑定 `DetermineCameraModeDelegate` 的初始化状态机。
 - [42-Lyra-输入GAS与武器战斗源码](42-Lyra-输入GAS与武器战斗源码.md)：Ability 的 `SetCameraMode`/`ClearCameraMode` 与瞄准散布联动。

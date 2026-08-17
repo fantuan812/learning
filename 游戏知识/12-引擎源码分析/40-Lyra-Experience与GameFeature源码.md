@@ -294,12 +294,14 @@ UGameFeaturesSubsystem::Get().LoadAndActivateGameFeaturePlugin(
 本机 UE 5.8 引擎中：
 
 ```cpp
-void UGameFeaturesSubsystem::LoadAndActivateGameFeaturePlugin(...)
+void UGameFeaturesSubsystem::LoadAndActivateGameFeaturePlugin(
+	const FString& PluginURL,
+	const FGameFeaturePluginLoadComplete& CompleteDelegate)
 {
-    ChangeGameFeatureTargetState(
-        PluginURL,
-        EGameFeatureTargetState::Active,
-        CompleteDelegate);
+	ChangeGameFeatureTargetState(
+		PluginURL,
+		EGameFeatureTargetState::Active,
+		CompleteDelegate);
 }
 ```
 
@@ -785,6 +787,7 @@ PawnClass、PawnData、动态组件、能力和输入都可能来自 Experience/
 > 本章是对第三、九、十一、十二、二十、二十一章的配套深挖：把 `Source\LyraGame\GameFeatures\` 下的全部 Action 与 Policy 逐类精读。
 > 基础仍然可先读「十一、第三阶段：执行 Experience Actions」对 `UGameFeatureActionSet` 的组装视角；本章聚焦单个 Action 自身的`激活→入世（AddToWorld）→收尾`生命周期，以及项目为何把"能力授予/输入/UI/分屏"全部下沉成可热插拔的 GameFeatureAction。
 > 事实口径：**本机 Lyra 5.8 源码静态核对（A 级）**；凡涉及"运行态行为 / 资产接线（编辑器里怎么配）"的部分一律标"`待验证`"，不作为既成事实。正文代码块均标注「节选/示意」或「逐字」，`mermaid` 图中文字仅为概念标注，非实际调用签名。
+> 代码证据补充：本篇正文中的“节选”代码均来自本机 5.8 源文件；“示意”只用于目录图或 Mermaid 概念图，不用伪代码替代实际 C++。
 
 ### 31.1 家族成员总览
 
@@ -900,64 +903,125 @@ struct FGameFeatureAbilitiesEntry
 **链路**（`AddToWorld → HandleActorExtension → AddActorAbilities → FindOrAddComponentForActor`）：
 
 ```cpp
-// === 节选 === GameFeatureAction_AddAbilities.cpp（本机 5.8）
-void UGameFeatureAction_AddAbilities::AddToWorld(const FWorldContext& WorldContext, const FGameFeatureStateChangeContext& ChangeContext)
+void UGameFeatureAction_AddAbilities::AddToWorld(
+	const FWorldContext& WorldContext,
+	const FGameFeatureStateChangeContext& ChangeContext)
 {
-	...
-	if (UGameFrameworkComponentManager* ComponentMan = UGameInstance::GetSubsystem<UGameFrameworkComponentManager>(GameInstance))
+	UWorld* World = WorldContext.World();
+	UGameInstance* GameInstance = WorldContext.OwningGameInstance;
+	FPerContextData& ActiveData = ContextData.FindOrAdd(ChangeContext);
+
+	if ((GameInstance != nullptr) && (World != nullptr) && World->IsGameWorld())
 	{
-		for (const FGameFeatureAbilitiesEntry& Entry : AbilitiesList)
+		if (UGameFrameworkComponentManager* ComponentMan =
+			UGameInstance::GetSubsystem<UGameFrameworkComponentManager>(GameInstance))
 		{
-			if (!Entry.ActorClass.IsNull())
+			int32 EntryIndex = 0;
+			for (const FGameFeatureAbilitiesEntry& Entry : AbilitiesList)
 			{
-				UGameFrameworkComponentManager::FExtensionHandlerDelegate AddAbilitiesDelegate =
-					UGameFrameworkComponentManager::FExtensionHandlerDelegate::CreateUObject(
-						this, &UGameFeatureAction_AddAbilities::HandleActorExtension, EntryIndex, ChangeContext);
-				TSharedPtr<FComponentRequestHandle> ExtensionRequestHandle =
-					ComponentMan->AddExtensionHandler(Entry.ActorClass, AddAbilitiesDelegate);
-				ActiveData.ComponentRequests.Add(ExtensionRequestHandle);
+				if (!Entry.ActorClass.IsNull())
+				{
+					UGameFrameworkComponentManager::FExtensionHandlerDelegate AddAbilitiesDelegate =
+						UGameFrameworkComponentManager::FExtensionHandlerDelegate::CreateUObject(
+							this, &UGameFeatureAction_AddAbilities::HandleActorExtension,
+							EntryIndex, ChangeContext);
+					TSharedPtr<FComponentRequestHandle> ExtensionRequestHandle =
+						ComponentMan->AddExtensionHandler(Entry.ActorClass, AddAbilitiesDelegate);
+					ActiveData.ComponentRequests.Add(ExtensionRequestHandle);
+					EntryIndex++;
+				}
 			}
 		}
 	}
 }
+
 void UGameFeatureAction_AddAbilities::HandleActorExtension(AActor* Actor, FName EventName, int32 EntryIndex, FGameFeatureStateChangeContext ChangeContext)
 {
-	...
-	if ((EventName == UGameFrameworkComponentManager::NAME_ExtensionRemoved) || (EventName == UGameFrameworkComponentManager::NAME_ReceiverRemoved))
-		RemoveActorAbilities(Actor, *ActiveData);
-	else if ((EventName == UGameFrameworkComponentManager::NAME_ExtensionAdded) || (EventName == ALyraPlayerState::NAME_LyraAbilityReady))
-		AddActorAbilities(Actor, Entry, *ActiveData);
+	FPerContextData* ActiveData = ContextData.Find(ChangeContext);
+	if (AbilitiesList.IsValidIndex(EntryIndex) && ActiveData)
+	{
+		const FGameFeatureAbilitiesEntry& Entry = AbilitiesList[EntryIndex];
+		if ((EventName == UGameFrameworkComponentManager::NAME_ExtensionRemoved) ||
+			(EventName == UGameFrameworkComponentManager::NAME_ReceiverRemoved))
+		{
+			RemoveActorAbilities(Actor, *ActiveData);
+		}
+		else if ((EventName == UGameFrameworkComponentManager::NAME_ExtensionAdded) ||
+			(EventName == ALyraPlayerState::NAME_LyraAbilityReady))
+		{
+			AddActorAbilities(Actor, Entry, *ActiveData);
+		}
+	}
 }
 ```
 
 ```cpp
-// === 节选 === AddActorAbilities（本机 5.8；已省略属性集写入细节）
 void UGameFeatureAction_AddAbilities::AddActorAbilities(AActor* Actor, const FGameFeatureAbilitiesEntry& AbilitiesEntry, FPerContextData& ActiveData)
 {
 	check(Actor);
 	if (!Actor->HasAuthority())
 	{
-		return;   // 服务器权威才授予；此处是静态核对出的分叉，运行路径待验证
+		return;
 	}
+
 	if (ActiveData.ActiveExtensions.Find(Actor) != nullptr)
 	{
-		return;   // 已授予过则直接返回（幂等）
+		return;
 	}
+
 	if (UAbilitySystemComponent* AbilitySystemComponent = FindOrAddComponentForActor<UAbilitySystemComponent>(Actor, AbilitiesEntry, ActiveData))
 	{
 		FActorExtensions AddedExtensions;
+		AddedExtensions.Abilities.Reserve(AbilitiesEntry.GrantedAbilities.Num());
+		AddedExtensions.Attributes.Reserve(AbilitiesEntry.GrantedAttributes.Num());
+		AddedExtensions.AbilitySetHandles.Reserve(AbilitiesEntry.GrantedAbilitySets.Num());
+
 		for (const FLyraAbilityGrant& Ability : AbilitiesEntry.GrantedAbilities)
+		{
 			if (!Ability.AbilityType.IsNull())
 			{
 				FGameplayAbilitySpec NewAbilitySpec(Ability.AbilityType.LoadSynchronous());
-				AddedExtensions.Abilities.Add(AbilitySystemComponent->GiveAbility(NewAbilitySpec));
+				FGameplayAbilitySpecHandle AbilityHandle = AbilitySystemComponent->GiveAbility(NewAbilitySpec);
+				AddedExtensions.Abilities.Add(AbilityHandle);
 			}
-		// ...属性集: NewObject + InitFromMetaDataTable + AddAttributeSetSubobject
+		}
+
+		for (const FLyraAttributeSetGrant& Attributes : AbilitiesEntry.GrantedAttributes)
+		{
+			if (!Attributes.AttributeSetType.IsNull())
+			{
+				TSubclassOf<UAttributeSet> SetType = Attributes.AttributeSetType.LoadSynchronous();
+				if (SetType)
+				{
+					UAttributeSet* NewSet = NewObject<UAttributeSet>(AbilitySystemComponent->GetOwner(), SetType);
+					if (!Attributes.InitializationData.IsNull())
+					{
+						UDataTable* InitData = Attributes.InitializationData.LoadSynchronous();
+						if (InitData)
+						{
+							NewSet->InitFromMetaDataTable(InitData);
+						}
+					}
+
+					AddedExtensions.Attributes.Add(NewSet);
+					AbilitySystemComponent->AddAttributeSetSubobject(NewSet);
+				}
+			}
+		}
+
 		ULyraAbilitySystemComponent* LyraASC = CastChecked<ULyraAbilitySystemComponent>(AbilitySystemComponent);
 		for (const TSoftObjectPtr<const ULyraAbilitySet>& SetPtr : AbilitiesEntry.GrantedAbilitySets)
+		{
 			if (const ULyraAbilitySet* Set = SetPtr.Get())
+			{
 				Set->GiveToAbilitySystem(LyraASC, &AddedExtensions.AbilitySetHandles.AddDefaulted_GetRef());
+			}
+		}
 		ActiveData.ActiveExtensions.Add(Actor, AddedExtensions);
+	}
+	else
+	{
+		UE_LOG(LogGameFeatures, Error, TEXT("Failed to find/add an ability component to '%s'. Abilities will not be granted."), *Actor->GetPathName());
 	}
 }
 ```
@@ -966,24 +1030,40 @@ void UGameFeatureAction_AddAbilities::AddActorAbilities(AActor* Actor, const FGa
 - **组件查找/按需新建**：`FindOrAddComponentForActor`（节选见下）区分"真正 native 组件"与"GameFrameworkComponentManager 系统创建的组件"——只有当组件是 CDO（`ComponentArchetype->HasAnyFlags(RF_ClassDefaultObject)`）或不存在时，才再走 `AddComponentRequest` 发起按需请求。注意头文件里模板化重载上方有 `@TODO: Just find, no add?` 注释，属源码自述的遗留改造点。
 
 ```cpp
-// === 节选 === FindOrAddComponentForActor（本机 5.8）
-bool bMakeComponentRequest = (Component == nullptr);
-if (Component)
+UActorComponent* UGameFeatureAction_AddAbilities::FindOrAddComponentForActor(
+	UClass* ComponentType, AActor* Actor,
+	const FGameFeatureAbilitiesEntry& AbilitiesEntry, FPerContextData& ActiveData)
 {
+	UActorComponent* Component = Actor->FindComponentByClass(ComponentType);
+
+	bool bMakeComponentRequest = (Component == nullptr);
+	if (Component)
+	{
 	if (Component->CreationMethod == EComponentCreationMethod::Native)
 	{
 		UObject* ComponentArchetype = Component->GetArchetype();
 		bMakeComponentRequest = ComponentArchetype->HasAnyFlags(RF_ClassDefaultObject);
 	}
-}
-if (bMakeComponentRequest)
-{
-	...
-	if (UGameFrameworkComponentManager* ComponentMan = UGameInstance::GetSubsystem<UGameFrameworkComponentManager>(GameInstance))
-	{
-		TSharedPtr<FComponentRequestHandle> RequestHandle = ComponentMan->AddComponentRequest(AbilitiesEntry.ActorClass, ComponentType);
-		ActiveData.ComponentRequests.Add(RequestHandle);
 	}
+	if (bMakeComponentRequest)
+	{
+		UWorld* World = Actor->GetWorld();
+		UGameInstance* GameInstance = World->GetGameInstance();
+
+		if (UGameFrameworkComponentManager* ComponentMan = UGameInstance::GetSubsystem<UGameFrameworkComponentManager>(GameInstance))
+		{
+			TSharedPtr<FComponentRequestHandle> RequestHandle = ComponentMan->AddComponentRequest(AbilitiesEntry.ActorClass, ComponentType);
+			ActiveData.ComponentRequests.Add(RequestHandle);
+		}
+
+		if (!Component)
+		{
+			Component = Actor->FindComponentByClass(ComponentType);
+			ensureAlways(Component);
+		}
+	}
+
+	return Component;
 }
 ```
 
@@ -994,18 +1074,29 @@ if (bMakeComponentRequest)
 同名内两个 Input Action 职责要分清：`AddInputBinding` 喂养的是**能力输入配置集合**（`ULyraInputConfig`，内含 Tag→InputAction 映射），是把"某个能力 Tag 绑定到某条原生输入"的迁移口径载体；`AddInputContextMapping` 处理的是**输入映射上下文 IMC 的激活/优先级/用户设置注册**（见 31.5）。
 
 ```cpp
-// === 节选 === GameFeatureAction_AddInputBinding.cpp（本机 5.8）
-void UGameFeatureAction_AddInputBinding::AddToWorld(const FWorldContext& WorldContext, const FGameFeatureStateChangeContext& ChangeContext)
+void UGameFeatureAction_AddInputBinding::AddToWorld(
+	const FWorldContext& WorldContext,
+	const FGameFeatureStateChangeContext& ChangeContext)
 {
-	...
-	if (UGameFrameworkComponentManager* ComponentManager = UGameInstance::GetSubsystem<UGameFrameworkComponentManager>(GameInstance))
+	UWorld* World = WorldContext.World();
+	UGameInstance* GameInstance = WorldContext.OwningGameInstance;
+	FPerContextData& ActiveData = ContextData.FindOrAdd(ChangeContext);
+
+	if ((GameInstance != nullptr) && (World != nullptr) && World->IsGameWorld())
 	{
-		UGameFrameworkComponentManager::FExtensionHandlerDelegate AddAbilitiesDelegate =
-			UGameFrameworkComponentManager::FExtensionHandlerDelegate::CreateUObject(this, &ThisClass::HandlePawnExtension, ChangeContext);
-		ActiveData.ExtensionRequestHandles.Add(
-			ComponentManager->AddExtensionHandler(APawn::StaticClass(), AddAbilitiesDelegate));
+		if (UGameFrameworkComponentManager* ComponentManager =
+			UGameInstance::GetSubsystem<UGameFrameworkComponentManager>(GameInstance))
+		{
+			UGameFrameworkComponentManager::FExtensionHandlerDelegate AddAbilitiesDelegate =
+				UGameFrameworkComponentManager::FExtensionHandlerDelegate::CreateUObject(
+					this, &ThisClass::HandlePawnExtension, ChangeContext);
+			TSharedPtr<FComponentRequestHandle> ExtensionRequestHandle =
+				ComponentManager->AddExtensionHandler(APawn::StaticClass(), AddAbilitiesDelegate);
+			ActiveData.ExtensionRequestHandles.Add(ExtensionRequestHandle);
+		}
 	}
 }
+
 void UGameFeatureAction_AddInputBinding::AddInputMappingForPlayer(APawn* Pawn, FPerContextData& ActiveData)
 {
 	APlayerController* PlayerController = Cast<APlayerController>(Pawn->GetController());
@@ -1017,12 +1108,19 @@ void UGameFeatureAction_AddInputBinding::AddInputMappingForPlayer(APawn* Pawn, F
 			if (HeroComponent && HeroComponent->IsReadyToBindInputs())
 			{
 				for (const TSoftObjectPtr<const ULyraInputConfig>& Entry : InputConfigs)
+				{
 					if (const ULyraInputConfig* BindSet = Entry.Get())
+					{
 						HeroComponent->AddAdditionalInputConfig(BindSet);
+					}
+				}
 			}
 			ActiveData.PawnsAddedTo.AddUnique(Pawn);
 		}
-		else { /* UE_LOG LogGameFeatures Error：找不到 EnhancedInput 子系统，需在 config 开启 */ }
+		else
+		{
+			UE_LOG(LogGameFeatures, Error, TEXT("Failed to find `UEnhancedInputLocalPlayerSubsystem` for local player. Input mappings will not be added. Make sure you're set to use the EnhancedInput system via config file."));
+		}
 	}
 }
 ```
@@ -1035,37 +1133,75 @@ void UGameFeatureAction_AddInputBinding::AddInputMappingForPlayer(APawn* Pawn, F
 家族中唯一覆盖 Registering/Unregistering 的成员，因为它要和"用户输入设置"长期绑定，而非跟某个 Pawn 的世界生命周期绑定。
 
 ```cpp
-// === 节选 === GameFeatureAction_AddInputContextMapping.h（本机 5.8）
-USTRUCT()
-struct FInputMappingContextAndPriority
+void UGameFeatureAction_AddInputContextMapping::AddToWorld(
+	const FWorldContext& WorldContext,
+	const FGameFeatureStateChangeContext& ChangeContext)
 {
-	GENERATED_BODY()
-	TSoftObjectPtr<UInputMappingContext> InputMapping;   // meta=(AssetBundles="Client,Server")
-	int32 Priority = 0;                                  // 高优先级优先
-	bool bRegisterWithSettings = true;                   // 是否一并注册进用户设置
-};
-// meta = (DisplayName = "Add Input Mapping")
-class UGameFeatureAction_AddInputContextMapping final : public UGameFeatureAction_WorldActionBase
+	UWorld* World = WorldContext.World();
+	UGameInstance* GameInstance = WorldContext.OwningGameInstance;
+	FPerContextData& ActiveData = ContextData.FindOrAdd(ChangeContext);
+
+	if ((GameInstance != nullptr) && (World != nullptr) && World->IsGameWorld())
+	{
+		if (UGameFrameworkComponentManager* ComponentManager =
+			UGameInstance::GetSubsystem<UGameFrameworkComponentManager>(GameInstance))
+		{
+			UGameFrameworkComponentManager::FExtensionHandlerDelegate AddAbilitiesDelegate =
+				UGameFrameworkComponentManager::FExtensionHandlerDelegate::CreateUObject(
+					this, &ThisClass::HandleControllerExtension, ChangeContext);
+			TSharedPtr<FComponentRequestHandle> ExtensionRequestHandle =
+				ComponentManager->AddExtensionHandler(APlayerController::StaticClass(), AddAbilitiesDelegate);
+			ActiveData.ExtensionRequestHandles.Add(ExtensionRequestHandle);
+		}
+	}
+}
+
+void UGameFeatureAction_AddInputContextMapping::HandleControllerExtension(
+	AActor* Actor, FName EventName, FGameFeatureStateChangeContext ChangeContext)
 {
-public:
-	virtual void OnGameFeatureRegistering() override;
-	virtual void OnGameFeatureActivating(FGameFeatureActivatingContext& Context) override;
-	virtual void OnGameFeatureDeactivating(FGameFeatureDeactivatingContext& Context) override;
-	virtual void OnGameFeatureUnregistering() override;
-	...
-private:
-	FDelegateHandle RegisterInputContextMappingsForGameInstanceHandle;
-	void RegisterInputMappingContexts();
-	void RegisterInputContextMappingsForGameInstance(UGameInstance* GameInstance);
-	void RegisterInputMappingContextsForLocalPlayer(ULocalPlayer* LocalPlayer);
-	void UnregisterInputMappingContexts();
-	...
-};
+	APlayerController* AsController = CastChecked<APlayerController>(Actor);
+	FPerContextData& ActiveData = ContextData.FindOrAdd(ChangeContext);
+
+	// TODO Why does this code mix and match controllers and local players? ControllersAddedTo is never modified
+	if ((EventName == UGameFrameworkComponentManager::NAME_ExtensionRemoved) ||
+		(EventName == UGameFrameworkComponentManager::NAME_ReceiverRemoved))
+	{
+		RemoveInputMapping(AsController, ActiveData);
+	}
+	else if ((EventName == UGameFrameworkComponentManager::NAME_ExtensionAdded) ||
+		(EventName == ULyraHeroComponent::NAME_BindInputsNow))
+	{
+		AddInputMappingForPlayer(AsController->GetLocalPlayer(), ActiveData);
+	}
+}
+
+void UGameFeatureAction_AddInputContextMapping::AddInputMappingForPlayer(
+	UPlayer* Player, FPerContextData& ActiveData)
+{
+	if (ULocalPlayer* LocalPlayer = Cast<ULocalPlayer>(Player))
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* InputSystem =
+			LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>())
+		{
+			for (const FInputMappingContextAndPriority& Entry : InputMappings)
+			{
+				if (const UInputMappingContext* IMC = Entry.InputMapping.Get())
+				{
+					InputSystem->AddMappingContext(IMC, Entry.Priority);
+				}
+			}
+		}
+		else
+		{
+			UE_LOG(LogGameFeatures, Error, TEXT("Failed to find `UEnhancedInputLocalPlayerSubsystem` for local player. Input mappings will not be added. Make sure you're set to use the EnhancedInput system via config file."));
+		}
+	}
+}
 ```
 
-- **软引用加载**：`RegisterInputMappingContextsForLocalPlayer` 里用 `ULyraAssetManager::GetAsset(Entry.InputMapping)`（节选）把 `TSoftObjectPtr<UInputMappingContext>` 软引用真正加载出来；只有 `bRegisterWithSettings == true` 的条目才进一步 `UEnhancedInputUserSettings::RegisterInputMappingContext(IMC)`，把 IMC 登记进用户的可定制输入设置。
+- **软引用加载**：`RegisterInputMappingContextsForLocalPlayer` 里用 `ULyraAssetManager::GetAsset(Entry.InputMapping)` 把 `TSoftObjectPtr<UInputMappingContext>` 软引用加载出来；只有 `bRegisterWithSettings == true` 的条目才进一步注册进用户的可定制输入设置。
 - **注册/反注销对称**：Registering 阶段绑定 `OnStartGameInstance` 与 `OnLocalPlayerAdded/Removed`，并对当前所有 GameInstance/LocalPlayer 立即铺开；Unregistering 阶段按同一遍路全部撤除。
-- **激活期**：`AddToWorld` 对 `APlayerController` 注册扩展处理器，`HandleControllerExtension` 在 `NAME_BindInputsNow`/`ExtensionAdded` 时 `InputSystem->AddMappingContext(IMC, Priority)`，反向 `RemoveMappingContext`。源码里 `HandleControllerExtension` 注释 `// TODO Why does this code mix and match controllers and local players?` 标明"Controller 与 LocalPlayer 混用、`ControllersAddedTo` 从未被改写"是它自认的遗留问题——这一点如实标注，不当作设计优点。
+- **激活期**：上面的真实函数对 `APlayerController` 注册扩展处理器，`HandleControllerExtension` 在 `NAME_BindInputsNow`/`ExtensionAdded` 时调用 `InputSystem->AddMappingContext(IMC, Priority)`，反向 `RemoveMappingContext`。源码里的 TODO 也保留了 Controller 与 LocalPlayer 混用、`ControllersAddedTo` 未改写的遗留问题。
 
 ### 31.6 `UGameFeatureAction_AddWidgets`：按 Layer/Slot Tag 推 UMG 控件
 
@@ -1087,42 +1223,118 @@ struct FLyraHUDElementEntry
 	TSoftClassPtr<UUserWidget> WidgetClass;               // meta=(AssetBundles="Client")
 	FGameplayTag SlotID;
 };
-// meta = (DisplayName = "Add Widgets")
+UCLASS(MinimalAPI, meta = (DisplayName = "Add Widgets"))
 class UGameFeatureAction_AddWidgets final : public UGameFeatureAction_WorldActionBase
 {
-	...
+	GENERATED_BODY()
+
+	public:
 	virtual void OnGameFeatureDeactivating(FGameFeatureDeactivatingContext& Context) override;
 #if WITH_EDITORONLY_DATA
 	virtual void AddAdditionalAssetBundleData(FAssetBundleData& AssetBundleData) override;
 #endif
+
 private:
-	TArray<FLyraHUDLayoutRequest> Layout;   // TitleProperty="{LayerID} -> {LayoutClass}"
-	TArray<FLyraHUDElementEntry> Widgets;   // TitleProperty="{SlotID} -> {WidgetClass}"
+	UPROPERTY(EditAnywhere, Category=UI, meta=(TitleProperty="{LayerID} -> {LayoutClass}"))
+	TArray<FLyraHUDLayoutRequest> Layout;
+	UPROPERTY(EditAnywhere, Category=UI, meta=(TitleProperty="{SlotID} -> {WidgetClass}"))
+	TArray<FLyraHUDElementEntry> Widgets;
+
+private:
+	struct FPerActorData
+	{
+		TArray<TWeakObjectPtr<UCommonActivatableWidget>> LayoutsAdded;
+		TArray<FUIExtensionHandle> ExtensionHandles;
+	};
+
+	struct FPerContextData
+	{
+		TArray<TSharedPtr<FComponentRequestHandle>> ComponentRequests;
+		TMap<FObjectKey, FPerActorData> ActorData;
+	};
+
+	TMap<FGameFeatureStateChangeContext, FPerContextData> ContextData;
+	virtual void AddToWorld(const FWorldContext& WorldContext,
+		const FGameFeatureStateChangeContext& ChangeContext) override;
+	void Reset(FPerContextData& ActiveData);
+	void HandleActorExtension(AActor* Actor, FName EventName,
+		FGameFeatureStateChangeContext ChangeContext);
+	void AddWidgets(AActor* Actor, FPerContextData& ActiveData);
+	void RemoveWidgets(AActor* Actor, FPerContextData& ActiveData);
 };
 ```
 
 ```cpp
-// === 节选 === AddToWorld / HandleActorExtension（本机 5.8，示意）
-// AddToWorld 只对一个 ActorClass 注册扩展处理器：ALyraHUD::StaticClass()
-ComponentManager->AddExtensionHandler(ALyraHUD::StaticClass(), /*delegate→ThisClass::HandleActorExtension*/);
-// HandleActorExtension：
-//   ExtensionRemoved / ReceiverRemoved → RemoveWidgets(Actor, ...)
-//   ExtensionAdded / NAME_GameActorReady → AddWidgets(Actor, ...)
+void UGameFeatureAction_AddWidgets::AddToWorld(
+	const FWorldContext& WorldContext,
+	const FGameFeatureStateChangeContext& ChangeContext)
+{
+	UWorld* World = WorldContext.World();
+	UGameInstance* GameInstance = WorldContext.OwningGameInstance;
+	FPerContextData& ActiveData = ContextData.FindOrAdd(ChangeContext);
+
+	if ((GameInstance != nullptr) && (World != nullptr) && World->IsGameWorld())
+	{
+		if (UGameFrameworkComponentManager* ComponentManager =
+			UGameInstance::GetSubsystem<UGameFrameworkComponentManager>(GameInstance))
+		{
+			TSoftClassPtr<AActor> HUDActorClass = ALyraHUD::StaticClass();
+			TSharedPtr<FComponentRequestHandle> ExtensionRequestHandle =
+				ComponentManager->AddExtensionHandler(
+					HUDActorClass,
+					UGameFrameworkComponentManager::FExtensionHandlerDelegate::CreateUObject(
+						this, &ThisClass::HandleActorExtension, ChangeContext));
+			ActiveData.ComponentRequests.Add(ExtensionRequestHandle);
+		}
+	}
+}
+
+void UGameFeatureAction_AddWidgets::HandleActorExtension(
+	AActor* Actor, FName EventName, FGameFeatureStateChangeContext ChangeContext)
+{
+	FPerContextData& ActiveData = ContextData.FindOrAdd(ChangeContext);
+	if ((EventName == UGameFrameworkComponentManager::NAME_ExtensionRemoved) ||
+		(EventName == UGameFrameworkComponentManager::NAME_ReceiverRemoved))
+	{
+		RemoveWidgets(Actor, ActiveData);
+	}
+	else if ((EventName == UGameFrameworkComponentManager::NAME_ExtensionAdded) ||
+		(EventName == UGameFrameworkComponentManager::NAME_GameActorReady))
+	{
+		AddWidgets(Actor, ActiveData);
+	}
+}
+
 void UGameFeatureAction_AddWidgets::AddWidgets(AActor* Actor, FPerContextData& ActiveData)
 {
 	ALyraHUD* HUD = CastChecked<ALyraHUD>(Actor);
-	if (!HUD->GetOwningPlayerController()) { return; }
+
+	if (!HUD->GetOwningPlayerController())
+	{
+		return;
+	}
+
 	if (ULocalPlayer* LocalPlayer = Cast<ULocalPlayer>(HUD->GetOwningPlayerController()->Player))
 	{
 		FPerActorData& ActorData = ActiveData.ActorData.FindOrAdd(HUD);
+
 		for (const FLyraHUDLayoutRequest& Entry : Layout)
+		{
 			if (TSubclassOf<UCommonActivatableWidget> ConcreteWidgetClass = Entry.LayoutClass.Get())
+			{
 				ActorData.LayoutsAdded.Add(UCommonUIExtensions::PushContentToLayer_ForPlayer(
-					LocalPlayer, Entry.LayerID, ConcreteWidgetClass));               // 按 Layer Tag 推布局
-		UUIExtensionSubsystem* ExtensionSubsystem = HUD->GetWorld()->GetSubsystem<UUIExtensionSubsystem>();
+					LocalPlayer, Entry.LayerID, ConcreteWidgetClass));
+			}
+		}
+
+		UUIExtensionSubsystem* ExtensionSubsystem =
+			HUD->GetWorld()->GetSubsystem<UUIExtensionSubsystem>();
 		for (const FLyraHUDElementEntry& Entry : Widgets)
-			ActorData.ExtensionHandles.Add(ExtensionSubsystem->RegisterExtensionAsWidgetForContext(
-				Entry.SlotID, LocalPlayer, Entry.WidgetClass.Get(), -1));            // 按 Slot Tag 挂控件
+		{
+			ActorData.ExtensionHandles.Add(
+				ExtensionSubsystem->RegisterExtensionAsWidgetForContext(
+					Entry.SlotID, LocalPlayer, Entry.WidgetClass.Get(), -1));
+		}
 	}
 }
 ```
@@ -1332,7 +1544,7 @@ flowchart LR
 
 ## 附录：核心文件完整源码
 
-> 收录原则：本附录把正文直接分析的 LyraStarterGame 5.8 项目源码文件逐字完整收录（未删改，保留 Epic 版权头），正文中的"节选"负责解释调用链，本附录提供全文，二者配合阅读。引擎层（`Engine/`）文件体量过大且不属于项目教程主体，仍按正文的路径+符号检索方式引用，不在此收录；`.uasset/.umap` 资产也不在收录范围。文件 15-20 为 LYRA 批次 2（31 章 GameFeatureAction 家族补深挖）新增，随正文 31.2/31.3/31.4/31.6 阅读；`LyraGameFeaturePolicy.h/.cpp` 已在文件 13/14 收录，不再重复。
+> 收录原则：本附录把正文直接分析的 LyraStarterGame 5.8 项目源码内容完整收录（代码字符、注释、条件编译和文件尾换行未删改；仅统一代码围栏内的行尾及缩进空白，保留 Epic 版权头），正文中的"节选"负责解释调用链，本附录提供全文，二者配合阅读。引擎层（`Engine/`）文件体量过大且不属于项目教程主体，仍按正文的路径+符号检索方式引用，不在此收录；`.uasset/.umap` 资产也不在收录范围。文件 15-20 为 LYRA 批次 2（31 章 GameFeatureAction 家族补深挖）新增，随正文 31.2/31.3/31.4/31.6 阅读；`LyraGameFeaturePolicy.h/.cpp` 已在文件 13/14 收录，不再重复。
 > 版权提示：以下代码来自 Epic Games 的 LyraStarterGame 样例（UE 5.8），随 Unreal Engine EULA 的样例代码条款提供，仅作本地学习收录；对外发布前请自行核对许可条款。
 
 | # | 文件（相对 LyraStarterGame 根） | 行数 |
@@ -1360,7 +1572,7 @@ flowchart LR
 
 ### 附录文件 1：`Source\LyraGame\GameModes\LyraExperienceDefinition.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1419,7 +1631,7 @@ public:
 
 ### 附录文件 2：`Source\LyraGame\GameModes\LyraExperienceDefinition.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1475,7 +1687,7 @@ EDataValidationResult ULyraExperienceDefinition::IsDataValid(FDataValidationCont
 
 		if (FirstNativeParent != ParentClass)
 		{
-			Context.AddError(FText::Format(LOCTEXT("ExperienceInheritenceIsUnsupported", "Blueprint subclasses of Blueprint experiences is not currently supported (use composition via ActionSets instead). Parent class was {0} but should be {1}."), 
+			Context.AddError(FText::Format(LOCTEXT("ExperienceInheritenceIsUnsupported", "Blueprint subclasses of Blueprint experiences is not currently supported (use composition via ActionSets instead). Parent class was {0} but should be {1}."),
 				FText::AsCultureInvariant(GetPathNameSafe(ParentClass)),
 				FText::AsCultureInvariant(GetPathNameSafe(FirstNativeParent))
 			));
@@ -1508,7 +1720,7 @@ void ULyraExperienceDefinition::UpdateAssetBundleData()
 
 ### 附录文件 3：`Source\LyraGame\GameModes\LyraExperienceActionSet.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1556,7 +1768,7 @@ public:
 
 ### 附录文件 4：`Source\LyraGame\GameModes\LyraExperienceActionSet.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1623,7 +1835,7 @@ void ULyraExperienceActionSet::UpdateAssetBundleData()
 
 ### 附录文件 5：`Source\LyraGame\GameModes\LyraExperienceManagerComponent.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1736,7 +1948,7 @@ private:
 
 ### 附录文件 6：`Source\LyraGame\GameModes\LyraExperienceManagerComponent.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1999,7 +2211,7 @@ void ULyraExperienceManagerComponent::OnExperienceLoadComplete()
 		}
 	}
 
-	// Load and activate the features	
+	// Load and activate the features
 	NumGameFeaturePluginsLoading = GameFeaturePluginURLs.Num();
 	if (NumGameFeaturePluginsLoading > 0)
 	{
@@ -2210,7 +2422,7 @@ void ULyraExperienceManagerComponent::OnAllActionsDeactivated()
 
 ### 附录文件 7：`Source\LyraGame\GameModes\LyraGameMode.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -2283,10 +2495,10 @@ public:
 	// Agnostic version of PlayerCanRestart that can be used for both player bots and players
 	UE_API virtual bool ControllerCanRestart(AController* Controller);
 
-	// Delegate called on player initialization, described above 
+	// Delegate called on player initialization, described above
 	FOnLyraGameModePlayerInitialized OnGameModePlayerInitialized;
 
-protected:	
+protected:
 	UE_API void OnExperienceLoaded(const ULyraExperienceDefinition* CurrentExperience);
 	UE_API bool IsExperienceLoaded() const;
 
@@ -2306,7 +2518,7 @@ protected:
 
 ### 附录文件 8：`Source\LyraGame\GameModes\LyraGameMode.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -2504,7 +2716,7 @@ bool ALyraGameMode::TryDedicatedServerLogin()
 void ALyraGameMode::HostDedicatedServerMatch(ECommonSessionOnlineMode OnlineMode)
 {
 	FPrimaryAssetType UserExperienceType = ULyraUserFacingExperienceDefinition::StaticClass()->GetFName();
-	
+
 	// Figure out what UserFacingExperience to load
 	FPrimaryAssetId UserExperienceId;
 	FString UserExperienceFromCommandLine;
@@ -2541,7 +2753,7 @@ void ALyraGameMode::HostDedicatedServerMatch(ECommonSessionOnlineMode OnlineMode
 				FoundExperience = UserExperience;
 				break;
 			}
-			
+
 			if (UserExperience->bIsDefaultExperience && DefaultExperience == nullptr)
 			{
 				DefaultExperience = UserExperience;
@@ -2553,7 +2765,7 @@ void ALyraGameMode::HostDedicatedServerMatch(ECommonSessionOnlineMode OnlineMode
 	{
 		FoundExperience = DefaultExperience;
 	}
-	
+
 	UGameInstance* GameInstance = GetGameInstance();
 	if (ensure(FoundExperience && GameInstance))
 	{
@@ -2567,7 +2779,7 @@ void ALyraGameMode::HostDedicatedServerMatch(ECommonSessionOnlineMode OnlineMode
 
 			UCommonSessionSubsystem* SessionSubsystem = GameInstance->GetSubsystem<UCommonSessionSubsystem>();
 			SessionSubsystem->HostSession(nullptr, HostRequest);
-			
+
 			// This will handle the map travel
 		}
 	}
@@ -2592,7 +2804,7 @@ void ALyraGameMode::OnUserInitializedForDedicatedServer(const UCommonUserInfo* U
 		{
 			UE_LOG(LogLyraExperience, Log, TEXT("Dedicated server user login unsuccessful, starting online server as login is not required"));
 		}
-		
+
 		HostDedicatedServerMatch(ECommonSessionOnlineMode::Online);
 	}
 }
@@ -2715,7 +2927,7 @@ AActor* ALyraGameMode::ChoosePlayerStart_Implementation(AController* Player)
 	{
 		return PlayerSpawningComponent->ChoosePlayerStart(Player);
 	}
-	
+
 	return Super::ChoosePlayerStart_Implementation(Player);
 }
 
@@ -2737,7 +2949,7 @@ bool ALyraGameMode::PlayerCanRestart_Implementation(APlayerController* Player)
 bool ALyraGameMode::ControllerCanRestart(AController* Controller)
 {
 	if (APlayerController* PC = Cast<APlayerController>(Controller))
-	{	
+	{
 		if (!Super::PlayerCanRestart_Implementation(PC))
 		{
 			return false;
@@ -2764,7 +2976,7 @@ void ALyraGameMode::InitGameState()
 {
 	Super::InitGameState();
 
-	// Listen for the experience load to complete	
+	// Listen for the experience load to complete
 	ULyraExperienceManagerComponent* ExperienceComponent = GameState->FindComponentByClass<ULyraExperienceManagerComponent>();
 	check(ExperienceComponent);
 	ExperienceComponent->CallOrRegister_OnExperienceLoaded(FOnLyraExperienceLoaded::FDelegate::CreateUObject(this, &ThisClass::OnExperienceLoaded));
@@ -2814,7 +3026,7 @@ void ALyraGameMode::FailedToRestartPlayer(AController* NewPlayer)
 			// If it's a player don't loop forever, maybe something changed and they can no longer restart if so stop trying.
 			if (PlayerCanRestart(NewPC))
 			{
-				RequestPlayerRestartNextFrame(NewPlayer, false);			
+				RequestPlayerRestartNextFrame(NewPlayer, false);
 			}
 			else
 			{
@@ -2835,7 +3047,7 @@ void ALyraGameMode::FailedToRestartPlayer(AController* NewPlayer)
 
 ### 附录文件 9：`Source\LyraGame\GameModes\LyraWorldSettings.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -2889,7 +3101,7 @@ public:
 
 ### 附录文件 10：`Source\LyraGame\GameModes\LyraWorldSettings.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -2950,7 +3162,7 @@ void ALyraWorldSettings::CheckForErrors()
 
 ### 附录文件 11：`Source\LyraGame\GameModes\LyraUserFacingExperienceDefinition.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3032,7 +3244,7 @@ public:
 
 ### 附录文件 12：`Source\LyraGame\GameModes\LyraUserFacingExperienceDefinition.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3055,7 +3267,7 @@ UCommonSession_HostSessionRequest* ULyraUserFacingExperienceDefinition::CreateHo
 	UWorld* World = GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull);
 	UGameInstance* GameInstance = World ? World->GetGameInstance() : nullptr;
 	UCommonSession_HostSessionRequest* Result = nullptr;
-	
+
 	if (UCommonSessionSubsystem* Subsystem = GameInstance ? GameInstance->GetSubsystem<UCommonSessionSubsystem>() : nullptr)
 	{
 		Result = Subsystem->CreateOnlineHostSessionRequest();
@@ -3092,7 +3304,7 @@ UCommonSession_HostSessionRequest* ULyraUserFacingExperienceDefinition::CreateHo
 
 ### 附录文件 13：`Source\LyraGame\GameFeatures\LyraGameFeaturePolicy.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3162,7 +3374,7 @@ public:
 
 ### 附录文件 14：`Source\LyraGame\GameFeatures\LyraGameFeaturePolicy.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3258,14 +3470,14 @@ struct FPrimaryAssetId;
 void ULyraGameFeature_AddGameplayCuePaths::OnGameFeatureRegistering(const UGameFeatureData* GameFeatureData, const FString& PluginName, const FString& PluginURL)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(ULyraGameFeature_AddGameplayCuePaths::OnGameFeatureRegistering);
-	
+
 	const FString PluginRootPath = TEXT("/") + PluginName;
 	for (const UGameFeatureAction* Action : GameFeatureData->GetActions())
 	{
 		if (const UGameFeatureAction_AddGameplayCuePath* AddGameplayCueGFA = Cast<UGameFeatureAction_AddGameplayCuePath>(Action))
 		{
 			const TArray<FDirectoryPath>& DirsToAdd = AddGameplayCueGFA->GetDirectoryPathsToAdd();
-			
+
 			if (ULyraGameplayCueManager* GCM = ULyraGameplayCueManager::Get())
 			{
 				UGameplayCueSet* RuntimeGameplayCueSet = GCM->GetRuntimeCueSet();
@@ -3275,13 +3487,13 @@ void ULyraGameFeature_AddGameplayCuePaths::OnGameFeatureRegistering(const UGameF
 				{
 					FString MutablePath = Directory.Path;
 					UGameFeaturesSubsystem::FixPluginPackagePath(MutablePath, PluginRootPath, false);
-					GCM->AddGameplayCueNotifyPath(MutablePath, /** bShouldRescanCueAssets = */ false);	
+					GCM->AddGameplayCueNotifyPath(MutablePath, /** bShouldRescanCueAssets = */ false);
 				}
-				
+
 				// Rebuild the runtime library with these new paths
 				if (!DirsToAdd.IsEmpty())
 				{
-					GCM->InitializeRuntimeObjectLibrary();	
+					GCM->InitializeRuntimeObjectLibrary();
 				}
 
 				const int32 PostInitializeNumCues = RuntimeGameplayCueSet ? RuntimeGameplayCueSet->GameplayCueData.Num() : 0;
@@ -3302,7 +3514,7 @@ void ULyraGameFeature_AddGameplayCuePaths::OnGameFeatureUnregistering(const UGam
 		if (const UGameFeatureAction_AddGameplayCuePath* AddGameplayCueGFA = Cast<UGameFeatureAction_AddGameplayCuePath>(Action))
 		{
 			const TArray<FDirectoryPath>& DirsToAdd = AddGameplayCueGFA->GetDirectoryPathsToAdd();
-			
+
 			if (UGameplayCueManager* GCM = UAbilitySystemGlobals::Get().GetGameplayCueManager())
 			{
 				int32 NumRemoved = 0;
@@ -3314,12 +3526,12 @@ void ULyraGameFeature_AddGameplayCuePaths::OnGameFeatureUnregistering(const UGam
 				}
 
 				ensure(NumRemoved == DirsToAdd.Num());
-				
+
 				// Rebuild the runtime library only if there is a need to
 				if (NumRemoved > 0)
 				{
-					GCM->InitializeRuntimeObjectLibrary();	
-				}			
+					GCM->InitializeRuntimeObjectLibrary();
+				}
 			}
 	}
 	}
@@ -3328,7 +3540,7 @@ void ULyraGameFeature_AddGameplayCuePaths::OnGameFeatureUnregistering(const UGam
 
 ### 附录文件 15：`Source\LyraGame\GameFeatures\GameFeatureAction_WorldActionBase.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3376,7 +3588,7 @@ private:
 
 ### 附录文件 16：`Source\LyraGame\GameFeatures\GameFeatureAction_WorldActionBase.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3390,7 +3602,7 @@ private:
 
 void UGameFeatureAction_WorldActionBase::OnGameFeatureActivating(FGameFeatureActivatingContext& Context)
 {
-	GameInstanceStartHandles.FindOrAdd(Context) = FWorldDelegates::OnStartGameInstance.AddUObject(this, 
+	GameInstanceStartHandles.FindOrAdd(Context) = FWorldDelegates::OnStartGameInstance.AddUObject(this,
 		&UGameFeatureAction_WorldActionBase::HandleGameInstanceStart, FGameFeatureStateChangeContext(Context));
 
 	// Add to any worlds with associated game instances that have already been initialized
@@ -3410,7 +3622,7 @@ void UGameFeatureAction_WorldActionBase::OnGameFeatureDeactivating(FGameFeatureD
 	{
 		FWorldDelegates::OnStartGameInstance.Remove(*FoundHandle);
 	}
-	
+
 }
 
 void UGameFeatureAction_WorldActionBase::HandleGameInstanceStart(UGameInstance* GameInstance, FGameFeatureStateChangeContext ChangeContext)
@@ -3429,7 +3641,7 @@ void UGameFeatureAction_WorldActionBase::HandleGameInstanceStart(UGameInstance* 
 
 ### 附录文件 17：`Source\LyraGame\GameFeatures\GameFeatureAction_AddAbilities.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3490,7 +3702,7 @@ struct FGameFeatureAbilitiesEntry
 	UPROPERTY(EditAnywhere, Category="Abilities")
 	TArray<FLyraAbilityGrant> GrantedAbilities;
 
-	// List of attribute sets to grant to actors of the specified class 
+	// List of attribute sets to grant to actors of the specified class
 	UPROPERTY(EditAnywhere, Category="Attributes")
 	TArray<FLyraAttributeSetGrant> GrantedAttributes;
 
@@ -3539,8 +3751,8 @@ private:
 		TMap<AActor*, FActorExtensions> ActiveExtensions;
 		TArray<TSharedPtr<FComponentRequestHandle>> ComponentRequests;
 	};
-	
-	TMap<FGameFeatureStateChangeContext, FPerContextData> ContextData;	
+
+	TMap<FGameFeatureStateChangeContext, FPerContextData> ContextData;
 
 	//~ Begin UGameFeatureAction_WorldActionBase interface
 	virtual void AddToWorld(const FWorldContext& WorldContext, const FGameFeatureStateChangeContext& ChangeContext) override;
@@ -3564,7 +3776,7 @@ private:
 
 ### 附录文件 18：`Source\LyraGame\GameFeatures\GameFeatureAction_AddAbilities.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3679,7 +3891,7 @@ void UGameFeatureAction_AddAbilities::AddToWorld(const FWorldContext& WorldConte
 	if ((GameInstance != nullptr) && (World != nullptr) && World->IsGameWorld())
 	{
 		if (UGameFrameworkComponentManager* ComponentMan = UGameInstance::GetSubsystem<UGameFrameworkComponentManager>(GameInstance))
-		{			
+		{
 			int32 EntryIndex = 0;
 			for (const FGameFeatureAbilitiesEntry& Entry : AbilitiesList)
 			{
@@ -3736,7 +3948,7 @@ void UGameFeatureAction_AddAbilities::AddActorAbilities(AActor* Actor, const FGa
 	// early out if Actor already has ability extensions applied
 	if (ActiveData.ActiveExtensions.Find(Actor) != nullptr)
 	{
-		return;	
+		return;
 	}
 
 	if (UAbilitySystemComponent* AbilitySystemComponent = FindOrAddComponentForActor<UAbilitySystemComponent>(Actor, AbilitiesEntry, ActiveData))
@@ -3827,7 +4039,7 @@ void UGameFeatureAction_AddAbilities::RemoveActorAbilities(AActor* Actor, FPerCo
 UActorComponent* UGameFeatureAction_AddAbilities::FindOrAddComponentForActor(UClass* ComponentType, AActor* Actor, const FGameFeatureAbilitiesEntry& AbilitiesEntry, FPerContextData& ActiveData)
 {
 	UActorComponent* Component = Actor->FindComponentByClass(ComponentType);
-	
+
 	bool bMakeComponentRequest = (Component == nullptr);
 	if (Component)
 	{
@@ -3870,7 +4082,7 @@ UActorComponent* UGameFeatureAction_AddAbilities::FindOrAddComponentForActor(UCl
 
 ### 附录文件 19：`Source\LyraGame\GameFeatures\GameFeatureAction_AddInputBinding.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3889,7 +4101,7 @@ struct FComponentRequestHandle;
 class ULyraInputConfig;
 
 /**
- * Adds InputMappingContext to local players' EnhancedInput system. 
+ * Adds InputMappingContext to local players' EnhancedInput system.
  * Expects that local players are set up to use the EnhancedInput system.
  */
 UCLASS(MinimalAPI, meta = (DisplayName = "Add Input Binds"))
@@ -3937,7 +4149,7 @@ private:
 
 ### 附录文件 20：`Source\LyraGame\GameFeatures\GameFeatureAction_AddWidget.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -4027,7 +4239,7 @@ private:
 	struct FPerContextData
 	{
 		TArray<TSharedPtr<FComponentRequestHandle>> ComponentRequests;
-		TMap<FObjectKey, FPerActorData> ActorData; 
+		TMap<FObjectKey, FPerActorData> ActorData;
 	};
 
 	TMap<FGameFeatureStateChangeContext, FPerContextData> ContextData;

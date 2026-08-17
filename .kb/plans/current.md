@@ -6,17 +6,15 @@
 
 # Goal（当前）
 
-执行 Lyra 覆盖率批次 1 + 批次 3（2026-08-14 用户批准）：新建 51 篇（GAS 扩展）+ 42/43/49 扩展（Weapons/Messages/NumberPop）+ 边界声明。
+收口 Lyra 39-52 批次后的审查问题（2026-08-17）：修正文档口径与导航，更新控制面和 manifest，保留逐字源码附录的证据边界，并完成全库复验。
 
 # Scope（当前）
 
-- 批次 1（高价值补篇）：
-  - 新建 `51-Lyra-GAS扩展与能力费用源码.md`——AbilitySystem 未覆盖子集：LyraAbilityCost_*（三种费用）、LyraAbilityTagRelationshipMapping、LyraCombatSet/AttributeSet、LyraHealExecution、LyraGlobalAbilitySystem、LyraGameplayCueManager、Jump/Reset；≥300 行 L2 + 附录。
-  - 42 篇追加：LyraWeaponInstance/LyraWeaponSpawner 武器实例章节（含附录追加）。
-  - 43 篇追加：VerbMessage/VerbMessageHelpers Messages 协议章节（含附录追加）。
-  - 49 篇追加：Feedback NumberPop 伤害数字弹出章节（含附录追加）。
-- 批次 3（边界声明）：12 README/19 路线图/39 总览补"覆盖边界声明"——薄壳（Hotfix/Physics/Performance/Replays）、玩法专属（ShooterCore/TopDownArena）、UI/GameSettings 剩余细节声明为示例内容，不写新篇。
-- 同步：12 README/19 路线图/39 总览/manifest。
+- 文档口径：工作日志的进阶道具完备性按“有出边的品质”表达；Lyra 系列统一为 39-52，根 README、分类 README、路线图和交叉阅读同步。
+- 控制面：current plan、audit、review queue 只把当前状态作为可执行事实，历史发现保留为历史记录；已执行/已决策条目不再标记 Pending。
+- 索引：重新计算 327 个 Markdown 条目的 bytes/lines，确保 `.kb/manifest.yaml` 与磁盘一致。
+- 空白策略：源码附录完整保留代码字符、注释、条件编译和文件尾换行；仅统一代码围栏内的行尾及缩进空白以通过 diff 门禁，并在附录说明格式归一；普通 Markdown 继续执行 whitespace 检查。
+- 验证：运行 `scripts/check_repo.ps1`、全库链接/围栏检查、manifest 统计和 `git diff --check`。
 
 # Current State
 
@@ -24,6 +22,7 @@
 - Lyra 专项审查（R4-LYRA）修复完毕；覆盖率审查（R4-LYRA-COVERAGE）完成，补篇 49/50 已执行（覆盖率 32.4%→35.2%）。
 - 批次 1+3 已执行完毕（2026-08-14 用户批准）：51 新篇 + 42/43/49 补深挖 + 边界声明；覆盖率 35.4%→**40.5%**（286/707）；check_repo PASS。
 - 批次 2 已执行完毕（2026-08-14 用户指示）：52 交互系统新建 + 40 GameFeatureAction/41 动画实例/49 CommonGame UI 补深挖；覆盖率 40.5%→**42.9%**（303/707）；check_repo PASS；边界声明"批次 2 已执行、暂无已登记待补项"。
+- 当前审查基线为 `aca16b8`；本轮修复在该提交之后进行，提交前不得把工作树状态写成已推送事实。
 
 # Findings（历史：R4 四项）
 
@@ -58,12 +57,14 @@
 9. Lyra 批次 1+3 已执行（2026-08-14 用户批准）：新建 51-Lyra-GAS扩展与能力费用源码（551 行正文 + 附录 A 22 文件逐字一致）；42 篇追加武器实例章节（+5 附录）、43 篇追加 VerbMessage 章节（+5 附录）、49 篇追加 NumberPop/ContextEffects 章节（+6 附录，MeshText.cpp 尾随空行修复）；12 README/19 路线图边界声明 + 篇数口径 49→50；manifest 326 条目同步（清理 R3 垃圾前缀 + 补录 LLM-NPC 条目）；覆盖率 35.4%→**40.5%**（286/707）；check_repo PASS。
 10. Lyra 批次 2 已执行（2026-08-14 用户指示）：新建 52-Lyra-交互系统源码（600 行正文 + 17 附录逐字一致，附录路径补全 Source/LyraGame 前缀）；40 篇追加 GameFeatureAction 家族（529 行 + 6 附录）、49 篇追加 CommonGame UI 管理层（约 390 行 + 6 附录）、41 篇追加动画实例基类（149 行 + 2 附录）；12 README/19 路线图/39 总览篇数 50→51、边界声明批次 2 完成；manifest 327 条目同步；覆盖率 40.5%→**42.9%**（303/707）；check_repo PASS（52 篇"预留"→"保留"占位词清零）。
 
+11. 2026-08-17 审查收口：修复终端品质进阶道具条件、39-52 导航/完成清单/日期口径、控制面旧快照和 review queue 状态；manifest 重新计算；源码附录统一代码围栏内的行尾及缩进空白并补充格式归一说明。
+
 # Final Validation
 
 - check_repo RESULT PASS / FAIL 0（阶段 B 门禁全量复跑；批次 2 复跑同样 PASS）。
 - 批次 2 附录：40（6 文件）+ 41（2 文件）+ 49（6 文件）+ 52（17 文件）= 31 文件程序化逐字一致；四篇章节编号连续（40:一~三十三、41:一~四十、49:一~十七、52:一~十六）。
 - 拆分迁移：§七 394 行逐字迁移，SHA-256 去空行归一后一致；7.x → 1.x 重编号完整。
 - 全库断链 0；旧文件名 `01-AI评测回放与LLM安全` 残留仅 .kb 控制面（记录性提及）。
-- manifest 321 条目（320 → +2 新增 −1 改名净 +1 = 321）；与磁盘 321 个 .md 一致。
-- git diff --check 通过；无 BOM（check_repo 覆盖）。
-- review-queue 剩余 Pending：DEDUP-01（KD-004 维持现状，已决策）、R2-MANIFEST-01（R3 已执行但条目状态标注滞后，已补注记）、R2-DEDUP-01（KD-004 维持现状）、RENAME-01（KD-005 已执行，旧条目状态滞后）——均为历史记录性条目，实质已闭环。
+- manifest 327 条目；与磁盘 327 个 `.md` 一致，bytes/lines 重新校正。
+- git diff --check 通过；源码附录代码字符、注释、条件编译和文件尾换行保留，仅代码围栏内的行尾及缩进空白统一；无 BOM（check_repo 覆盖）。
+- review-queue 有效条目无 Pending；DEDUP-01/R2-DEDUP-01 标为已决策，R2-MANIFEST-01/RENAME-01 标为已执行，历史 Current/Suggested 快照保留但不可重复触发。

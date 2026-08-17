@@ -19,7 +19,7 @@
 | 官方参考 | [Gameplay Abilities](https://dev.epicgames.com/documentation/en-us/unreal-engine/gameplay-abilities-in-unreal-engine)、[Abilities in Lyra](https://dev.epicgames.com/documentation/en-us/unreal-engine/abilities-in-lyra-in-unreal-engine)、[Ability Tasks](https://dev.epicgames.com/documentation/en-us/unreal-engine/ability-tasks-in-unreal-engine) |
 | 关联篇 | [05-GAS能力系统源码.md](./05-GAS能力系统源码.md)（原生 GAS 能力/任务地基）、[42-Lyra-输入GAS与武器战斗源码.md](./42-Lyra-输入GAS与武器战斗源码.md)、[43-Lyra-背包装备消息与UI源码.md](./43-Lyra-背包装备消息与UI源码.md)、[49-Lyra-UI控件与表现源码.md](./49-Lyra-UI控件与表现源码.md)、[51-Lyra-GAS扩展与能力费用源码.md](./51-Lyra-GAS扩展与能力费用源码.md) |
 | 证据分级 | 见"二、证据分级"表 |
-| 最后更新 | 2026-08-14 |
+| 最后更新 | 2026-08-17（补入 ALyraWorldCollectable 生产侧实际源码分析） |
 
 ---
 
@@ -292,19 +292,47 @@ static UAbilityTask_GrantNearbyInteraction* GrantAbilitiesForNearbyInteractors(
 文件 `Abilities/GameplayAbilityTargetActor_Interact.h/.cpp`（25 + 57 行）：继承引擎 `AGameplayAbilityTargetActor_Trace`，是"所有交互目标 Actor 的中间基类"，核心只重写 `PerformTrace`。
 
 ```cpp
-// 节选（逐字核对）：PerformTrace 骨架
 FHitResult AGameplayAbilityTargetActor_Interact::PerformTrace(AActor* InSourceActor)
 {
-    // 忽略源 Actor，复杂碰撞 = false，返回物理材质
-    FCollisionQueryParams Params(SCENE_QUERY_STAT(AGameplayAbilityTargetActor_SingleLineTrace), bTraceComplex);
-    Params.bReturnPhysicalMaterial = true;
-    Params.AddIgnoredActors(ActorsToIgnore);
-    FVector TraceStart = StartLocation.GetTargetingTransform().GetLocation();
-    AimWithPlayerController(InSourceActor, Params, TraceStart, TraceEnd);  // 服务器与启动客户端有效
-    LineTraceWithFilter(ReturnHitResult, ..., Filter, TraceStart, TraceEnd, TraceProfile.Name, Params);
-    if (!ReturnHitResult.bBlockingHit) ReturnHitResult.Location = TraceEnd;  // 未命中默认到射线末端
-    ...
-    return ReturnHitResult;
+	bool bTraceComplex = false;
+	TArray<AActor*> ActorsToIgnore;
+
+	ActorsToIgnore.Add(InSourceActor);
+
+	FCollisionQueryParams Params(
+		SCENE_QUERY_STAT(AGameplayAbilityTargetActor_SingleLineTrace), bTraceComplex);
+	Params.bReturnPhysicalMaterial = true;
+	Params.AddIgnoredActors(ActorsToIgnore);
+
+	FVector TraceStart = StartLocation.GetTargetingTransform().GetLocation();
+	FVector TraceEnd;
+	AimWithPlayerController(InSourceActor, Params, TraceStart, TraceEnd);
+
+	FHitResult ReturnHitResult;
+	LineTraceWithFilter(ReturnHitResult, InSourceActor->GetWorld(), Filter,
+		TraceStart, TraceEnd, TraceProfile.Name, Params);
+	if (!ReturnHitResult.bBlockingHit)
+	{
+		ReturnHitResult.Location = TraceEnd;
+	}
+	if (AGameplayAbilityWorldReticle* LocalReticleActor = ReticleActor.Get())
+	{
+		const bool bHitActor = ReturnHitResult.bBlockingHit && ReturnHitResult.HitObjectHandle.IsValid();
+		const FVector ReticleLocation = (bHitActor && LocalReticleActor->bSnapToTargetedActor)
+			? FLightWeightInstanceSubsystem::Get().GetLocation(ReturnHitResult.HitObjectHandle)
+			: ReturnHitResult.Location;
+		LocalReticleActor->SetActorLocation(ReticleLocation);
+		LocalReticleActor->SetIsTargetAnActor(bHitActor);
+	}
+
+#if ENABLE_DRAW_DEBUG
+	if (bDebug)
+	{
+		DrawDebugLine(GetWorld(), TraceStart, TraceEnd, FColor::Green);
+		DrawDebugSphere(GetWorld(), TraceEnd, 100.0f, 16, FColor::Green);
+	}
+#endif // ENABLE_DRAW_DEBUG
+	return ReturnHitResult;
 }
 ```
 
@@ -462,6 +490,50 @@ struct FLyraInteractionDurationMessage
 
 > **事实校正 2（重要）**：任务背景给的接口方法名单 `CanBeInteracted / Interact / EndInteraction` 在本机 5.8 中**不存在**。实际为 `GatherInteractionOptions`（纯虚）+ `CustomizeInteractionEventData`（空默认）。执行统一走"能力激活"，接口刻意不加"交互进行中"状态钩子。
 
+`ALyraWorldCollectable` 的生产侧现在补入实际源码。它不是一个只在表格里出现的类，而是把编辑器配置的 `FInteractionOption` 和 `FInventoryPickup` 原样暴露给交互查询与拾取系统：
+
+```cpp
+UCLASS(Abstract, Blueprintable)
+class ALyraWorldCollectable : public AActor,
+	public IInteractableTarget,
+	public IPickupable
+{
+	GENERATED_BODY()
+
+public:
+	ALyraWorldCollectable();
+	virtual void GatherInteractionOptions(
+		const FInteractionQuery& InteractQuery,
+		FInteractionOptionBuilder& InteractionBuilder) override;
+	virtual FInventoryPickup GetPickupInventory() const override;
+
+protected:
+	UPROPERTY(EditAnywhere)
+	FInteractionOption Option;
+
+	UPROPERTY(EditAnywhere)
+	FInventoryPickup StaticInventory;
+};
+```
+
+实现只有两处，但正好是跨模块接线的关键：
+
+```cpp
+void ALyraWorldCollectable::GatherInteractionOptions(
+	const FInteractionQuery& InteractQuery,
+	FInteractionOptionBuilder& InteractionBuilder)
+{
+	InteractionBuilder.AddInteractionOption(Option);
+}
+
+FInventoryPickup ALyraWorldCollectable::GetPickupInventory() const
+{
+	return StaticInventory;
+}
+```
+
+因此交互模块的 `Gather → FInteractionOption → TriggerAbilityFromGameplayEvent` 与 43 篇的背包授予之间有了实际 C++ 生产端证据；`ALyraWeaponSpawner` 则继续走自己的 Overlap/`GiveWeapon` 路径，不能把两者混为一谈。
+
 ### 九.2 完整 mermaid 链路（概念标注）
 
 ```mermaid
@@ -545,7 +617,7 @@ flowchart TB
 
 ## 十二、落地检查清单
 
-- [ ] 确认 `Interaction` 模块 17 文件按本机路径存在，正文符号与附录逐字一致。
+- [ ] 确认 `Interaction` 模块 17 文件按本机路径存在，正文符号与附录内容一致（代码围栏内行尾空白已统一）。
 - [ ] 实现一个新的 `IInteractableTarget`（如"可开门物件"）时，重写 `GatherInteractionOptions` 填 `FInteractionOption`，并让 `InteractionAbilityToGrant` 指向"开门"能力。
 - [ ] 需要"准星追踪 + 每帧过滤"时，用 `WaitForInteractableTargets_SingleLineTrace` 并监听 `InteractableObjectsChanged`。
 - [ ] 需要"靠近即授权 + 提示"时，用 `ULyraGameplayAbility_Interact` 的 `UpdateInteractions` 建指示器。
@@ -602,7 +674,7 @@ flowchart TB
 
 ### 收录原则与版权提示
 
-- **收录原则（KD-004 精神）**：以下把 `Source\LyraGame\Interaction\` 下全部 17 个源文件（含 `Abilities\`、`Tasks\` 子目录）**逐字完整**收录（含 Epic Copyright 头、`#pragma once`、`#include`、`#if` 分支、尾随换行），不做删改；目的在于让读者脱离本机仓库也能对照正文符号。本模块 `.h/.cpp` 均 ≤250 行（最大 179 行），全部可以直接整卷收录，无需"节选声明"。引擎层 `.generated.h`/`.uasset`/蓝图资产不收录；正文通过路径+符号引用。生产侧 `ALyraWorldCollectable`（ShooterCore，23+36 行）不属于本模块纳入范围，仅在九章以路径+符号引用。
+- **收录原则（KD-004 精神）**：以下把 `Source\LyraGame\Interaction\` 下全部 17 个源文件（含 `Abilities\`、`Tasks\` 子目录）**完整**收录（含 Epic Copyright 头、`#pragma once`、`#include`、`#if` 分支、尾随换行；仅统一代码围栏内的行尾及缩进空白），不做源码内容删改；目的在于让读者脱离本机仓库也能对照正文符号。本模块 `.h/.cpp` 均 ≤250 行（最大 179 行），全部可以直接整卷收录，无需"节选声明"。引擎层 `.generated.h`/`.uasset`/蓝图资产不收录；正文通过路径+实际代码片段引用。生产侧 `ALyraWorldCollectable`（ShooterCore，23+36 行）虽不属于本模块附录，九.1 已展开其接口、配置字段和 `GatherInteractionOptions`/`GetPickupInventory` 实现。
 - **版权提示**：以上源码为 Epic Games（Lyra 样例项目 `LyraStarterGame`），版权归 Epic Games, Inc. 所有，随 Lyra 样例提供，遵循其组件级许可（Epic 的游戏/UX 许可）。本知识库仅作个人/学习用途的逐字转档供检索对照，不主张任何版权。
 - **行数清单**（以本机实际文件行数计；对齐顺序即下文附录文件顺序）：
 
@@ -626,11 +698,11 @@ flowchart TB
 | 16 | `Tasks/AbilityTask_WaitForInteractableTargets_SingleLineTrace.h` | 43 |
 | 17 | `Tasks/AbilityTask_WaitForInteractableTargets_SingleLineTrace.cpp` | 92 |
 
-> 以上 17 个文件合计 **1091 行**，逐字收录如下。
+> 以上 17 个文件合计 **1091 行**，内容完整收录如下（代码围栏内的行尾及缩进空白已统一）。
 
 ### 附录文件 1：`Source/LyraGame/Interaction/IInteractableTarget.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -688,7 +760,7 @@ public:
 
 ### 附录文件 2：`Source/LyraGame/Interaction/IInteractionInstigator.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -726,7 +798,7 @@ public:
 
 ### 附录文件 3：`Source/LyraGame/Interaction/InteractionOption.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -815,7 +887,7 @@ public:
 
 ### 附录文件 4：`Source/LyraGame/Interaction/InteractionQuery.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -850,7 +922,7 @@ public:
 
 ### 附录文件 5：`Source/LyraGame/Interaction/InteractionStatics.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -893,7 +965,7 @@ public:
 
 ### 附录文件 6：`Source/LyraGame/Interaction/InteractionStatics.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -986,7 +1058,7 @@ void UInteractionStatics::AppendInteractableTargetsFromHitResult(const FHitResul
 
 ### 附录文件 7：`Source/LyraGame/Interaction/LyraInteractionDurationMessage.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1009,7 +1081,7 @@ struct FLyraInteractionDurationMessage
 public:
 	UPROPERTY(BlueprintReadWrite)
 	TObjectPtr<AActor> Instigator = nullptr;
-	
+
 	UPROPERTY(BlueprintReadWrite)
 	float Duration = 0;
 };
@@ -1017,7 +1089,7 @@ public:
 
 ### 附录文件 8：`Source/LyraGame/Interaction/Abilities/GameplayAbilityTargetActor_Interact.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1040,7 +1112,7 @@ class AGameplayAbilityTargetActor_Interact : public AGameplayAbilityTargetActor_
 
 public:
 	AGameplayAbilityTargetActor_Interact(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
-	
+
 	virtual FHitResult PerformTrace(AActor* InSourceActor) override;
 
 protected:
@@ -1049,7 +1121,7 @@ protected:
 
 ### 附录文件 9：`Source/LyraGame/Interaction/Abilities/GameplayAbilityTargetActor_Interact.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1113,7 +1185,7 @@ FHitResult AGameplayAbilityTargetActor_Interact::PerformTrace(AActor* InSourceAc
 
 ### 附录文件 10：`Source/LyraGame/Interaction/Abilities/LyraGameplayAbility_Interact.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1176,7 +1248,7 @@ protected:
 
 ### 附录文件 11：`Source/LyraGame/Interaction/Abilities/LyraGameplayAbility_Interact.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1235,7 +1307,7 @@ void ULyraGameplayAbility_Interact::UpdateInteractions(const TArray<FInteraction
 			{
 				AActor* InteractableTargetActor = UInteractionStatics::GetActorFromInteractableTarget(InteractionOption.InteractableTarget);
 
-				TSoftClassPtr<UUserWidget> InteractionWidgetClass = 
+				TSoftClassPtr<UUserWidget> InteractionWidgetClass =
 					InteractionOption.InteractionWidgetClass.IsNull() ? DefaultInteractionWidgetClass : InteractionOption.InteractionWidgetClass;
 
 				UIndicatorDescriptor* Indicator = NewObject<UIndicatorDescriptor>();
@@ -1306,7 +1378,7 @@ void ULyraGameplayAbility_Interact::TriggerInteraction()
 
 ### 附录文件 12：`Source/LyraGame/Interaction/Tasks/AbilityTask_GrantNearbyInteraction.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1350,7 +1422,7 @@ private:
 
 ### 附录文件 13：`Source/LyraGame/Interaction/Tasks/AbilityTask_GrantNearbyInteraction.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1405,7 +1477,7 @@ void UAbilityTask_GrantNearbyInteraction::QueryInteractables()
 {
 	UWorld* World = GetWorld();
 	AActor* ActorOwner = GetAvatarActor();
-	
+
 	if (World && ActorOwner)
 	{
 		FCollisionQueryParams Params(SCENE_QUERY_STAT(UAbilityTask_GrantNearbyInteraction), false);
@@ -1417,7 +1489,7 @@ void UAbilityTask_GrantNearbyInteraction::QueryInteractables()
 		{
 			TArray<TScriptInterface<IInteractableTarget>> InteractableTargets;
 			UInteractionStatics::AppendInteractableTargetsFromOverlapResults(OverlapResults, OUT InteractableTargets);
-			
+
 			FInteractionQuery InteractionQuery;
 			InteractionQuery.RequestingAvatar = ActorOwner;
 			InteractionQuery.RequestingController = Cast<AController>(ActorOwner->GetOwner());
@@ -1452,7 +1524,7 @@ void UAbilityTask_GrantNearbyInteraction::QueryInteractables()
 
 ### 附录文件 14：`Source/LyraGame/Interaction/Tasks/AbilityTask_WaitForInteractableTargets.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1505,7 +1577,7 @@ protected:
 
 ### 附录文件 15：`Source/LyraGame/Interaction/Tasks/AbilityTask_WaitForInteractableTargets.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1691,7 +1763,7 @@ void UAbilityTask_WaitForInteractableTargets::UpdateInteractableOptions(const FI
 
 ### 附录文件 16：`Source/LyraGame/Interaction/Tasks/AbilityTask_WaitForInteractableTargets_SingleLineTrace.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1741,7 +1813,7 @@ private:
 
 ### 附录文件 17：`Source/LyraGame/Interaction/Tasks/AbilityTask_WaitForInteractableTargets_SingleLineTrace.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.

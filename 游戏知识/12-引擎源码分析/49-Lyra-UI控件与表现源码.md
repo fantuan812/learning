@@ -16,7 +16,7 @@
 | 相关知识 | 26-CommonUI 源码、43 篇 UIExtension、42 篇 WeaponStateComponent、07-UI 与性能优化 |
 | 知识成熟度 | L2：项目源码与插件源码已静态核对；PIE/联机实验是可复现步骤，不宣称已经执行 |
 | 官方参考 | [CommonUI](https://dev.epicgames.com/documentation/en-us/unreal-engine/common-ui-plugin-for-advanced-user-interfaces-in-unreal-engine)、[Lyra Sample Game](https://dev.epicgames.com/documentation/en-us/unreal-engine/lyra-sample-game-in-unreal-engine)、[UMG](https://dev.epicgames.com/documentation/en-us/unreal-engine/widget-blueprint-umg-ui-designer-in-unreal-engine) |
-| 最后更新 | 2026-08-14 |
+| 最后更新 | 2026-08-17（补入 CommonGame、ContextEffects 与 UI 组件实际源码分析） |
 
 ## 一、先给结论
 
@@ -320,18 +320,34 @@ private:
 - **控件池**：`FUserWidgetPool IndicatorPool` 复用指示器 UserWidget 实例。
 
 ```cpp
-// 节选（SActorCanvas.h）
-class SActorCanvas : public SPanel, public FAsyncMixin, public FGCObject
+// SActorCanvas::UpdateCanvas 的实际核心分支
+if (!OptionalPaintGeometry.IsSet())
 {
-public:
-	class FSlot : public TSlotBase<FSlot> { /* ScreenPosition/Depth/Priority/bDirty/... */ };
-	class FArrowSlot : public TSlotBase<FArrowSlot> { };
-	//...
-	void OnIndicatorAdded(UIndicatorDescriptor* Indicator);
-	void OnIndicatorRemoved(UIndicatorDescriptor* Indicator);
-	void GetOffsetAndSize(const UIndicatorDescriptor* Indicator, FVector2D& OutSize,
-		FVector2D& OutOffset, FVector2D& OutPaddingMin, FVector2D& OutPaddingMax) const;
-};
+	return EActiveTimerReturnType::Continue;
+}
+
+ULocalPlayer* LocalPlayer = LocalPlayerContext.GetLocalPlayer();
+ULyraIndicatorManagerComponent* IndicatorComponent = IndicatorComponentPtr.Get();
+if (IndicatorComponent == nullptr)
+{
+	IndicatorComponent = ULyraIndicatorManagerComponent::GetComponent(
+		LocalPlayerContext.GetPlayerController());
+	if (IndicatorComponent)
+	{
+		IndicatorPool.SetWorld(LocalPlayerContext.GetWorld());
+		IndicatorComponentPtr = IndicatorComponent;
+		IndicatorComponent->OnIndicatorAdded.AddSP(this, &SActorCanvas::OnIndicatorAdded);
+		IndicatorComponent->OnIndicatorRemoved.AddSP(this, &SActorCanvas::OnIndicatorRemoved);
+		for (UIndicatorDescriptor* Indicator : IndicatorComponent->GetIndicators())
+		{
+			OnIndicatorAdded(Indicator);
+		}
+	}
+	else
+	{
+		return EActiveTimerReturnType::Continue;
+	}
+}
 ```
 
 投影、按深度/优先级排序、屏幕边缘钳制（`ClampToScreen` + 边缘箭头 `ActorCanvasArrowBrush`）都发生在 Slate 的 `OnPaint`/`UpdateCanvas` 中，这是"头顶指示器"的真正渲染端。
@@ -403,17 +419,33 @@ protected:
 - `SHitMarkerConfirmationWidget::OnPaint` 遍历 `LastWeaponDamageScreenLocations`，对每条命中按 `HitZone`（`FGameplayTag`，如弱点）在 `PerHitMarkerZoneOverrideImages` 里查覆盖图标，否则用 `PerHitMarkerImage`，在对应屏幕位置画 Marker；再画中央的 `AnyHitsMarkerImage`。
 
 ```cpp
-// 节选（Weapons/LyraWeaponStateComponent.h）——UI 侧读取的接口
 struct FLyraScreenSpaceHitLocation
 {
+	/** Hit location in viewport screenspace */
 	FVector2D Location;
 	FGameplayTag HitZone;
 	bool bShowAsSuccess = false;
 };
-// ...
-void GetLastWeaponDamageScreenLocations(TArray<FLyraScreenSpaceHitLocation>& WeaponDamageScreenLocations)
-{ WeaponDamageScreenLocations = LastWeaponDamageScreenLocations; }
-double GetTimeSinceLastHitNotification() const;
+
+UCLASS()
+class ULyraWeaponStateComponent : public UControllerComponent
+{
+	GENERATED_BODY()
+
+public:
+	ULyraWeaponStateComponent(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+
+	void GetLastWeaponDamageScreenLocations(
+		TArray<FLyraScreenSpaceHitLocation>& WeaponDamageScreenLocations)
+	{
+		WeaponDamageScreenLocations = LastWeaponDamageScreenLocations;
+	}
+
+	double GetTimeSinceLastHitNotification() const;
+
+private:
+	TArray<FLyraScreenSpaceHitLocation> LastWeaponDamageScreenLocations;
+};
 ```
 
 ```mermaid
@@ -500,33 +532,65 @@ private:
 `GameUIPolicy.h`（107 行）里 `UGameUIPolicy : UObject`，`Within = GameUIManagerSubsystem`（即它作为 Manager 的 outer 被创建）。注意**按层"推/弹内容"并不在 Policy 上**——本机 Policy 只负责"根布局的创建、挂载与分屏主控"：
 
 ```cpp
-// 节选（CommonGame/Source/Public/GameUIPolicy.h）——根布局生命周期字段
 USTRUCT()
 struct FRootViewportLayoutInfo
 {
 	GENERATED_BODY()
-	UPROPERTY(Transient) TObjectPtr<ULocalPlayer> LocalPlayer = nullptr;
-	UPROPERTY(Transient) TObjectPtr<UPrimaryGameLayout> RootLayout = nullptr;
-	UPROPERTY(Transient) bool bAddedToViewport = false;
-	// ...
+
+	UPROPERTY(Transient)
+	TObjectPtr<ULocalPlayer> LocalPlayer = nullptr;
+	UPROPERTY(Transient)
+	TObjectPtr<UPrimaryGameLayout> RootLayout = nullptr;
+	UPROPERTY(Transient)
+	bool bAddedToViewport = false;
+
+	FRootViewportLayoutInfo() {}
+	FRootViewportLayoutInfo(ULocalPlayer* InLocalPlayer, UPrimaryGameLayout* InRootLayout, bool bIsInViewport)
+		: LocalPlayer(InLocalPlayer)
+		, RootLayout(InRootLayout)
+		, bAddedToViewport(bIsInViewport)
+	{}
+
+	bool operator==(const ULocalPlayer* OtherLocalPlayer) const { return LocalPlayer == OtherLocalPlayer; }
 };
 
 UCLASS(MinimalAPI, Abstract, Blueprintable, Within = GameUIManagerSubsystem)
 class UGameUIPolicy : public UObject
 {
 	GENERATED_BODY()
-public:
-	static UGameUIPolicy* GetGameUIPolicy(const UObject* WorldContextObject);
-	UGameUIManagerSubsystem* GetOwningUIManager() const;
-	UPrimaryGameLayout* GetRootLayout(const UCommonLocalPlayer* LocalPlayer) const;
-	ELocalMultiplayerInteractionMode GetLocalMultiplayerInteractionMode() const;
-	void RequestPrimaryControl(UPrimaryGameLayout* Layout);
 
-	// 源码里还有：CreateLayoutWidget / GetLayoutWidgetClass / AddLayoutToViewport / RemoveLayoutFromViewport
-	// OnRootLayoutAddedToViewport / OnRootLayoutRemovedFromViewport / OnRootLayoutReleased
+public:
+	template <typename GameUIPolicyClass = UGameUIPolicy>
+	static GameUIPolicyClass* GetGameUIPolicyAs(const UObject* WorldContextObject)
+	{
+		return Cast<GameUIPolicyClass>(GetGameUIPolicy(WorldContextObject));
+	}
+
+	static UE_API UGameUIPolicy* GetGameUIPolicy(const UObject* WorldContextObject);
+	UE_API virtual UWorld* GetWorld() const override;
+	UE_API UGameUIManagerSubsystem* GetOwningUIManager() const;
+	UE_API UPrimaryGameLayout* GetRootLayout(const UCommonLocalPlayer* LocalPlayer) const;
+	ELocalMultiplayerInteractionMode GetLocalMultiplayerInteractionMode() const { return LocalMultiplayerInteractionMode; }
+	UE_API void RequestPrimaryControl(UPrimaryGameLayout* Layout);
+
+protected:
+	UE_API void AddLayoutToViewport(UCommonLocalPlayer* LocalPlayer, UPrimaryGameLayout* Layout);
+	UE_API void RemoveLayoutFromViewport(UCommonLocalPlayer* LocalPlayer, UPrimaryGameLayout* Layout);
+	UE_API virtual void OnRootLayoutAddedToViewport(UCommonLocalPlayer* LocalPlayer, UPrimaryGameLayout* Layout);
+	UE_API virtual void OnRootLayoutRemovedFromViewport(UCommonLocalPlayer* LocalPlayer, UPrimaryGameLayout* Layout);
+	UE_API virtual void OnRootLayoutReleased(UCommonLocalPlayer* LocalPlayer, UPrimaryGameLayout* Layout);
+	UE_API void CreateLayoutWidget(UCommonLocalPlayer* LocalPlayer);
+	UE_API TSubclassOf<UPrimaryGameLayout> GetLayoutWidgetClass(UCommonLocalPlayer* LocalPlayer);
+
 private:
-	UPROPERTY(EditAnywhere) TSoftClassPtr<UPrimaryGameLayout> LayoutClass;  // 根布局分类
-	UPROPERTY(Transient) TArray<FRootViewportLayoutInfo> RootViewportLayouts;
+	ELocalMultiplayerInteractionMode LocalMultiplayerInteractionMode = ELocalMultiplayerInteractionMode::PrimaryOnly;
+	UPROPERTY(EditAnywhere)
+	TSoftClassPtr<UPrimaryGameLayout> LayoutClass;
+	UPROPERTY(Transient)
+	TArray<FRootViewportLayoutInfo> RootViewportLayouts;
+	UE_API void NotifyPlayerAdded(UCommonLocalPlayer* LocalPlayer);
+	UE_API void NotifyPlayerRemoved(UCommonLocalPlayer* LocalPlayer);
+	UE_API void NotifyPlayerDestroyed(UCommonLocalPlayer* LocalPlayer);
 	friend class UGameUIManagerSubsystem;
 };
 ```
@@ -574,7 +638,7 @@ protected:
 	UE_API void RegisterLayer(UPARAM(meta = (Categories = "UI.Layer")) FGameplayTag LayerTag,
 		UCommonActivatableWidgetContainerBase* LayerWidget);
 	UE_API virtual void OnIsDormantChanged();
-	// ...
+	UE_API void OnWidgetStackTransitioning(UCommonActivatableWidgetContainerBase* Widget, bool bIsTransitioning);
 private:
 	bool bIsDormant = false;
 	TArray<FName> SuspendInputTokens;
@@ -620,7 +684,7 @@ static UE_API void ResumeInputForPlayer(ULocalPlayer* LocalPlayer, FName Suspend
 - **`SuspendInputForPlayer` / `ResumeInputForPlayer`**：用静态计数 `InputSuspensions` 生成唯一 token，对 `UCommonInputSubsystem` 的 `MouseAndKeyboard/Gamepad/Touch` 三种输入类型分别 `SetInputTypeFilter(token, true/false)` 全局挂起/恢复——异步加载与层过渡都靠它对输入加互斥。
 - **输入方法查询**：`GetOwningPlayerInputType`/`IsOwningPlayerUsingTouch/Gamepad` 读 `UCommonInputSubsystem::GetCurrentInputType()`。
 
-### 8.6 异步推层蓝图节点：`UAsyncAction_PushContentToLayerForPlayer`（简析）
+### 8.6 异步推层蓝图节点：`UAsyncAction_PushContentToLayerForPlayer`
 
 `Actions/AsyncAction_PushContentToLayerForPlayer.h`（55 行）+ `.cpp`（81 行）把 `PushWidgetToLayerStackAsync` 封装成 `UCancellableAsyncAction` 蓝图节点：
 
@@ -630,7 +694,80 @@ static UE_API void ResumeInputForPlayer(ULocalPlayer* LocalPlayer, FName Suspend
 
 用途：想在推层成功/失败后接后续逻辑、又不想手写静态函数调用链时用这个节点。默认挂起输入直到异步加载完成。
 
-### 8.7 `UCommonMessagingSubsystem` + `UCommonGameDialog`：通用确认对话框模式（简析 1-2 段）
+实际 `.cpp` 先拒绝空的 WidgetClass，再保存玩家、层 Tag 和输入挂起策略，并注册到 GameInstance 让异步动作拥有生命周期：
+
+```cpp
+UAsyncAction_PushContentToLayerForPlayer*
+UAsyncAction_PushContentToLayerForPlayer::PushContentToLayerForPlayer(
+	APlayerController* InOwningPlayer,
+	TSoftClassPtr<UCommonActivatableWidget> InWidgetClass,
+	FGameplayTag InLayerName,
+	bool bSuspendInputUntilComplete)
+{
+	if (InWidgetClass.IsNull())
+	{
+		FFrame::KismetExecutionMessage(
+			TEXT("PushContentToLayerForPlayer was passed a null WidgetClass"),
+			ELogVerbosity::Error);
+		return nullptr;
+	}
+
+	if (UWorld* World = GEngine->GetWorldFromContextObject(
+		InOwningPlayer, EGetWorldErrorMode::LogAndReturnNull))
+	{
+		UAsyncAction_PushContentToLayerForPlayer* Action =
+			NewObject<UAsyncAction_PushContentToLayerForPlayer>();
+		Action->WidgetClass = InWidgetClass;
+		Action->OwningPlayerPtr = InOwningPlayer;
+		Action->LayerName = InLayerName;
+		Action->bSuspendInputUntilComplete = bSuspendInputUntilComplete;
+		Action->RegisterWithGameInstance(World);
+		return Action;
+	}
+	return nullptr;
+}
+```
+
+`Activate()` 的状态回调也是真正的三个阶段，而不是蓝图节点的抽象描述：`Initialize` 广播 `BeforePush`，`AfterPush` 广播 `AfterPush` 并销毁动作，`Canceled` 释放异步对象；`Cancel()` 则取消底层 StreamableHandle。
+
+```cpp
+void UAsyncAction_PushContentToLayerForPlayer::Activate()
+{
+	if (UPrimaryGameLayout* RootLayout =
+		UPrimaryGameLayout::GetPrimaryGameLayout(OwningPlayerPtr.Get()))
+	{
+		TWeakObjectPtr<UAsyncAction_PushContentToLayerForPlayer> WeakThis = this;
+		StreamingHandle = RootLayout->PushWidgetToLayerStackAsync<UCommonActivatableWidget>(
+			LayerName, bSuspendInputUntilComplete, WidgetClass,
+			[this, WeakThis](EAsyncWidgetLayerState State, UCommonActivatableWidget* Widget)
+			{
+				if (WeakThis.IsValid())
+				{
+					switch (State)
+					{
+					case EAsyncWidgetLayerState::Initialize:
+						BeforePush.Broadcast(Widget);
+						break;
+					case EAsyncWidgetLayerState::AfterPush:
+						AfterPush.Broadcast(Widget);
+						SetReadyToDestroy();
+						break;
+					case EAsyncWidgetLayerState::Canceled:
+						SetReadyToDestroy();
+						break;
+					}
+				}
+				SetReadyToDestroy();
+			});
+	}
+	else
+	{
+		SetReadyToDestroy();
+	}
+}
+```
+
+### 8.7 `UCommonMessagingSubsystem` + `UCommonGameDialog`：通用确认对话框模式
 
 `Messaging/CommonMessagingSubsystem.h`（54 行）是 `ULocalPlayerSubsystem`，声明 `ShowConfirmation(Descriptor, ResultCallback)` / `ShowError(Descriptor, ResultCallback)` 两个虚接口，**基类实现为空**；`ShouldCreateSubsystem` 与 UI Manager 一样只在专服为 false、且无派生类时才创建。真正把对话框画出来的是**项目侧派生类**——Lyra 的 `ULyraUIMessaging`（49 篇第五章已收录）：它把 `ConfirmationDialogClass`/`ErrorDialogClass` 两个可配置对话框分类 `PushWidgetToLayerStack<UCommonGameDialog>(TAG_UI_LAYER_MODAL="UI.Layer.Modal")` 到 Modal 层（A 级证据，`LyraUIMessaging.cpp`）。
 
@@ -673,6 +810,50 @@ public:
 - `UCommonGameDialogDescriptor::CreateConfirmationOk*` 系列工厂在 `CommonGameDialog.cpp` 里用 `LOCTEXT` 预置按钮动作（Ok/OkCancel/YesNo/YesNoCancel）。
 - `UCommonGameDialog` 抽象基类只声明 `SetupDialog`/`KillDialog`，**实现是空壳**——真正的按钮排版与结果回调走法由项目侧继承类（Lyra 的 `ULyraConfirmationScreen`）补。
 - `CommonGameInstance.cpp` 里 `HandleSystemMessage` 遇到 `SystemMessage_Error` Tag 会为首个玩家 `Messaging->ShowError(CreateConfirmationOk(...))`——这是"通用确认对话框"最典型的一条触发链路。
+
+基类的空实现和 Lyra 侧派生实现都直接写在源码中。CommonGame 只负责定义本地玩家子系统的创建边界：
+
+```cpp
+bool UCommonMessagingSubsystem::ShouldCreateSubsystem(UObject* Outer) const
+{
+	UGameInstance* GameInstance = CastChecked<ULocalPlayer>(Outer)->GetGameInstance();
+	if (GameInstance && !GameInstance->IsDedicatedServerInstance())
+	{
+		TArray<UClass*> ChildClasses;
+		GetDerivedClasses(GetClass(), ChildClasses, false);
+		return ChildClasses.Num() == 0;
+	}
+	return false;
+}
+
+void UCommonMessagingSubsystem::ShowConfirmation(
+	UCommonGameDialogDescriptor* DialogDescriptor,
+	FCommonMessagingResultDelegate ResultCallback)
+{
+}
+```
+
+Lyra 的 `ULyraUIMessaging` 才把描述符推到 Modal 层，并把回调交给可配置的对话框类：
+
+```cpp
+void ULyraUIMessaging::ShowConfirmation(
+	UCommonGameDialogDescriptor* DialogDescriptor,
+	FCommonMessagingResultDelegate ResultCallback)
+{
+	if (UCommonLocalPlayer* LocalPlayer = GetLocalPlayer<UCommonLocalPlayer>())
+	{
+		if (UPrimaryGameLayout* RootLayout = LocalPlayer->GetRootUILayout())
+		{
+			RootLayout->PushWidgetToLayerStack<UCommonGameDialog>(
+				TAG_UI_LAYER_MODAL, ConfirmationDialogClassPtr,
+				[DialogDescriptor, ResultCallback](UCommonGameDialog& Dialog)
+				{
+					Dialog.SetupDialog(DialogDescriptor, ResultCallback);
+				});
+		}
+	}
+}
+```
 
 ### 8.8 层叠关系图：CommonGame 插件层 → Lyra 侧封装 → 具体 HUD/控件
 
@@ -893,7 +1074,7 @@ void ULyraNumberPopComponent_NiagaraText::AddNumberPop(const FLyraNumberPopReque
 - 因此链条是：**DamageExecution 产生伤害 → DamagePopStyle 数据资产按 `TargetTags` 配置样式 → NumberPopComponent 显示**。42 篇补了"服务器命中确认→命中标记（UI）"，本篇补了"伤害数值→世界内 NumberPop（表现）"，二者都是"UI/表现不自己猜，而是消费权威结算结果"这一原则的不同侧面。
 - 注意（已知缺口，A 级证据）：本模块只提供**显示载体**；把 `AddNumberPop` 真正接到伤害事件、以及样式资产的具体数值/网格，均由蓝图资产接线，本机未把 `.uasset` 内容当作事实断言（正文 2.1 证据等级约束）。
 
-### 9.7 ContextEffects：基于上下文的音效/粒子（简析）
+### 9.7 ContextEffects：基于上下文的音效/粒子
 
 `ContextEffects` 子目录解决"同样的动作，打在草上/石上/水中，该放哪套声音和粒子"的问题，机制核心四件套：
 
@@ -902,7 +1083,98 @@ void ULyraNumberPopComponent_NiagaraText::AddNumberPop(const FLyraNumberPopReque
 - `ULyraContextEffectsLibrary`（`UObject`）：数据资产，`FLyraContextEffects` 记录 `EffectTag`/`Context`/`Effects`（软路径数组，可指向 SoundBase 或 NiagaraSystem），异步/同步加载后缓存为 `ULyraActiveContextEffects`。
 - `UAnimNotify_LyraContextEffects`：**动画通知**，在动画事件点（如脚步落地）用 `FGameplayTag Effect` + `TraceProperties`（可对脚部下发 trace 取表面）构造上下文并调 Subsystem 生成特效。
 
-**与 GameplayCue 的分工**：GameplayCue（GAS）负责"**游戏事件语义驱动的表现**"——由标记在 `GameplayEffect` 上的 Cue Tag 触发、走 `FGameplayCueParameters` 约定的参数上下文，与技能/效果生命周期强绑定；ContextEffects 则偏**纯"表面/动作"物理环境反馈**——由动画通知 + 表面类型 tag 驱动，意在复用同一套声像资产于"地面是什么"而非"发生了什么能力"。二者可以并行：需要统一事件语义（技能的命中反馈、受击反馈）用 GameplayCue；需要"脚踩泥土/跳进水里"这类按表面与动作区分的环境反馈时用 ContextEffects。本篇只做定位性说明，不深挖其字节级细节（任务范围：1-2 段简析）。
+**与 GameplayCue 的分工**：GameplayCue（GAS）负责"**游戏事件语义驱动的表现**"——由标记在 `GameplayEffect` 上的 Cue Tag 触发、走 `FGameplayCueParameters` 约定的参数上下文，与技能/效果生命周期强绑定；ContextEffects 则偏**纯"表面/动作"物理环境反馈**——由动画通知 + 表面类型 tag 驱动，意在复用同一套声像资产于"地面是什么"而非"发生了什么能力"。二者可以并行：需要统一事件语义（技能的命中反馈、受击反馈）用 GameplayCue；需要"脚踩泥土/跳进水里"这类按表面与动作区分的环境反馈时用 ContextEffects。
+
+`ULyraContextEffectsSubsystem::SpawnContextEffects` 的实际代码把“匹配库 → 收集声音/Niagara → 附着生成”串成一条 C++ 路径：
+
+```cpp
+void ULyraContextEffectsSubsystem::SpawnContextEffects(
+	const AActor* SpawningActor
+	, USceneComponent* AttachToComponent
+	, const FName AttachPoint
+	, const FVector LocationOffset
+	, const FRotator RotationOffset
+	, FGameplayTag Effect
+	, FGameplayTagContainer Contexts
+	, TArray<UAudioComponent*>& AudioOut
+	, TArray<UNiagaraComponent*>& NiagaraOut
+	, FVector VFXScale
+	, float AudioVolume
+	, float AudioPitch)
+{
+	if (TObjectPtr<ULyraContextEffectsSet>* EffectsLibrariesSetPtr = ActiveActorEffectsMap.Find(SpawningActor))
+	{
+		if (ULyraContextEffectsSet* EffectsLibraries = *EffectsLibrariesSetPtr)
+		{
+			TArray<USoundBase*> TotalSounds;
+			TArray<UNiagaraSystem*> TotalNiagaraSystems;
+			for (ULyraContextEffectsLibrary* EffectLibrary : EffectsLibraries->LyraContextEffectsLibraries)
+			{
+				if (EffectLibrary && EffectLibrary->GetContextEffectsLibraryLoadState() ==
+					EContextEffectsLibraryLoadState::Loaded)
+				{
+					TArray<USoundBase*> Sounds;
+					TArray<UNiagaraSystem*> NiagaraSystems;
+					EffectLibrary->GetEffects(Effect, Contexts, Sounds, NiagaraSystems);
+					TotalSounds.Append(Sounds);
+					TotalNiagaraSystems.Append(NiagaraSystems);
+				}
+				else if (EffectLibrary && EffectLibrary->GetContextEffectsLibraryLoadState() ==
+					EContextEffectsLibraryLoadState::Unloaded)
+				{
+					EffectLibrary->LoadEffects();
+				}
+			}
+
+			for (USoundBase* Sound : TotalSounds)
+			{
+				UAudioComponent* AudioComponent = UGameplayStatics::SpawnSoundAttached(
+					Sound, AttachToComponent, AttachPoint, LocationOffset, RotationOffset,
+					EAttachLocation::KeepRelativeOffset, false, AudioVolume, AudioPitch,
+					0.0f, nullptr, nullptr, true);
+				AudioOut.Add(AudioComponent);
+			}
+			for (UNiagaraSystem* NiagaraSystem : TotalNiagaraSystems)
+			{
+				UNiagaraComponent* NiagaraComponent = UNiagaraFunctionLibrary::SpawnSystemAttached(
+					NiagaraSystem, AttachToComponent, AttachPoint, LocationOffset,
+					RotationOffset, VFXScale, EAttachLocation::KeepRelativeOffset, true,
+					ENCPoolMethod::None, true, true);
+				NiagaraOut.Add(NiagaraComponent);
+			}
+		}
+	}
+}
+```
+
+动画通知负责把脚下表面和动画事件转换成接口调用；它会先按配置做物理材质 Trace，再枚举 Actor 及其组件上实现 `ULyraContextEffectsInterface` 的对象：
+
+```cpp
+if (bPerformTrace)
+{
+	FVector TraceStart = bAttached
+		? MeshComp->GetSocketLocation(SocketName)
+		: MeshComp->GetComponentLocation();
+	if (UWorld* World = OwningActor->GetWorld())
+	{
+		bHitSuccess = World->LineTraceSingleByChannel(
+			HitResult, TraceStart, TraceStart + TraceProperties.EndTraceLocationOffset,
+			TraceProperties.TraceChannel, QueryParams,
+			FCollisionResponseParams::DefaultResponseParam);
+	}
+}
+
+for (UObject* ImplementingObject : LyraContextEffectImplementingObjects)
+{
+	ILyraContextEffectsInterface::Execute_AnimMotionEffect(
+		ImplementingObject, bAttached ? SocketName : FName("None"), Effect,
+		MeshComp, LocationOffset, RotationOffset, Animation,
+		bHitSuccess, HitResult, Contexts, VFXProperties.Scale,
+		AudioProperties.VolumeMultiplier, AudioProperties.PitchMultiplier);
+}
+```
+
+这两段源码把此前的“路径 + 符号”定位补成了可逐行核对的实现：表面类型映射和资产加载仍是数据资产边界，但运行时的筛选、生成和动画通知传播已经有实际 C++ 证据。
 
 ## 十、其他控件与表现
 
@@ -922,8 +1194,15 @@ public:
 	SLATE_ARGUMENT(FColor, BackgroundColor)
 	SLATE_END_ARGS()
 	void Construct(const FArguments& InArgs);
-	virtual int32 OnPaint(...) const override;
-	//...
+	virtual int32 OnPaint(const FPaintArgs& Args,
+		const FGeometry& AllottedGeometry,
+		const FSlateRect& MyClippingRect,
+		FSlateWindowElementList& OutDrawElements,
+		int32 LayerId,
+		const FWidgetStyle& InWidgetStyle,
+		bool bParentEnabled) const override;
+	virtual bool ComputeVolatility() const override { return true; }
+	virtual FVector2D ComputeDesiredSize(float LayoutScaleMultiplier) const override;
 };
 ```
 
@@ -1017,7 +1296,7 @@ A：是的——`ULyraSimulatedInputWidget::InputKeyValue2D` 调 `UEnhancedPlaye
 - [43-Lyra-背包装备消息与UI源码.md](./43-Lyra-背包装备消息与UI源码.md)：UIExtension/`GameFeatureAction_AddWidget` 注入机制，本篇落终点到 `ULyraHUDLayout::PrimaryLayout`。
 - [07-UI与性能优化](../07-UI与性能优化/README.md)与 [14-UMG与Slate源码.md](./14-UMG与Slate源码.md)：UMG/Slate 渲染管线、控件性能。
 - [25-EnhancedInput与GameplayTags源码.md](./25-EnhancedInput与GameplayTags源码.md)：`ULyraActionWidget` 查询当前按键图标、移动输入注入的底层。
-- 50 篇设置系统（future）：`ULyraSettingScreen` → `UGameSettingRegistry` 的设置注册表与平台 gating。
+- [50-Lyra-设置系统与GameSettings源码.md](./50-Lyra-设置系统与GameSettings源码.md)：`ULyraSettingScreen` → `UGameSettingRegistry` 的设置注册表与平台 gating。
 
 ## 十六、可复现验证事项
 
@@ -1039,12 +1318,12 @@ Lyra 的 UI 模块几乎全部建立在 **CommonUI + UMG/Slate + Enhanced Input 
 
 ## 附录：核心文件完整源码
 
-> 收录原则：本附录把正文直接分析的 LyraStarterGame 5.8 项目源码文件逐字完整收录（未删改，保留 Epic 版权头），正文中的"节选"负责解释调用链，本附录提供全文，二者配合阅读。引擎层（`Engine/`）文件体量过大且不属于项目教程主体，仍按正文的路径+符号检索方式引用，不在此收录；`.uasset/.umap` 资产也不在收录范围。
+> 收录原则：本附录把正文直接分析的 LyraStarterGame 5.8 项目源码内容完整收录（代码字符、注释、条件编译和文件尾换行未删改；仅统一代码围栏内的行尾及缩进空白，保留 Epic 版权头），正文中的"节选"负责解释调用链，本附录提供全文，二者配合阅读。引擎层（`Engine/`）文件体量过大且不属于项目教程主体，仍按正文的路径+符号检索方式引用，不在此收录；`.uasset/.umap` 资产也不在收录范围。
 >
 > **覆盖边界说明**：
 >
-> - **LYRA 批次 1**（2026-08-14）：把正文"九、伤害数字弹出（NumberPop）"分析到的 `Source/LyraGame/Feedback/NumberPops` 核心文件追加为 #12–#17——头文件逐一收录；`.cpp` 仅收纳核心链路 `LyraNumberPopComponent_MeshText.cpp`（#16，该章核心诉求），其余 `.cpp` 体量小、正文"节选"已覆盖关键逻辑，按路径+符号检索引用；Niagara/材质等资产不属于源码，不在此收录。`Feedback/ContextEffects` 因正文按 1–2 段简析定位、不逐函数深挖，同样按"路径 + 符号检索"引用，未收录全文。
-> - **LYRA 批次 2**（2026-08-14）：把正文"八、CommonGame UI 管理层"分析到的 `Plugins/CommonGame/Source` UI 管理族核心文件追加为 #18–#23——收录 `GameUIManagerSubsystem.h`/`GameUIPolicy.h`/`PrimaryGameLayout.h`/`CommonUIExtensions.h` 四份头文件，与 `GameUIPolicy.cpp`/`CommonUIExtensions.cpp` 两份实现（前者是"根布局创建与挂载"这个本章核心生命周期，后者是"Push/Pop/Suspend"这些静态助手实现）。其余 CommonGame 文件（`CommonGameInstance`/`CommonLocalPlayer`/`Actions/AsyncAction_*`/`Messaging/*` 等）体量小且正文为简析定位，按"路径 + 符号检索"引用，未收录全文。
+> - **LYRA 批次 1**（2026-08-14，2026-08-17 补全）：把正文"九、伤害数字弹出（NumberPop）"分析到的 `Source/LyraGame/Feedback/NumberPops` 核心文件追加为 #12–#17——头文件逐一收录；`MeshText.cpp` 收纳核心链路，`NiagaraText.cpp` 已在正文 9.5 展开 `AddNumberPop` 实际实现；`Feedback/ContextEffects` 未整卷收录，但正文 9.7 已展开 Subsystem 生成和 AnimNotify Trace/接口传播的真实 C++ 片段。Niagara/材质等资产不属于源码，不在收录范围。
+> - **LYRA 批次 2**（2026-08-14，2026-08-17 补全）：把正文"八、CommonGame UI 管理层"分析到的 `Plugins/CommonGame/Source` UI 管理族核心文件追加为 #18–#23；其余 CommonGame 文件不整卷收录，但 `AsyncAction_PushContentToLayerForPlayer.cpp`、`CommonMessagingSubsystem.cpp` 与 Lyra 侧 `LyraUIMessaging.cpp` 已在正文 8.6/8.7 展开实际函数，不再只留下路径 + 符号指引。
 > 版权提示：以下代码来自 Epic Games 的 LyraStarterGame 样例（UE 5.8），随 Unreal Engine EULA 的样例代码条款提供，仅作本地学习收录；对外发布前请自行核对许可条款。
 
 | # | 文件（相对 LyraStarterGame 根；#1–#11 位于 `Source/LyraGame/UI` 下，#12–#17 位于 `Source/LyraGame/Feedback/NumberPops` 下，#18–#23 位于 `Plugins/CommonGame/Source` 下） | 行数 |
@@ -1075,7 +1354,7 @@ Lyra 的 UI 模块几乎全部建立在 **CommonUI + UMG/Slate + Enhanced Input 
 
 ### 附录文件 1：`Source/LyraGame/UI/LyraHUD.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1096,7 +1375,7 @@ class UObject;
  *
  *  Note that you typically do not need to extend or modify this class, instead you would
  *  use an "Add Widget" action in your experience to add a HUD layout and widgets to it
- * 
+ *
  *  This class exists primarily for debug rendering
  */
 UCLASS(Config = Game)
@@ -1126,7 +1405,7 @@ protected:
 
 ### 附录文件 2：`Source/LyraGame/UI/LyraHUD.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1207,7 +1486,7 @@ void ALyraHUD::GetDebugActorList(TArray<AActor*>& InOutList)
 
 ### 附录文件 3：`Source/LyraGame/UI/LyraHUDLayout.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1243,11 +1522,11 @@ public:
 
 protected:
 	void HandleEscapeAction();
-	
-	/** 
-	* Callback for when controllers are disconnected. This will check if the player now has 
+
+	/**
+	* Callback for when controllers are disconnected. This will check if the player now has
 	* no mapped input devices to them, which would mean that they can't play the game.
-	* 
+	*
 	* If this is the case, then call DisplayControllerDisconnectedMenu.
 	*/
 	void HandleInputDeviceConnectionChanged(EInputDeviceConnectionState NewConnectionState, FPlatformUserId PlatformUserId, FInputDeviceId InputDeviceId);
@@ -1257,9 +1536,9 @@ protected:
 	* if we no longer need to display the "Controller Disconnected" menu
 	*/
 	void HandleInputDevicePairingChanged(FInputDeviceId InputDeviceId, FPlatformUserId NewUserPlatformId, FPlatformUserId OldUserPlatformId);
-	
+
 	/**
-	* Notify this widget that the state of controllers for the player have changed. Queue a timer for next tick to 
+	* Notify this widget that the state of controllers for the player have changed. Queue a timer for next tick to
 	* process them and see if we need to show/hide the "controller disconnected" widget.
 	*/
 	void NotifyControllerStateChangeForDisconnectScreen();
@@ -1272,10 +1551,10 @@ protected:
 	virtual void ProcessControllerDevicesHavingChangedForDisconnectScreen();
 
 	/**
-     * Returns true if this platform supports a "controller disconnected" screen. 
+     * Returns true if this platform supports a "controller disconnected" screen.
      */
     virtual bool ShouldPlatformDisplayControllerDisconnectScreen() const;
-	
+
 	/**
 	* Pushes the ControllerDisconnectedMenuClass to the Menu layer (UI.Layer.Menu)
 	*/
@@ -1287,14 +1566,14 @@ protected:
 	*/
 	UFUNCTION(BlueprintNativeEvent, Category="Controller Disconnect Menu")
 	void HideControllerDisconnectedMenu();
-	
+
 	/**
-	 * The menu to be displayed when the user presses the "Pause" or "Escape" button 
+	 * The menu to be displayed when the user presses the "Pause" or "Escape" button
 	 */
 	UPROPERTY(EditDefaultsOnly)
 	TSoftClassPtr<UCommonActivatableWidget> EscapeMenuClass;
 
-	/** 
+	/**
 	* The widget which should be presented to the user if all of their controllers are disconnected.
 	*/
 	UPROPERTY(EditDefaultsOnly, Category="Controller Disconnect Menu")
@@ -1304,7 +1583,7 @@ protected:
 	 * The platform tags that are required in order to show the "Controller Disconnected" screen.
 	 *
 	 * If these tags are not set in the INI file for this platform, then the controller disconnect screen
-	 * will not ever be displayed. 
+	 * will not ever be displayed.
 	 */
 	UPROPERTY(EditDefaultsOnly, Category="Controller Disconnect Menu")
 	FGameplayTagContainer PlatformRequiresControllerDisconnectScreen;
@@ -1320,7 +1599,7 @@ protected:
 
 ### 附录文件 4：`Source/LyraGame/UI/LyraActivatableWidget.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1350,9 +1629,9 @@ class ULyraActivatableWidget : public UCommonActivatableWidget
 
 public:
 	ULyraActivatableWidget(const FObjectInitializer& ObjectInitializer);
-	
+
 public:
-	
+
 	//~UCommonActivatableWidget interface
 	virtual TOptional<FUIInputConfig> GetDesiredInputConfig() const override;
 	//~End of UCommonActivatableWidget interface
@@ -1360,7 +1639,7 @@ public:
 #if WITH_EDITOR
 	virtual void ValidateCompiledWidgetTree(const UWidgetTree& BlueprintWidgetTree, class IWidgetCompilerLog& CompileLog) const override;
 #endif
-	
+
 protected:
 	/** The desired input mode to use while this UI is activated, for example do you want key presses to still reach the game/player controller? */
 	UPROPERTY(EditDefaultsOnly, Category = Input)
@@ -1374,7 +1653,7 @@ protected:
 
 ### 附录文件 5：`Source/LyraGame/UI/Subsystem/LyraUIManagerSubsystem.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1404,14 +1683,14 @@ public:
 private:
 	bool Tick(float DeltaTime);
 	void SyncRootLayoutVisibilityToShowHUD();
-	
+
 	FTSTicker::FDelegateHandle TickHandle;
 };
 ```
 
 ### 附录文件 6：`Source/LyraGame/UI/Subsystem/LyraUIManagerSubsystem.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1449,7 +1728,7 @@ void ULyraUIManagerSubsystem::Deinitialize()
 bool ULyraUIManagerSubsystem::Tick(float DeltaTime)
 {
 	SyncRootLayoutVisibilityToShowHUD();
-	
+
 	return true;
 }
 
@@ -1460,7 +1739,7 @@ void ULyraUIManagerSubsystem::SyncRootLayoutVisibilityToShowHUD()
 		for (const ULocalPlayer* LocalPlayer : GetGameInstance()->GetLocalPlayers())
 		{
 			bool bShouldShowUI = true;
-			
+
 			if (const APlayerController* PC = LocalPlayer->GetPlayerController(GetWorld()))
 			{
 				const AHUD* HUD = PC->GetHUD();
@@ -1476,7 +1755,7 @@ void ULyraUIManagerSubsystem::SyncRootLayoutVisibilityToShowHUD()
 				const ESlateVisibility DesiredVisibility = bShouldShowUI ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed;
 				if (DesiredVisibility != RootLayout->GetVisibility())
 				{
-					RootLayout->SetVisibility(DesiredVisibility);	
+					RootLayout->SetVisibility(DesiredVisibility);
 				}
 			}
 		}
@@ -1486,7 +1765,7 @@ void ULyraUIManagerSubsystem::SyncRootLayoutVisibilityToShowHUD()
 
 ### 附录文件 7：`Source/LyraGame/UI/IndicatorSystem/IndicatorDescriptor.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1530,7 +1809,7 @@ UCLASS(MinimalAPI, BlueprintType)
 class UIndicatorDescriptor : public UObject
 {
 	GENERATED_BODY()
-	
+
 public:
 	UIndicatorDescriptor() { }
 
@@ -1539,7 +1818,7 @@ public:
 	UObject* GetDataObject() const { return DataObject; }
 	UFUNCTION(BlueprintCallable)
 	void SetDataObject(UObject* InDataObject) { DataObject = InDataObject; }
-	
+
 	UFUNCTION(BlueprintCallable)
 	USceneComponent* GetSceneComponent() const { return Component; }
 	UFUNCTION(BlueprintCallable)
@@ -1582,7 +1861,7 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	bool GetIsVisible() const { return IsValid(GetSceneComponent()) && bVisible; }
-	
+
 	UFUNCTION(BlueprintCallable)
 	void SetDesiredVisibility(bool InVisible)
 	{
@@ -1676,7 +1955,7 @@ public:
 public:
 	ULyraIndicatorManagerComponent* GetIndicatorManagerComponent() { return ManagerPtr.Get(); }
 	UE_API void SetIndicatorManagerComponent(ULyraIndicatorManagerComponent* InManager);
-	
+
 	UFUNCTION(BlueprintCallable)
 	UE_API void UnregisterIndicator();
 
@@ -1714,7 +1993,7 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<UObject> DataObject;
-	
+
 	UPROPERTY()
 	TObjectPtr<USceneComponent> Component;
 
@@ -1736,7 +2015,7 @@ private:
 
 ### 附录文件 8：`Source/LyraGame/UI/IndicatorSystem/LyraIndicatorManagerComponent.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1769,7 +2048,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = Indicator)
 	UE_API void AddIndicator(UIndicatorDescriptor* IndicatorDescriptor);
-	
+
 	UFUNCTION(BlueprintCallable, Category = Indicator)
 	UE_API void RemoveIndicator(UIndicatorDescriptor* IndicatorDescriptor);
 
@@ -1789,7 +2068,7 @@ private:
 
 ### 附录文件 9：`Source/LyraGame/UI/Weapons/LyraReticleWidgetBase.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1845,7 +2124,7 @@ protected:
 
 ### 附录文件 10：`Source/LyraGame/UI/Weapons/HitMarkerConfirmationWidget.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1879,7 +2158,7 @@ protected:
 public:
 	virtual void ReleaseSlateResources(bool bReleaseChildren) override;
 	//~End of UVisual interface
-	
+
 public:
 	/** The duration (in seconds) to display hit notifies (they fade to transparent over this time)  */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Appearance, meta=(ClampMin=0.0, ForceUnits=s))
@@ -1905,7 +2184,7 @@ private:
 
 ### 附录文件 11：`Source/LyraGame/UI/PerformanceStats/LyraPerfStatWidgetBase.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -1956,12 +2235,12 @@ public:
 		bool bParentEnabled) const override;
 
 	virtual bool ComputeVolatility() const override { return true; }
-	
+
 	virtual FVector2D ComputeDesiredSize(float LayoutScaleMultiplier) const override;
 
 	inline void SetLineColor(const FColor& InColor)
 	{
-		LineColor = InColor;	
+		LineColor = InColor;
 	}
 
 	inline void SetMaxYValue(const double InValue)
@@ -1979,9 +2258,9 @@ public:
 		GraphData = StatData;
 		ScaleFactor = InScaleFactor;
 	}
-	
+
 private:
-	
+
 	void DrawTotalLatency(const FGeometry& AllottedGeometry, FSlateWindowElementList& OutDrawElements, int32 LayerId) const;
 
 	/**
@@ -2024,15 +2303,15 @@ class ULyraPerfStatGraph : public UUserWidget
 
 public:
 	ULyraPerfStatGraph(const FObjectInitializer& ObjectInitializer);
-	
+
 	void SetLineColor(const FColor& InColor);
-	
+
 	void SetMaxYValue(const float InValue);
-	
+
 	void SetBackgroundColor(const FColor& InValue);
 
 	void UpdateGraphData(const FSampledStatCache* StatData, const float ScaleFactor);
-	
+
 protected:
 	// Begin UWidget interface
 	virtual TSharedRef<SWidget> RebuildWidget() override;
@@ -2072,31 +2351,31 @@ public:
 
 protected:
 
- 	virtual void NativeConstruct() override;
+	virtual void NativeConstruct() override;
 
- 	ULyraPerformanceStatSubsystem* GetStatSubsystem();
+	ULyraPerformanceStatSubsystem* GetStatSubsystem();
 
 	/**
 	 * An optional stat graph widget to display this stat's value over time.
 	 */
 	UPROPERTY(BlueprintReadWrite, meta=(BindWidget, OptionalWidget=true))
- 	TObjectPtr<ULyraPerfStatGraph> PerfStatGraph;
- 	
+	TObjectPtr<ULyraPerfStatGraph> PerfStatGraph;
+
 	// Cached subsystem pointer
 	UPROPERTY(Transient)
 	TObjectPtr<ULyraPerformanceStatSubsystem> CachedStatSubsystem;
 
- 	UPROPERTY(EditAnywhere, Category = Display)
- 	FColor GraphLineColor = FColor(255, 255, 255, 255);
-	
- 	UPROPERTY(EditAnywhere, Category = Display)
- 	FColor GraphBackgroundColor = FColor(0, 0, 0, 128);
+	UPROPERTY(EditAnywhere, Category = Display)
+	FColor GraphLineColor = FColor(255, 255, 255, 255);
 
- 	/**
-	  * The max value of the Y axis to clamp the graph to. 
+	UPROPERTY(EditAnywhere, Category = Display)
+	FColor GraphBackgroundColor = FColor(0, 0, 0, 128);
+
+	/**
+	  * The max value of the Y axis to clamp the graph to.
 	  */
- 	UPROPERTY(EditAnywhere, Category = Display)
- 	double GraphMaxYValue = 33.0;
+	UPROPERTY(EditAnywhere, Category = Display)
+	double GraphMaxYValue = 33.0;
 
 	// The stat to display
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Display)
@@ -2106,7 +2385,7 @@ protected:
 
 ### 附录文件 12：`Source/LyraGame/Feedback/NumberPops/LyraNumberPopComponent.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。第九章节 9.2 的分析对象。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。第九章节 9.2 的分析对象。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -2170,7 +2449,7 @@ public:
 
 ### 附录文件 13：`Source/LyraGame/Feedback/NumberPops/LyraDamagePopStyle.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。第九章节 9.3 的分析对象。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。第九章节 9.3 的分析对象。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -2219,7 +2498,7 @@ public:
 
 ### 附录文件 14：`Source/LyraGame/Feedback/NumberPops/LyraDamagePopStyleNiagara.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。第九章节 9.3 的对照分析对象。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。第九章节 9.3 的对照分析对象。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -2254,7 +2533,7 @@ public:
 
 ### 附录文件 15：`Source/LyraGame/Feedback/NumberPops/LyraNumberPopComponent_MeshText.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。第九章节 9.4 的分析对象。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。第九章节 9.4 的分析对象。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -2348,7 +2627,7 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Number Pop|Style")
 	float DistanceFromCameraBeforeDoublingSize;
-	
+
 	UPROPERTY(EditDefaultsOnly, Category = "Number Pop|Style")
 	float CriticalHitSizeMultiplier;
 
@@ -2401,7 +2680,7 @@ protected:
 
 ### 附录文件 16：`Source/LyraGame/Feedback/NumberPops/LyraNumberPopComponent_MeshText.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。第九章节 9.4 的核心链路实现；收录它是为了展示"拆数字 → 池化取/建组件 → 材质参数驱动动画"的完整细节。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。第九章节 9.4 的核心链路实现；收录它是为了展示"拆数字 → 池化取/建组件 → 材质参数驱动动画"的完整细节。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -2744,7 +3023,7 @@ void ULyraNumberPopComponent_MeshText::SetMaterialParameters(const FLyraNumberPo
 
 ### 附录文件 17：`Source/LyraGame/Feedback/NumberPops/LyraNumberPopComponent_NiagaraText.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。第九章节 9.5 的对照分析对象。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。第九章节 9.5 的对照分析对象。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -2773,7 +3052,7 @@ public:
 	//~End of ULyraNumberPopComponent interface
 
 protected:
-	
+
 	TArray<int32> DamageNumberArray;
 
 	/** Style patterns to attempt to apply to the incoming number pops */
@@ -2788,7 +3067,7 @@ protected:
 
 ### 附录文件 18：`Plugins/CommonGame/Source/Public/GameUIManagerSubsystem.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。第八章节 8.2 的分析对象。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。第八章节 8.2 的分析对象。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -2810,7 +3089,7 @@ class UObject;
 /**
  * This manager is intended to be replaced by whatever your game needs to
  * actually create, so this class is abstract to prevent it from being created.
- * 
+ *
  * If you just need the basic functionality you will start by sublcassing this
  * subsystem in your own game.
  */
@@ -2818,14 +3097,14 @@ UCLASS(MinimalAPI, Abstract, config = Game)
 class UGameUIManagerSubsystem : public UGameInstanceSubsystem
 {
 	GENERATED_BODY()
-	
+
 public:
 	UGameUIManagerSubsystem() { }
-	
+
 	UE_API virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	UE_API virtual void Deinitialize() override;
 	UE_API virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
-	
+
 	const UGameUIPolicy* GetCurrentUIPolicy() const { return CurrentPolicy; }
 	UGameUIPolicy* GetCurrentUIPolicy() { return CurrentPolicy; }
 
@@ -2849,7 +3128,7 @@ private:
 
 ### 附录文件 19：`Plugins/CommonGame/Source/Public/GameUIPolicy.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。第八章节 8.3 的分析对象。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。第八章节 8.3 的分析对象。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -2868,7 +3147,7 @@ class ULocalPlayer;
 class UPrimaryGameLayout;
 
 /**
- * 
+ *
  */
 UENUM()
 enum class ELocalMultiplayerInteractionMode : uint8
@@ -2963,7 +3242,7 @@ private:
 
 ### 附录文件 20：`Plugins/CommonGame/Source/Public/PrimaryGameLayout.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。第八章节 8.4 的分析对象。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。第八章节 8.4 的分析对象。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3089,11 +3368,11 @@ protected:
 	/** Register a layer that widgets can be pushed onto. */
 	UFUNCTION(BlueprintCallable, Category="Layer")
 	UE_API void RegisterLayer(UPARAM(meta = (Categories = "UI.Layer")) FGameplayTag LayerTag, UCommonActivatableWidgetContainerBase* LayerWidget);
-	
+
 	UE_API virtual void OnIsDormantChanged();
 
 	UE_API void OnWidgetStackTransitioning(UCommonActivatableWidgetContainerBase* Widget, bool bIsTransitioning);
-	
+
 private:
 	bool bIsDormant = false;
 
@@ -3111,7 +3390,7 @@ private:
 
 ### 附录文件 21：`Plugins/CommonGame/Source/Public/CommonUIExtensions.h`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。第八章节 8.5 的分析对象。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。第八章节 8.5 的分析对象。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3140,13 +3419,13 @@ UCLASS(MinimalAPI)
 class UCommonUIExtensions : public UBlueprintFunctionLibrary
 {
 	GENERATED_BODY()
-	
+
 public:
 	UCommonUIExtensions() { }
-	
+
 	UFUNCTION(BlueprintPure, BlueprintCosmetic, Category = "Global UI Extensions", meta = (WorldContext = "WidgetContextObject"))
 	static UE_API ECommonInputType GetOwningPlayerInputType(const UUserWidget* WidgetContextObject);
-	
+
 	UFUNCTION(BlueprintPure, BlueprintCosmetic, Category = "Global UI Extensions", meta = (WorldContext = "WidgetContextObject"))
 	static UE_API bool IsOwningPlayerUsingTouch(const UUserWidget* WidgetContextObject);
 
@@ -3184,7 +3463,7 @@ private:
 
 ### 附录文件 22：`Plugins/CommonGame/Source/Private/GameUIPolicy.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。第八章节 8.3 的核心生命周期实现；收录它是为了展示"根布局创建 → 挂载视口 → 分屏 dormancy 主控"这条本章核心链路。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。第八章节 8.3 的核心生命周期实现；收录它是为了展示"根布局创建 → 挂载视口 → 分屏 dormancy 主控"这条本章核心链路。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
@@ -3350,12 +3629,12 @@ void UGameUIPolicy::OnRootLayoutAddedToViewport(UCommonLocalPlayer* LocalPlayer,
 
 void UGameUIPolicy::OnRootLayoutRemovedFromViewport(UCommonLocalPlayer* LocalPlayer, UPrimaryGameLayout* Layout)
 {
-	
+
 }
 
 void UGameUIPolicy::OnRootLayoutReleased(UCommonLocalPlayer* LocalPlayer, UPrimaryGameLayout* Layout)
 {
-	
+
 }
 
 void UGameUIPolicy::RequestPrimaryControl(UPrimaryGameLayout* Layout)
@@ -3384,7 +3663,7 @@ void UGameUIPolicy::CreateLayoutWidget(UCommonLocalPlayer* LocalPlayer)
 		{
 			UPrimaryGameLayout* NewLayoutObject = CreateWidget<UPrimaryGameLayout>(PlayerController, LayoutWidgetClass);
 			RootViewportLayouts.Emplace(LocalPlayer, NewLayoutObject, true);
-			
+
 			AddLayoutToViewport(LocalPlayer, NewLayoutObject);
 		}
 	}
@@ -3398,7 +3677,7 @@ TSubclassOf<UPrimaryGameLayout> UGameUIPolicy::GetLayoutWidgetClass(UCommonLocal
 
 ### 附录文件 23：`Plugins/CommonGame/Source/Private/CommonUIExtensions.cpp`
 
-> 完整源码（本机 Lyra 5.8 样例，逐字收录，未删改）。第八章节 8.5 的静态助手实现；收录它是为了展示"Push/Pop 经 Manager→Policy→RootLayout"与"输入挂起/恢复"的完整细节。
+> 完整源码（本机 Lyra 5.8 样例，内容完整收录；代码围栏内的行尾及缩进空白已统一，其余内容未删改）。第八章节 8.5 的静态助手实现；收录它是为了展示"Push/Pop 经 Manager→Policy→RootLayout"与"输入挂起/恢复"的完整细节。
 
 ```cpp
 // Copyright Epic Games, Inc. All Rights Reserved.
