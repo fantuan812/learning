@@ -14,7 +14,7 @@
 >
 > 官方参考：[Using PCG Generation Modes in Unreal Engine 5.8](https://dev.epicgames.com/documentation/en-us/unreal-engine/using-pcg-generation-modes-in-unreal-engine)；[Procedural Content Generation Framework Node Reference](https://dev.epicgames.com/documentation/en-us/unreal-engine/procedural-content-generation-framework-node-reference-in-unreal-engine)。
 >
-> 最后更新：2026-08-06
+> 最后更新：2026-08-18（补入 ProceduralVegetationEditor 模块实际函数）。
 
 ## 概述
 
@@ -319,3 +319,81 @@ flowchart LR
 - [World Partition 与 World Streaming 源码](22-WorldPartition与WorldStreaming源码.md)用于对照分区边界。
 - [Landscape 与 Foliage 源码](23-Landscape与Foliage源码.md)用于对照植被承载路径。
 - [Enhanced Input 与 Gameplay Tags 源码](25-EnhancedInput与GameplayTags源码.md)用于对照其他 UE5.8 源码专题的写法。
+
+## 真实源码证据补充（2026-08-18）
+
+本文原有编辑器流程图不等于模块实现；以下真实模块函数展示 ProceduralVegetationEditor 的启动注册、命令绑定和关闭清理。
+
+### ProceduralVegetationEditor：StartupModule
+
+来源：Engine/Plugins\Experimental\ProceduralVegetationEditor\Source\ProceduralVegetationEditor\Private\ProceduralVegetationEditorModule.cpp（第 65-108 行）
+
+```cpp
+void FProceduralVegetationEditorModule::StartupModule()
+{
+	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
+	RegisterMenus();
+	FPVEditorCommands::Register();
+	RegisterLevelEditorMenuExtension();
+	RegisterPinColorAndIcons();
+
+	// Visualizations
+	FPCGDataVisualizationRegistry& DataVisRegistry = FPCGModule::GetMutablePCGDataVisualizationRegistry();
+	DataVisRegistry.RegisterPCGDataVisualization(UPVData::StaticClass(), MakeUnique<const FPVDataVisualization>());
+
+	FPropertyEditorModule& PropertyEditor = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
+	PropertyEditor.RegisterCustomPropertyTypeLayout(FPVExportParams::StaticStruct()->GetFName(), FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FPVOutputSettingsCustomizations::MakeInstance));
+	PropertyEditor.RegisterCustomPropertyTypeLayout(FPVColliderParams::StaticStruct()->GetFName(), FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FPVColliderParamsCustomization::MakeInstance));
+	PropertyEditor.RegisterCustomPropertyTypeLayout(FPVFloatRamp::StaticStruct()->GetFName(), FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FPVFloatRampCustomization::MakeInstance));
+	PropertyEditor.RegisterCustomPropertyTypeLayout(FLoopDebugStepper::StaticStruct()->GetFName(), FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FPVLoopDebugStepperCustomization::MakeInstance));
+	PropertyEditor.RegisterCustomPropertyTypeLayout(FPVImportStaticMeshParams::StaticStruct()->GetFName(), FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FPVImportStaticMeshParamsCustomization::MakeInstance));
+
+	PropertyEditor.RegisterCustomClassLayout(UPVTrunkTextureSetupSettings::StaticClass()->GetFName(), FOnGetDetailCustomizationInstance::CreateStatic(&FPVTrunkTextureSetupSettingsCustomization::MakeInstance));
+	PropertyEditor.RegisterCustomClassLayout(UPVGrowerSettings::StaticClass()->GetFName(), FOnGetDetailCustomizationInstance::CreateStatic(&FPVGrowerSettingsCustomization::MakeInstance));
+	PropertyEditor.RegisterCustomClassLayout(UPVGrowerBaseSettings::StaticClass()->GetFName(), FOnGetDetailCustomizationInstance::CreateStatic(&FPVGrowerSettingsCustomization::MakeInstance));
+
+	FMessageLogModule& MessageLogModule = FModuleManager::LoadModuleChecked<FMessageLogModule>("MessageLog");
+	MessageLogModule.RegisterLogListing(PVEditor::MessageLogName, LOCTEXT("PVEditorLogLabel", "Procedural Vegetation Editor"));
+}
+
+void FProceduralVegetationEditorModule::ShutdownModule()
+{
+	UnregisterLevelEditorMenuExtension();
+	UnregisterPinColorAndIcons();
+	FPVEditorCommands::Unregister();
+
+	if (UObjectInitialized() && !IsEngineExitRequested())
+	{
+		if (FPropertyEditorModule* PropertyEditor = FModuleManager::GetModulePtr<FPropertyEditorModule>("PropertyEditor"))
+		{
+			PropertyEditor->UnregisterCustomPropertyTypeLayout(FPVExportParams::StaticStruct()->GetFName());
+			PropertyEditor->UnregisterCustomPropertyTypeLayout(FPVColliderParams::StaticStruct()->GetFName());
+			PropertyEditor->UnregisterCustomPropertyTypeLayout(FPVFloatRamp::StaticStruct()->GetFName());
+			PropertyEditor->UnregisterCustomPropertyTypeLayout(FLoopDebugStepper::StaticStruct()->GetFName());
+			PropertyEditor->UnregisterCustomPropertyTypeLayout(FPVImportStaticMeshParams::StaticStruct()->GetFName());
+			PropertyEditor->UnregisterCustomClassLayout(UPVTrunkTextureSetupSettings::StaticClass()->GetFName());
+			PropertyEditor->UnregisterCustomClassLayout(UPVGrowerSettings::StaticClass()->GetFName());
+```
+
+
+### ProceduralVegetationEditor：ShutdownModule
+
+来源：Engine/Plugins\Experimental\ProceduralVegetationEditor\Source\ProceduralVegetationEditor\Private\ProceduralVegetationEditorModule.cpp（第 92-106 行）
+
+```cpp
+void FProceduralVegetationEditorModule::ShutdownModule()
+{
+	UnregisterLevelEditorMenuExtension();
+	UnregisterPinColorAndIcons();
+	FPVEditorCommands::Unregister();
+
+	if (UObjectInitialized() && !IsEngineExitRequested())
+	{
+		if (FPropertyEditorModule* PropertyEditor = FModuleManager::GetModulePtr<FPropertyEditorModule>("PropertyEditor"))
+		{
+			PropertyEditor->UnregisterCustomPropertyTypeLayout(FPVExportParams::StaticStruct()->GetFName());
+			PropertyEditor->UnregisterCustomPropertyTypeLayout(FPVColliderParams::StaticStruct()->GetFName());
+			PropertyEditor->UnregisterCustomPropertyTypeLayout(FPVFloatRamp::StaticStruct()->GetFName());
+			PropertyEditor->UnregisterCustomPropertyTypeLayout(FLoopDebugStepper::StaticStruct()->GetFName());
+			PropertyEditor->UnregisterCustomPropertyTypeLayout(FPVImportStaticMeshParams::StaticStruct()->GetFName());
+```

@@ -7,13 +7,13 @@
 > 同步目录：`C:\project\git\游戏知识\12-引擎源码分析` → https://github.com/fantuan812/learning.git
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
 > 源码边界：`C:\Program Files\Epic Games\UE_5.8\Engine` 只读；以本机 5.8 源码为准。
-> 最后更新：2026-08-17（Lyra 5.8 项目源码解析 39-52 系列落地并全部补入“核心文件完整源码”附录；本轮继续把 40/41/42/43/44/45/46/47/49/50/51/52 中原先只概述、路径指引或伪代码缺口改为正文实际 C++ 片段，并同步覆盖边界与证据口径）。
+> 最后更新：2026-08-18（20-31 前置 UE 专题补入本机 5.8 实际函数；Lyra 5.8 项目源码解析扩展至 39-56，新增核心生成/移动/状态、项目复制图与模块化引擎桥、输入重映射/辅助瞄准、ShooterCore 核心玩法的真实 C++ 片段与全文附录，并同步覆盖矩阵）。
 
 ---
 
 ## 定位说明
 
-本分类是知识库的"源码纵深"层，当前为 **51 篇已落地源码文章 + 1 篇覆盖矩阵/路线图**。统计口径为 01-18、20-52 共 51 篇源码文章与 19 号路线图；其中 39-52 是基于本机 Lyra 5.8 样例的项目源码综合系列。`README.md` 是导航文件，单独列出且不计入上述数量。下表是"已有文章 → 概念分类"的映射，不是 01-11 的完成承诺：
+本分类是知识库的“源码纵深”层，当前为 54 篇已落地源码文章 + 1 篇覆盖矩阵/路线图。统计口径为 01-18、20-56 共 54 篇源码文章与 19 号路线图；其中 39-56 是基于本机 Lyra 5.8 样例的项目源码综合系列。README 是导航文件，单独列出且不计入上述数量。下表是已有文章到概念分类的映射，不是 01-11 的完成承诺。
 
 | 源码分析文件 | 对应知识分类 | 对应知识点 | 覆盖的引擎源码主题 |
 | --- | --- | --- | --- |
@@ -66,9 +66,9 @@
 
 **状态口径：**“概念层已有”表示相邻知识分类已有使用说明、设计概念或工作流，但不代表已经解释引擎实现；“源码深度已完成”表示本目录有独立文章，并以 UE5.8.0 / CL 55116800 的真实源码路径、调用链或数据结构为依据；“待补”表示仍缺独立源码核对；“规划”表示主题已登记但尚未形成可验收的源码文章。
 
-### Lyra 5.8 项目源码系列（39-52）
+### Lyra 5.8 项目源码系列（39-56）
 
-这一组文章把前面的引擎专题落到一个完整多人样例中，阅读顺序固定为“总览 → 玩法装配 → Pawn 初始化 → 输入战斗 → 背包装备 UI → 前端会话网络 → 表现与流程 → AI 与队伍 → 调试与测试 → 扩展插件 → UI 控件与表现 → 设置系统 → GAS 扩展 → 交互系统”。每篇正文末尾附“核心文件完整源码”附录：把该篇主链直接分析的项目源码文件逐字完整收录；正文中的源码结论还必须能回溯到真实 C++/HLSL 片段或全文附录，只有路径、类名清单或“请自行阅读源码”的文字不计为源码分析（引擎层与 `.uasset` 资产仍按正文路径+符号引用）：
+这一组文章把前面的引擎专题落到一个完整多人样例中，阅读顺序固定为“总览 → 玩法装配 → Pawn 初始化 → 输入战斗 → 背包装备 UI → 前端会话网络 → 表现与流程 → AI 与队伍 → 调试与测试 → 扩展插件 → UI 控件与表现 → 设置系统 → GAS 扩展 → 交互系统 → 核心生成移动状态 → 网络复制与模块化引擎 → 输入重映射与辅助瞄准 → ShooterCore 核心玩法”。每篇正文末尾附核心文件完整源码附录：把该篇主链直接分析的项目源码文件逐字完整收录；正文结论必须能回溯到真实 C++/HLSL 片段或全文附录，只有路径、类名清单或请自行阅读源码的文字不计为源码分析。
 
 | 阶段 | 教程 | 主要源码链路 |
 | --- | --- | --- |
@@ -87,15 +87,16 @@
 | GAS 扩展 | [51-Lyra-GAS扩展与能力费用源码.md](./51-Lyra-GAS扩展与能力费用源码.md) | AbilityCost 费用族、Lyra AttributeSet/CombatSet、伤害执行、Tag 关系映射与全局能力路由 |
 | 交互系统 | [52-Lyra-交互系统源码.md](./52-Lyra-交互系统源码.md) | IInteractableTarget 接口、InteractionQuery/Option、GAS 交互能力与任务、近距授予与拾取链路 |
 
-### Lyra 系列覆盖边界声明（2026-08-17，R4-LYRA-COVERAGE）
+### Lyra 系列覆盖边界声明（2026-08-18，R4-LYRA-COVERAGE）
 
-Lyra 系列（39-52）以**可复用范式**为目标（运行链 + 分层设计 + 区别于裸 UE/GAS 的设计点），**不追求对 LyraStarterGame 707 个源码文件的穷举覆盖**。按三类声明边界：
+Lyra 系列（39-56）以可复用范式为目标（运行链 + 分层设计 + 区别于裸 UE/GAS 的设计点），不追求对项目全部源码文件的穷举覆盖。2026-08-18 按 Source/Plugins 下的 h/hpp/cpp/inl/cs、Build.cs、Target.cs 与 uplugin 口径扫描为 756 个文件，其中 Source/LyraGame 约 460 个；该分母用于盘点，不等于覆盖率。
 
 - **已隐式覆盖**（相邻篇深读覆盖，未单独收录）：Replays（44 篇 Gauntlet/回放）、Performance（47 篇 PerfStat 展示）、Physics（碰撞常量/材质 Tag）、Cosmetics 部分、Player/Character 部分；CommonUser 会话核心已在 44 篇正文补入真实登录/初始化代码。
 - **薄壳/骨架**（Epic 提供的 SDK 集成层，无独立复用价值）：Hotfix（OnlineHotfixManager 包装）、LyraExampleContent（纯资产）。
-- **示例玩法专属**（Game1 射击/俯视玩法数据，非通用范式）：ShooterCore、TopDownArena、ShooterMaps、ShooterExplorer 的玩法层内容；GameFeatures/GameSettings/UI 的剩余 Widget 子类细节。
+- **示例玩法专属（Game1 射击/俯视玩法数据，非通用范式）：TopDownArena、ShooterMaps、ShooterExplorer 的剩余玩法层内容；GameFeatures/GameSettings/UI 的剩余 Widget 子类细节。ShooterCore 的 TDM/AimAssist/淘汰消息/Accolade 核心已在 56 篇纳入，未收录的资产和模式仍是范围外。
 - **源码证据补全（2026-08-17）**：40 的 GameFeature Action 与 41 的 Pawn/能力授予、 42 的武器调试、 43 的 Fragment/消息/消费、44 的 `CommonUserSubsystem`/`LyraGameInstance`、45 的相机/音频、46 的 AI PlayerState、47 的 Automation Spec、 49 的 AsyncAction/CommonMessaging/ContextEffects、50 的设置列表/详情/响应式面板、51 的 `LyraGameplayCueManager`、52 的 `ALyraWorldCollectable`，都已改用本机源码的实际 C++ 片段；原先的伪代码/路径指引缺口不再作为“已分析”证据。
-- **仍然明确的边界**：39-52 不是对当前 LyraStarterGame 全部源码文件的穷举；未在正文放入真实代码、也未被全文附录收录的文件，仍只能标为范围外/待补，不能因路径表点名就宣称已覆盖。
+- **源码证据扩展（2026-08-18）**：53 收录 GameState/Controller/Spawn/PlayerStart/Pawn/Movement；54 收录 Lyra ReplicationGraph、ModularGameplayActors 和 UE 5.8 GameFrameworkComponentManager/GameFeatures 状态真实节选；55 收录 Lyra 输入设置/重映射/Latency Marker 与 ShooterCore AimAssist；56 收录 ShooterCore TDM、消息处理器、Accolade 和 GAS 命中上下文。
+- **仍然明确的边界**：39-56 不是对当前 LyraStarterGame 全部源码文件的穷举；未在正文放入真实代码、也未被全文附录收录的文件，仍只能标为范围外/待补，不能因路径表点名就宣称已覆盖。
 
 > 判定原则：必须存在真实函数/类/数据结构代码片段，或在附录逐字收录源码并有正文解释；仅插件地图点名、路径、符号清单或“回读本机源码”不算覆盖。正文标注“核心路径片段”时，不能把省略的其他分支当成已分析。
 
@@ -144,7 +145,7 @@ Lyra 系列（39-52）以**可复用范式**为目标（运行链 + 分层设计
 | [36-AnimNext与UAF源码.md](./36-AnimNext与UAF源码.md) | AnimNext/UAF 资产与运行时对象、RigVMAsset 图、EvaluationVM 任务、StateTree 协同源码边界 | 源码深度已完成 |
 | [37-Chaos破坏与Field源码.md](./37-Chaos破坏与Field源码.md) | Geometry Collection 数据层、Fracture 工具链、Field 数据流、ChaosSolver 破坏求解与事件回调源码链路 | 源码深度已完成 |
 | [38-PCG源码.md](./38-PCG源码.md) | PCG 数据模型、图执行引擎、PCGComponent 集成、确定性、PCGCompute 并行与调试命令源码链路 | 源码深度已完成 |
-| [39-Lyra源码总览与阅读路线.md](./39-Lyra源码总览与阅读路线.md) | Lyra 5.8 项目分层、配置入口、对象关系、39-52 教程地图与可复现阅读路线 | 源码深度已完成 |
+| [39-Lyra源码总览与阅读路线.md](./39-Lyra源码总览与阅读路线.md) | Lyra 5.8 项目分层、配置入口、对象关系、39-56 教程地图与可复现阅读路线 | 源码深度已完成 |
 | [40-Lyra-Experience与GameFeature源码.md](./40-Lyra-Experience与GameFeature源码.md) | Experience 选择加载、GameFeature 激活、Action 执行、玩家出生门控与卸载链路 | 源码深度已完成 |
 | [41-Lyra-Pawn初始化与模块化组件源码.md](./41-Lyra-Pawn初始化与模块化组件源码.md) | PawnData、PlayerState ASC、模块化组件 InitState、输入与摄像机初始化屏障 | 源码深度已完成 |
 | [42-Lyra-输入GAS与武器战斗源码.md](./42-Lyra-输入GAS与武器战斗源码.md) | InputTag 到 GAS 激活、武器能力、命中验证、伤害执行与网络权威边界 | 源码深度已完成 |
@@ -158,6 +159,10 @@ Lyra 系列（39-52）以**可复用范式**为目标（运行链 + 分层设计
 | [50-Lyra-设置系统与GameSettings源码.md](./50-Lyra-设置系统与GameSettings源码.md) | GameSettings 插件抽象（GameSetting/Registry/Value/Action）、Lyra 设置注册表/载体（LyraSettingsLocal/Shared）与设置屏（补 LYRA-COV-02 缺口） | 源码深度已完成 |
 | [51-Lyra-GAS扩展与能力费用源码.md](./51-Lyra-GAS扩展与能力费用源码.md) | AbilityCost 接口与三实现（InventoryItem/ItemTag/EquipmentTag）、LyraAttributeSet/CombatSet、HealExecution、AbilityTag 关系映射、全局能力系统与 GameplayCue 管理器（补 LYRA 批次 1 GAS 缺口） | 源码深度已完成 |
 | [52-Lyra-交互系统源码.md](./52-Lyra-交互系统源码.md) | IInteractableTarget/IInteractionInstigator 接口、InteractionQuery/Option 数据层、InteractionStatics、GAS 交互能力与任务（GrantNearby/WaitForInteractableTargets）、持续时间交互消息（补 LYRA 批次 2 Interaction 缺口） | 源码深度已完成 |
+| 核心生成移动状态 | [53-Lyra核心生成移动与状态源码.md](./53-Lyra核心生成移动与状态源码.md) | GameState、PlayerController、PlayerStart、Pawn Team、地面信息与 MovementStopped | 源码深度已完成 |
+| 网络复制与模块化引擎 | [54-Lyra网络复制与引擎模块化特性源码.md](./54-Lyra网络复制与引擎模块化特性源码.md) | Lyra ReplicationGraph、GameFrameworkComponentManager、GameFeatures 状态机、ModularGameplayActors | 源码深度已完成 |
+| 输入重映射与辅助瞄准 | [55-Lyra输入重映射与辅助瞄准源码.md](./55-Lyra输入重映射与辅助瞄准源码.md) | Settings 驱动输入修正、Latency Marker、AimAssist 目标筛选与可见性 | 源码深度已完成 |
+| ShooterCore 核心玩法 | [56-Lyra-ShooterCore核心玩法与淘汰消息源码.md](./56-Lyra-ShooterCore核心玩法与淘汰消息源码.md) | TDM 出生点、助攻/连杀/连胜、Accolade、GAS 命中上下文 | 源码深度已完成 |
 
 ---
 
@@ -190,7 +195,7 @@ Lyra 系列（39-52）以**可复用范式**为目标（运行链 + 分层设计
 
 ### 路线四：按 Lyra 完整运行链精读
 
-先用 [39-Lyra源码总览与阅读路线.md](./39-Lyra源码总览与阅读路线.md) 建立全局地图，再依次阅读 40-52（45 表现与流程、46 AI 与队伍、47 调试与测试、48 扩展插件、49 UI 控件与表现、50 设置系统、51 GAS 扩展与能力费用、52 交互系统）。不要跳过 40 的 Experience 加载屏障或 41 的 InitState：后续输入、装备、UI 和前端行为都依赖这两条生命周期链。读完每篇后按文末断点实验在 Editor、Listen Server 和 Dedicated Server 场景分别验证；静态源码结论不能代替运行态 NetDriver、会话后端和资产配置证据。
+先用 39-Lyra源码总览与阅读路线 建立全局地图，再依次阅读 40-56。53 负责生成/移动/状态，54 负责项目复制图与模块化引擎桥，55 负责输入重映射与辅助瞄准，56 负责 ShooterCore 核心玩法。读完每篇后按文末断点实验在 Editor、Listen Server 和 Dedicated Server 场景分别验证；静态源码结论不能代替运行态 NetDriver、会话后端和资产配置证据。
 
 ### 配套练习建议
 
@@ -250,7 +255,7 @@ flowchart TB
   为控制篇幅，部分代码为"节选/示意"，会在注释中标注；
 - 建议对照引擎源码阅读：`Engine/Source/Runtime/CoreUObject/`、
   `Engine/Source/Runtime/Engine/`、`Engine/Source/Programs/Shared/EpicGames.UHT/`；
-- 对已标记"源码深度已完成"的 UE5.8 引擎专题，以 20-38 号文章和路线图中的本机 5.8 路径为证据；Lyra 项目级综合链路以 39-52 号文章、本机 `LyraStarterGame.uproject` 的 `EngineAssociation=5.8` 及项目源码为证据；其余未涉及主题继续保持各自的"待补/规划"状态。
+- 对已标记“源码深度已完成”的 UE5.8 引擎专题，以 20-38 号文章、54 号引擎桥文章和路线图中的本机 5.8 路径为证据；Lyra 项目级综合链路以 39-56 号文章、本机 LyraStarterGame 项目源码为证据；其余未涉及主题继续保持各自的“待补/规划”状态。
 - Mermaid 图中的中文为概念标注，非引擎字面量；
 - "服务器/客户端"指 Dedicated/Listen Server 与 Client 的网络角色划分。
 

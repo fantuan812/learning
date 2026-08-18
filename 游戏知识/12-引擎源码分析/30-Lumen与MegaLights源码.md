@@ -3,7 +3,7 @@
 > 分工声明：本文为 UE5.8 源码层深读；概念/使用层知识见本目录 README 映射表及各篇关联阅读（不重复使用层教程）。
 
 版本基准：UE5.8.0 / CL 55116800 / ++UE5+Release-5.8
-- 最后更新：2026-08-06（本轮元数据维护）
+- 最后更新：2026-08-18（补入 Lumen Scene Lighting/MegaLights RDG 实际函数）。
 
 ## 概述
 
@@ -301,3 +301,127 @@ profile(RDG_events, GPU_timing, final_CVar_values)
 | Resolve | 采样结果解析到最终光照/反射输出 |
 | MegaLights | UE5.8 大规模动态灯光采样-追踪-解析工作流 |
 | CVar | 控制台变量（路径选择/质量档位的运行时开关） |
+
+## 真实源码证据补充（2026-08-18）
+
+本文原有渲染流程图只表达 Pass 关系；以下真实 Renderer 函数展示 Lumen Scene Lighting 与 MegaLights sample pass 的 RDG 入口。
+
+### Lumen：RenderLumenSceneLighting
+
+来源：Engine/Source\Runtime\Renderer\Private\Lumen\LumenSceneLighting.cpp（第 216-263 行）
+
+```cpp
+void FDeferredShadingSceneRenderer::RenderLumenSceneLighting(
+	FRDGBuilder& GraphBuilder,
+	const FLumenSceneFrameTemporaries& FrameTemporaries,
+	const FLumenDirectLightingTaskData* DirectLightingTaskData)
+{
+	LLM_SCOPE_BYTAG(Lumen);
+	TRACE_CPUPROFILER_EVENT_SCOPE(FDeferredShadingSceneRenderer::RenderLumenSceneLighting);
+
+	FLumenSceneData& LumenSceneData = *Scene->GetLumenSceneData(Views[0]);
+
+	bool bAnyLumenActive = false;
+
+	for (const FViewInfo& View : Views)
+	{
+		const FPerViewPipelineState& ViewPipelineState = GetViewPipelineState(View);
+		bAnyLumenActive = bAnyLumenActive || ViewPipelineState.DiffuseIndirectMethod == EDiffuseIndirectMethod::Lumen;
+	}
+
+	if (bAnyLumenActive)
+	{
+		TRACE_CPUPROFILER_EVENT_SCOPE(RenderLumenSceneLighting);
+		QUICK_SCOPE_CYCLE_COUNTER(RenderLumenSceneLighting);
+		RDG_EVENT_SCOPE_STAT(GraphBuilder, LumenSceneLighting, "LumenSceneLighting%s", LumenCardRenderer.bPropagateGlobalLightingChange ? TEXT(" PROPAGATE GLOBAL CHANGE!") : TEXT(""));
+
+		const ERDGPassFlags ComputePassFlags = LumenSceneLighting::UseAsyncCompute(ViewFamily) ? ERDGPassFlags::AsyncCompute : ERDGPassFlags::Compute;
+
+		LumenSceneData.IncrementSurfaceCacheUpdateFrameIndex();
+
+		if (LumenSceneData.bDebugClearAllCachedState)
+		{
+			AddClearRenderTargetPass(GraphBuilder, FrameTemporaries.DirectLightingAtlas);
+
+			if (FrameTemporaries.IndirectLightingAtlas)
+			{
+				AddClearRenderTargetPass(GraphBuilder, FrameTemporaries.IndirectLightingAtlas);
+			}
+
+			if (FrameTemporaries.RadiosityNumFramesAccumulatedAtlas)
+			{
+				AddClearRenderTargetPass(GraphBuilder, FrameTemporaries.RadiosityNumFramesAccumulatedAtlas);
+			}
+
+			AddClearRenderTargetPass(GraphBuilder, FrameTemporaries.FinalLightingAtlas);
+
+			if (FrameTemporaries.DiffuseLightingAndSecondMomentHistoryAtlas)
+			{
+				AddClearRenderTargetPass(GraphBuilder, FrameTemporaries.DiffuseLightingAndSecondMomentHistoryAtlas);
+			}
+```
+
+
+### MegaLights：GenerateSamples
+
+来源：Engine/Source\Runtime\Renderer\Private\MegaLights\MegaLightsSampling.cpp（第 330-386 行）
+
+```cpp
+void FMegaLightsViewContext::GenerateSamples(
+	FRDGTextureRef LightingChannelsTexture,
+	uint32 ShadingPassIndex,
+	ERDGPassFlags ComputePassFlags)
+{
+	RDG_EVENT_SCOPE_CONDITIONAL(GraphBuilder, bReferenceMode, "Pass%d", ShadingPassIndex);
+
+	const bool bDebugPass = bDebug && MegaLights::IsDebugEnabledForShadingPass(ShadingPassIndex, View.GetShaderPlatform());
+	MegaLightsParameters.MegaLightsStateFrameIndex = FirstPassStateFrameIndex + ShadingPassIndex;
+
+	if (ShadingPassIndex > 0)
+	{
+		MegaLightsParameters.StochasticLightingStateFrameIndex = MegaLightsParameters.MegaLightsStateFrameIndex;
+	}
+
+	// Generate new candidate light samples
+	{
+		FRDGTextureUAVRef DownsampledSceneDepthUAV = GraphBuilder.CreateUAV(DownsampledSceneDepth, ERDGUnorderedAccessViewFlags::SkipBarrier);
+		FRDGTextureUAVRef DownsampledSceneWorldNormalUAV = GraphBuilder.CreateUAV(DownsampledSceneWorldNormal, ERDGUnorderedAccessViewFlags::SkipBarrier);
+		FRDGTextureUAVRef LightSamplesUAV = GraphBuilder.CreateUAV(LightSamples, ERDGUnorderedAccessViewFlags::SkipBarrier);
+		FRDGTextureUAVRef LightSampleRaysUAV = GraphBuilder.CreateUAV(LightSampleRays, ERDGUnorderedAccessViewFlags::SkipBarrier);
+
+		// Clear tiles which don't contain any lights or geometry
+		if (!MegaLights::UseFastClear(InputType))
+		{
+			FClearLightSamplesCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FClearLightSamplesCS::FParameters>();
+			PassParameters->IndirectArgs = DownsampledTileIndirectArgs;
+			PassParameters->MegaLightsParameters = MegaLightsParameters;
+			PassParameters->RWDownsampledSceneDepth = DownsampledSceneDepthUAV;
+			PassParameters->RWDownsampledSceneWorldNormal = DownsampledSceneWorldNormalUAV;
+			PassParameters->RWLightSamples = LightSamplesUAV;
+			PassParameters->RWLightSampleRays = LightSampleRaysUAV;
+			PassParameters->DownsampledTileAllocator = GraphBuilder.CreateSRV(DownsampledTileAllocator);
+			PassParameters->DownsampledTileData = GraphBuilder.CreateSRV(DownsampledTileData);
+
+			FClearLightSamplesCS::FPermutationDomain PermutationVector;
+			PermutationVector.Set<FClearLightSamplesCS::FDebugMode>(bDebug);
+			auto ComputeShader = View.ShaderMap->GetShader<FClearLightSamplesCS>(PermutationVector);
+
+			FComputeShaderUtils::AddPass(
+				GraphBuilder,
+				RDG_EVENT_NAME("ClearLightSamples"),
+				ComputePassFlags,
+				ComputeShader,
+				PassParameters,
+				DownsampledTileIndirectArgs,
+				(int32)MegaLights::ETileType::Empty * sizeof(FRHIDispatchIndirectParameters));
+		}
+
+		FRDGBufferRef DummyUintStructuredBuffer = GSystemTextures.GetDefaultStructuredBuffer(GraphBuilder, sizeof(uint32));
+
+		for (const int32 ShadingTileType : ShadingTileTypes)
+		{
+			const MegaLights::ETileType TileType = (MegaLights::ETileType)ShadingTileType;
+			if (!View.bLightGridHasRectLights && IsRectLightTileType(TileType))
+			{
+				continue;
+```

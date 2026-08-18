@@ -15,7 +15,7 @@
 | 适用范围 | Experience 设计、GameFeature 动态激活、玩法插件拆分、加载屏和玩家出生门控 |
 | 知识成熟度 | L2：项目/引擎源码静态核对完成；运行实验作为明确步骤提供 |
 | 官方参考 | [Lyra Sample Game](https://dev.epicgames.com/documentation/en-us/unreal-engine/lyra-sample-game-in-unreal-engine)、[Game Features and Modular Gameplay](https://dev.epicgames.com/documentation/en-us/unreal-engine/game-features-and-modular-gameplay-in-unreal-engine) |
-| 最后更新 | 2026-08-14 |
+| 最后更新 | 2026-08-18（同步 39-56 导航与 54 引擎模块化桥接） |
 
 ## 一、先给结论
 

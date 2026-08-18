@@ -3,7 +3,7 @@
 > 分工声明：本文为 UE5.8 源码层深读；概念/使用层知识见本目录 README 映射表及各篇关联阅读（不重复使用层教程）。
 
 > 版本基准：UE5.8.0 / CL 55116800 / `++UE5+Release-5.8`
-> 最后更新：2026-08-06（本轮元数据维护）
+> 最后更新：2026-08-18（补入 Mass Signal 与 StateTree Start/Tick 实际函数）。
 
 ## 概述
 
@@ -350,3 +350,314 @@ R --> P
 - 官方链接固定在 `dev.epicgames.com/documentation` 入口域名下。
 - 本节不把示意关系表述为未经验证的具体函数调用顺序。
 - 本次变更范围仅限当前文档。
+
+## 真实源码证据补充（2026-08-18）
+
+本文原有并发流程图只表达调度关系；以下真实函数展示 Mass Signal 投递、Processor 订阅/执行和 StateTree Start/Tick 的源码入口。
+
+### MassSignalSubsystem：立即与延迟信号入口
+
+来源：Engine/Source\Runtime\Mass\MassSignals\Private\MassSignalSubsystem.cpp（第 72-135 行）
+
+```cpp
+void UMassSignalSubsystem::SignalEntity(FName SignalName, const FMassEntityHandle Entity)
+{
+	checkf(Entity.IsSet(), TEXT("Expecting a valid entity to signal"));
+	SignalEntities(SignalName, MakeArrayView(&Entity, 1));
+}
+
+void UMassSignalSubsystem::SignalEntities(FName SignalName, TConstArrayView<FMassEntityHandle> Entities)
+{
+	checkf(Entities.Num() > 0, TEXT("Expecting entities to signal"));
+	const UE::MassSignal::FSignalDelegate& SignalDelegate = GetSignalDelegateByName(SignalName);
+	SignalDelegate.Broadcast(SignalName, Entities);
+
+#if CSV_PROFILER_STATS
+	FCsvProfiler::RecordCustomStat(*SignalName.ToString(), CSV_CATEGORY_INDEX(MassSignalsCounters), Entities.Num(), ECsvCustomStatOp::Accumulate);
+#endif
+
+	UE_CVLOG(Entities.Num() == 1, this, LogMassSignals, Log, TEXT("Raising signal [%s] to entity [%s]"), *SignalName.ToString(), *Entities[0].DebugGetDescription());
+	UE_CVLOG(Entities.Num() > 1, this, LogMassSignals, Log, TEXT("Raising signal [%s] to %d entities"), *SignalName.ToString(), Entities.Num());
+}
+
+void UMassSignalSubsystem::DelaySignalEntity(FName SignalName, const FMassEntityHandle Entity, const float DelayInSeconds)
+{
+	checkf(Entity.IsSet(), TEXT("Expecting a valid entity to signal"));
+	DelaySignalEntities(SignalName, MakeArrayView(&Entity, 1), DelayInSeconds);
+}
+
+void UMassSignalSubsystem::DelaySignalEntities(FName SignalName, TConstArrayView<FMassEntityHandle> Entities, const float DelayInSeconds)
+{
+	// If you hit this ensure
+	// - With another thread trying to delay signal then you can use DelaySignalEntityDeferred/DelaySignalEntitiesDeferred
+	//   if you have access to a FMassExecutionContext.
+	// - With the game thread executing UMassSignalSubsystem::Tick then you need to reorganize your tasks to prevent senders from executing
+	//   at the same time as the subsystem tick.
+	UE_MT_SCOPED_WRITE_ACCESS(DelayedSignalsAccessDetector);
+
+	FDelayedSignal& DelayedSignal = DelayedSignals.Emplace_GetRef();
+	DelayedSignal.SignalName = SignalName;
+	DelayedSignal.Entities = Entities;
+
+	check(CachedWorld);
+	DelayedSignal.TargetTimestamp = CachedWorld->GetTimeSeconds() + DelayInSeconds;
+
+	UE_CVLOG(Entities.Num() == 1, this, LogMassSignals, Log, TEXT("Delay signal [%s] to entity [%s] in %.2f"), *SignalName.ToString(), *Entities[0].DebugGetDescription(), DelayInSeconds);
+	UE_CVLOG(Entities.Num() > 1,this, LogMassSignals, Log, TEXT("Delay signal [%s] to %d entities in %.2f"), *SignalName.ToString(), Entities.Num(), DelayInSeconds);
+}
+
+void UMassSignalSubsystem::SignalEntityDeferred(FMassExecutionContext& Context, FName SignalName, const FMassEntityHandle Entity)
+{
+	checkf(Entity.IsSet(), TEXT("Expecting a valid entity to signal"));
+	SignalEntitiesDeferred(Context, SignalName, MakeArrayView(&Entity, 1));
+}
+
+void UMassSignalSubsystem::SignalEntitiesDeferred(FMassExecutionContext& Context, FName SignalName, TConstArrayView<FMassEntityHandle> Entities)
+{
+	checkf(Entities.Num() > 0, TEXT("Expecting entities to signal"));
+	Context.Defer().PushCommand<FMassDeferredSetCommand>([SignalName, InEntities = TArray<FMassEntityHandle>(Entities)](const FMassEntityManager& InOutEntityManager)
+	{
+		UMassSignalSubsystem* SignalSubsystem = UWorld::GetSubsystem<UMassSignalSubsystem>(InOutEntityManager.GetWorld());
+		SignalSubsystem->SignalEntities(SignalName, InEntities);
+	});
+
+	UE_CVLOG(Entities.Num() == 1, this, LogMassSignals, Log, TEXT("Raising deferred signal [%s] to entity [%s]"), *SignalName.ToString(), *Entities[0].DebugGetDescription());
+	UE_CVLOG(Entities.Num() > 1, this, LogMassSignals, Log, TEXT("Raising deferred signal [%s] to %d entities"), *SignalName.ToString(), Entities.Num());
+}
+```
+
+
+### MassSignalProcessorBase：订阅与 Execute
+
+来源：Engine/Source\Runtime\Mass\MassSignals\Private\MassSignalProcessorBase.cpp（第 32-88 行）
+
+```cpp
+void UMassSignalProcessorBase::SubscribeToSignal(UMassSignalSubsystem& SignalSubsystem, const FName SignalName)
+{
+	check(!RegisteredSignals.Contains(SignalName));
+	RegisteredSignals.Add(SignalName);
+	SignalSubsystem.GetSignalDelegateByName(SignalName).AddUObject(this, &UMassSignalProcessorBase::OnSignalReceived);
+}
+
+void UMassSignalProcessorBase::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
+{
+	QUICK_SCOPE_CYCLE_COUNTER(SignalEntities);
+
+	const int32 ProcessingFrameBufferIndex = CurrentFrameBufferIndex;
+	{
+		// we only need to lock the part where we change the current buffer index. Once that's done the incoming signals will end up
+		// in the other buffer
+		UE::TRWScopeLock Lock(ReceivedSignalLock, SLT_Write);
+		CurrentFrameBufferIndex = (CurrentFrameBufferIndex + 1) % BuffersCount;
+	}
+
+	FFrameReceivedSignals& ProcessingFrameBuffer = FrameReceivedSignals[ProcessingFrameBufferIndex];
+	TArray<FEntitySignalRange>& ReceivedSignalRanges = ProcessingFrameBuffer.ReceivedSignalRanges;
+	TArray<FMassEntityHandle>& SignaledEntities = ProcessingFrameBuffer.SignaledEntities;
+
+	if (ReceivedSignalRanges.IsEmpty())
+	{
+		return;
+	}
+
+	TArray<FMassArchetypeHandle> ValidArchetypes;
+	GetArchetypesMatchingOwnedQueries(EntityManager, ValidArchetypes);
+
+	if (ValidArchetypes.Num() > 0)
+	{
+		// EntitySet stores unique array of entities per specified archetype.
+		// FMassArchetypeEntityCollection expects an array of entities, a set is used to detect unique ones.
+		struct FEntitySet
+		{
+			void Reset()
+			{
+				Entities.Reset();
+			}
+
+			FMassArchetypeHandle Archetype;
+			TArray<FMassEntityHandle> Entities;
+		};
+		TArray<FEntitySet> EntitySets;
+
+		for (const FMassArchetypeHandle& Archetype : ValidArchetypes)
+		{
+			FEntitySet& Set = EntitySets.AddDefaulted_GetRef();
+			Set.Archetype = Archetype;
+		}
+
+		// SignalNameLookup has limit of how many signals it can handle at once, we'll do passes until all signals are processed.
+		int32 SignalsToProcess = ReceivedSignalRanges.Num();
+		while(SignalsToProcess > 0)
+		{
+```
+
+
+### StateTreeExecutionContext：Start
+
+来源：Engine/Plugins\Runtime\StateTree\Source\StateTreeModule\Private\StateTreeExecutionContext.cpp（第 1418-1518 行）
+
+```cpp
+EStateTreeRunStatus FStateTreeExecutionContext::Start(const FInstancedPropertyBag* InitialParameters, int32 RandomSeed)
+{
+	const TOptional<int32> ParamRandomSeed = RandomSeed == -1 ? TOptional<int32>() : RandomSeed;
+	return Start(FStartParameters
+		{
+			.InitialGlobalParameters = InitialParameters ? InitialParameters->GetValue() : FConstStructView(),
+			.RandomSeed = ParamRandomSeed
+		});
+}
+
+EStateTreeRunStatus FStateTreeExecutionContext::Start()
+{
+	return Start(FStartParameters());
+}
+
+EStateTreeRunStatus FStateTreeExecutionContext::Start(const FConstStructView InitialParameters)
+{
+	return Start(FStartParameters
+		{
+			.InitialGlobalParameters = InitialParameters
+		});
+}
+
+void FStateTreeExecutionContext::SetUpdatePhaseInExecutionState(FStateTreeExecutionState& ExecutionState, const EStateTreeUpdatePhase UpdatePhase) const
+{
+	if (ExecutionState.CurrentPhase == UpdatePhase)
+	{
+		return;
+	}
+
+	if (ExecutionState.CurrentPhase != EStateTreeUpdatePhase::Unset)
+	{
+		UE_STATETREE_DEBUG_EXIT_PHASE(this, ExecutionState.CurrentPhase);
+	}
+
+	ExecutionState.CurrentPhase = UpdatePhase;
+
+	if (ExecutionState.CurrentPhase != EStateTreeUpdatePhase::Unset)
+	{
+		UE_STATETREE_DEBUG_ENTER_PHASE(this, ExecutionState.CurrentPhase);
+	}
+}
+
+EStateTreeRunStatus FStateTreeExecutionContext::Start(FStartParameters Parameters)
+{
+	CSV_SCOPED_TIMING_STAT(StateTree, Start);
+	TRACE_CPUPROFILER_EVENT_SCOPE(FStateTreeExecutionContext::Start);
+	UE_STATETREE_CRASH_REPORTER_SCOPE(&Owner, &RootStateTree, UE::StateTree::ExecutionContext::Private::Name_Start.Resolve());
+	SCOPE_CYCLE_UOBJECT(StateTree, &Owner);
+
+	using namespace UE::StateTree;
+	using namespace UE::StateTree::ExecutionContext;
+	using namespace UE::StateTree::ExecutionContext::Private;
+
+	if (!IsValid())
+	{
+		STATETREE_LOG(Warning, TEXT("%hs: StateTree context is not initialized properly ('%s' using StateTree '%s')"),
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+		return EStateTreeRunStatus::Failed;
+	}
+
+	FStateTreeExecutionState& Exec = GetExecState();
+	if (!ensureMsgf(Exec.CurrentPhase == EStateTreeUpdatePhase::Unset, TEXT("%hs can't be called while already in %s ('%s' using StateTree '%s')."),
+		__FUNCTION__, *UEnum::GetDisplayValueAsText(Exec.CurrentPhase).ToString(), *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree)))
+	{
+		return EStateTreeRunStatus::Failed;
+	}
+
+	// Stop if still running previous state.
+	if (Exec.TreeRunStatus == EStateTreeRunStatus::Running)
+	{
+		Stop();
+	}
+
+	// Initialize instance data. No active states yet, so we'll initialize the evals and global tasks.
+	InstanceData.Reset();
+
+	constexpr bool bWriteAccessAcquired = true;
+	Storage.GetRuntimeValidation().SetContext(&Owner, &RootStateTree, bWriteAccessAcquired);
+	Exec.ExecutionExtension = MoveTemp(Parameters.ExecutionExtension);
+	if (Parameters.SharedEventQueue)
+	{
+		InstanceData.SetSharedEventQueue(Parameters.SharedEventQueue.ToSharedRef());
+	}
+
+#if WITH_STATETREE_TRACE
+	// Make sure the debug id is valid. We want to construct it with the current GetInstanceDescriptionInternal
+	GetInstanceDebugId();
+#endif
+
+	if (!Parameters.InitialGlobalParameters.IsValid() || !SetGlobalParameters(Parameters.InitialGlobalParameters))
+	{
+		SetGlobalParameters(RootStateTree.GetDefaultParameters().GetValue());
+	}
+
+	Exec.RandomStream.Initialize(Parameters.RandomSeed.IsSet() ? Parameters.RandomSeed.GetValue() : FPlatformTime::Cycles());
+
+	TGuardValue<bool> ScheduledNextTickScope(bAllowedToScheduleNextTick, false);
+	ensure(Exec.ActiveFrames.Num() == 0);
+
+	// Initialize for the init frame.
+```
+
+
+### StateTreeExecutionContext：Tick
+
+来源：Engine/Plugins\Runtime\StateTree\Source\StateTreeModule\Private\StateTreeExecutionContext.cpp（第 1812-1865 行）
+
+```cpp
+EStateTreeRunStatus FStateTreeExecutionContext::Tick(const float DeltaTime)
+{
+	CSV_SCOPED_TIMING_STAT(StateTree, Tick);
+	TRACE_CPUPROFILER_EVENT_SCOPE(FStateTreeExecutionContext::Tick);
+	UE_STATETREE_CRASH_REPORTER_SCOPE(&Owner, &RootStateTree, UE::StateTree::ExecutionContext::Private::Name_Tick.Resolve());
+	SCOPE_CYCLE_UOBJECT(StateTree, &Owner);
+
+	TGuardValue<bool> ScheduledNextTickScope(bAllowedToScheduleNextTick, false);
+
+	const EStateTreeRunStatus PreludeResult = TickPrelude();
+	if (PreludeResult != EStateTreeRunStatus::Running)
+	{
+		return PreludeResult;
+	}
+
+	TickUpdateTasksInternal(DeltaTime);
+	TickTriggerTransitionsInternal();
+
+	return TickPostlude();
+}
+
+EStateTreeRunStatus FStateTreeExecutionContext::TickUpdateTasks(const float DeltaTime)
+{
+	CSV_SCOPED_TIMING_STAT(StateTree, Tick);
+	TRACE_CPUPROFILER_EVENT_SCOPE(FStateTreeExecutionContext::TickUpdateTasks);
+	UE_STATETREE_CRASH_REPORTER_SCOPE(&Owner, &RootStateTree, UE::StateTree::ExecutionContext::Private::Name_Tick.Resolve());
+	SCOPE_CYCLE_UOBJECT(StateTree, &Owner);
+
+	TGuardValue<bool> ScheduledNextTickScope(bAllowedToScheduleNextTick, false);
+
+	const EStateTreeRunStatus PreludeResult = TickPrelude();
+	if (PreludeResult != EStateTreeRunStatus::Running)
+	{
+		return PreludeResult;
+	}
+
+	TickUpdateTasksInternal(DeltaTime);
+
+	return TickPostlude();
+}
+
+EStateTreeRunStatus FStateTreeExecutionContext::TickTriggerTransitions()
+{
+	CSV_SCOPED_TIMING_STAT(StateTree, Tick);
+	TRACE_CPUPROFILER_EVENT_SCOPE(FStateTreeExecutionContext::TickTriggerTransitions);
+	UE_STATETREE_CRASH_REPORTER_SCOPE(&Owner, &RootStateTree, UE::StateTree::ExecutionContext::Private::Name_Tick.Resolve());
+	SCOPE_CYCLE_UOBJECT(StateTree, &Owner);
+
+	TGuardValue<bool> ScheduledNextTickScope(bAllowedToScheduleNextTick, false);
+
+	const EStateTreeRunStatus PreludeResult = TickPrelude();
+	if (PreludeResult != EStateTreeRunStatus::Running)
+	{
+		return PreludeResult;
+```

@@ -2159,7 +2159,7 @@ Beacon 在正式 Travel 前预约服务器容量，减少 Lobby 显示可加入�
 
 ## 二十九、关联阅读
 
-- [39-Lyra源码总览与阅读路线](39-Lyra源码总览与阅读路线.md)：39-52 教程的总地图和证据分级。
+- [39-Lyra源码总览与阅读路线](39-Lyra源码总览与阅读路线.md)：39-56 教程的总地图和证据分级。
 - [40-Lyra-Experience与GameFeature源码](40-Lyra-Experience与GameFeature源码.md)：体验选择、插件激活和玩家出生门控。
 - [41-Lyra-Pawn初始化与模块化组件源码](41-Lyra-Pawn初始化与模块化组件源码.md)：网络角色、PawnExtension 和组件初始化。
 - [42-Lyra-输入GAS与武器战斗源码](42-Lyra-输入GAS与武器战斗源码.md)：输入、能力授权、预测和伤害链。

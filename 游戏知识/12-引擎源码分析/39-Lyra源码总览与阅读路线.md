@@ -1,7 +1,7 @@
 # UE5.8 Lyra 源码解析 39：架构总览与阅读路线
 
 > Lyra 最值得学习的不是某一个“射击游戏功能”，而是它如何把资产、插件、网络、角色、能力、输入和 UI 组织成可装配、可卸载、可多人同步的项目骨架。
-> 本篇先建立全局地图，再给出一条可以逐断点复现的阅读路线；40-48 篇分别深入关键调用链，49-52 篇分别深挖 UI 表现、设置系统、GAS 扩展与交互系统。
+> 本篇先建立全局地图，再给出一条可以逐断点复现的阅读路线；40-48 篇深入基础调用链，49-52 篇覆盖 UI、设置、GAS 扩展与交互，53-56 篇补齐生成/移动、复制/模块化引擎、输入重映射/AimAssist 与 ShooterCore 核心玩法。
 > 知识成熟度：L2（本机 UE 5.8 与 Lyra 5.8 源码、配置已静态核对；运行实验作为后续验证步骤）。
 
 ## 元数据
@@ -15,11 +15,11 @@
 | 适用范围 | 理解 Lyra 项目架构、确定源码入口、设计自己的模块化 UE 多人项目 |
 | 知识成熟度 | L2：源码与配置静态核对完成；本文不把未执行的 PIE、联机和打包步骤描述成运行结果 |
 | 官方参考 | [Lyra Sample Game](https://dev.epicgames.com/documentation/en-us/unreal-engine/lyra-sample-game-in-unreal-engine)、[Game Framework Component Manager](https://dev.epicgames.com/documentation/en-us/unreal-engine/game-framework-component-manager-in-unreal-engine) |
-| 最后更新 | 2026-08-17 |
+| 最后更新 | 2026-08-18 |
 
 ## 一、教程集交付什么
 
-本教程不是对目录逐文件翻译，而是围绕十四个可以跟踪的专题组织。
+本教程不是对目录逐文件翻译，而是围绕十八个可以跟踪的专题组织。
 
 | 篇号 | 主题 | 要回答的问题 | 主验证入口 |
 | --- | --- | --- | --- |
@@ -37,8 +37,12 @@
 | 50 | 设置系统 | 设置从定义到 UI 的完整链路（补 LYRA-COV-02 缺口） | GameSettings 插件、`ULyraSettingsLocal/Shared`、`ULyraSettingScreen` |
 | 51 | GAS 扩展与能力费用 | AbilityCost 如何按装备/背包/标签扣费，Lyra 属性集、伤害执行与全局能力路由如何落地（补 LYRA 批次 1 GAS 缺口） | `ULyraAbilityCost` 三实现、`ULyraAttributeSet/CombatSet`、`ULyraHealExecution`、`ULyraGlobalAbilitySystem` |
 | 52 | 交互系统 | 可交互目标如何被查询、授予并执行（补 LYRA 批次 2 Interaction 缺口） | `IInteractableTarget`、`AbilityTask_GrantNearbyInteraction`、`ULyraGameplayAbility_Interact` |
+| 53 | 核心生成、移动与状态 | GameState、出生点、Pawn、移动组件如何形成可复核的对局状态链 | `ALyraGameState`、`ULyraPlayerSpawningManagerComponent`、`ALyraPlayerStart`、`ULyraCharacterMovementComponent` |
+| 54 | 网络复制与模块化引擎 | Lyra ReplicationGraph 如何选驱动，GameFeatures 如何通过组件管理器落到 Actor | `ConditionalCreateReplicationDriver`、`RouteAddNetworkActorToNodes`、`AddComponentRequest` |
+| 55 | 输入重映射与辅助瞄准 | 设置如何进入 Enhanced Input，ShooterCore 如何筛选并修正瞄准目标 | `LyraInputModifiers`、`LyraPlayerInput`、`AimAssistTargetManager` |
+| 56 | ShooterCore 核心玩法与淘汰消息 | TDM 选点、伤害/淘汰消息如何派生助攻、连杀、连胜和 Accolade | `TDM_PlayerSpawningManagmentComponent`、`AssistProcessor`、`ElimStreakProcessor` |
 
-建议按 39 → 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47 → 48 → 49 → 50 → 51 → 52 顺序阅读。
+建议按 39 → 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47 → 48 → 49 → 50 → 51 → 52 → 53 → 54 → 55 → 56 顺序阅读。
 
 如果只排查角色初始化，先读 40 的玩家出生门控，再直接读 41。
 
@@ -4128,3 +4132,4 @@ public:
 - 2026-08-14：系列扩展至 39-51（新增 49 UI 控件与表现、50 设置系统、51 GAS 扩展与能力费用），并为 42 武器实例/生成器、43 VerbMessage 消息协议、49 NumberPop/ContextEffects 补深挖；总览同步系列表与阅读顺序。
 - 2026-08-14：批次 2 落地——系列扩展至 39-52（新增 52 交互系统），并为 40 GameFeatureAction 家族、41 动画实例基类、49 CommonGame UI 管理层补深挖；总览同步系列表与阅读顺序。
 - 2026-08-17：源码证据补全——40/41/42/43/44/45/46/47/49/50/51/52 将原先正文仅概述、路径指引或伪代码的缺口改为真实 C++ 片段，并在 19 号路线图登记代码入口与剩余覆盖边界；39-52 仍不宣称穷举 Lyra 全部源码文件。
+- 2026-08-18：系列扩展至 39-56——新增 53 核心生成/移动/状态、54 网络复制与模块化引擎、55 输入重映射/辅助瞄准、56 ShooterCore 核心玩法与淘汰消息；同步 README、19 路线图和 L0-L3 覆盖矩阵，仍明确静态证据与运行态验证边界。

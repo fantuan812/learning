@@ -8,7 +8,7 @@
 > 兼容性边界：UE 4.27 及 UE 5.0–5.7 仅作为迁移背景；CommonUI 的激活树、路由器私有实现和插件模块边界以 UE 5.8 为准，不把 Editor 模块或内部节点布局当作 Runtime ABI。
 > 插件边界：`CommonUI.uplugin` 在 UE5.8 中 `EnabledByDefault=false`、`IsBetaVersion=false`；`CommonUI`/`CommonInput` 为 Runtime，`CommonUIEditor` 为 Editor，项目必须显式启用插件并分别验证编辑器与 Development/Shipping 构建。
 > 官方参考：[Common UI Plugin 官方 UE5.8 入口](https://dev.epicgames.com/documentation/en-us/unreal-engine/common-ui-plugin-for-advanced-user-interfaces-in-unreal-engine?lang=en-US)。
-> 最后更新：2026-08-06（清理占位导读，补齐插件边界、源码入口和运行时验收说明）。
+> 最后更新：2026-08-18（补入 CommonUI/CommonInput/Activatable Widget 实际函数与输入路由证据）。
 
 ## 概述
 
@@ -336,3 +336,341 @@ flowchart TD
 - [25-EnhancedInput与GameplayTags源码](25-EnhancedInput与GameplayTags源码.md)：Enhanced Input 内部机制（本篇聚焦 CommonUI 消费侧）。
 - [Common UI Plugin 官方 UE5.8 入口](https://dev.epicgames.com/documentation/en-us/unreal-engine/common-ui-plugin-for-advanced-user-interfaces-in-unreal-engine?lang=en-US)
 - [Common UI Quickstart 官方 UE5.8 指南](https://dev.epicgames.com/documentation/en-us/unreal-engine/common-ui-quickstart-guide-for-unreal-engine?lang=en-US)
+
+## 真实源码证据补充（2026-08-18）
+
+本文原有流程图和伪代码只表达职责关系；以下真实函数补齐 CommonUI 的输入路由、Activatable Widget 激活回调、CommonInput 初始化与输入设备变化副作用。
+
+### CommonUIActionRouterBase：ProcessInput 路由顺序
+
+来源：Engine/Plugins\Runtime\CommonUI\Source\CommonUI\Private\Input\CommonUIActionRouterBase.cpp（第 531-664 行）
+
+```cpp
+ERouteUIInputResult UCommonUIActionRouterBase::ProcessInput(FKey Key, EInputEvent InputEvent) const
+{
+#if WITH_EDITOR
+	// In PIE, check if the user is attempting to press the StopPlaySession command chord.
+	if (GIsPlayInEditorWorld && InputEvent == IE_Pressed)
+	{
+		// @TODO: This could be more generic to be a list of command in commands to allow to be ignored by the UI action router.
+		TSharedPtr<FUICommandInfo> StopCommand = FInputBindingManager::Get().FindCommandInContext("PlayWorld", "StopPlaySession");
+		if (ensure(StopCommand))
+		{
+			const FModifierKeysState ModifierKeys = FSlateApplication::Get().GetModifierKeys();
+			const FInputChord CheckChord( Key, EModifierKey::FromBools(ModifierKeys.IsControlDown(), ModifierKeys.IsAltDown(), ModifierKeys.IsShiftDown(), ModifierKeys.IsCommandDown()) );
+
+			// If the stop command matches the incoming key chord, let it execute.
+			if (StopCommand->HasActiveChord(CheckChord))
+			{
+				return ERouteUIInputResult::Unhandled;
+			}
+		}
+	}
+#endif
+
+	// Also check for repeat event here as if input is flushed when a key is being held, we will receive a released event and then continue to receive repeat events without a pressed event
+	if (InputEvent == EInputEvent::IE_Pressed || InputEvent == EInputEvent::IE_Repeat)
+	{
+		HeldKeys.AddUnique(Key);
+	}
+	else if (InputEvent == EInputEvent::IE_Released)
+	{
+		HeldKeys.RemoveSwap(Key);
+	}
+
+	const ECommonInputMode ActiveMode = GetActiveInputMode();
+	const int32 OwningUserIndex = GetLocalPlayerIndex();
+
+	// Begin with a pass to see if the input corresponds to a hold action
+	// We do this first to make sure that a higher-priority press binding doesn't prevent a hold on the same key from being triggerable
+	const auto ProcessHoldInputFunc = [ActiveMode, Key, InputEvent, OwningUserIndex](const UCommonUIActionRouterBase& ActionRouter)
+	{
+		EProcessHoldActionResult ProcessHoldResult = ActionRouter.PersistentActions->ProcessHoldInput(ActiveMode, Key, InputEvent, OwningUserIndex);
+
+		if (ProcessHoldResult == EProcessHoldActionResult::Unhandled && ActionRouter.bIsActivatableTreeEnabled)
+		{
+			if (ActionRouter.ActiveRootNode)
+			{
+				ProcessHoldResult = ActionRouter.ActiveRootNode->ProcessHoldInput(ActiveMode, Key, InputEvent, OwningUserIndex);
+			}
+
+			if (ProcessHoldResult == EProcessHoldActionResult::Unhandled)
+			{
+				ProcessHoldResult = ActionRouter.ProcessHoldInputOnActionDomains(ActiveMode, Key, InputEvent, OwningUserIndex);
+			}
+		}
+
+		return ProcessHoldResult;
+	};
+
+	const auto ProcessNormalInputFunc = [Key, ActiveMode, OwningUserIndex](const UCommonUIActionRouterBase& ActionRouter, EInputEvent Event)
+	{
+		bool bHandled = ActionRouter.PersistentActions->ProcessNormalInput(ActiveMode, Key, Event, OwningUserIndex);
+
+		if (!bHandled && ActionRouter.bIsActivatableTreeEnabled)
+		{
+			if (ActionRouter.ActiveRootNode)
+			{
+				bHandled = ActionRouter.ActiveRootNode->ProcessNormalInput(ActiveMode, Key, Event, OwningUserIndex);
+			}
+
+			if (!bHandled)
+			{
+				bHandled = ActionRouter.ProcessInputOnActionDomains(ActiveMode, Key, Event, OwningUserIndex);
+			}
+		}
+
+		return bHandled;
+	};
+
+	const auto ProcessInputOnActionRouter = [&ProcessHoldInputFunc, &ProcessNormalInputFunc, &Key, InputEvent](const UCommonUIActionRouterBase& ActionRouter)
+	{
+		EProcessHoldActionResult ProcessHoldResult = ProcessHoldInputFunc(ActionRouter);
+		if (ProcessHoldResult == EProcessHoldActionResult::Handled)
+		{
+			return true;
+		}
+
+		if (ProcessHoldResult == EProcessHoldActionResult::GeneratePress)
+		{
+			// A hold action was in progress but quickly aborted, so we want to generate a press action now for any normal bindings that are interested
+			if (!ProcessNormalInputFunc(ActionRouter, IE_Pressed))
+			{
+				if (Key == EKeys::Virtual_Gamepad_Accept.GetVirtualKey() && ActionRouter.AnalogCursor.IsValid())
+				{
+					// If Virtual_Accept is bound to a Hold action, the Pressed event for it will not trigger a simulated click
+					// but when a hold action is canceled fast enough, we want to trigger any "normal" actions bound to the same key
+					// so we give the analog cursor a chance to trigger the simulated click here
+					// This allows users to bind Hold actions to Virtual_Accept while still triggering focused button widgets with quick virtual_accept presses
+					ActionRouter.AnalogCursor->OnVirtualAcceptHoldCanceled();
+				}
+			}
+		}
+
+		// Even if no widget cares about this input, we don't want to let anything through to the actual game while we're in menu mode
+		return ProcessNormalInputFunc(ActionRouter, InputEvent);
+	};
+
+	bool bHandledInput = ProcessInputOnActionRouter(*this);
+	if (bSupportMultiUserInput && !bHandledInput)
+	{
+		const ULocalPlayer* LocalPlayer = GetLocalPlayerChecked();
+		if (const UGameInstance* GameInstance = LocalPlayer->GetGameInstance())
+		{
+			for (const ULocalPlayer* OtherPlayer : GameInstance->GetLocalPlayers())
+			{
+				if (OtherPlayer == LocalPlayer)
+				{
+					continue;
+				}
+
+				// If necessary, this could be sped up by caching something to indicate which action routers have bindings for which players
+				if (const UCommonUIActionRouterBase* OtherActionRouter = ULocalPlayer::GetSubsystem<UCommonUIActionRouterBase>(OtherPlayer))
+				{
+					if (ProcessInputOnActionRouter(*OtherActionRouter))
+					{
+						bHandledInput = true;
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	if (bHandledInput)
+	{
+		return ERouteUIInputResult::Handled;
+```
+
+
+### CommonActivatableWidget：激活与回调
+
+来源：Engine/Plugins\Runtime\CommonUI\Source\CommonUI\Private\CommonActivatableWidget.cpp（第 126-143 行）
+
+```cpp
+void UCommonActivatableWidget::ActivateWidget()
+{
+	if (!bIsActive)
+	{
+		InternalProcessActivation();
+	}
+}
+
+void UCommonActivatableWidget::InternalProcessActivation()
+{
+	UE_LOGF(LogCommonUI, Verbose, "[%ls] -> Activated", *GetName());
+
+	bIsActive = true;
+	NativeOnActivated();
+}
+
+void UCommonActivatableWidget::DeactivateWidget()
+{
+```
+
+
+### CommonActivatableWidget：NativeOnActivated/Deactivated
+
+来源：Engine/Plugins\Runtime\CommonUI\Source\CommonUI\Private\CommonActivatableWidget.cpp（第 281-308 行）
+
+```cpp
+void UCommonActivatableWidget::NativeOnActivated()
+{
+	if (ensureMsgf(bIsActive, TEXT("[%s] has called NativeOnActivated, but isn't actually activated! Never call this directly - call ActivateWidget()"), *GetName()))
+	{
+		if (bSetVisibilityOnActivated)
+		{
+			SetVisibility(ActivatedVisibility);
+			UE_LOGF(LogCommonUI, Verbose, "[%ls] set visibility to [%ls] on activation", *GetName(), *StaticEnum<ESlateVisibility>()->GetDisplayValueAsText(ActivatedVisibility).ToString());
+		}
+
+		ActivateMappingContext();
+		BP_OnActivated();
+		OnActivated().Broadcast();
+		BP_OnWidgetActivated.Broadcast();
+	}
+}
+
+void UCommonActivatableWidget::NativeOnDeactivated()
+{
+	if (ensure(!bIsActive))
+	{
+		if (bSetVisibilityOnDeactivated)
+		{
+			SetVisibility(DeactivatedVisibility);
+			UE_LOGF(LogCommonUI, Verbose, "[%ls] set visibility to [%ls] on deactivation", *GetName(), *StaticEnum<ESlateVisibility>()->GetDisplayValueAsText(DeactivatedVisibility).ToString());
+		}
+
+		DeactivateMappingContext();
+```
+
+
+### CommonInputSubsystem：初始化 Enhanced Input 依赖
+
+来源：Engine/Plugins\Runtime\CommonUI\Source\CommonInput\Private\CommonInputSubsystem.cpp（第 68-97 行）
+
+```cpp
+void UCommonInputSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+
+	// There is a dependency on the Enhanced Input subsystem below so we need to make sure it is available
+	// in a packaged game
+	Collection.InitializeDependency<UEnhancedInputLocalPlayerSubsystem>();
+
+	FCommonInputBase::GetInputSettings()->LoadData();
+
+	const UCommonInputPlatformSettings* Settings = UPlatformSettingsManager::Get().GetSettingsForPlatform<UCommonInputPlatformSettings>();
+
+	GamepadInputType = Settings->GetDefaultGamepadName();
+	RawInputType = Settings->GetDefaultInputType();
+	CurrentInputType = RawInputType;
+
+	CommonInputPreprocessor = MakeInputProcessor();
+	if (FSlateApplication::IsInitialized())
+	{
+		FSlateApplication::Get().RegisterInputPreProcessor(CommonInputPreprocessor, EInputPreProcessorType::PreGame);
+	}
+
+	TickHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateUObject(this, &UCommonInputSubsystem::Tick), 0.1f);
+
+	CVarInputKeysVisible->SetOnChangedCallback(FConsoleVariableDelegate::CreateUObject(this, &UCommonInputSubsystem::ShouldShowInputKeysChanged));
+
+	SetActionDomainTable(FCommonInputBase::GetInputSettings()->GetActionDomainTable());
+
+	if (FSlateApplication::IsInitialized())
+	{
+```
+
+
+### CommonInputSubsystem：设备类型重算与锁定
+
+来源：Engine/Plugins\Runtime\CommonUI\Source\CommonInput\Private\CommonInputSubsystem.cpp（第 283-367 行）
+
+```cpp
+void UCommonInputSubsystem::RecalculateCurrentInputType()
+{
+	ECommonInputType LockedInput = LockInput(RawInputType);
+
+	if (LockedInput != CurrentInputType)
+	{
+#if !UE_BUILD_SHIPPING
+		if (bDumpInputTypeChangeCallstack)
+		{
+			const uint32 DumpCallstackSize = 65535;
+			ANSICHAR DumpCallstack[DumpCallstackSize] = { 0 };
+			FString ScriptStack = FFrame::GetScriptCallstack(true /* bReturnEmpty */);
+			FPlatformStackWalk::StackWalkAndDump(DumpCallstack, DumpCallstackSize, 0);
+			UE_LOGF(LogCommonInput, Log, "--- Input Changing Callstack ---");
+			UE_LOGF(LogCommonInput, Log, "Script Stack:\n%ls", *ScriptStack);
+			UE_LOGF(LogCommonInput, Log, "Callstack:\n%ls", ANSI_TO_TCHAR(DumpCallstack));
+		}
+#endif // !UE_BUILD_SHIPPING
+
+		CurrentInputType = LockedInput;
+
+		FSlateApplication& SlateApplication = FSlateApplication::Get();
+		ULocalPlayer* LocalPlayer = GetLocalPlayerChecked();
+		bool bCursorUser = LocalPlayer && LocalPlayer->GetSlateUser() == SlateApplication.GetCursorUser();
+
+		switch (CurrentInputType)
+		{
+		case ECommonInputType::Gamepad:
+			UE_LOGF(LogCommonInput, Log, "UCommonInputSubsystem::RecalculateCurrentInputType(): Using Gamepad");
+			if (bCursorUser)
+			{
+				SlateApplication.UsePlatformCursorForCursorUser(bEnableGamepadPlatformCursor);
+			}
+			SlateApplication.SetGameAllowsFakingTouchEvents(false);
+			break;
+		case ECommonInputType::Touch:
+			UE_LOGF(LogCommonInput, Log, "UCommonInputSubsystem::RecalculateCurrentInputType(): Using Touch");
+			SlateApplication.SetGameAllowsFakingTouchEvents(true);
+			SlateApplication.SetGameIsFakingTouchEvents(LocalPlayer && LocalPlayer->ViewportClient && LocalPlayer->ViewportClient->GetUseMouseForTouch());
+			break;
+		case ECommonInputType::MouseAndKeyboard:
+		default:
+			UE_LOGF(LogCommonInput, Log, "UCommonInputSubsystem::RecalculateCurrentInputType(): Using Mouse");
+			if (bCursorUser)
+			{
+				SlateApplication.UsePlatformCursorForCursorUser(true);
+			}
+			SlateApplication.SetGameAllowsFakingTouchEvents(false);
+			break;
+		}
+
+		BroadcastInputMethodChanged();
+	}
+}
+
+void UCommonInputSubsystem::HandleOnVirtualKeyboardShown(FPlatformRect VkRect)
+{
+	if (FPlatformMisc::IsDeviceGamingHandheld() && CurrentInputType == ECommonInputType::Gamepad)
+	{
+		AddOrRemoveInputTypeLock(TEXT("HandheldVirtualKeyboard"), ECommonInputType::Gamepad, true);
+	}
+}
+
+void UCommonInputSubsystem::HandleOnVirtualKeyboardHidden()
+{
+	if (FPlatformMisc::IsDeviceGamingHandheld())
+	{
+		AddOrRemoveInputTypeLock(TEXT("HandheldVirtualKeyboard"), ECommonInputType::Gamepad, false);
+	}
+}
+
+void UCommonInputSubsystem::SetCurrentInputType(ECommonInputType NewInputType)
+{
+	if (((RawInputType != NewInputType) || bInputMethodLockedByThrashing) && PlatformSupportsInputType(NewInputType))
+	{
+		RawInputType = NewInputType;
+
+		bInputMethodLockedByThrashing = CheckForInputMethodThrashing(NewInputType);
+		if (!bInputMethodLockedByThrashing)
+		{
+			RecalculateCurrentInputType();
+		}
+	}
+}
+
+```

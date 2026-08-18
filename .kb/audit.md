@@ -244,3 +244,19 @@
 - `.kb/manifest.yaml` 重新计算 327 条目 bytes/lines，路径集合、文件大小和行数与磁盘一致。
 - review queue 的历史 Current/Suggested 快照保留；DEDUP-01/R2-DEDUP-01 已标为已决策，R2-MANIFEST-01/RENAME-01 已标为已执行，无有效 Pending 条目。
 - Lyra 源码附录完整保留代码字符、注释、条件编译和文件尾换行；仅统一代码围栏内的行尾及缩进空白并在附录标注格式归一，普通 Markdown 继续执行 Git whitespace 检查。
+
+## 核心源码覆盖复核（2026-08-18）
+
+> 范围：以 2026-08-17 收口状态为基线，复核 Lyra 39-56 导航、核心玩法源码证据、引擎模块化桥接和控制面；不把静态代码证据误报为 PIE/DS/设备矩阵运行验证。
+
+- 新增 53-56 四篇正式源码文章：53 收录 GameState、PlayerController、PlayerSpawningManager、PlayerStart、Pawn、CharacterMovement 和 CharacterWithAbilities；54 收录 Lyra ReplicationGraph、ModularGameplayActors、UE 5.8 GameFrameworkComponentManager/GameFeatures 状态真实节选；55 收录 Lyra 输入修正器、用户设置/配置档、Latency Marker 和 ShooterCore AimAssist；56 收录 ShooterCore TDM 选点、Assist/ElimChain/ElimStreak、Accolade，以及 GAS EffectContext/TargetData/AbilitySource。
+- 前置 UE 专题 20-31 同步补入本机实际函数：Iris ReplicationSystem、Mass Signal/StateTree、WorldPartition/WorldStreaming Insights、Landscape/Foliage、Sequencer/MoviePipeline、Enhanced Input/Gameplay Tags、CommonUI/CommonInput、MVVMView、GameplayTasks、Trace/Insights、Lumen/MegaLights、ProceduralVegetationEditor；原有流程图和伪代码只保留为概念说明，不再作为唯一源码证据。
+- 四篇文章均以本机 LyraStarterGame/UE 5.8 文件生成真实 C++ 围栏；53/54/55/56 分别为 25/35/25/30 个 cpp 围栏，围栏成对、源码占位标记为 0；项目核心文件按全文附录收录，引擎文件只收录可核对的真实函数节选并标注版本边界。
+- 导航已统一到 39-56：12 README、19 路线图、核心覆盖矩阵和阅读顺序均登记 53-56；ShooterCore 的 TDM/AimAssist/淘汰消息/Accolade 核心不再列为整体范围外，TopDownArena 与剩余资产/模式仍保持示例边界。
+- 覆盖矩阵采用 L0/L1/L2/L3：L0 仅路径/类名，L1 真实函数片段，L2 真实片段加全文附录，L3 运行态验证。53/55/56 的项目核心条目达到 L2，54 的引擎桥为 L1、项目文件为 L2；PIE、Dedicated Server、Iris/ReplicationGraph 配置切换、手柄设备矩阵和资产接线仍未宣称完成。
+- 当前仓库统计：331 个 Markdown（正文 273、README 58）；check_repo.ps1 -Root <repo> PASS / FAIL 0，既有 11 条短文 WARN 保持豁免；全库 UTF-8/BOM/围栏检查通过，git diff --check 通过。
+- .kb/manifest.yaml 已扩展到 331 条目，新增 53-56 并重新计算修改后的 README/路线图/审计/计划 bytes/lines；路径集合和磁盘 Markdown 集合应保持一致。review-queue 无有效 Pending 条目，历史 Current/Suggested 快照继续保留为历史记录。
+
+### 当前仍明确的下一步
+
+核心玩法和引擎桥已达到可复核的静态源码覆盖，但不能据此声称 Lyra 全部 756 个 Source/Plugins 文件都已深读。下一轮应优先把 Settings/UI/Feedback/Performance/Replays/Hotfix/Cosmetics 的 L0/L1 条目提升为真实函数或全文附录，并为 53-56 补 PIE、Dedicated Server、网络切换和设备矩阵结果。

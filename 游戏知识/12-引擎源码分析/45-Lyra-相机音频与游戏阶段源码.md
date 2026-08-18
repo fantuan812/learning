@@ -11,7 +11,7 @@
 > 适用范围：相机模式栈、音频混合设置与游戏阶段的 Lyra 5.8 项目源码解析。
 > 兼容性边界：UE 4.27/早期 UE5 仅作为历史兼容性说明。
 > 官方参考：[UE 5.8 官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
-> 最后更新：2026-08-13
+> 最后更新：2026-08-18（同步 39-56 导航与核心覆盖矩阵）
 > 知识成熟度：L2
 
 ## 一、先给结论
@@ -1402,7 +1402,7 @@ rg -n 'ShooterGame.GamePhase' "$Lyra\Plugins\GameFeatures\ShooterCore\Config\Tag
 
 ## 二十一、关联阅读
 
-- [39-Lyra源码总览与阅读路线](39-Lyra源码总览与阅读路线.md)：项目插件地图与 39-52 Lyra 文章的总览。
+- [39-Lyra源码总览与阅读路线](39-Lyra源码总览与阅读路线.md)：项目插件地图与 39-56 Lyra 文章的总览。
 - [40-Lyra-Experience与GameFeature源码](40-Lyra-Experience与GameFeature源码.md)：Experience 加载与阶段/出生门控的上下文。
 - [41-Lyra-Pawn初始化与模块化组件源码](41-Lyra-Pawn初始化与模块化组件源码.md)：HeroComponent 绑定 `DetermineCameraModeDelegate` 的初始化状态机。
 - [42-Lyra-输入GAS与武器战斗源码](42-Lyra-输入GAS与武器战斗源码.md)：Ability 的 `SetCameraMode`/`ClearCameraMode` 与瞄准散布联动。
@@ -1472,7 +1472,7 @@ rg -n '预-留|待-补-充|学习-骨架|TO-DO|FIX-ME' $f
 - [ ] 三个主题各有可运行的静态验证命令片段，使用 `$Lyra` 变量。
 - [ ] 至少 3 个断点实验（本文 6 个），均给出观察字段与预期。
 - [ ] FAQ 至少 8 问（本文 12 问）。
-- [ ] 内部链接只指向真实存在的文件（39-44、README、19、46、47、16、05、跨分类 07/01/13）。
+- [ ] 内部链接只指向真实存在的文件（39-56、README、19、46、47、16、05、跨分类 07/01/13）。
 - [ ] 代码块全部标注“节选”或“示意”，无死行号。
 - [ ] 全文不含禁用词与占位词（写作规范词表），由“静态验证命令汇总”的门禁扫描把关。
 - [ ] 正文行数 ≥ 300（目标 750+），UTF-8 无 BOM，代码围栏数量为偶数。

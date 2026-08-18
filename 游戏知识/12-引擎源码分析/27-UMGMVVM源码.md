@@ -8,7 +8,7 @@
 > 兼容性边界：UE 4.27 及 UE 5.0–5.7 仅用于迁移背景；UMG Viewmodel 在 UE5.8 仍是 Beta，生成类布局、Private 实现和 deprecated 兼容 API 不作为跨版本稳定 ABI。
 > 插件边界：`ModelViewViewModel.uplugin` 在 UE5.8 中 `EnabledByDefault=false`、`IsBetaVersion=true`、`IsExperimentalVersion=false`；`ModelViewViewModel` 为 Runtime，Blueprint/Editor/Debugger 模块按 `UncookedOnly` 或 Editor 目标加载，不能把它们作为 Shipping Runtime 依赖。
 > 官方参考：[UE5.8 UMG Viewmodel 官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine/umg-viewmodel-for-unreal-engine)。
-> 最后更新：2026-08-06（清理占位导读，补齐 Beta/插件边界和绑定运行时验收说明）。
+> 最后更新：2026-08-18（补入 MVVMView Construct/Destruct/Binding Runtime 实际函数）。
 
 ## 概述
 
@@ -340,3 +340,173 @@ H --> I[Widget destination]
 - [源码分类导航](README.md)：本目录源码专题清单与覆盖状态。
 - [高优先级源码覆盖路线图](19-高优先级源码覆盖路线图.md)：UE5.8 源码路径、专题矩阵与待补范围。
 - [UE5.8 UMG Viewmodel 官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine/umg-viewmodel-for-unreal-engine)：插件启用、Viewmodel、FieldNotify 与 View Binding 官方入口。
+
+## 真实源码证据补充（2026-08-18）
+
+本文原有示例中的 View.Construct/ExecuteBinding 是不可编译的概念写法；以下直接收录 MVVMView.cpp 的 Construct/Destruct 和 Binding Library 执行函数，作为 UE 5.8 Runtime View 证据。
+
+### MVVMView：Construct/Destruct 生命周期
+
+来源：Engine/Plugins\Runtime\ModelViewViewModel\Source\ModelViewViewModel\Private\View\MVVMView.cpp（第 64-155 行）
+
+```cpp
+void UMVVMView::ConstructView(const UMVVMViewClass* InGeneratedViewClass)
+{
+	ensure(GeneratedViewClass == nullptr);
+	GeneratedViewClass = InGeneratedViewClass;
+
+	check(Sources.Num() == 0);
+	int32 SourceNum = GeneratedViewClass->GetSources().Num();
+	Sources.SetNum(SourceNum);
+	for (int32 Index = 0; Index < SourceNum; ++Index)
+	{
+		FMVVMView_Source& Source = Sources[Index];
+		Source.ClassKey = FMVVMViewClass_SourceKey(Index);
+	}
+}
+
+
+void UMVVMView::Construct()
+{
+	check(GeneratedViewClass);
+	check(bConstructed == false);
+
+	// Create an independent copy of extensions per view.
+	check(Extensions.IsEmpty());
+	Extensions.Reset(GeneratedViewClass->GetViewClassExtensions().Num());
+	for (UMVVMViewClassExtension* Extension : GeneratedViewClass->GetViewClassExtensions())
+	{
+		Extensions.Add(Extension->ViewConstructed(GetUserWidget(), this));
+	}
+
+	if (GeneratedViewClass->DoesInitializeSourcesOnConstruct())
+	{
+		InitializeSources();
+	}
+
+	if (GeneratedViewClass->DoesInitializeEventsOnConstruct())
+	{
+		InitializeEvents();
+	}
+
+	bConstructed = true;
+
+#if WITH_EDITOR
+	if (GEditor)
+	{
+		if (GetWorld() && GetWorld()->WorldType == EWorldType::Editor)
+		{
+			FModelViewViewModelModule& Module = FModuleManager::GetModuleChecked<FModelViewViewModelModule>("ModelViewViewModel");
+			BlueprintPreCompileHandle = Module.OnBlueprintPreCompile.AddUObject(this, &UMVVMView::HandleBlueprintPreCompile);
+		}
+	}
+#endif
+
+#if UE_WITH_MVVM_DEBUGGING
+	UE::MVVM::FDebugging::BroadcastViewConstructed(this);
+#endif
+}
+
+
+void UMVVMView::Destruct()
+{
+#if WITH_EDITOR
+	if (GEditor && BlueprintPreCompileHandle.IsValid())
+	{
+		FModelViewViewModelModule& Module = FModuleManager::GetModuleChecked<FModelViewViewModelModule>("ModelViewViewModel");
+		Module.OnBlueprintPreCompile.Remove(BlueprintPreCompileHandle);
+		BlueprintPreCompileHandle.Reset();
+	}
+
+	if (!GeneratedViewClass && (!GetWorld() || GetWorld()->WorldType == EWorldType::Editor))
+	{
+		return;
+	}
+#endif
+
+	check(bConstructed == true);
+	bConstructed = false;
+
+#if UE_WITH_MVVM_DEBUGGING
+	UE::MVVM::FDebugging::BroadcastViewBeginDestruction(this);
+#endif
+
+	UninitializeEvents();
+	UninitializeSources(); // and bindings
+
+	const TArrayView<const TObjectPtr<UMVVMViewClassExtension>> ClassExtensions = GeneratedViewClass->GetViewClassExtensions();
+	check(ClassExtensions.Num() == Extensions.Num());
+	for (int32 Index = ClassExtensions.Num() - 1; Index >= 0; --Index)
+	{
+		ClassExtensions[Index]->OnViewDestructed(GetUserWidget(), this, Extensions[Index]);
+		Extensions.RemoveAtSwap(Index);
+	}
+}
+```
+
+
+### MVVMView：立即执行编译后的 Binding
+
+来源：Engine/Plugins\Runtime\ModelViewViewModel\Source\ModelViewViewModel\Private\View\MVVMView.cpp（第 646-704 行）
+
+```cpp
+void UMVVMView::ExecuteBindingImmediately(const FMVVMViewClass_Binding& ClassBinding, FMVVMViewClass_BindingKey KeyForLog) const
+{
+	check(GeneratedViewClass);
+	check(GetUserWidget())
+	if ((ClassBinding.GetSources() & ValidSources) == ClassBinding.GetSources())
+	{
+
+		// All the source are valid. Run the binding.
+		FMVVMCompiledBindingLibrary::EConversionFunctionType FunctionType = ClassBinding.GetBinding().HasComplexConversionFunction() ? FMVVMCompiledBindingLibrary::EConversionFunctionType::Complex : FMVVMCompiledBindingLibrary::EConversionFunctionType::Simple;
+		TValueOrError<void, FMVVMCompiledBindingLibrary::EExecutionFailingReason> ExecutionResult = GeneratedViewClass->GetBindingLibrary().Execute(GetUserWidget(), ClassBinding.GetBinding(), FunctionType);
+
+#if UE_WITH_MVVM_DEBUGGING
+		if (ExecutionResult.HasError())
+		{
+			UE::MVVM::FMessageLog Log(GetUserWidget());
+			Log.Error(FText::Format(LOCTEXT("ExecuteBindingFailGeneric", "The binding '{0}' was not executed. {1}.")
+				, FText::FromString(ClassBinding.ToString(GeneratedViewClass, FMVVMViewClass_Binding::FToStringArgs::Short()))
+				, FMVVMCompiledBindingLibrary::LexToText(ExecutionResult.GetError())
+			));
+
+			UE::MVVM::FDebugging::BroadcastLibraryBindingExecuted(this, KeyForLog, ExecutionResult.GetError());
+		}
+		else
+		{
+			if (bLogBinding)
+			{
+				UE::MVVM::FMessageLog Log(GetUserWidget());
+				Log.Info(FText::Format(LOCTEXT("ExecuteBindingGeneric", "Execute binding '{0}'.")
+					, FText::FromString(ClassBinding.ToString(GeneratedViewClass, FMVVMViewClass_Binding::FToStringArgs::All()))
+				));
+			}
+			UE::MVVM::FDebugging::BroadcastLibraryBindingExecuted(this, KeyForLog);
+		}
+#else
+		if (ExecutionResult.HasError())
+		{
+			UE::MVVM::FMessageLog Log(GetUserWidget());
+			Log.Error(FText::Format(LOCTEXT("ExecuteBindingFailGeneric", "The binding '{0}' was not executed. {1}.")
+				, FText::AsNumber(KeyForLog.GetIndex())
+				, FMVVMCompiledBindingLibrary::LexToText(ExecutionResult.GetError())
+			));
+		}
+		else if (bLogBinding)
+		{
+			UE::MVVM::FMessageLog Log(GetUserWidget());
+			Log.Info(FText::Format(LOCTEXT("ExecuteBindingGeneric", "Execute binding '{0}'.")
+				, FText::AsNumber(KeyForLog.GetIndex())
+			));
+		}
+#endif
+	}
+	else
+	{
+		const uint64 MissingSources = ClassBinding.GetSources() & (~ValidSources);
+		if ((MissingSources & GeneratedViewClass->GetOptionalSources()) != MissingSources)
+		{
+#if UE_WITH_MVVM_DEBUGGING
+			UE::MVVM::FMessageLog Log(GetUserWidget());
+			Log.Error(FText::Format(LOCTEXT("ExecuteBindingFailInvalidSource", "The binding '{0}' was not executed. There are invalid sources.")
+```

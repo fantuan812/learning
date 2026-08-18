@@ -3,7 +3,7 @@
 > 分工声明：本文为 UE5.8 源码层深读；概念/使用层知识见本目录 README 映射表及各篇关联阅读（不重复使用层教程）。
 
 > 版本基准：UE5.8.0 / CL 55116800 / ++UE5+Release-5.8
-> 最后更新：2026-08-06（本轮元数据维护）
+> 最后更新：2026-08-18（补入 GameplayTask/GameplayTasksComponent 实际生命周期与调度函数）。
 
 ## 概述
 
@@ -312,3 +312,147 @@ Task->ReadyForActivation();
 - [Sequencer 与 MovieRenderGraph 源码专题](24-Sequencer与MovieRenderGraph源码.md)
 - [Enhanced Input 与 Gameplay Tags 源码专题](25-EnhancedInput与GameplayTags源码.md)
 - 本清单中的源码路径、状态枚举、资源位集合和调度函数均以 UE5.8 本机安装为准。
+
+## 真实源码证据补充（2026-08-18）
+
+本文原有 Owner/Task/Resource 片段是项目接入的伪代码；以下真实函数展示任务进入激活队列、结束清理、组件 Tick 快照和事件处理入口，项目自定义任务只能建立在这些实现之上。
+
+### GameplayTask：ReadyForActivation
+
+来源：Engine/Source\Runtime\GameplayTasks\Private\GameplayTask.cpp（第 56-72 行）
+
+```cpp
+void UGameplayTask::ReadyForActivation()
+{
+	if (UGameplayTasksComponent* TasksPtr = TasksComponent.Get())
+	{
+		if (RequiresPriorityOrResourceManagement() == false)
+		{
+			PerformActivation();
+		}
+		else
+		{
+			TasksPtr->AddTaskReadyForActivation(*this);
+		}
+	}
+	else
+	{
+		EndTask();
+	}
+```
+
+
+### GameplayTask：EndTask 清理
+
+来源：Engine/Source\Runtime\GameplayTasks\Private\GameplayTask.cpp（第 165-205 行）
+
+```cpp
+void UGameplayTask::EndTask()
+{
+	UE_VLOG(GetGameplayTasksComponent(), LogGameplayTasks, Verbose
+		, TEXT("%s EndTask called, current State: %s")
+		, *GetName(), *GetTaskStateName());
+
+	if (TaskState != EGameplayTaskState::Finished)
+	{
+		if (IsValidChecked(this))
+		{
+			OnDestroy(false);
+		}
+		else
+		{
+			// mark as finished, just to be on the safe side
+			TaskState = EGameplayTaskState::Finished;
+		}
+	}
+}
+
+void UGameplayTask::ExternalConfirm(bool bEndTask)
+{
+	UE_VLOG(GetGameplayTasksComponent(), LogGameplayTasks, Verbose
+		, TEXT("%s ExternalConfirm called, bEndTask = %s, State : %s")
+		, *GetName(), bEndTask ? TEXT("TRUE") : TEXT("FALSE"), *GetTaskStateName());
+
+	if (bEndTask)
+	{
+		EndTask();
+	}
+}
+
+void UGameplayTask::ExternalCancel()
+{
+	UE_VLOG(GetGameplayTasksComponent(), LogGameplayTasks, Verbose
+		, TEXT("%s ExternalCancel called, current State: %s")
+		, *GetName(), *GetTaskStateName());
+
+	EndTask();
+}
+
+```
+
+
+### GameplayTasksComponent：Tick 快照
+
+来源：Engine/Source\Runtime\GameplayTasks\Private\GameplayTasksComponent.cpp（第 258-290 行）
+
+```cpp
+void UGameplayTasksComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
+{
+	SCOPE_CYCLE_COUNTER(STAT_TickGameplayTasks);
+
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	// Because we have no control over what a task may do when it ticks, we must be careful.
+	// Ticking a task may kill the task right here. It could also potentially kill another task
+	// which was waiting on the original task to do something. Since when a tasks is killed, it removes
+	// itself from the TickingTask list, we will make a copy of the tasks we want to service before ticking any
+
+	int32 NumTickingTasks = TickingTasks.Num();
+	int32 NumActuallyTicked = 0;
+	switch (NumTickingTasks)
+	{
+	case 0:
+		break;
+	case 1:
+		{
+			UGameplayTask* TickingTask = TickingTasks[0];
+			if (IsValid(TickingTask))
+			{
+				TickingTask->TickTask(DeltaTime);
+				NumActuallyTicked++;
+			}
+		}
+		break;
+	default:
+		{
+			static TArray<UGameplayTask*> LocalTickingTasks;
+			LocalTickingTasks.Reset();
+			LocalTickingTasks.Append(TickingTasks);
+			for (UGameplayTask* TickingTask : LocalTickingTasks)
+```
+
+
+### GameplayTasksComponent：加入待激活事件
+
+来源：Engine/Source\Runtime\GameplayTasks\Private\GameplayTasksComponent.cpp（第 335-352 行）
+
+```cpp
+void UGameplayTasksComponent::AddTaskReadyForActivation(UGameplayTask& NewTask)
+{
+	UE_VLOG(this, LogGameplayTasks, Log, TEXT("AddTaskReadyForActivation %s"), *NewTask.GetName());
+
+	ensure(NewTask.RequiresPriorityOrResourceManagement() == true);
+
+	TaskEvents.Add(FGameplayTaskEventData(EGameplayTaskEvent::Add, NewTask));
+	// trigger the actual processing only if it was the first event added to the list
+	if (TaskEvents.Num() == 1 && CanProcessEvents())
+	{
+		ProcessTaskEvents();
+	}
+}
+
+void UGameplayTasksComponent::RemoveResourceConsumingTask(UGameplayTask& Task)
+{
+	UE_VLOG(this, LogGameplayTasks, Log, TEXT("RemoveResourceConsumingTask %s"), *Task.GetName());
+
+```

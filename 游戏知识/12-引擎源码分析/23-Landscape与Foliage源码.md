@@ -7,7 +7,7 @@
 > 适用范围：编辑器地形/植被编辑、运行时 Landscape 渲染与碰撞、Grass Map、Foliage ISM/HISM、World Partition 分区和 HLOD；移动、主机与大世界项目应按各自渲染和内存预算回归。
 > 兼容性边界：UE 4.27 及 UE 5.0–5.7 只作为迁移对照；Landscape LOD、Grass Map、HISM 簇树和 World Partition 私有实现以 UE 5.8 实际源码为准，不能把编辑器数据结构当作稳定运行时 API。
 > 官方参考：[Unreal Engine 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)；版本敏感结论仍以本机源码路径和验证命令为证据。
-> 最后更新：2026-08-06（清理占位导读，补齐适用范围、兼容边界和 Landscape/Foliage 源码验收说明）。
+> 最后更新：2026-08-18（补入 LandscapeProxy/Foliage 实际生命周期函数）。
 
 ## 概述
 
@@ -389,3 +389,137 @@ flowchart LR
 - [UE 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)：版本敏感内容仍以本机 5.8 源码为准。
 - 本节的相对链接均指向仓库内已存在的导航或路线图，外部链接仅使用 Epic 官方入口。
 - Mermaid 图是调用关系示意，具体函数边界仍应回到对应 UE5.8 文件核对。
+
+## 真实源码证据补充（2026-08-18）
+
+本文原有 Landscape/Foliage 示意只用于建立模型；以下真实函数展示 LandscapeProxy PostLoad 和 Foliage 实例组件构造/编辑边界。
+
+### LandscapeProxy：PostLoad 修复入口
+
+来源：Engine/Source\Runtime\Landscape\Private\Landscape.cpp（第 4686-4745 行）
+
+```cpp
+void ALandscapeProxy::PostLoad()
+{
+	TRACE_CPUPROFILER_EVENT_SCOPE(ALandscapeProxy::PostLoad);
+
+
+#if WITH_EDITOR
+	// Not sure that this can ever happen without someone deliberately changing the root component but a landscape without a root component is
+	//  worthless and will lead to pain and crash, so attempt to fix it up on load here :
+	if (GetRootComponent() == nullptr)
+	{
+		TInlineComponentArray<USceneComponent*> SceneComponents;
+		GetComponents<USceneComponent>(SceneComponents, /*bIncludeFromChildActors = */false);
+		UClass* SceneComponentClass = USceneComponent::StaticClass();
+		if (USceneComponent** RootComponentCandidate = Algo::FindByPredicate(SceneComponents, [SceneComponentClass](USceneComponent* InComponent) { return (InComponent->GetClass() == SceneComponentClass); }))
+		{
+			SetRootComponent(*RootComponentCandidate);
+		}
+		else
+		{
+			UE_LOGF(LogLandscape, Error, "Unable to retrieve a root component for landscape proxy %ls. The landscape will not work properly.", *GetFullName());
+		}
+	}
+
+	// Store edit layer state before fixup edit layer data is run. If edit layers do not exist, proxy is a legacy non-edit layer landscape
+	bHasEditLayersOnLoad = !LandscapeComponents.IsEmpty() && (LandscapeComponents[0] != nullptr) && LandscapeComponents[0]->HasLayersData();
+#endif // WITH_EDITOR
+
+	Super::PostLoad();
+
+	PostLoadFixupLandscapeGuidsIfInstanced();
+
+#if WITH_EDITOR
+	FixupOverriddenSharedProperties();
+
+	ALandscape* LandscapeActor = GetLandscapeActor();
+
+	// Try to fixup shared properties if everything is ready for it as some postload process may depend on it.
+	if ((GetLandscapeInfo() != nullptr) && (LandscapeActor != nullptr) && (LandscapeActor != this))
+	{
+		const bool bMapCheck = true;
+		FixupSharedData(LandscapeActor, bMapCheck, false /*bInExecutePostEditChangeProperty*/);
+	}
+#endif // WITH_EDITOR
+
+	// Temporary
+	if (ComponentSizeQuads == 0 && LandscapeComponents.Num() > 0)
+	{
+		ULandscapeComponent* Comp = LandscapeComponents[0];
+		if (Comp)
+		{
+			ComponentSizeQuads = Comp->ComponentSizeQuads;
+			SubsectionSizeQuads = Comp->SubsectionSizeQuads;
+			NumSubsections = Comp->NumSubsections;
+		}
+	}
+
+	if (IsTemplate() == false)
+	{
+		BodyInstance.FixupData(this);
+	}
+```
+
+
+### Foliage ISM 组件：构造与编辑入口
+
+来源：Engine/Source\Runtime\Foliage\Private\InstancedFoliage.cpp（第 5796-5850 行）
+
+```cpp
+UFoliageInstancedStaticMeshComponent::UFoliageInstancedStaticMeshComponent(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+	, bEnableDiscardOnLoad(false)
+{
+	// Foliage is often built in world space which can cause problems with large world coordinates.
+	// We use a translated space to deal with that.
+	// todo: Maybe we can address this on the tool side and strip out all of the translated instance space code. It would require:
+	// * foliage components to always be placed near their instances (instead of at origin).
+	// * warnings and a fixup option for components which have instances with very large coordinates.
+	bUseTranslatedInstanceSpace = true;
+
+	bEnableAutoLODGeneration = false;
+
+	ViewRelevanceType = EHISMViewRelevanceType::Foliage;
+}
+
+#if WITH_EDITOR
+void UFoliageInstancedStaticMeshComponent::PreEditChange(FProperty* PropertyAboutToChange)
+{
+	// This component intentionally turns off the transaction flag when it is created and most changes go through the foliage editor.
+	//
+	// However, there are cases where users will modify the component directly and this allows us to capture those as proper transactions for undo/redo.  If a
+	// component level change is made on a property this will temporarily enable the transaction flag so it passes checks in transaction code.
+	//
+	SetFlags(RF_Transactional);
+	Super::PreEditChange(PropertyAboutToChange);
+	ClearFlags(RF_Transactional);
+}
+#endif
+
+void UFoliageInstancedStaticMeshComponent::ReceiveComponentDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	Super::ReceiveComponentDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+	if (DamageAmount != 0.f)
+	{
+		UDamageType const* const DamageTypeCDO = DamageEvent.DamageTypeClass ? DamageEvent.DamageTypeClass->GetDefaultObject<UDamageType>() : GetDefault<UDamageType>();
+		if (DamageEvent.IsOfType(FPointDamageEvent::ClassID))
+		{
+			// Point damage event, hit a single instance.
+			FPointDamageEvent* const PointDamageEvent = (FPointDamageEvent*)&DamageEvent;
+			if (PerInstanceSMData.IsValidIndex(PointDamageEvent->HitInfo.Item))
+			{
+				OnInstanceTakePointDamage.Broadcast(PointDamageEvent->HitInfo.Item, DamageAmount, EventInstigator, PointDamageEvent->HitInfo.ImpactPoint, PointDamageEvent->ShotDirection, DamageTypeCDO, DamageCauser);
+			}
+		}
+		else if (DamageEvent.IsOfType(FRadialDamageEvent::ClassID))
+		{
+			// Radial damage event, find which instances it hit and notify
+			FRadialDamageEvent* const RadialDamageEvent = (FRadialDamageEvent*)&DamageEvent;
+
+			float MaxRadius = RadialDamageEvent->Params.GetMaxRadius();
+			TArray<int32> Instances = GetInstancesOverlappingSphere(RadialDamageEvent->Origin, MaxRadius, true);
+
+			if (Instances.Num())
+```

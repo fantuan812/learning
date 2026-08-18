@@ -3,7 +3,7 @@
 > 分工声明：本文为 UE5.8 源码层深读；概念/使用层知识见本目录 README 映射表及各篇关联阅读（不重复使用层教程）。
 
 版本基准：UE5.8.0 / CL55116800 / ++UE5+Release-5.8
-- 最后更新：2026-08-06（本轮元数据维护）
+- 最后更新：2026-08-18（补入 UE 5.8 Enhanced Input/Gameplay Tags 实际函数与输入扩展证据）
 
 ## 概述
 
@@ -351,3 +351,253 @@ flowchart LR
 - Mermaid 使用单个成对 fenced block；图下解释明确区分输入求值和标签查询职责。
 - 相对链接目标已在当前分类目录核实存在，外部链接均指向 `dev.epicgames.com` 官方入口。
 - 版本敏感结论仍以 UE5.8.0、CL55116800、`++UE5+Release-5.8` 为基准。
+
+## 真实源码证据补充（2026-08-18）
+
+此前的“映射/注入/标签查询”代码块是职责示意；以下节选直接来自 UE 5.8 源文件，分别展示 Modifier/Trigger 求值、注入缓存、键事件边界、Mapping Context 委托以及 GameplayTag 配置加载与 Query 转发。
+
+### EnhancedPlayerInput：Mapping 事件求值
+
+来源：Engine/Plugins\EnhancedInput\Source\EnhancedInput\Private\EnhancedPlayerInput.cpp（第 205-282 行）
+
+```cpp
+
+void UEnhancedPlayerInput::ProcessActionMappingEvent(
+	TObjectPtr<const UInputAction> Action,
+	float DeltaTime,
+	bool bGamePaused,
+	FInputActionValue RawKeyValue,
+	EKeyEvent KeyEvent,
+	const TArray<UInputModifier*>& Modifiers,
+	const TArray<UInputTrigger*>& Triggers,
+	const bool bHasAlwaysTickTrigger /*= false*/)
+{
+	FInputActionInstance& ActionData = FindOrAddActionEventData(Action);
+
+	// Update values and triggers for all actionable mappings each frame
+	FTriggerStateTracker TriggerStateTracker;
+
+	// Reset action data on the first event processed for the action this tick.
+	bool bResetActionData = !ActionsWithEventsThisTick.Contains(Action);
+
+	// If the key state is changing or the key is actuated and being held (and not coming back up this tick) recalculate its value and resulting trigger state.
+	if (KeyEvent != EKeyEvent::None || bHasAlwaysTickTrigger)
+	{
+		if (bResetActionData)
+		{
+			ActionsWithEventsThisTick.Add(Action);
+			ActionData.Value.Reset();	// TODO: what if default value isn't 0 (e.g. bool value with negate modifier). Move reset out to a pre-pass? This may be confusing as triggering requires key interaction for value processing for performance reasons.
+		}
+
+		// Apply modifications to the raw value
+		EInputActionValueType ValueType = ActionData.Value.GetValueType();
+		FInputActionValue ModifiedValue = ApplyModifiers(Modifiers, FInputActionValue(ValueType, RawKeyValue.Get<FVector>()), DeltaTime);
+		//UE_CLOGF(RawKeyValue.GetMagnitudeSq(), LogEnhancedInput, Warning, "Modified %ls -> %ls", *RawKeyValue.ToString(), *ModifiedValue.ToString());
+
+		// Derive an initial trigger state for this mapping using all applicable triggers
+		ETriggerState CalcedState = TriggerStateTracker.EvaluateTriggers(this, Triggers, ModifiedValue, DeltaTime);
+		// Do this only for no triggers?
+		TriggerStateTracker.SetStateForNoTriggers(ModifiedValue.IsNonZero() ? ETriggerState::Triggered : ETriggerState::None);
+		TriggerStateTracker.SetMappingTriggerApplied(Triggers.Num() > 0);
+
+		const EInputActionAccumulationBehavior AccumulationBehavior = ActionData.GetSourceAction()->AccumulationBehavior;
+
+		// Combine values for active events only, selecting the input with the greatest magnitude for each component in each tick.
+		if(ModifiedValue.GetMagnitudeSq())
+		{
+			const int32 NumComponents = FMath::Max(1, int32(ValueType));
+			FVector Modified = ModifiedValue.Get<FVector>();
+			FVector Merged = ActionData.Value.Get<FVector>();
+			for (int32 Component = 0; Component < NumComponents; ++Component)
+			{
+				switch (AccumulationBehavior)
+				{
+				// Sometimes you may want to cumulatively merge input. This would allow you to, for example, map WASD to movement and have pressing W and S at the same time
+				// completely cancel out input because "W" is a value of +1.0, and "S" is a value of -1.0
+				case EInputActionAccumulationBehavior::Cumulative:
+				{
+					Merged[Component] += Modified[Component];
+				}
+				break;
+
+				// By default, we will accept the input with the highest absolute value
+				case EInputActionAccumulationBehavior::TakeHighestAbsoluteValue:
+				default:
+				{
+					if (FMath::Abs(Modified[Component]) >= FMath::Abs(Merged[Component]))
+					{
+						Merged[Component] = Modified[Component];
+					}
+				}
+				break;
+				}
+			}
+			ActionData.Value = FInputActionValue(ValueType, Merged);
+		}
+	}
+
+	// Retain the most interesting/triggered tracker.
+	ActionData.TriggerStateTracker = FMath::Max(ActionData.TriggerStateTracker, TriggerStateTracker);
+}
+```
+
+
+### EnhancedPlayerInput：注入与键事件边界
+
+来源：Engine/Plugins\EnhancedInput\Source\EnhancedInput\Private\EnhancedPlayerInput.cpp（第 284-323 行）
+
+```cpp
+void UEnhancedPlayerInput::InjectInputForAction(TObjectPtr<const UInputAction> Action, FInputActionValue RawValue, const TArray<UInputModifier*>& Modifiers, const TArray<UInputTrigger*>& Triggers)
+{
+	FInjectedInput Input;
+	Input.RawValue = RawValue;
+	Input.Modifiers = Modifiers;
+	Input.Triggers = Triggers;
+
+	InputsInjectedThisTick.FindOrAdd(Action).Injected.Emplace(MoveTemp(Input));
+}
+
+bool UEnhancedPlayerInput::InputKey(const FInputKeyEventArgs& Params)
+{
+	const bool bResult = Super::InputKey(Params);
+
+	if (Params.Event == IE_Pressed)
+	{
+		if (Params.Key.IsButtonAxis())
+		{
+			KeysPressedThisTick.FindOrAdd(Params.Key, FVector(Params.AmountDepressed, 0.0, 0.0));
+		}
+		else if (UE::Input::bDetectSubTickTapsForNonAxisInputs && Params.Key.IsDigital())
+		{
+			KeysPressedThisTick.FindOrAdd(Params.Key, FVector(1.0f, 0.0, 0.0));
+		}
+	}
+	else if (Params.Event == IE_Released && UE::Input::bIgnoreHeldDigitalActionKeysOnFlush)
+	{
+		// Clear bShouldBeIgnored as soon as the release event arrives instead of waiting one full
+		// tick (the lifecycle check at the top of EvaluateInputDelegates only clears it after the
+		// next tick observes bDown=false && bWasJustFlushed=false). That one-tick lag is the window
+		// where a fast re-press lands in the "ignored" state and is silently consumed — the
+		// "must press twice to toggle" symptom users see when a UI mapping rebuild flushes the key
+		// during the same press that opened the UI.
+		for (FEnhancedActionKeyMapping& Mapping : EnhancedActionMappings)
+		{
+			if (Mapping.bShouldBeIgnored && Mapping.Key == Params.Key)
+			{
+				Mapping.bShouldBeIgnored = false;
+				UE_LOGF(LogEnhancedInput, Verbose, "Key %ls is no longer ignored", *Mapping.Key.ToString());
+			}
+```
+
+
+### Enhanced Input Subsystem：Context 增删委托
+
+来源：Engine/Plugins\EnhancedInput\Source\EnhancedInput\Private\EnhancedInputSubsystems.cpp（第 140-151 行）
+
+```cpp
+void UEnhancedInputLocalPlayerSubsystem::AddMappingContext(const UInputMappingContext* MappingContext, int32 Priority, const FModifyContextOptions& Options)
+{
+	IEnhancedInputSubsystemInterface::AddMappingContext(MappingContext, Priority, Options);
+
+	OnMappingContextAdded.Broadcast(MappingContext);
+}
+
+void UEnhancedInputLocalPlayerSubsystem::RemoveMappingContext(const UInputMappingContext* MappingContext, const FModifyContextOptions& Options)
+{
+	IEnhancedInputSubsystemInterface::RemoveMappingContext(MappingContext, Options);
+
+	OnMappingContextRemoved.Broadcast(MappingContext);
+```
+
+
+### GameplayTagsManager：表加载与请求入口
+
+来源：Engine/Source\Runtime\GameplayTags\Private\GameplayTagsManager.cpp（第 360-432 行）
+
+```cpp
+
+void UGameplayTagsManager::LoadGameplayTagTables(bool bAllowAsyncLoad)
+{
+	SCOPE_CYCLE_COUNTER(STAT_GameplayTags_LoadGameplayTags);
+
+	const UGameplayTagsSettings* Default = GetDefault<UGameplayTagsSettings>();
+	check(Default);
+
+	GameplayTagTables.Empty();
+
+	// Because we may unload the GameplayTags ini file later, foce the construction of other CDOs which use that config file now so that they don't reload it later
+	(void)GetDefault<URestrictedGameplayTagsList>();
+
+#if !UE_BUILD_SHIPPING && !UE_BUILD_TEST && DO_ENSURE
+	// Look for any other classes with the gameplay tags ini file that will cause it to be reloaded later
+	for (TObjectIterator<UClass> ClassIt; ClassIt; ++ClassIt)
+	{
+		ensureMsgf(ClassIt->ClassConfigName != Default->GetClass()->ClassConfigName
+			|| *ClassIt == UGameplayTagsSettings::StaticClass()
+			|| *ClassIt == URestrictedGameplayTagsList::StaticClass(),
+			TEXT("Class %s is using the GameplayTags config file which UGameplayTagsManager will attempt to unload after building the gameplay tag tree. ")
+			TEXT("This may cause the GameplayTags config file to be reloaded, consuming additional memory."), *ClassIt->GetPathName() );
+	}
+#endif // !UE_BUILD_SHIPPING && !UE_BUILD_TEST && DO_ENSURE
+
+#if !WITH_EDITOR
+	// If we're a cooked build and in a safe spot, start an async load so we can pipeline it
+	if (bAllowAsyncLoad && !IsLoading() && Default->GameplayTagTableList.Num() > 0)
+	{
+		for (FSoftObjectPath DataTablePath : Default->GameplayTagTableList)
+		{
+			LoadPackageAsync(DataTablePath.GetLongPackageName());
+		}
+
+		return;
+	}
+#endif // !WITH_EDITOR
+
+	SCOPE_LOG_GAMEPLAYTAGS(TEXT("UGameplayTagsManager::LoadGameplayTagTables"));
+	for (FSoftObjectPath DataTablePath : Default->GameplayTagTableList)
+	{
+		UDataTable* TagTable = LoadObject<UDataTable>(nullptr, *DataTablePath.ToString(), nullptr, LOAD_None, nullptr);
+
+		// Handle case where the module is dynamically-loaded within a LoadPackage stack, which would otherwise
+		// result in the tag table not having its RowStruct serialized in time. Without the RowStruct, the tags manager
+		// will not be initialized correctly.
+		if (TagTable)
+		{
+			TagTable->ConditionalPreload();
+		}
+		GameplayTagTables.Add(TagTable);
+	}
+}
+
+void UGameplayTagsManager::AddTagIniSearchPath(const FString& RootDir, const TSet<FString>* PluginConfigsCache)
+{
+	TRACE_CPUPROFILER_EVENT_SCOPE(UGameplayTagsManager::AddTagIniSearchPath);
+	SCOPE_SECONDS_ACCUMULATOR(STAT_GameplayTags_AddTagIniSearchPath);
+
+	FGameplayTagSearchPathInfo* PathInfo = RegisteredSearchPaths.Find(RootDir);
+
+	if (!PathInfo)
+	{
+		PathInfo = &RegisteredSearchPaths.FindOrAdd(RootDir);
+	}
+
+	if (!PathInfo->bWasSearched)
+	{
+		PathInfo->Reset();
+
+		// Read all tags from the ini
+		// Use slower path and check the filesystem if our PluginConfigsCache is null
+		if (PluginConfigsCache == nullptr)
+```
+
+
+### GameplayTagContainer：Query 委托到 FGameplayTagQuery
+
+来源：Engine/Source\Runtime\GameplayTags\Private\GameplayTagContainer.cpp（第 735-738 行）
+
+```cpp
+bool FGameplayTagContainer::MatchesQuery(const FGameplayTagQuery& Query) const
+{
+	return Query.Matches(*this);
+}
+```

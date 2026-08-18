@@ -16,7 +16,7 @@
 | 运行角色 | 服务器权威写入；拥有者客户端发起输入；所有客户端读取复制结果和表现消息 |
 | 知识成熟度 | L2：项目源码、插件源码和配置已静态核对；文中的 PIE/联机实验是可复现步骤，不宣称已经执行 |
 | 官方参考 | [Lyra Inventory and Equipment](https://dev.epicgames.com/documentation/en-us/unreal-engine/lyra-inventory-and-equipment-in-unreal-engine)、[Lyra Sample Game](https://dev.epicgames.com/documentation/en-us/unreal-engine/lyra-sample-game-in-unreal-engine)、[Gameplay Ability System](https://dev.epicgames.com/documentation/en-us/unreal-engine/gameplay-ability-system-for-unreal-engine)、[Game Features and Modular Gameplay](https://dev.epicgames.com/documentation/en-us/unreal-engine/game-features-and-modular-gameplay-in-unreal-engine) |
-| 最后更新 | 2026-08-14 |
+| 最后更新 | 2026-08-18（同步 39-56 导航与 ShooterCore 核心玩法入口） |
 
 ## 一、先给结论
 
@@ -2350,7 +2350,7 @@ git -C 'C:\project\git' status --short -- '游戏知识/12-引擎源码分析/43
 
 ## 三十九、关联阅读
 
-- [39-Lyra源码总览与阅读路线](39-Lyra源码总览与阅读路线.md)：项目插件地图、Experience 入口和 39-52 阅读顺序。
+- [39-Lyra源码总览与阅读路线](39-Lyra源码总览与阅读路线.md)：项目插件地图、Experience 入口和 39-56 阅读顺序。
 - [40-Lyra-Experience与GameFeature源码](40-Lyra-Experience与GameFeature源码.md)：GameFeature 如何激活本篇的 UI Action 和组件。
 - [41-Lyra-Pawn初始化与模块化组件源码](41-Lyra-Pawn初始化与模块化组件源码.md)：Pawn、PlayerState、ASC 和组件初始化会合。
 - [42-Lyra-输入GAS与武器战斗源码](42-Lyra-输入GAS与武器战斗源码.md)：Equipment 授予的 Ability 如何接收输入并产生伤害。

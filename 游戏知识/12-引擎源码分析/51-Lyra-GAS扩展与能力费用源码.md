@@ -714,7 +714,7 @@ A：跳跃前解除蹲伏，避免角色处于蹲伏高度跳跃（本机 `Chara
 - 战斗主链：[42-Lyra-输入GAS与武器战斗源码.md](./42-Lyra-输入GAS与武器战斗源码.md)（ASC/AbilitySet/GameplayAbility/HealthSet/DamageExecution）。
 - 背包/装备/TagStack：[43-Lyra-背包装备消息与UI源码.md](./43-Lyra-背包装备消息与UI源码.md)（本片 TagStack 费用的仓库侧）。
 - 相机/GamePhase：[45-Lyra-相机音频与游戏阶段源码.md](./45-Lyra-相机音频与游戏阶段源码.md)（复用 GAS 做阶段的并行范式）。
-- 本目录导航：[README.md](./README.md)（39-52 系列定位与覆盖边界）。
+- 本目录导航：[README.md](./README.md)（39-56 系列定位与覆盖边界）。
 
 ---
 

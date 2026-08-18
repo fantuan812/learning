@@ -5,7 +5,7 @@
 - 引擎版本：UE5.8.0
 - 变更列表：CL 55116800
 - 分支：++UE5+Release-5.8
-- 最后更新：2026-08-06（本轮元数据维护）
+- 最后更新：2026-08-18（补入 WorldPartition 与 WorldStreaming Insights 实际函数）。
 
 ## 概述
 
@@ -355,3 +355,230 @@ MyGame.exe -trace=default
 验收时应同时看到 WorldInitialization、ContainerDescription、ContainerStateChange 和 StreamingSourceUpdate。
 
 若启用 Priority 或 Dependencies 通道，还应检查 ContainerPriorityUpdate、PackageNameMapping 和 ContainerDependencies。
+
+## 真实源码证据补充（2026-08-18）
+
+本文原有 World Partition 数据流示意不替代实现；以下真实函数补齐 WorldPartition 初始化/Tick 与 World Streaming Insights Analyzer 事件消费。
+
+### WorldPartition：Initialize
+
+来源：Engine/Source\Runtime\Engine\Private\WorldPartition\WorldPartition.cpp（第 703-783 行）
+
+```cpp
+void UWorldPartition::Initialize(UWorld* InWorld, const FTransform& InTransform)
+{
+	UE_SCOPED_TIMER(TEXT("WorldPartition initialize"), LogWorldPartition, Display);
+	TRACE_CPUPROFILER_EVENT_SCOPE(UWorldPartition::Initialize);
+
+	check(!World || (World == InWorld));
+	if (!ensure(!IsInitialized()))
+	{
+		return;
+	}
+
+	if (IsTemplate())
+	{
+		return;
+	}
+
+	check(InWorld);
+	check(CanInitialize(InWorld));
+	World = InWorld;
+
+	if (!InTransform.Equals(FTransform::Identity))
+	{
+		InstanceTransform = InTransform;
+	}
+
+	check(InitState == EWorldPartitionInitState::Uninitialized);
+	InitState = EWorldPartitionInitState::Initializing;
+
+	UWorld* OuterWorld = GetTypedOuter<UWorld>();
+	check(OuterWorld);
+
+	RegisterDelegates();
+
+	if (IsMainWorldPartition())
+	{
+		AWorldPartitionReplay::Initialize(World);
+	}
+
+	const bool bIsGame = IsRunningGame();
+	const bool bIsEditor = !World->IsGameWorld();
+	const bool bIsCooking = IsRunningCookCommandlet();
+	const bool bIsPIEWorldTravel = (World->WorldType == EWorldType::PIE) && !StreamingPolicy;
+	const bool bIsDedicatedServer = IsRunningDedicatedServer();
+
+#if !UE_BUILD_TEST && !UE_BUILD_SHIPPING
+	UE_LOGF(LogWorldPartition, Log, "UWorldPartition::Initialize : World = %ls, World Type = %ls, IsMainWorldPartition = %d, Location = %ls, Rotation = %ls, IsEditor = %d, IsGame = %d, IsPIEWorldTravel = %d, IsCooking = %d",
+		*OuterWorld->GetPathName(),
+		LexToString(World->WorldType),
+		IsMainWorldPartition() ? 1 : 0,
+		*InTransform.GetLocation().ToCompactString(),
+		*InTransform.Rotator().ToCompactString(),
+		bIsEditor,
+		bIsGame,
+		bIsPIEWorldTravel,
+		bIsCooking);
+
+	if (World->IsGameWorld())
+	{
+		UE_LOGF(LogWorldPartition, Log, "UWorldPartition::Initialize Context : World NetMode = %ls, IsServer = %d, IsDedicatedServer = %d, IsServerStreamingEnabled = %d, IsServerStreamingOutEnabled = %d, IsUsingMakingVisibleTransaction = %d, IsUsingMakingInvisibleTransaction = %d",
+			*ToString(World->GetNetMode()),
+			IsServer() ? 1 : 0,
+			bIsDedicatedServer ? 1 : 0,
+			IsServerStreamingEnabled() ? 1 : 0,
+			IsServerStreamingOutEnabled() ? 1 : 0,
+			UseMakingVisibleTransactionRequests() ? 1 : 0,
+			UseMakingInvisibleTransactionRequests() ? 1 : 0);
+	}
+#endif // !UE_BUILD_TEST && !UE_BUILD_SHIPPING
+
+	auto CreateAndInitializeDataLayerManager = [this]()
+	{
+		check(!DataLayerManager);
+		DataLayerManager = NewObject<UDataLayerManager>(this, TEXT("DataLayerManager"), RF_Transient);
+		DataLayerManager->Initialize();
+	};
+
+#if WITH_EDITOR
+	if (bEnableStreaming)
+	{
+		bStreamingWasEnabled = true;
+	}
+```
+
+
+### WorldPartition：Tick
+
+来源：Engine/Source\Runtime\Engine\Private\WorldPartition\WorldPartition.cpp（第 1856-1905 行）
+
+```cpp
+void UWorldPartition::Tick(float DeltaSeconds)
+{
+#if WITH_EDITOR
+	if (EditorHash)
+	{
+		EditorHash->Tick(DeltaSeconds);
+	}
+
+	// Force refresh needs to happen before dirty tracker tick to allow new always loaded actors to be referenced before releasing NonDirtyActors
+	if (bForceRefreshAlwaysLoaded)
+	{
+		if (AlwaysLoadedActors)
+		{
+			AlwaysLoadedActors->RefreshLoadedState();
+		}
+
+		bForceRefreshAlwaysLoaded = false;
+	}
+
+	if (ExternalDirtyActorsTracker)
+	{
+		ExternalDirtyActorsTracker->Tick(DeltaSeconds);
+	}
+
+	if (bForceRefreshEditor)
+	{
+		if (WorldPartitionEditor)
+		{
+			WorldPartitionEditor->Refresh();
+		}
+
+		bForceRefreshEditor = false;
+	}
+
+	if (bShouldCheckEnableStreamingWarning)
+	{
+		bShouldCheckEnableStreamingWarning = false;
+
+		if (!IsStreamingEnabled() && SupportsStreaming())
+		{
+			bEnablingStreamingJustified = false;
+
+			FBox AllActorsBounds(ForceInit);
+			for (FActorDescContainerInstanceCollection::TConstIterator<> Iterator(this); Iterator; ++Iterator)
+			{
+				if (Iterator->GetActorDesc()->GetIsSpatiallyLoadedRaw() || Iterator->GetActorNativeClass()->IsChildOf<ALandscapeProxy>())
+				{
+					const FBox EditorBounds = Iterator->GetEditorBounds();
+					if (EditorBounds.IsValid)
+					{
+```
+
+
+### WorldStreamingInsightsAnalyzer：Trace 事件分派
+
+来源：Engine/Plugins\WorldStreamingInsights\Source\WorldStreamingInsights\Private\Analyzers\WorldStreamingInsightsAnalyzer.cpp（第 32-100 行）
+
+```cpp
+bool FWorldStreamingInsightsAnalyzer::OnEvent(uint16 RouteId, EStyle Style, const FOnEventContext& Context)
+{
+	LLM_SCOPE_BYNAME(TEXT("Insights/FWorldStreamingInsightsAnalyzer"));
+
+	TraceServices::FAnalysisSessionEditScope Scope(Session);
+
+	const FEventData& EventData = Context.EventData;
+
+	switch (RouteId)
+	{
+	case RouteId_WorldInitialization:
+	{
+		uint64 WorldId = EventData.GetValue<uint64>("WorldId");
+		uint64 Cycle = EventData.GetValue<uint64>("Cycle");
+		FWideStringView MapName;
+		EventData.GetString("MapName", MapName);
+		uint8 NetMode = EventData.GetValue<uint8>("NetMode", 0);
+
+		Provider.AppendStreamingWorldStart(WorldId, Session.StoreString(MapName), static_cast<EStreamingWorldNetMode>(NetMode), Context.EventTime.AsSeconds(Cycle));
+		break;
+	}
+
+	case RouteId_WorldDeinitialization:
+	{
+		uint64 WorldId = EventData.GetValue<uint64>("WorldId");
+		uint64 Cycle = EventData.GetValue<uint64>("Cycle");
+
+		Provider.AppendStreamingWorldEnd(WorldId, Context.EventTime.AsSeconds(Cycle));
+		break;
+	}
+
+	case RouteId_ContainerDescription:
+	{
+		uint64 Id = EventData.GetValue<uint64>("Id");
+		uint64 WorldId = EventData.GetValue<uint64>("WorldId");
+		uint64 ParentId = EventData.GetValue<uint64>("ParentId");
+
+		FWideStringView Name;
+		EventData.GetString("Name", Name);
+
+		FWideStringView PackageName;
+		EventData.GetString("PackageName", PackageName);
+
+		TArrayView<const double> BoundsArray = EventData.GetArrayView<double>("Bounds");
+		if (BoundsArray.Num() != 6)
+		{
+			UE_LOGF(LogWorldStreamingInsights, Warning, "Malformed ContainerDescription event: expected 6 bounds values, got %d. Skipping.", BoundsArray.Num());
+			break;
+		}
+
+		TOptional<FBox> Bounds;
+		if (EventData.GetValue<uint8>("bBoundsValid", 0) != 0)
+		{
+			Bounds = FBox(FVector(BoundsArray[0], BoundsArray[1], BoundsArray[2]), FVector(BoundsArray[3], BoundsArray[4], BoundsArray[5]));
+		}
+
+		TArrayView<const uint64> TagsArray = EventData.GetArrayView<uint64>("Tags");
+
+		Provider.AppendStreamingContainerDescription(Id, WorldId, ParentId, Session.StoreString(Name), Session.StoreString(PackageName), MoveTemp(Bounds), TagsArray);
+		break;
+	}
+
+	case RouteId_ContainerStateChange:
+	{
+		uint64 Id = EventData.GetValue<uint64>("Id");
+		uint64 Cycle = EventData.GetValue<uint64>("Cycle");
+		uint64 WorldId = EventData.GetValue<uint64>("WorldId");
+		uint8 NewState = EventData.GetValue<uint8>("NewState");
+
+```

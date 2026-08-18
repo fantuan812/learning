@@ -5,7 +5,7 @@
 ## 运行时调用链与对象生命周期
 
 > 版本基准：UE 5.8.0；`Engine/Build/Build.version` 的 CL 为 `55116800`，分支为 `++UE5+Release-5.8`。
-> 最后更新：2026-08-06（本轮元数据维护）
+> 最后更新：2026-08-18（补入 UReplicationSystem NetUpdate/SendUpdate 实际函数）。
 > 源码证据：`Engine/Source/Runtime/Net/Iris`、`Engine/Source/Runtime/Engine/Private/Net/Iris/ReplicationSystem`。
 > 本节只描述本机安装的 UE5.8 源码可定位事实；调用方的具体网络线程调度不由本节臆测。
 
@@ -315,3 +315,229 @@ rg -n "NetTraceAnalyzer|UE_NET_TRACE|RemoveConnection|ProtocolMismatch" "C:\Prog
 4. 确认源码节选/示意代码没有被表述为可直接编译的完整实现。
 5. 确认 Trace、连接号、NetRefHandle、ProtocolIdentifier 作为调试证据能够对应同一版本。
 6. 确认所有版本敏感描述都回到 UE5.8 本机路径或当前官方入口复核。
+
+## 真实源码证据补充（2026-08-18）
+
+本文原有状态控制示意保留为阅读模型；以下真实函数来自 UReplicationSystem.cpp，补齐每帧 NetUpdate、发送更新和连接/视图注册的实际边界。
+
+### ReplicationSystem：NetUpdate 主循环
+
+来源：Engine/Source\Runtime\Net\Iris\Private\Iris\ReplicationSystem\ReplicationSystem.cpp（第 1035-1108 行）
+
+```cpp
+void UReplicationSystem::NetUpdate(float DeltaSeconds)
+{
+	using namespace UE::Net;
+	using namespace UE::Net::Private;
+
+	IRIS_CSV_PROFILER_SCOPE(Iris, ReplicationSystem_NetUpdate);
+
+	FReplicationSystemInternal& InternalSys = Impl->ReplicationSystemInternal;
+
+	ElapsedTime += DeltaSeconds;
+
+	ensureMsgf(Impl->CurrentSendPass == EReplicationSystemSendPass::Invalid, TEXT("PostSendUpdate was not called after the last Tick."));
+	Impl->CurrentSendPass = EReplicationSystemSendPass::TickFlush;
+
+	// $IRIS TODO. There may be some throttling of connections to tick that we should take into account.
+	const FNetBitArrayView& ReplicatingConnections = MakeNetBitArrayView(Impl->ReplicationSystemInternal.GetConnections().GetValidConnections());
+
+	#if UE_NET_IRIS_CSV_STATS
+	{
+		FNetSendStats& SendStats = InternalSys.GetSendStats();
+		SendStats.Reset();
+		SendStats.SetNumberOfReplicatingConnections(ReplicatingConnections.CountSetBits());
+
+		FNetTypeStats& NetTypeStats = InternalSys.GetNetTypeStats();
+		NetTypeStats.PreUpdateSetup();
+	}
+	#endif
+	InternalSys.GetAccumulatedReplicationStats().Accumulate(InternalSys.GetTickReplicationStats());
+	InternalSys.GetTickReplicationStats() = {};
+
+	// Force a integrity check of all replicated instances
+	if (bDoCollectGarbage || ReplicationSystemCVars::bForcePruneBeforeUpdate)
+	{
+		CollectGarbage();
+	}
+
+	// DataStream presend update, this is similar to channel tick()
+	UDataStream::FUpdateParameters DataStreamUpdateParams = { .UpdateType = UDataStream::EUpdateType::PreSendUpdate };
+	Impl->UpdateDataStreams(DataStreamUpdateParams);
+
+	// If we no longer have any valid connections we can skip part of the update.
+	const bool bUpdateConnectionSpecifics = Impl->ShouldUpdateForConnections();
+
+	if (bAllowObjectReplication)
+	{
+		UE_NET_TRACE_FRAME_STATSCOUNTER(GetId(), ReplicationSystem.ReplicatedObjectCount, InternalSys.GetNetRefHandleManager().GetActiveObjectCount(), ENetTraceVerbosity::Verbose);
+
+		// Tell systems we are starting PreSendUpdate
+		Impl->StartPreSendUpdate();
+
+		// Refresh the dirty objects we were told about.
+		Impl->UpdateDirtyObjectList();
+
+		// Update world locations. We need this to happen before both filtering and prioritization.
+		Impl->UpdateWorldLocations();
+
+		// Update filters, reduce the top-level scoped object list and set each connection's scope.
+		Impl->UpdateFiltering();
+
+		if (bUpdateConnectionSpecifics)
+		{
+
+			// Invoke any operations we need to do before copying state data
+			Impl->CallPreSendUpdate(DeltaSeconds);
+
+			// Finalize the dirty list with objects set dirty during the poll phase
+			Impl->UpdateDirtyListPostPoll();
+
+			// Update conditionals
+			Impl->UpdateConditionals();
+
+			// Quantize dirty state data. We need this to happen before both filtering and prioritization
+			Impl->ExecuteQuantizeDirtyStateData(bReplicateTransactionally);
+
+```
+
+
+### ReplicationSystem：SendUpdate 数据流
+
+来源：Engine/Source\Runtime\Net\Iris\Private\Iris\ReplicationSystem\ReplicationSystem.cpp（第 1158-1218 行）
+
+```cpp
+IRISCORE_API void UReplicationSystem::SendUpdate(TFunctionRef<void(TArrayView<uint32>)> SendFunction)
+{
+	using namespace UE::Net;
+	using namespace UE::Net::Private;
+
+	if (!ensure(Impl->CurrentSendPass != EReplicationSystemSendPass::Invalid))
+	{
+		return;
+	}
+
+	UE::Net::Private::FReplicationConnections& Connections = Impl->ReplicationSystemInternal.GetConnections();
+	const FNetBitArray& ReplicatingConnections = Connections.GetValidConnections();
+
+	TArray<uint32, TInlineAllocator<128>> ConnectionToUpdate;
+
+	if (Impl->CurrentSendPass == EReplicationSystemSendPass::TickFlush)
+	{
+		// This is currently handled when ticking NetDriver->NetConnection->Channels.
+
+		ConnectionToUpdate.SetNum(ReplicatingConnections.CountSetBits());
+		Connections.GetValidConnections().GetSetBitIndices(0U, ~0U, ConnectionToUpdate.GetData(), ConnectionToUpdate.Num());
+	}
+	else if (Impl->CurrentSendPass == EReplicationSystemSendPass::PostTickDispatch)
+	{
+		// We only need to send data to connections that has data to send in PostTickDispatch
+
+		FNetBitArray::ForAllSetBits(Impl->ConnectionsPendingPostTickDispatchSend, ReplicatingConnections, FNetBitArray::AndOp, [&ConnectionToUpdate](uint32 ConnId)
+		{
+			ConnectionToUpdate.Add(ConnId);
+		});
+		Impl->ConnectionsPendingPostTickDispatchSend.ClearAllBits();
+	}
+
+	SendFunction(MakeArrayView(ConnectionToUpdate));
+}
+
+void UReplicationSystem::PostSendUpdate()
+{
+	using namespace UE::Net;
+	using namespace UE::Net::Private;
+
+	IRIS_CSV_PROFILER_SCOPE(Iris, ReplicationSystem_PostSendUpdate);
+
+	if (!ensure(Impl->CurrentSendPass != EReplicationSystemSendPass::Invalid))
+	{
+		return;
+	}
+
+	// Most systems are only updated during the normal NetUpdate
+	if (Impl->CurrentSendPass == EReplicationSystemSendPass::TickFlush)
+	{
+		if (bAllowObjectReplication)
+		{
+			Impl->ResetObjectStateDirtiness();
+		}
+
+		Impl->EndPostSendUpdate();
+
+		if (bAllowObjectReplication)
+		{
+			FDeltaCompressionBaselineManagerPostSendUpdateParams UpdateParams;
+```
+
+
+### ReplicationSystem：连接和复制视图
+
+来源：Engine/Source\Runtime\Net\Iris\Private\Iris\ReplicationSystem\ReplicationSystem.cpp（第 1332-1395 行）
+
+```cpp
+void UReplicationSystem::AddConnection(uint32 ConnectionId, UE::Net::ENetConnectionTraits Traits)
+{
+	Impl->AddConnection(ConnectionId, Traits);
+}
+
+void UReplicationSystem::RemoveConnection(uint32 ConnectionId)
+{
+	Impl->RemoveConnection(ConnectionId);
+}
+
+bool UReplicationSystem::HasConnectionWithAnyTraits(UE::Net::ENetConnectionTraits NetConnectionTraits) const
+{
+	return Impl->HasConnectionWithAnyTraits(NetConnectionTraits);
+}
+
+bool UReplicationSystem::IsValidConnection(uint32 ConnectionId) const
+{
+	UE::Net::Private::FReplicationConnections& Connections = Impl->ReplicationSystemInternal.GetConnections();
+	return Connections.GetConnection(ConnectionId) != nullptr;
+}
+
+
+void UReplicationSystem::SetConnectionGracefullyClosing(uint32 ConnectionId) const
+{
+	UE::Net::Private::FReplicationConnections& Connections = Impl->ReplicationSystemInternal.GetConnections();
+	check(Connections.IsValidConnection(ConnectionId));
+
+	Connections.SetConnectionIsClosing(ConnectionId);
+}
+
+void UReplicationSystem::SetReplicationEnabledForConnection(uint32 ConnectionId, bool bReplicationEnabled)
+{
+	UE::Net::Private::FReplicationConnections& Connections = Impl->ReplicationSystemInternal.GetConnections();
+	UE::Net::Private::FReplicationConnection* Connection = Connections.GetConnection(ConnectionId);
+
+	check(Connection);
+
+	Connection->ReplicationWriter->SetReplicationEnabled(bReplicationEnabled);
+}
+
+void UReplicationSystem::SetReplicationView(uint32 ConnectionId, const UE::Net::FReplicationView& View)
+{
+	UE::Net::Private::FReplicationConnections& Connections = Impl->ReplicationSystemInternal.GetConnections();
+	Connections.SetReplicationView(ConnectionId, View);
+}
+
+void UReplicationSystem::SetStaticPriority(FNetRefHandle Handle, float Priority)
+{
+	const UE::Net::FInternalNetRefIndex ObjectInternalIndex = Impl->ReplicationSystemInternal.GetNetRefHandleManager().GetInternalIndex(Handle);
+	if (ObjectInternalIndex == UE::Net::InvalidInternalNetRefIndex)
+	{
+		return;
+	}
+
+	return Impl->ReplicationSystemInternal.GetPrioritization().SetStaticPriority(ObjectInternalIndex, Priority);
+}
+
+bool UReplicationSystem::SetPrioritizer(FNetRefHandle Handle, UE::Net::FNetObjectPrioritizerHandle Prioritizer)
+{
+	using namespace UE::Net;
+	using namespace UE::Net::Private;
+
+	if (!Handle.IsValid())
+	{
+```

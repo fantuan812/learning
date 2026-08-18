@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # 索引文件，不存放正文；由 kb_scanner/kb_analyzer 流程增量维护。
-# 生成：2026-08-18（游戏服务端 Runtime 02/07/08 增量维护，机械校正 bytes/lines）
+# 生成：2026-08-18（Lyra 39-56 核心源码覆盖复核 + 游戏服务端 Runtime 02/07/08 增量维护，机械校正 bytes/lines）
 version: 2
 
 documents:
@@ -27,8 +27,8 @@ documents:
   ".kb/audit.md":
     kind: doc
     maturity: L2
-    bytes: 27410
-    lines: 246
+    bytes: 30414
+    lines: 262
   ".kb/decisions.md":
     kind: doc
     maturity: L2
@@ -37,8 +37,8 @@ documents:
   ".kb/plans/current.md":
     kind: doc
     maturity: L2
-    bytes: 7962
-    lines: 70
+    bytes: 9553
+    lines: 75
   ".kb/plans/README.md":
     kind: README
     maturity: L0
@@ -52,8 +52,8 @@ documents:
   ".kb/review-queue.md":
     kind: doc
     maturity: L2
-    bytes: 17602
-    lines: 383
+    bytes: 18693
+    lines: 397
   "00_Index/MOC.md":
     kind: doc
     maturity: L2
@@ -1254,68 +1254,68 @@ documents:
   "游戏知识/12-引擎源码分析/19-高优先级源码覆盖路线图.md":
     kind: doc
     maturity: L2
-    bytes: 41258
-    lines: 231
+    bytes: 45839
+    lines: 261
   "游戏知识/12-引擎源码分析/20-Iris复制源码.md":
     kind: doc
     maturity: L2
-    bytes: 26854
-    lines: 317
+    bytes: 34729
+    lines: 543
   "游戏知识/12-引擎源码分析/21-Mass与StateTree源码.md":
     kind: doc
     maturity: L2
-    bytes: 21954
-    lines: 352
+    bytes: 34043
+    lines: 663
   "游戏知识/12-引擎源码分析/22-WorldPartition与WorldStreaming源码.md":
     kind: doc
     maturity: L2
-    bytes: 28166
-    lines: 357
+    bytes: 35055
+    lines: 584
   "游戏知识/12-引擎源码分析/23-Landscape与Foliage源码.md":
     kind: doc
     maturity: L2
-    bytes: 29789
-    lines: 391
+    bytes: 35234
+    lines: 525
   "游戏知识/12-引擎源码分析/24-Sequencer与MovieRenderGraph源码.md":
     kind: doc
     maturity: L2
-    bytes: 27999
-    lines: 342
+    bytes: 35536
+    lines: 545
   "游戏知识/12-引擎源码分析/25-EnhancedInput与GameplayTags源码.md":
     kind: doc
     maturity: L2
-    bytes: 26053
-    lines: 353
+    bytes: 36024
+    lines: 603
   "游戏知识/12-引擎源码分析/26-CommonUI源码.md":
     kind: doc
     maturity: L2
-    bytes: 27312
-    lines: 338
+    bytes: 39379
+    lines: 676
   "游戏知识/12-引擎源码分析/27-UMGMVVM源码.md":
     kind: doc
     maturity: L2
-    bytes: 25322
-    lines: 342
+    bytes: 31074
+    lines: 512
   "游戏知识/12-引擎源码分析/28-UnrealInsights与Trace源码.md":
     kind: doc
     maturity: L2
-    bytes: 25884
-    lines: 343
+    bytes: 31579
+    lines: 465
   "游戏知识/12-引擎源码分析/29-GameplayTasks源码.md":
     kind: doc
     maturity: L2
-    bytes: 21713
-    lines: 314
+    bytes: 25663
+    lines: 458
   "游戏知识/12-引擎源码分析/30-Lumen与MegaLights源码.md":
     kind: doc
     maturity: L2
-    bytes: 25496
-    lines: 303
+    bytes: 30750
+    lines: 427
   "游戏知识/12-引擎源码分析/31-ProceduralVegetationEditor源码.md":
     kind: doc
     maturity: L2
-    bytes: 23227
-    lines: 321
+    bytes: 28331
+    lines: 399
   "游戏知识/12-引擎源码分析/32-UE Dedicated Server启动与监听源码.md":
     kind: doc
     maturity: L2
@@ -1354,12 +1354,12 @@ documents:
   "游戏知识/12-引擎源码分析/39-Lyra源码总览与阅读路线.md":
     kind: doc
     maturity: L2
-    bytes: 166161
-    lines: 4130
+    bytes: 167451
+    lines: 4135
   "游戏知识/12-引擎源码分析/40-Lyra-Experience与GameFeature源码.md":
     kind: doc
     maturity: L2
-    bytes: 163230
+    bytes: 163282
     lines: 4267
   "游戏知识/12-引擎源码分析/41-Lyra-Pawn初始化与模块化组件源码.md":
     kind: doc
@@ -1374,7 +1374,7 @@ documents:
   "游戏知识/12-引擎源码分析/43-Lyra-背包装备消息与UI源码.md":
     kind: doc
     maturity: L2
-    bytes: 236457
+    bytes: 236516
     lines: 7514
   "游戏知识/12-引擎源码分析/44-Lyra-前端会话网络与扩展源码.md":
     kind: doc
@@ -1384,7 +1384,7 @@ documents:
   "游戏知识/12-引擎源码分析/45-Lyra-相机音频与游戏阶段源码.md":
     kind: doc
     maturity: L2
-    bytes: 192517
+    bytes: 192563
     lines: 4894
   "游戏知识/12-引擎源码分析/46-Lyra-AI机器人与队伍源码.md":
     kind: doc
@@ -1421,12 +1421,32 @@ documents:
     maturity: L2
     bytes: 92563
     lines: 1921
+  "游戏知识/12-引擎源码分析/53-Lyra核心生成移动与状态源码.md":
+    kind: doc
+    maturity: L2
+    bytes: 91356
+    lines: 2899
+  "游戏知识/12-引擎源码分析/54-Lyra网络复制与引擎模块化特性源码.md":
+    kind: doc
+    maturity: L2
+    bytes: 111437
+    lines: 2983
+  "游戏知识/12-引擎源码分析/55-Lyra输入重映射与辅助瞄准源码.md":
+    kind: doc
+    maturity: L2
+    bytes: 124517
+    lines: 3499
+  "游戏知识/12-引擎源码分析/56-Lyra-ShooterCore核心玩法与淘汰消息源码.md":
+    kind: doc
+    maturity: L2
+    bytes: 69291
+    lines: 2029
 
   "游戏知识/12-引擎源码分析/README.md":
     kind: README
     maturity: L0
-    bytes: 33744
-    lines: 261
+    bytes: 35254
+    lines: 266
   "游戏知识/13-世界构建与过场/01-Landscape地形系统.md":
     kind: doc
     maturity: L2
@@ -1465,7 +1485,7 @@ documents:
   "游戏知识/README.md":
     kind: README
     maturity: L0
-    bytes: 3815
+    bytes: 3853
     lines: 39
   "游戏AI/01-决策与架构/01-AI总体架构与感知.md":
     kind: doc

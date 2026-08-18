@@ -14,7 +14,7 @@
 >
 > 官方参考：[Unreal Insights 官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-insights-in-unreal-engine)。
 >
-> 最后更新：2026-08-06
+> 最后更新：2026-08-18（补入 AnalysisService/TraceInsightsModule 实际函数）。
 
 ## 概述
 
@@ -341,3 +341,125 @@ E 到 F 表示 TimingView 只消费已解析模型，不直接读取 TraceLog �
 - 源码入口：`Engine/Source/Runtime/TraceLog/`，用于核对事件声明、字段和写入边界。
 - 源码入口：`Engine/Source/Developer/TraceServices/`，用于核对 session、分析器和 Provider 边界。
 - 源码入口：`Engine/Source/Developer/TraceInsights/`，用于核对工具模块和 TimingView 消费边界。
+
+## 真实源码证据补充（2026-08-18）
+
+本文原有 Trace/Insights 流程示意不作为 API；以下真实函数展示 AnalysisService 建立分析会话和 TraceInsights 模块的启动/关闭。
+
+### AnalysisService：启动分析会话
+
+来源：Engine/Source\Developer\TraceServices\Private\AnalysisService.cpp（第 304-360 行）
+
+```cpp
+TSharedPtr<const IAnalysisSession> FAnalysisService::StartAnalysis(const TCHAR* SessionUri)
+{
+	UE::Trace::FFileDataStream* FileStream = new UE::Trace::FFileDataStream();
+	if (!FileStream->Open(SessionUri, /*bAllowWrite=*/true))
+	{
+		delete FileStream;
+		return nullptr;
+	}
+
+	TUniquePtr<UE::Trace::IInDataStream> DataStream(FileStream);
+	return StartAnalysis(~0, SessionUri, MoveTemp(DataStream));
+}
+
+TSharedPtr<const IAnalysisSession> FAnalysisService::StartAnalysis(uint32 TraceId, const TCHAR* SessionName, TUniquePtr<UE::Trace::IInDataStream>&& DataStream)
+{
+	TSharedRef<FAnalysisSession> Session = MakeShared<FAnalysisSession>(TraceId, SessionName, MoveTemp(DataStream));
+
+	FAnalysisSessionEditScope _(*Session);
+
+	TSharedPtr<FBookmarkProvider> BookmarkProvider = MakeShared<FBookmarkProvider>(*Session);
+	Session->AddProvider(GetBookmarkProviderName(), BookmarkProvider, BookmarkProvider);
+
+	TSharedPtr<FRegionProvider> RegionProvider = MakeShared<FRegionProvider>(*Session);
+	Session->AddProvider(GetRegionProviderName(), RegionProvider, RegionProvider);
+
+	TSharedPtr<FLogProvider> LogProvider = MakeShared<FLogProvider>(*Session);
+	Session->AddProvider(GetLogProviderName(), LogProvider, LogProvider);
+
+	TSharedPtr<FThreadProvider> ThreadProvider = MakeShared<FThreadProvider>(*Session);
+	Session->AddProvider(GetThreadProviderName(), ThreadProvider, ThreadProvider);
+
+	TSharedPtr<FFrameProvider> FrameProvider = MakeShared<FFrameProvider>(*Session);
+	Session->AddProvider(GetFrameProviderName(), FrameProvider);
+
+	TSharedPtr<FCounterProvider> CounterProvider = MakeShared<FCounterProvider>(*Session, *FrameProvider);
+	Session->AddProvider(GetCounterProviderName(), CounterProvider, CounterProvider);
+
+	TSharedPtr<FChannelProvider> ChannelProvider = MakeShared<FChannelProvider>();
+	Session->AddProvider(GetChannelProviderName(), ChannelProvider);
+
+	TSharedPtr<FScreenshotProvider> ScreenshotProvider = MakeShared<FScreenshotProvider>(*Session);
+	Session->AddProvider(GetScreenshotProviderName(), ScreenshotProvider);
+
+	TSharedPtr<FDefinitionProvider> DefProvider = MakeShared<FDefinitionProvider>(&Session.Get());
+	Session->AddProvider(GetDefinitionProviderName(), DefProvider, DefProvider);
+
+	Session->AddAnalyzer(new FMiscTraceAnalyzer(*Session, *ThreadProvider, *LogProvider, *FrameProvider, *ChannelProvider, *ScreenshotProvider, *RegionProvider));
+	Session->AddAnalyzer(new FBookmarksAnalyzer(*Session, *BookmarkProvider, LogProvider.Get()));
+	Session->AddAnalyzer(new FLogTraceAnalyzer(*Session, *LogProvider));
+	Session->AddAnalyzer(new FStringsAnalyzer(*Session));
+
+	ModuleService.OnAnalysisBegin(*Session);
+
+	Session->Start();
+	return Session;
+}
+
+```
+
+
+### TraceInsightsModule：模块启动与关闭
+
+来源：Engine/Source\Developer\TraceInsights\Private\Insights\TraceInsightsModule.cpp（第 66-111 行）
+
+```cpp
+void FTraceInsightsModule::StartupModule()
+{
+	LLM_SCOPE_BYTAG(Insights);
+
+	ITraceInsightsCoreModule& TraceInsightsCoreModule = FModuleManager::LoadModuleChecked<ITraceInsightsCoreModule>("TraceInsightsCore");
+
+	ITraceServicesModule& TraceServicesModule = FModuleManager::LoadModuleChecked<ITraceServicesModule>("TraceServices");
+	TraceAnalysisService = TraceServicesModule.GetAnalysisService();
+	TraceModuleService = TraceServicesModule.GetModuleService();
+
+	FInsightsStyle::Initialize();
+#if !WITH_EDITOR
+	FAppStyle::SetAppStyleSet(FInsightsStyle::Get());
+#endif
+
+	// Register FInsightsManager first, as the main component (first to init, last to shutdown).
+	RegisterComponent(FInsightsManager::CreateInstance(TraceAnalysisService.ToSharedRef(), TraceModuleService.ToSharedRef()));
+
+	// Register other default components.
+	RegisterComponent(UE::Insights::TimingProfiler::FTimingProfilerManager::CreateInstance());
+	RegisterComponent(UE::Insights::LoadingProfiler::FLoadingProfilerManager::CreateInstance());
+	RegisterComponent(UE::Insights::NetworkingProfiler::FNetworkingProfilerManager::CreateInstance());
+	RegisterComponent(UE::Insights::MemoryProfiler::FMemoryProfilerManager::CreateInstance());
+	RegisterComponent(UE::Insights::TaskGraphProfiler::FTaskGraphProfilerManager::CreateInstance());
+	RegisterComponent(UE::Insights::ContextSwitches::FContextSwitchesProfilerManager::CreateInstance());
+	RegisterComponent(UE::Insights::CookProfiler::FCookProfilerManager::CreateInstance());
+	RegisterComponent(UE::Insights::ObjectProfiler::FObjectProfilerManager::CreateInstance());
+	RegisterComponent(UE::Insights::SpatialProfiler::FSpatialProfilerManager::CreateInstance());
+	RegisterComponent(Insights::FTableImportTool::CreateInstance());
+
+	// Register User Annotations extender as a modular feature
+	IModularFeatures::Get().RegisterModularFeature(
+		UE::Insights::Timing::TimingViewExtenderFeatureName,
+		&UserAnnotationsExtender);
+
+#if !WITH_EDITOR
+	ISourceCodeAccessModule& SourceCodeAccessModule = FModuleManager::LoadModuleChecked<ISourceCodeAccessModule>("SourceCodeAccess");
+	SourceCodeAccessModule.OnOpenFileFailed().AddRaw(this, &FTraceInsightsModule::HandleCodeAccessorOpenFileFailed);
+#endif
+
+	UnrealInsightsLayoutIni = GConfig->GetConfigFilename(TEXT("UnrealInsightsLayout"));
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void FTraceInsightsModule::ShutdownModule()
+```

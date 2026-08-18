@@ -3,7 +3,7 @@
 > 分工声明：本文为 UE5.8 源码层深读；概念/使用层知识见本目录 README 映射表及各篇关联阅读（不重复使用层教程）。
 
 - 版本基准：UE5.8.0 / CL 55116800 / `++UE5+Release-5.8`
-- 最后更新：2026-08-06（本轮元数据维护）
+- 最后更新：2026-08-18（补入 MovieSceneSequence/LevelSequence/MoviePipeline 实际函数）。
 
 ## 概述
 
@@ -340,3 +340,206 @@ if (Player)
 - 路线图链接对应源码分析的验收主线，分类导航链接对应内容扩展主线。
 - 阅读本文后可沿两个入口分别回到源码覆盖管理和过场系统知识。
 - 关联关系保持为单向补充，不改变本文的 UE5.8 版本基准。
+
+## 真实源码证据补充（2026-08-18）
+
+本文原有播放/渲染示意保留为时序图；以下真实函数补齐 MovieSceneSequence、LevelSequencePlayer 和 MoviePipeline 初始化入口。
+
+### MovieSceneSequence：绑定定位与生命周期
+
+来源：Engine/Source\Runtime\MovieScene\Private\MovieSceneSequence.cpp（第 28-88 行）
+
+```cpp
+UMovieSceneSequence::UMovieSceneSequence(const FObjectInitializer& Init)
+	: Super(Init)
+{
+	bParentContextsAreSignificant = false;
+	bPlayableDirectly = true;
+	SequenceFlags = EMovieSceneSequenceFlags::None;
+	CompiledData = nullptr;
+
+	// Ensure that the precompiled data is set up when constructing the CDO. This guarantees that we do not try and create it for the first time when collecting garbage
+	if (HasAnyFlags(RF_ClassDefaultObject))
+	{
+		UMovieSceneCompiledDataManager::GetPrecompiledData();
+
+#if WITH_EDITOR
+		UMovieSceneCompiledDataManager::GetPrecompiledData(EMovieSceneServerClientMask::Client);
+		UMovieSceneCompiledDataManager::GetPrecompiledData(EMovieSceneServerClientMask::Server);
+#endif
+	}
+}
+
+bool UMovieSceneSequence::MakeLocatorForObject(UObject* Object, UObject* Context, FUniversalObjectLocator& OutLocator) const
+{
+	if (CanPossessObject(*Object, Context))
+	{
+		OutLocator.Reset(Object, Context);
+		return true;
+	}
+
+	return false;
+}
+
+const FMovieSceneBindingReferences* UMovieSceneSequence::GetBindingReferences() const
+{
+	return nullptr;
+}
+
+FMovieSceneBindingReferences* UMovieSceneSequence::GetBindingReferences()
+{
+	const FMovieSceneBindingReferences* Result = const_cast<const UMovieSceneSequence*>(this)->GetBindingReferences();
+	return const_cast<FMovieSceneBindingReferences*>(Result);
+}
+
+void UMovieSceneSequence::LocateBoundObjects(const FGuid& ObjectId, const UE::UniversalObjectLocator::FResolveParams& ResolveParams, TArray<UObject*, TInlineAllocator<1>>& OutObjects) const
+{
+	LocateBoundObjects(ObjectId, ResolveParams, nullptr, OutObjects);
+}
+
+void UMovieSceneSequence::LocateBoundObjects(const FGuid& ObjectId, const UE::UniversalObjectLocator::FResolveParams& ResolveParams, TSharedPtr<const FSharedPlaybackState> SharedPlaybackState, TArray<UObject*, TInlineAllocator<1>>& OutObjects) const
+{
+	const FMovieSceneBindingReferences* Refs = GetBindingReferences();
+	if (Refs)
+	{
+		Refs->ResolveBinding(ObjectId, ResolveParams, OutObjects);
+	}
+	else
+	{
+		PRAGMA_DISABLE_DEPRECATION_WARNINGS
+		LocateBoundObjects(ObjectId, const_cast<UObject*>(ResolveParams.Context), OutObjects);
+		PRAGMA_ENABLE_DEPRECATION_WARNINGS
+	}
+}
+```
+
+
+### LevelSequencePlayer：创建与初始化
+
+来源：Engine/Source\Runtime\LevelSequence\Private\LevelSequencePlayer.cpp（第 51-110 行）
+
+```cpp
+ULevelSequencePlayer* ULevelSequencePlayer::CreateLevelSequencePlayer(UObject* WorldContextObject, ULevelSequence* InLevelSequence, FMovieSceneSequencePlaybackSettings Settings, ALevelSequenceActor*& OutActor)
+{
+	if (InLevelSequence == nullptr)
+	{
+		return nullptr;
+	}
+
+	UWorld* World = GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull);
+	if (World == nullptr || World->bIsTearingDown)
+	{
+		return nullptr;
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	SpawnParams.ObjectFlags |= RF_Transient;
+	SpawnParams.bAllowDuringConstructionScript = true;
+
+	// Defer construction for autoplay so that BeginPlay() is called
+	SpawnParams.bDeferConstruction = true;
+
+	ALevelSequenceActor* Actor = World->SpawnActor<ALevelSequenceActor>(SpawnParams);
+
+	Actor->PlaybackSettings = Settings;
+	Actor->GetSequencePlayer()->SetPlaybackSettings(Settings);
+
+	Actor->SetSequence(InLevelSequence);
+
+	Actor->InitializePlayer();
+	OutActor = Actor;
+
+	FTransform DefaultTransform;
+	Actor->FinishSpawning(DefaultTransform);
+
+	return Actor->GetSequencePlayer();
+}
+
+/* ULevelSequencePlayer implementation
+ *****************************************************************************/
+
+void ULevelSequencePlayer::Initialize(ULevelSequence* InLevelSequence, ULevel* InLevel, const FLevelSequenceCameraSettings& InCameraSettings)
+{
+	using namespace UE::MovieScene;
+
+	World = InLevel->OwningWorld;
+	Level = InLevel;
+	CameraSettings = InCameraSettings;
+
+	UMovieSceneSequencePlayer::Initialize(InLevelSequence);
+
+	// The parent player class' root evaluation template may or may not have re-initialized itself.
+	// For instance, if we are given the same sequence asset we already had before, and nothing else
+	// (such as playback context) has changed, no actual re-initialization occurs and we keep the
+	// same shared playback state as before.
+	// That state would already have the spawn register and camera cut capabilies... however, our
+	// spawn register was just re-created (see a few lines above) so we need to overwrite the
+	// capability pointer to the new object.
+	InitializeLevelSequenceRootInstance(RootTemplateInstance.GetSharedPlaybackState().ToSharedRef());
+}
+
+```
+
+
+### MoviePipeline：Initialize
+
+来源：Engine/Plugins\MovieScene\MovieRenderPipeline\Source\MovieRenderPipelineCore\Private\MoviePipeline.cpp（第 106-160 行）
+
+```cpp
+void UMoviePipeline::Initialize(UMoviePipelineExecutorJob* InJob)
+{
+	// This function is called after the PIE world has finished initializing, but before
+	// the PIE world is ticked for the first time. We'll end up waiting for the next tick
+	// for FCoreDelegateS::OnBeginFrame to get called to actually start processing.
+	UE_LOGF(LogMovieRenderPipeline, Log, "[%lld] Initializing overall Movie Pipeline", GFrameCounter);
+
+	bPrevGScreenMessagesEnabled = GAreScreenMessagesEnabled;
+	GAreScreenMessagesEnabled = false;
+
+	if (!ensureAlwaysMsgf(InJob, TEXT("MoviePipeline cannot be initialized with null job. Aborting.")))
+	{
+		Shutdown(true);
+		return;
+	}
+
+	if (!ensureAlwaysMsgf(InJob->GetConfiguration(), TEXT("MoviePipeline cannot be initialized with null configuration. Aborting.")))
+	{
+		Shutdown(true);
+		return;
+	}
+
+	{
+		// If they have a preset origin set, we  will attempt to load from it and copy it into our configuration.
+		// A preset origin is only set if they have not modified the preset using the UI, if they have it will have
+		// been copied into the local configuration when it was modified and the preset origin cleared. This resolves
+		// an issue where if a preset asset is updated after this job is made, the job uses the wrong settings because
+		//  the UI is the one who updates the configuration from the preset.
+		if (InJob->GetPresetOrigin())
+		{
+			UE_LOGF(LogMovieRenderPipeline, Log, "Job has a primary preset specified, updating local primary configuration from preset.");
+			InJob->GetConfiguration()->CopyFrom(InJob->GetPresetOrigin());
+		}
+
+		// Now we need to update each shot as well.
+		for (UMoviePipelineExecutorShot* Shot : InJob->ShotInfo)
+		{
+			if (Shot->GetShotOverridePresetOrigin())
+			{
+				UE_LOGF(LogMovieRenderPipeline, Log, "Shot has a preset specified, updating local override configuraton from preset.");
+				Shot->GetShotOverrideConfiguration()->CopyFrom(Shot->GetShotOverridePresetOrigin());
+			}
+		}
+	}
+
+	if (!ensureAlwaysMsgf(PipelineState == EMovieRenderPipelineState::Uninitialized, TEXT("Pipeline cannot be reused. Create a new pipeline to execute a job.")))
+	{
+		Shutdown(true);
+		return;
+	}
+
+	// Ensure this object has the World as part of its Outer (so that it has context to spawn things)
+	if (!ensureAlwaysMsgf(GetWorld(), TEXT("Pipeline does not contain the world as an outer.")))
+	{
+		Shutdown(true);
+```

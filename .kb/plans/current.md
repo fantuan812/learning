@@ -6,13 +6,13 @@
 
 # Goal（当前）
 
-收口 Lyra 39-52 批次后的审查问题（2026-08-17）：修正文档口径与导航，更新控制面和 manifest，保留逐字源码附录的证据边界，并完成全库复验。
+收口 Lyra 39-56 核心源码覆盖与审查问题（2026-08-18）：补齐核心生成/移动/状态、网络复制与模块化引擎、输入重映射/辅助瞄准、ShooterCore 核心玩法的真实源码证据，更新导航、覆盖矩阵与 manifest，并完成全库复验。
 
 # Scope（当前）
 
-- 文档口径：工作日志的进阶道具完备性按“有出边的品质”表达；Lyra 系列统一为 39-52，根 README、分类 README、路线图和交叉阅读同步。
+- 文档口径：工作日志的进阶道具完备性按“有出边的品质”表达；Lyra 系列统一为 39-56，根 README、分类 README、路线图和交叉阅读同步。
 - 控制面：current plan、audit、review queue 只把当前状态作为可执行事实，历史发现保留为历史记录；已执行/已决策条目不再标记 Pending。
-- 索引：重新计算 327 个 Markdown 条目的 bytes/lines，确保 `.kb/manifest.yaml` 与磁盘一致。
+- 索引：重新计算 331 个 Markdown 条目的 bytes/lines，确保 `.kb/manifest.yaml` 与磁盘一致。
 - 空白策略：源码附录完整保留代码字符、注释、条件编译和文件尾换行；仅统一代码围栏内的行尾及缩进空白以通过 diff 门禁，并在附录说明格式归一；普通 Markdown 继续执行 whitespace 检查。
 - 验证：运行 `scripts/check_repo.ps1`、全库链接/围栏检查、manifest 统计和 `git diff --check`。
 
@@ -22,6 +22,7 @@
 - Lyra 专项审查（R4-LYRA）修复完毕；覆盖率审查（R4-LYRA-COVERAGE）完成，补篇 49/50 已执行（覆盖率 32.4%→35.2%）。
 - 批次 1+3 已执行完毕（2026-08-14 用户批准）：51 新篇 + 42/43/49 补深挖 + 边界声明；覆盖率 35.4%→**40.5%**（286/707）；check_repo PASS。
 - 批次 2 已执行完毕（2026-08-14 用户指示）：52 交互系统新建 + 40 GameFeatureAction/41 动画实例/49 CommonGame UI 补深挖；覆盖率 40.5%→**42.9%**（303/707）；check_repo PASS；边界声明"批次 2 已执行、暂无已登记待补项"。
+- 2026-08-18 核心覆盖扩展已执行：新增 53-56 四篇，均含真实 C++ 片段与项目文件全文附录；覆盖矩阵将新增文件标为 L2，运行态验证保留为 L3；ShooterCore 核心玩法已解除“全量范围外”口径，但剩余资产/模式仍明确待补。
 - 当前审查基线为 `aca16b8`；本轮修复在该提交之后进行，提交前不得把工作树状态写成已推送事实。
 
 # Findings（历史：R4 四项）
@@ -58,13 +59,17 @@
 10. Lyra 批次 2 已执行（2026-08-14 用户指示）：新建 52-Lyra-交互系统源码（600 行正文 + 17 附录逐字一致，附录路径补全 Source/LyraGame 前缀）；40 篇追加 GameFeatureAction 家族（529 行 + 6 附录）、49 篇追加 CommonGame UI 管理层（约 390 行 + 6 附录）、41 篇追加动画实例基类（149 行 + 2 附录）；12 README/19 路线图/39 总览篇数 50→51、边界声明批次 2 完成；manifest 327 条目同步；覆盖率 40.5%→**42.9%**（303/707）；check_repo PASS（52 篇"预留"→"保留"占位词清零）。
 
 11. 2026-08-17 审查收口：修复终端品质进阶道具条件、39-52 导航/完成清单/日期口径、控制面旧快照和 review queue 状态；manifest 重新计算；源码附录统一代码围栏内的行尾及缩进空白并补充格式归一说明。
+12. 2026-08-18 核心源码覆盖：新增 53（生成/移动/状态）、54（ReplicationGraph/GFCM/GameFeatures/ModularGameplayActors）、55（输入重映射/Latency Marker/AimAssist）、56（ShooterCore TDM/淘汰消息/Accolade/GAS 命中上下文）；同步 12 README、19 路线图和 L0-L3 覆盖矩阵。
+13. 2026-08-18 前置专题源码证据：20-31 逐篇补入 UE 5.8 实际函数，覆盖 Iris、Mass/StateTree、WorldPartition、Landscape/Foliage、Sequencer/MoviePipeline、Enhanced Input、CommonUI、MVVM、GameplayTasks、Trace、Lumen/MegaLights 和 ProceduralVegetationEditor；原有示意代码保留为概念说明。
 
 # Final Validation
 
-- check_repo RESULT PASS / FAIL 0（阶段 B 门禁全量复跑；批次 2 复跑同样 PASS）。
-- 批次 2 附录：40（6 文件）+ 41（2 文件）+ 49（6 文件）+ 52（17 文件）= 31 文件程序化逐字一致；四篇章节编号连续（40:一~三十三、41:一~四十、49:一~十七、52:一~十六）。
+- check_repo RESULT PASS / FAIL 0（阶段 B 门禁全量复跑；新增 53-56 后复跑 PASS）。
+- 批次 2 附录：40（6 文件）+ 41（2 文件）+ 49（6 文件）+ 52（17 文件）= 31 文件程序化逐字一致；四篇章节编号连续（40:一~三十三、41:一~四十、49:一~十七、52:一~十六）。新增 53-56 的 31 个项目/插件文件全文附录和引擎真实节选均通过围栏、UTF-8 与标记检查。
 - 拆分迁移：§七 394 行逐字迁移，SHA-256 去空行归一后一致；7.x → 1.x 重编号完整。
 - 全库断链 0；旧文件名 `01-AI评测回放与LLM安全` 残留仅 .kb 控制面（记录性提及）。
-- manifest 327 条目；与磁盘 327 个 `.md` 一致，bytes/lines 重新校正。
+- manifest 331 条目；与磁盘 331 个 `.md` 一致，bytes/lines 重新校正。
 - git diff --check 通过；源码附录代码字符、注释、条件编译和文件尾换行保留，仅代码围栏内的行尾及缩进空白统一；无 BOM（check_repo 覆盖）。
 - review-queue 有效条目无 Pending；DEDUP-01/R2-DEDUP-01 标为已决策，R2-MANIFEST-01/RENAME-01 标为已执行，历史 Current/Suggested 快照保留但不可重复触发。
+- 核心边界：53-56 提升的是 L1/L2 静态源码证据，不宣称 PIE、Dedicated Server、手柄设备矩阵或资产接线已经完成；外观/反馈/性能/回放/Hotfix 等剩余目录继续按覆盖矩阵标记为 L0/L1 待补。
+- 前置专题边界：20-31 的新增代码块是本机 UE 5.8 函数节选，不等于整份引擎文件全文收录；运行时、平台和实验性插件条件仍按各篇正文边界验证。
