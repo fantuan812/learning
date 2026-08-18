@@ -30,7 +30,7 @@ domains:
       12-引擎源码分析: UE5.8 引擎源码纵深层（01-48）。
       13-世界构建与过场: Landscape、Foliage、PCG、Sequencer、ICVFX。
   游戏服务端:
-    description: 游戏服务端架构、网络、数据业务、DS 平台化与世界模拟运行时。
+    description: 游戏服务端架构、网络、数据业务、业务系统、平台可靠性、DS 平台化与世界模拟运行时。
     status: active
     subdomains:
       01-架构与网络: 服务器架构、网络协议、帧同步、并发。
@@ -38,7 +38,7 @@ domains:
       03-业务系统设计: 背包、任务、商城、匹配、战斗、活动。
       04-平台与可靠性: 鉴权、限流、幂等、分布式事务、容灾、灰度。
       05-UE Dedicated Server平台化: DS 生命周期、Linux 部署、扩缩容。
-      06-世界模拟与运行时: MainLoop、Entity、Scene、AOI、GameClock。
+      06-世界模拟与运行时: MainLoop、Timer、Entity/Authority、Scene、AOI、跨 Zone 迁移、GameClock、Snapshot 与背压。
   游戏算法:
     description: 寻路图论、数学碰撞与工程技巧。
     status: active

@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # 索引文件，不存放正文；由 kb_scanner/kb_analyzer 流程增量维护。
-# 生成：2026-08-17（R4 收口复核，机械校正 bytes/lines）
+# 生成：2026-08-18（游戏服务端 Runtime 02/07/08 增量维护，机械校正 bytes/lines）
 version: 2
 
 documents:
@@ -32,8 +32,8 @@ documents:
   ".kb/decisions.md":
     kind: doc
     maturity: L2
-    bytes: 10851
-    lines: 335
+    bytes: 12126
+    lines: 362
   ".kb/plans/current.md":
     kind: doc
     maturity: L2
@@ -138,12 +138,12 @@ documents:
   "方案/知识体系完善执行方案.md":
     kind: doc
     maturity: L0
-    bytes: 33025
-    lines: 1557
+    bytes: 34550
+    lines: 1574
   "方案/README.md":
     kind: README
     maturity: L0
-    bytes: 1591
+    bytes: 1645
     lines: 26
   "工作日志/2026-08-03-假人AI-A星优化与耗时测试.md":
     kind: doc
@@ -269,8 +269,8 @@ documents:
   "游戏服务端/01-架构与网络/README.md":
     kind: README
     maturity: L0
-    bytes: 6102
-    lines: 104
+    bytes: 6199
+    lines: 108
   "游戏服务端/02-数据与业务/01-数据库选型与存储设计.md":
     kind: doc
     maturity: L2
@@ -334,18 +334,18 @@ documents:
   "游戏服务端/03-业务系统设计/07-活动与运营系统.md":
     kind: doc
     maturity: L2
-    bytes: 16310
-    lines: 301
+    bytes: 16556
+    lines: 302
   "游戏服务端/03-业务系统设计/08-技能与战斗框架.md":
     kind: doc
     maturity: L2
-    bytes: 16539
-    lines: 305
+    bytes: 16805
+    lines: 306
   "游戏服务端/03-业务系统设计/README.md":
     kind: README
     maturity: L0
-    bytes: 5660
-    lines: 44
+    bytes: 5928
+    lines: 45
   "游戏服务端/04-平台与可靠性/00-平台可靠性总览与迁移说明.md":
     kind: doc
     maturity: L2
@@ -434,53 +434,68 @@ documents:
   "游戏服务端/06-世界模拟与运行时/01-ServerMainLoop与TickScheduler.md":
     kind: doc
     maturity: L4
-    bytes: 20128
+    bytes: 20203
     lines: 301
+  "游戏服务端/06-世界模拟与运行时/02-Timer时间轮与延迟任务.md":
+    kind: doc
+    maturity: L2
+    bytes: 21276
+    lines: 407
   "游戏服务端/06-世界模拟与运行时/03-Entity生命周期与组件模型.md":
     kind: doc
     maturity: L3
-    bytes: 17952
+    bytes: 18003
     lines: 302
   "游戏服务端/06-世界模拟与运行时/04-Scene-Map-Zone与实例管理.md":
     kind: doc
     maturity: L3
-    bytes: 16906
+    bytes: 16992
     lines: 301
   "游戏服务端/06-世界模拟与运行时/05-AOI与InterestManagement.md":
     kind: doc
     maturity: L4
     bytes: 23472
     lines: 300
+  "游戏服务端/06-世界模拟与运行时/07-EntityOwnership与Authority.md":
+    kind: doc
+    maturity: L2
+    bytes: 19086
+    lines: 374
+  "游戏服务端/06-世界模拟与运行时/08-跨Zone与跨服迁移.md":
+    kind: doc
+    maturity: L2
+    bytes: 18524
+    lines: 377
   "游戏服务端/06-世界模拟与运行时/11-AI与寻路时间预算.md":
     kind: doc
     maturity: L4
-    bytes: 17989
+    bytes: 18014
     lines: 300
   "游戏服务端/06-世界模拟与运行时/12-世界时间确定性与GameClock.md":
     kind: doc
     maturity: L2
-    bytes: 18673
+    bytes: 18698
     lines: 308
   "游戏服务端/06-世界模拟与运行时/13-世界Snapshot与故障恢复.md":
     kind: doc
     maturity: L3
-    bytes: 16759
+    bytes: 16777
     lines: 299
   "游戏服务端/06-世界模拟与运行时/14-运行时背压与过载保护.md":
     kind: doc
     maturity: L4
-    bytes: 18116
+    bytes: 18157
     lines: 299
   "游戏服务端/06-世界模拟与运行时/README.md":
     kind: README
     maturity: L0
-    bytes: 5888
-    lines: 77
+    bytes: 6845
+    lines: 82
   "游戏服务端/README.md":
     kind: README
     maturity: L0
-    bytes: 3841
-    lines: 39
+    bytes: 4312
+    lines: 40
   "游戏算法/01-寻路与图论/01-图论基础与搜索算法.md":
     kind: doc
     maturity: L2
@@ -1620,8 +1635,8 @@ documents:
   "learning/log.md":
     kind: doc
     maturity: L0
-    bytes: 14309
-    lines: 27
+    bytes: 14823
+    lines: 28
   "Projects/README.md":
     kind: README
     maturity: L0
@@ -1635,7 +1650,7 @@ documents:
   "references/仓库结构.md":
     kind: doc
     maturity: L0
-    bytes: 9106
+    bytes: 9121
     lines: 100
   "references/写作规范.md":
     kind: doc

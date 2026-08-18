@@ -120,7 +120,7 @@ Zone 划分的两种方式：
 
 多线程 Scene 的注意事项：
 
-- Zone 线程间共享数据（跨 Zone 引用）要收敛为"消息 + 所有权交接"（见 `07-EntityOwnership` 规划）；
+- Zone 线程间共享数据（跨 Zone 引用）要收敛为"消息 + 所有权交接"（见 [07-EntityOwnership与Authority](07-EntityOwnership与Authority.md)）；
 - 每 Zone 线程一个事件队列，主调度器分发（关联 [01](01-ServerMainLoop与TickScheduler.md) 的调度语义）；
 - 线程数 = 物理核数 - 保留（IO/网络），别开超卖线程。
 
@@ -241,7 +241,7 @@ bool TryCommitMigration(MigrationTicket& t, SceneInstance& target) {
 可以排队：玩家进入加载中 Zone 的边界时显示"区域加载中"或放入等待队列；禁止直接进入半加载状态（实体缺失）。
 
 **Q6：一个 Scene 可以有多个线程吗？**
-可以按 Zone 分线程（每个 Zone 一个逻辑线程），跨 Zone 实体迁移时交接所有权（见 `07-EntityOwnership与Authority` 规划）。
+可以按 Zone 分线程（每个 Zone 一个逻辑线程），跨 Zone 实体迁移时交接所有权（见 [07-EntityOwnership与Authority](07-EntityOwnership与Authority.md)）。
 
 **Q7：UE 的 Level Streaming 和自研 Zone 加载一样吗？**
 思路一致（运行时按需加载子关卡），但 UE 是客户端/DS 侧渲染与逻辑耦合的加载；自研逻辑服的 Zone 加载纯逻辑（无渲染），可以更激进。
@@ -297,5 +297,5 @@ Map 的只读数据（实体定义、刷怪表）；Scene 实例只持有"已加
 - [13-世界Snapshot与故障恢复](13-世界Snapshot与故障恢复.md)：跨进程迁移的状态快照。
 - [游戏知识/13-世界构建与过场](../../游戏知识/13-世界构建与过场/README.md)：UE 大世界（World Partition）客户端侧。
 - [05-UE Dedicated Server平台化](<../05-UE Dedicated Server平台化/README.md>)：DS 实例生命周期。
-- `08-跨Zone与跨服迁移`（规划）：跨进程迁移的协议细节。
+- [08-跨Zone与跨服迁移](08-跨Zone与跨服迁移.md)：跨进程迁移的协议细节。
 - [游戏服务端/04-平台与可靠性](../../游戏服务端/04-平台与可靠性/README.md)：实例分配的服务治理视角。

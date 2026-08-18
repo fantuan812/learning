@@ -2,6 +2,33 @@
 
 > 知识成熟度：L2（决策记录，只增不改历史条目）。
 
+## KD-013
+
+### Subject
+
+补齐游戏服务端 Runtime 的 Timer、Entity Authority 与跨 Zone 迁移主链（2026-08-18）。
+
+### Options
+
+1. 继续扩写已有架构/可靠性文章，暂不落地 `06-世界模拟与运行时` 的规划缺口。
+2. 沿既有 W2 方案增量落地 02 Timer、07 Entity Ownership、08 跨 Zone 迁移，并同步 README、manifest、taxonomy 与学习路径；SpatialQuery、动态分线、大规模战斗保留为下一批规划。
+
+### Decision
+
+Option 2，已执行：新建 3 篇 L2 正文（均包含状态机、失败路径、验证矩阵与关联阅读），更新 06 Runtime 状态表、服务端根 README、01/03 分类导航、W2 计划、`.kb/manifest.yaml` 与 `.kb/taxonomy.yaml`。不新增服务端顶层分类，避免与既有六子域重复。
+
+### Reason
+
+审计显示现有 06 Runtime 已覆盖 Tick、Entity、Scene、AOI、AI 预算、GameClock、Snapshot 与背压，但 Timer、权威所有权和迁移协议仍以规划文字互相引用；三者是实时服务器正确性和故障恢复的前置链路。增量落地能直接消除规划断链，同时保持 `06` 的既有编号与 W2 最终目录一致。
+
+### Confidence
+
+0.95
+
+### Status
+
+Accepted（已执行；L2，不宣称线上运行或容量证据）
+
 ## KD-012
 
 ### Subject

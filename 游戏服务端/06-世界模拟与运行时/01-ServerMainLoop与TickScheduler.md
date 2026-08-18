@@ -122,7 +122,7 @@ flowchart TD
 - **固定帧率开关**：`FApp::UseFixedDeltaTime()/SetFixedDeltaTime()`（`Engine\Source\Runtime\Core\Public\Misc\App.h` 第 662/664 行附近）；`FApp::GetFixedDeltaTime()` 返回固定步长。
 - **DS 网络 Tick 上限**：`UNetDriver::NetServerMaxTickRate`（`Engine\Source\Runtime\Engine\Classes\Engine\NetDriver.h` 第 877 行附近；5.3 起弃用直接访问，用 `GetNetServerMaxTickRate/SetNetServerMaxTickRate`）——限制服务器每帧最大网络 Tick 数，是"世界 Tick 与网络发送解耦"的 UE 实现。
 - **Tick 任务调度**：`FTickTaskManager`（`Engine\Source\Runtime\Engine\Public\TickTaskManagerInterface.h`）——按优先级/依赖组织 Actor 与组件的 Tick，支持"先于/后于"依赖与合并 Tick（`bTickBeforePhysics` 等），避免手写顺序。
-- **Timer**：UE 的 `FTimerManager` 基于 World Tick 推进；自定义服务器 Timer 轮见 `02-Timer时间轮与延迟任务`（规划）。
+- **Timer**：UE 的 `FTimerManager` 基于 World Tick 推进；自定义服务器 Timer 轮见 [02-Timer时间轮与延迟任务](02-Timer时间轮与延迟任务.md)。
 
 ### 3.6 确定性：随机、时钟与遍历顺序注入
 
@@ -151,7 +151,7 @@ struct TickContext {
 
 | 模块 | 对接方式 | 关联文档 |
 | --- | --- | --- |
-| Timer | 注册回调，按 tickIndex 到期触发 | `02-Timer时间轮与延迟任务`（规划） |
+| Timer | 注册回调，按 tickIndex 到期触发 | [02-Timer时间轮与延迟任务](02-Timer时间轮与延迟任务.md) |
 | Entity 生命周期 | Spawn/Despawn 队列在 Tick 边界处理 | [03-Entity生命周期与组件模型](03-Entity生命周期与组件模型.md)（已落地） |
 | Scene/Zone | 每 Tick 处理进出场景、加载卸载 | [04-Scene-Map-Zone与实例管理](04-Scene-Map-Zone与实例管理.md)（已落地） |
 | AOI | 移动收集 → Tick 内计算 Interest → 批量发送 | [05-AOI与InterestManagement](05-AOI与InterestManagement.md)（已落地） |
@@ -293,7 +293,7 @@ queue_backlog        # 输入/网络队列积压，> 阈值告警
 ## 9. 关联阅读
 
 - [11-AI与寻路时间预算](11-AI与寻路时间预算.md)（已落地）：AI Tick 分帧与预算片。
-- `02-Timer时间轮与延迟任务`（规划）：Timer 如何接入 Tick。
+- [02-Timer时间轮与延迟任务](02-Timer时间轮与延迟任务.md)：Timer 如何接入 Tick。
 - [12-世界时间确定性与GameClock](12-世界时间确定性与GameClock.md)（已落地）：wall/monotonic/game time 的边界。
 - [游戏服务端 README](../README.md)：领域导航。
 - [游戏测试与质量](../../游戏测试与质量/README.md)：机器人压测与容量评估。

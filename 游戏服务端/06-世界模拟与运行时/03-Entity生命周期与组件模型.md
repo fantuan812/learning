@@ -256,7 +256,7 @@ int main() {
 批量 Spawn 走 `SpawnBatch` + 预算控制（每 Tick 上限），同时触发 AOI 批量 Enter 与广播合并；防止一瞬间的分配与网络尖峰（关联 14-背压篇的过载保护）。
 
 **Q10：实体迁移到其他进程（跨服）时生命周期怎么走？**
-本地走"Despawn 前导出状态 → 网络迁移 → 目标进程 Spawn"，两个生命周期事件（Despawning/Exported、Imported/Spawned）配对；迁移期间外部引用保持 ID 语义（见 `07-EntityOwnership与Authority` 规划）。
+本地走"Despawn 前导出状态 → 网络迁移 → 目标进程 Spawn"，两个生命周期事件（Despawning/Exported、Imported/Spawned）配对；迁移期间外部引用保持 ID 语义（见 [07-EntityOwnership与Authority](07-EntityOwnership与Authority.md)）。
 
 **Q11：实体 ID 可以在多个进程间全局唯一吗？**
 可以：高 16 位进程号 + 中 16 位槽位 + 低 32 位世代；跨服引用（组队、邮件）用全局 ID，本地引用用本地 ID——转换表只存在于迁移边界。
@@ -296,7 +296,7 @@ int main() {
 
 - [01-ServerMainLoop与TickScheduler](01-ServerMainLoop与TickScheduler.md)：Tick 边界与待销毁队列的调度语义。
 - [05-AOI与InterestManagement](05-AOI与InterestManagement.md)：Spawn/Despawn 的登记/注销接口。
-- `07-EntityOwnership与Authority`（规划）：跨进程所有权与预测边界。
+- [07-EntityOwnership与Authority](07-EntityOwnership与Authority.md)：跨进程所有权与预测边界。
 - [游戏知识/01-引擎基础](../../游戏知识/01-引擎基础/README.md)：UObject/AActor 生命周期。
 - [00-计算机与工程基础/04-C++并发与内存模型](../../00-计算机与工程基础/04-C++并发与内存模型/README.md)：实体数组的缓存行与原子语义。
 - [13-世界Snapshot与故障恢复](13-世界Snapshot与故障恢复.md)（已落地）：实体状态的快照与恢复。
