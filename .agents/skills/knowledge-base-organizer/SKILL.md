@@ -100,12 +100,16 @@ migration plan
 kb_auditor
     ↓
 
-primary agent execution
+single integrator execution
     ↓
 
 kb_auditor final validation
 
-Do not allow subagents to modify files during analysis.
+Do not allow subagents to modify files during analysis. The kb_scanner,
+kb_analyzer, kb_architect, kb_curator, and kb_auditor roles are read-only
+analysis/review roles. Content writes are performed only by an explicitly
+allowlisted content executor; shared MOCs, taxonomy, and plans are updated
+serially by the single integrator. The verifier/auditor remains read-only.
 
 ---
 
@@ -127,7 +131,9 @@ Bad parallel tasks:
 - changing taxonomy files
 - renaming shared structures
 
-Write-heavy work should normally be serial.
+Write-heavy work should normally be serial. Do not grant analysis roles
+content-write or publication authority; publication follows the repository's
+authoritative AGENTS rules.
 
 ---
 

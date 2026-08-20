@@ -24,29 +24,42 @@ Always optimize for long-term knowledge structure rather than short-term folder 
 
 # Core Architecture
 
-The primary Codex thread acts as the Knowledge Base Orchestrator.
+The primary Codex thread is the coordinator. It owns user intent, the clean/dirty
+baseline, task decomposition, conflict resolution, and final review. It may remain
+read-only when the user requests an audit or plan.
 
-Delegate independent read-heavy analysis to specialized subagents.
+| Role | Default authority |
+| --- | --- |
+| `kb_scanner`, `kb_analyzer`, `kb_architect`, `kb_curator`, `kb_auditor` | Read-only analysis; return evidence and recommendations. |
+| Content executor | Write only an explicitly assigned allowlist; never commit or push. |
+| Single integrator | Serially edits shared `README`, MOC, roadmap, manifest, or decision records; no parallel writers for those files. |
+| Verifier | Read-only validation; reports failures and never repairs them. |
+| Single publisher | After explicit commit authorization, precisely stages only the approved allowlist, then pauses for an independent verifier's cached review; commits only after that review passes. Push is an independent gate: the user may explicitly authorize both commit and push in one request, but execution remains stage → review → commit → push; does not edit content. |
 
-Preferred agents:
+Parallelize independent inspection and analysis, but serialize conflicting edits.
+Every agent must state its assigned scope and authority before acting.
 
-- kb_scanner
-- kb_analyzer
-- kb_architect
-- kb_curator
-- kb_auditor
+Permissions are separate: `review` (read/assess), `edit` (allowlisted files),
+`commit`, and `push`. All agents except the single publisher are forbidden from
+`commit` and `push`.
+Except for the publisher's explicitly authorized phase, all agents are forbidden
+from mutating the Git index, history, or remote, including `add`, `commit`, and
+`push`.
 
-Parallelize:
+Model, reasoning effort, and concurrency are runtime capabilities. Honor the
+user's explicit selection when available, subject to tool and platform limits;
+do not hard-code a model or assume an unavailable setting.
 
-- inventory
-- semantic analysis
-- duplicate discovery
-- knowledge relationship discovery
-- gap analysis
+Missing, timed-out, or failed agent results are not approval. Wait, reassign, or
+report the failure; never infer that an unreturned check passed.
 
-Do NOT parallelize destructive or conflicting file modifications.
+Before any write, save `status`, `HEAD`, and each dirty path's diff or blob/hash
+outside the repository. Final `status` alone cannot prove that existing changes
+were not overwritten.
 
-All final writes, moves, renames and merges must be coordinated by the primary thread.
+Before publishing, inspect the Git index baseline. If staged content already
+exists outside the explicitly approved allowlist, stop and report it; never
+unstage, clear, or mix it into the task.
 
 ---
 
@@ -490,11 +503,12 @@ Do not repeatedly redesign previously settled taxonomy without new evidence.
 
 # Write Safety
 
-Subagents should generally operate read-only.
+Edits require an explicit allowlist and an assigned content executor or the
+single integrator. Repository-wide structural writes are coordinated by the
+primary thread; shared navigation files are edited serially by the integrator.
+Verification remains read-only.
 
-Only the primary orchestration thread should coordinate repository-wide structural writes.
-
-Allowed final actions:
+Allowed edit actions:
 
     Keep
     Move
@@ -507,6 +521,28 @@ Allowed final actions:
     UpdateMetadata
 
 Permanent deletion is forbidden unless explicitly requested by the user.
+
+No agent other than the single publisher may mutate the Git index, history, or
+remote. Publishing has two gates: after explicit commit authorization, the
+publisher precisely stages the allowlist and stops for an independent verifier's
+cached review; only a passing review permits commit. Push requires separate
+explicit authorization: the user may authorize commit and push in the same
+request, but the gates still run in order: stage, review, commit, push. Use
+path-specific `add -- <allowlist>` only; never use `add -A` or `add .`. Once the
+publisher begins staging, task writes and the Git index are frozen; only the
+publisher may touch the index, and it must not change after staging.
+
+The independent verifier must confirm unchanged `HEAD` and branch; cached
+name-status exactly equals the approved allowlist; no unauthorized intersection
+with task-start dirty user paths; cached check, stat, and content; and a recorded
+staged-diff hash plus an immutable staged path/blob manifest (or equivalent
+content hash) for every approved path. Before commit, the publisher rechecks
+`HEAD` and the staged hash; any mismatch stops the gate. Immediately after
+commit, verify the commit parent is the reviewed `HEAD` and its path/blob/tree
+manifest exactly matches the reviewed staged evidence. Any mismatch stops and
+forbids push; do not amend, reset, or recommit automatically. The push gate opens
+only after this post-commit integrity check passes. A push failure stops the
+publishing phase; do not pull, rebase, reset, or force-push to recover.
 
 ---
 
@@ -560,15 +596,10 @@ Workflow:
 
 # Important
 
-When a task is large:
-
-Use subagents.
-
-Give each subagent a bounded scope.
-
-Wait for all relevant analysis agents before making structural decisions.
-
-Ask subagents to return concise findings rather than raw exploration logs.
+When a task is large, use bounded-scope subagents and wait for all relevant
+results before making structural decisions. Ask for concise findings with
+evidence, status, and unresolved risks. Missing or failed results must be
+reported or retried, not treated as success.
 
 Keep the primary thread focused on:
 
@@ -576,4 +607,8 @@ Keep the primary thread focused on:
 - decisions
 - conflicts
 - plans
-- final execution
+- final review and authorization gates
+
+The primary thread may choose a read-only outcome. Do not imply that all writes
+belong to the main thread or that all subagents are read-only: the role matrix
+above is authoritative. Permanent deletion still requires explicit user request.
