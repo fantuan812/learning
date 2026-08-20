@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # 索引文件，不存放正文；由 kb_scanner/kb_analyzer 流程增量维护。
-# 生成：2026-08-18（Lyra 39-56 核心源码覆盖复核 + 游戏服务端 Runtime 02/07/08 增量维护，机械校正 bytes/lines）
+# 生成：2026-08-18（Lyra 39-56 核心源码覆盖复核 + 游戏服务端 Runtime 02/07/08 + AI/算法采样工程增量维护，机械校正 bytes/lines）
 version: 2
 
 documents:
@@ -586,15 +586,20 @@ documents:
     maturity: L2
     bytes: 16377
     lines: 308
+  "游戏算法/03-工程与实用技巧/07-概率分布与采样工程.md":
+    kind: doc
+    maturity: L2
+    bytes: 31653
+    lines: 596
   "游戏算法/03-工程与实用技巧/README.md":
     kind: README
     maturity: L0
-    bytes: 3851
-    lines: 47
+    bytes: 4446
+    lines: 51
   "游戏算法/04-确定性与基准工程/01-确定性与基准工程总览.md":
     kind: doc
     maturity: L2
-    bytes: 20852
+    bytes: 20933
     lines: 429
   "游戏算法/04-确定性与基准工程/02-动态寻路LPA与DStarLite.md":
     kind: doc
@@ -614,17 +619,17 @@ documents:
   "游戏算法/04-确定性与基准工程/05-联机确定性与基准工程.md":
     kind: doc
     maturity: L2
-    bytes: 18480
+    bytes: 18654
     lines: 572
   "游戏算法/04-确定性与基准工程/README.md":
     kind: README
     maturity: L0
-    bytes: 3327
+    bytes: 3390
     lines: 37
   "游戏算法/README.md":
     kind: README
     maturity: L0
-    bytes: 2022
+    bytes: 2064
     lines: 26
   "游戏知识/00-全栈运行闭环.md":
     kind: doc
@@ -1510,8 +1515,8 @@ documents:
   "游戏AI/01-决策与架构/05-博弈搜索与对战AI.md":
     kind: doc
     maturity: L2
-    bytes: 20417
-    lines: 362
+    bytes: 20660
+    lines: 363
   "游戏AI/01-决策与架构/06-模糊逻辑与连续决策.md":
     kind: doc
     maturity: L2
@@ -1545,8 +1550,8 @@ documents:
   "游戏AI/02-移动学习与服务端/04-服务端AI与性能.md":
     kind: doc
     maturity: L2
-    bytes: 35153
-    lines: 585
+    bytes: 40006
+    lines: 677
   "游戏AI/02-移动学习与服务端/05-玩家建模与自适应难度.md":
     kind: doc
     maturity: L2
@@ -1570,8 +1575,8 @@ documents:
   "游戏AI/03-评测与安全/02-自动测试玩家与AI回归基准.md":
     kind: doc
     maturity: L2
-    bytes: 17025
-    lines: 303
+    bytes: 17263
+    lines: 304
   "游戏AI/03-评测与安全/03-LLM-NPC安全.md":
     kind: doc
     maturity: L2
@@ -1585,8 +1590,8 @@ documents:
   "游戏AI/README.md":
     kind: README
     maturity: L0
-    bytes: 2476
-    lines: 25
+    bytes: 3109
+    lines: 33
   "AGENTS.md":
     kind: doc
     maturity: L2
@@ -1655,8 +1660,8 @@ documents:
   "learning/log.md":
     kind: doc
     maturity: L0
-    bytes: 14823
-    lines: 28
+    bytes: 15361
+    lines: 29
   "Projects/README.md":
     kind: README
     maturity: L0
@@ -1665,7 +1670,7 @@ documents:
   "README.md":
     kind: README
     maturity: L0
-    bytes: 6561
+    bytes: 6627
     lines: 90
   "references/仓库结构.md":
     kind: doc
