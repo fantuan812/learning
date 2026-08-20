@@ -1,13 +1,33 @@
 # Knowledge Base Taxonomy
 # 与现有仓库顶层目录一一对应；2026-08-20 接入 OKF profile，但不新增来源工具分类。
 # 状态取值：draft（草案）/ active（已确认）/ archived（已归档）
-version: 3
+version: 4
 
 okf:
   profile: ".kb/okf-profile.yaml"
   mapping: "Domain -> Subdomain -> Topic"
   source_is_not_taxonomy: true
   obsidian_is_consumer: true
+
+navigation:
+  strategy: virtual-first
+  canonical_paths: preserved
+  global_moc: "00_Index/MOC.md"
+  domain_mocs:
+    00-计算机与工程基础: "00_Index/domains/计算机与工程基础.md"
+    游戏知识: "00_Index/domains/游戏知识.md"
+    游戏服务端: "00_Index/domains/游戏服务端.md"
+    游戏算法: "00_Index/domains/游戏算法.md"
+    游戏AI: "00_Index/domains/游戏AI.md"
+    游戏测试与质量: "00_Index/domains/游戏测试与质量.md"
+  axes:
+    cross_domain_topics: "00_Index/axes/跨域主题.md"
+    scope_and_lifecycle: "00_Index/axes/知识边界与生命周期.md"
+    properties: "00_Index/Knowledge.base"
+  physical_restructure:
+    status: gated
+    pilot_required: true
+    preserve_maturity_and_verified: true
 
 domains:
   00-计算机与工程基础:

@@ -6,6 +6,8 @@ tags:
   - knowledge-base
   - governance
   - okf
+  - taxonomy
+  - navigation
 status: stable
 verified: []
 maturity: L2
@@ -20,85 +22,95 @@ updated: 2026-08-20
 
 # Goal（当前）
 
-已将 369 篇 legacy Markdown 分域迁移到本库最小 OKF frontmatter 合同，并使 profile 范围通过 Strict；正文、路径、链接与成熟度证据保持不变，迁移任务不写入用户 `.obsidian`。
+在已发布的 OKF 全库迁移之上重整知识结构：先建立可审计的领域 MOC、跨域 Canonical 关系、生命周期路由和 Obsidian 属性视图，再决定是否需要物理目录迁移。第一阶段保护现有正文路径、成熟度、验证事件和链接。
 
 # Scope（当前）
 
-- 元数据：每篇只补 `type`、首个 H1 对应的 `title`、`status: stable`、`verified: []` 与已有 `maturity`；没有显式成熟度的支持文档记为 L0。
-- 事实边界：不自动补 `description`、`tags`、`sources`、`generated` 或 `updated`，不把迁移本身当作验证事件。
-- 类型：README 默认 `Index`；Evidence 实验 README 为 `Evidence`；系统实战为 `Project`；工作日志为 `Experience`；笔记为 `Reference`；知识正文按分域审查映射，含糊项保守使用 `Concept`。
-- 批次：支持/证据 39；基础 57；算法+AI 47；服务端 54；游戏知识 172。每批验证后再进入下一批。
-- 排除：保留 `.agents/skills/**/SKILL.md` 的 Skill frontmatter 合同与 `learning/log.md` 的只增不改历史格式，共 2 篇 profile 排除项。
-- 控制面：更新 decision、review queue、audit、bundle log、learning log 与 manifest；不移动 taxonomy、正文或链接。
+- 创建 `00_Index/domains/` 下六个 Domain MOC，按真实目录组织学习路径和领域边界。
+- 创建 `00_Index/axes/` 下“跨域主题”“知识边界与生命周期”两个横向视图，明确唯一 Primary Canonical 与提升流程。
+- 将 `00_Index/Knowledge.base` 扩展为 All / Review / Evidence / Project 四个视图；Bases 只消费 Properties，不成为新事实源。
+- 更新 Global MOC、根索引、README、taxonomy、结构/Obsidian/Agent 协作规则和控制面；最终机械重建 manifest。
+- 不移动、重命名、拆分或合并知识正文；不改正文 H1、`type`、`maturity`、`verified`、`sources` 与既有 Canonical 路径。
+- 不修改或纳入用户 `.obsidian`；Obsidian 对 `.base` 的自动规范化按外部工作区变化保留并语义审查。
 
 # Current State
 
-- 继续迁移基线：HEAD `32c35ddbd968563fd3fd3f9b152a9fa205bd77db`，分支 `main`；上一轮 OKF/Obsidian 未提交改动保持在工作树，本轮基线已另存仓库外。
-- 全库 392 个 Markdown；profile 范围 Scanned 390、Conformant 390、Legacy 0、Excluded 2。
-- 五批实际完成 39 + 57 + 47 + 54 + 172 = 369 篇；每篇只新增 7 行最小 frontmatter。
-- 迁移内容初验 Changed/Strict PASS / FAIL 0；`check_repo.ps1` PASS / FAIL 0 / WARN 13。manifest 将在控制面收口后做最终 392/392 重建。
-- `.obsidian` 三个稳定未跟踪配置保持原哈希；`workspace.json` 是已忽略的动态本机状态，不纳入迁移。
+- 发布基线：`main` 提交 `9beb653aa267a4a0dbcf44a32fa21ce205cc3ce5` 已推送到 `origin/main`；发布后双方 SHA 相同，ahead/behind 为 `0/0`。
+- 发布提交包含经独立审核的 399 个路径；369 篇 legacy 只增加最小 frontmatter，提交父节点、路径/blob manifest 与 staged diff 指纹一致。
+- 发布后 Obsidian 自动规范化工作区 `00_Index/Knowledge.base`，该变化未进入上一提交；本阶段从该工作区语义版本继续扩展。
+- 物理目录仍按六大知识域、系统实战、evidence 和工作流/控制面组织，主干层级可用；已证问题集中在少数跨域主题和导航不足，而非整棵目录树失效。
+- `.obsidian` 仍是用户未跟踪内容，workspace 动态状态继续忽略。
 
 # Findings（当前）
 
-- 六个知识域和支持目录均已完成迁移；369 篇的首个 H1 已安全写入 `title`，正文已有成熟度原样进入 YAML，未由迁移者重评或升级。
-- `status: stable` 只表示现有条目可被消费，不表示已验证；`verified: []` 明确没有验证事件。
-- YAML title 使用双引号安全转义；正文采用字节前缀方式插入，避免归一化原文件换行或源码附录。
-- 评审无 P0；P1 的分批、逐批门禁和可回滚范围均已执行。
+- 六大领域的根 README 与全部二级目录 README 均存在；主知识树保持“Domain → Subdomain → Topic”即可承载当前内容。
+- `Knowledge/` 与 `Projects/` 仍是骨架，不应把六大领域机械搬入；只有无既有领域归属的 universal 内容或明确项目身份才启用。
+- NavMesh、行为树、GAS/Buff、网络复制、Dedicated Server、性能证据和背包存在真实跨域关系，适合用 Primary/Secondary 链接表达。
+- `00-计算机与工程基础` 的编号有缺口或重复，但路径稳定；学习顺序应由 MOC 表达，当前不重编号。
+- 大规模物理移动会同时影响相对链接、README 清单、manifest、Obsidian backlinks 和 Git 历史；第一阶段没有足够证据承担该成本。
 
 # Proposed Taxonomy Changes
 
-- 不新增、移动或重命名任何知识域；Domain → Subdomain → Topic 与 canonical 路径完全保持。
-- 本轮只提高文档级可交换性与 Obsidian Properties 覆盖率；细化 `Concept` 类型可在后续触碰时进行。
+- taxonomy 升级为 virtual-first 导航：保留物理 Canonical 路径，通过 Domain MOC、横向 axes 与 Base 形成三轴视图。
+- 三轴分别是 Canonical Domain、OKF knowledge type、scope/lifecycle；目录不再承担全部学习顺序和跨域关系。
+- 物理重构状态保持 `gated`；必须先完成小域或单一主题族的链接影响和回滚审计。
 
 # File Operations（当前）
 
 | Action | Paths | Confidence | Reason |
 | --- | --- | ---: | --- |
-| UpdateMetadata（已完成） | 369 篇 legacy Markdown | 0.90 | 分域补最小 OKF frontmatter，正文与路径不变 |
-| Extend（收口中） | `.kb/decisions.md`、`review-queue.md`、`audit.md`、`plans/current.md`、`log.md` | 0.95 | 记录授权、批次、边界与验证事实 |
-| Rebuild（待最终重建） | `.kb/manifest.yaml` | 0.95 | 每批机械同步 paths/bytes/lines/maturity，最终做 392/392 精确校验 |
+| CreateMOC | `00_Index/domains/*.md`、`00_Index/axes/*.md` | 0.94 | 建立虚拟领域和横向关系，不复制正文 |
+| Extend | `00_Index/MOC.md`、`README.md`、`index.md`、`00_Index/README.md` | 0.96 | 暴露新的导航入口 |
+| Extend | `00_Index/Knowledge.base` | 0.90 | 使用官方支持的 filter、groupBy 和 folder 过滤构建四个视图 |
+| UpdateMetadata | `.kb/taxonomy.yaml` | 0.92 | 登记 virtual-first 导航契约和物理试点闸门 |
+| CreatePolicy | `references/agent协作与发布规则.md` | 0.95 | 补齐 Skill 所需的协作与发布速查入口 |
+| CreateTool | `scripts/rebuild_manifest.ps1` | 0.96 | 将 manifest 的机械重算固化为可重复命令 |
+| Rebuild | `.kb/manifest.yaml` | 0.98 | 收口后机械同步 Markdown 路径、bytes、lines、maturity |
 
 # Merge Plan
 
-无正文合并；只在文件开头插入元数据。
+第一阶段无正文合并。重叠主题只指定 Primary/Secondary 职责并互链。
 
 # Split Plan
 
-无正文拆分、移动或重命名。
+第一阶段无正文拆分、移动或重命名。mixed 内容的 Split 只作为后续准入规则，不在本阶段执行。
 
 # Needs Review（当前）
 
-- 用户已明确“继续做迁移”，`OKF-MIGRATION-01` 已按分域方案执行；低置信度类型统一降级为 `Concept`，未做结构动作。
-- 是否共享更多 `.obsidian` 配置仍未授权，本轮不接管未跟踪配置。
+- `TAXONOMY-PILOT-01`：是否在虚拟导航稳定后选择一个小域或单一主题族做物理迁移试点。
+- `OBSIDIAN-CONFIG-01`：是否选择性共享稳定 `.obsidian` 配置仍未授权；本轮继续不接管。
+- Lyra 46/47、DS 构建和笔记归属保留为后续语义治理候选，不与本轮 MOC 创建混合执行。
 
-# Risks（已控制）
+# Risks（当前）
 
-- 369 文件的大 diff 已拆为 5 个不重叠批次，每批保留路径/type/title/maturity 计数与门禁结果。
-- H1 中的引号、冒号和特殊字符统一转义，Changed/Strict 已通过。
-- 330 篇在批次前保存正文哈希并全量复核一致；先执行的 39 篇由严格 7 行前缀、`+7/-0` 和 OKF 门禁证明正文未删改。
-- 无成熟度的支持文档使用 L0 代表“未形成知识成熟度证据”，不等同于内容错误；不得据此降低已有 L1–L5。
+- MOC 变成第二份正文：索引只写职责、顺序和链接，不复制主题内容。
+- Canonical 冲突：跨域主题必须标一个 Primary，并把其余页面限定为实现、证据、生产或案例视角。
+- Base 语法或自动规范化漂移：使用 Obsidian 官方语法，保留运行时规范化结果并检查语义 diff。
+- 导航与实际路径漂移：所有新增本地链接逐一解析，manifest 最终从磁盘机械重建。
+- 提前物理重构：taxonomy 明确 `gated`，没有旧→新映射、入链清单和回滚方案时禁止 Move/Rename/Split/Merge。
 
 # Audit Result（当前）
 
-主线程与独立只读终验均完成：Windows PowerShell 5.1 与 `pwsh` 的 Changed/Strict/Audit 均为 Scanned 390、Conformant 390、Legacy 0、Excluded 2、FAIL 0、PASS；`check_repo` PASS / FAIL 0 / WARN 13，369 篇均为 `+7/-0`，330 篇正文去前缀哈希与基线一致。独立验收提出的历史快照易误读项已通过显式 supersede/note 收口。
+执行前与执行后只读审计均已完成：目录、领域边界、基础学习顺序、跨域重叠、Knowledge/Projects/evidence/工作流边界和 Obsidian Base 官方语法由独立 Agent 交叉核对；Phase A 语义审计 P0/P1/P2/P3 均为 0。新增导航目标全部存在，知识正文路径/内容、maturity 与 verified 未改变。
 
 # Execution Progress（当前）
 
-1. [x] 冻结上一轮未提交工作树与 `.obsidian` 基线。
-2. [x] 盘点 369 篇 legacy，并完成分域 type/title/maturity 只读分析。
-3. [x] 完成批次化方案评审；确认无 P0，吸收 YAML 转义与 L0 语义边界。
-4. [x] 执行支持/证据、基础、算法+AI、服务端、游戏知识五批迁移。
-5. [x] 更新 profile、decision、review queue、现行规则、audit/log，并重建最终 manifest。
-6. [x] 完成 Changed/Audit/Strict、双 PowerShell、正文哈希、全库门禁与独立审计。
+1. [x] 提交并推送 OKF 全库迁移；远端 SHA 与本地 `9beb653` 一致。
+2. [x] 并行盘点目录、领域边界、跨域主题和 Obsidian Bases 官方语法。
+3. [x] 选择 virtual-first：冻结物理 Canonical 路径，拒绝立即全量搬迁。
+4. [x] 创建六个 Domain MOC、两个横向 axes 和四个 Base 视图。
+5. [x] 同步 taxonomy、全局导航、协作规范、decision/review queue/audit/log。
+6. [x] 重建 manifest，运行 OKF、仓库、链接、编码和差异门禁。
+7. [x] 独立审核第一阶段结果，形成物理试点准入清单。
 
 # Final Validation（当前）
 
-- profile 范围：Scanned 390、Conformant 390、Legacy 0、Excluded 2；Changed/Audit/Strict 均无 FAIL。
-- Windows PowerShell 5.1 与 `pwsh` 都通过 Changed 和 Strict。
-- `check_repo.ps1` PASS；内部链接、UTF-8/BOM、围栏、`git diff --check` 无新增错误。
-- manifest 与磁盘 392/392，逐条 bytes/lines/maturity 一致；正文去前缀哈希抽样/全量验证一致。
-- `.obsidian` 稳定配置哈希保持，workspace 动态状态原样保留；无 commit、无 push。
+- `check_okf Changed`：Scanned 22 / Conformant 22 / FAIL 0；Strict：Scanned 401 / Conformant 401 / Excluded 2 / FAIL 0。
+- `check_repo.ps1`：403 个 Markdown，PASS / FAIL 0 / WARN 21；新增 WARN 均为短 MOC/axes 导航，属于用途预期。
+- manifest 与磁盘 403/403，路径、kind、bytes、lines、maturity 差异均为 0；Windows PowerShell 5.1 与 pwsh 生成结果完全相同。
+- 本地链接、UTF-8/BOM、`git diff --check` 均通过；tracked 知识正文变化 0，tracked `.obsidian` 变化 0。
+- 独立语义审计 P0–P3 为 0；`TAXONOMY-PILOT-01` 保持 Pending，不在 Phase A 偷跑物理迁移。
+- 发布状态：OKF 迁移提交已推送；本结构整理阶段尚未提交、尚未推送。
 
 ---
 

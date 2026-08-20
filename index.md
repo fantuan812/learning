@@ -14,6 +14,9 @@ okf_version: "0.2"
 
 - [知识体系总览](README.md)
 - [Global MOC](00_Index/MOC.md)
+- [领域 MOC](00_Index/domains/README.md)
+- [跨域主题地图](00_Index/axes/跨域主题.md)
+- [知识边界与生命周期](00_Index/axes/知识边界与生命周期.md)
 - [Obsidian Knowledge Base](00_Index/Knowledge.base)
 - [知识体系完善执行方案](方案/知识体系完善执行方案.md)
 - [Inbox](Inbox/README.md)
@@ -22,6 +25,7 @@ okf_version: "0.2"
 
 - [OKF 兼容规范](references/OKF-兼容规范.md)
 - [Obsidian 协作指南](references/Obsidian协作指南.md)
+- [Agent 协作与发布规则](references/agent协作与发布规则.md)
 - [写作与验收规范](references/写作规范.md)
 - [OKF profile](.kb/okf-profile.yaml)
 - [Bundle 更新记录](log.md)

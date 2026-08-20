@@ -11,6 +11,9 @@ sources:
   - id: obsidian-bases
     title: Bases syntax
     resource: https://obsidian.md/help/bases/syntax
+  - id: obsidian-base-views
+    title: Bases views
+    resource: https://obsidian.md/help/bases/views
   - id: obsidian-templates
     title: Templates
     resource: https://obsidian.md/help/plugins/templates
@@ -35,7 +38,9 @@ sources:
 
 在 Settings → Core plugins → Templates 启用 Templates，并将 **Templates folder location** 设置为 `references/templates`。插入 `OKF-知识条目` 模板后填写 YAML；模板使用官方变量 `{{title}}` 与 `{{date:YYYY-MM-DD}}`，插入后应检查标题和日期是否正确。
 
-打开 `00_Index/Knowledge.base` 查看 Bases 数据库；Bases 读取 Markdown 属性，不是新的事实来源。Obsidian 数据以 vault 内 Markdown/附件和配置文件存储。修改条目属性后刷新 Base，发现字段不一致以条目 YAML 为准，并在 `log.md` 记录修复。
+打开 `00_Index/Knowledge.base` 查看 Bases 数据库；当前提供 All、Review、Evidence、Project 四个视图。All 按 `type` 分组，Review 筛选 `status: draft` 或 `maturity: L0`，Evidence 和 Project 使用目录边界过滤。Bases 读取 Markdown 属性，不是新的事实来源；字段不一致时以条目 YAML 为准。
+
+领域学习顺序从 [00_Index/domains](../00_Index/domains/README.md) 进入，跨域主责关系从 [跨域主题地图](../00_Index/axes/跨域主题.md) 进入。Obsidian 可能在打开 `.base` 时规范化 YAML 引号或属性名展示；应审查语义 diff，不要仅因序列化差异覆盖工作区。
 
 ## 单写者与同步边界
 

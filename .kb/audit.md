@@ -316,3 +316,18 @@ updated: 2026-08-20
 - Obsidian：Markdown Properties 与 `00_Index/Knowledge.base` 现在可覆盖全部受检条目；稳定 `.obsidian` 配置未由迁移任务修改，动态 workspace 状态继续忽略并原样保留。
 - 独立验收：复跑 Strict、manifest 路径、`git diff --check` 与历史快照语义检查；P0–P3 均无遗留问题。
 - 发布边界：本轮没有 commit/push 授权；改动只保留在工作树，未提交、未推送。
+
+## 知识体系 virtual-first 导航重构 Phase A（2026-08-20）
+
+> 范围：在已发布的 OKF 迁移提交 `9beb653` 上整理知识体系的导航与关系层；不移动、重命名、拆分、合并或改写知识正文，不修改 maturity/verified，不接管用户 `.obsidian`。
+
+- 发布检查点：迁移提交父节点、399 个路径、mode/blob manifest 与 staged diff 指纹逐项一致；推送后本地 `main` 与 `origin/main` 均为 `9beb653aa267a4a0dbcf44a32fa21ce205cc3ce5`，ahead/behind `0/0`。
+- 架构决策：KD-016 选择 virtual-first。现有六大领域继续作为物理 Canonical；`Knowledge/Projects` 保持有条件启用的骨架，evidence、系统实战、工作日志、笔记、Inbox、Archive 和方案保持各自边界。
+- 导航：新增六个 Domain MOC 和两个 axes README/视图；七个跨域主题均指定一个 Primary Canonical，并把其他页面限定为 UE 实现、算法、源码证据、服务端生产约束、测试或实战视角。
+- Obsidian：`Knowledge.base` 增加 All / Review / Evidence / Project 四视图；全局与 view filters、`file.inFolder`、`groupBy`、`order` 依据官方 Bases 语法。Base 只读 YAML Properties，不替代 Markdown 或 taxonomy。
+- 协作：补 `references/agent协作与发布规则.md`，固化只读并行审计、共享文件串行写入、cached review、commit 后完整性和远端 SHA 门禁；`.obsidian` 始终不在任务写入范围。
+- Manifest：新增 `scripts/rebuild_manifest.ps1`；UTF-8 严格解码、PS5 ASCII-safe Unicode 正则、Ordinal 排序；Windows PowerShell 5.1 与 pwsh 对同一输入生成相同 SHA-256。
+- 独立审核：语义审计 P0/P1/P2/P3 均为 0；新增导航链接目标存在，知识正文路径/内容、maturity 与 verified 未改变。新增短 MOC 的不足 300 行 WARN 是导航用途预期，不是正文缺陷。
+- 最终门禁：Changed 22/22、Strict 401/401（Excluded 2）均 PASS / FAIL 0；`check_repo` 对 403 个 Markdown PASS / FAIL 0 / WARN 21；manifest 403/403 且 path/kind/bytes/lines/maturity 差异 0；`git diff --check` 为 0。
+- 物理重构：登记 `TAXONOMY-PILOT-01` 为 Pending；只有用户再次批准并具备 old→new、唯一 Canonical、链接影响、README/MOC/manifest 更新和回滚清单时，才允许小域试点。
+- 发布边界：本 Phase A 改动尚未提交、尚未推送；与已发布的 OKF 迁移检查点分开审计。

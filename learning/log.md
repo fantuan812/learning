@@ -30,3 +30,4 @@
 - 2026-08-20 16:25:15 +08:00：本轮将 Google Open Knowledge Format v0.2 以 hybrid 模式接入现有知识库：新建/修改 Markdown 强制 type，legacy 只审计并按触碰迁移；maturity 与 verified 正交；Obsidian 直接消费仓库根且 workspace 状态不共享。新增 check_okf 的 Changed/Audit/Strict 三模式，并在 PowerShell 5.1/pwsh 下验证。
 - 2026-08-20 16:47:14 +08:00：OKF 的 verified 必须保存 {by, at} 验证事件，human-reviewed 等只是按 actor 推导的 trust tier；status 只使用 draft/stable/deprecated。hybrid 的 Strict 仅是本库 profile 范围迁移门禁，轻量 YAML lint 与排除项不能冒充完整官方 OKF parser。
 - 2026-08-20 17:24:10 +08:00：大规模 OKF frontmatter 迁移应按不重叠目录分批，每篇只前置固定最小元数据；逐批同时校验 git diff +7/-0、去前缀正文 SHA-256、Changed/Strict 与 manifest 精确集合，才能把格式迁移和正文改写明确分离。
+- 2026-08-20 18:12:19 +08:00：目录树仍能表达主领域时，先用 Domain MOC、跨域 Primary/Secondary 与 Bases 建立虚拟结构；物理移动必须另列 old→new、入链影响和回滚清单，并与正文拆分分批执行。

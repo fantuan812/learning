@@ -1,8 +1,14 @@
 filters:
   and:
-    - 'file.ext == "md"'
-    - 'type != null'
+    - file.ext == "md"
+    - type != null
 properties:
+  file.path:
+    displayName: Path
+  file.name:
+    displayName: File
+  title:
+    displayName: Title
   type:
     displayName: Type
   status:
@@ -15,11 +21,52 @@ properties:
     displayName: Tags
 views:
   - type: table
-    name: Knowledge
+    name: All
     order:
+      - title
       - file.name
-      - note.type
-      - note.status
-      - note.maturity
-      - note.verified
-      - note.tags
+      - file.path
+      - type
+      - status
+      - maturity
+      - verified
+      - tags
+    groupBy:
+      property: type
+      direction: ASC
+  - type: table
+    name: Review
+    filters:
+      or:
+        - status == "draft"
+        - maturity == "L0"
+    order:
+      - title
+      - file.name
+      - file.path
+      - status
+      - maturity
+      - type
+  - type: table
+    name: Evidence
+    filters: file.inFolder("evidence")
+    order:
+      - title
+      - file.name
+      - file.path
+      - type
+      - maturity
+      - verified
+  - type: table
+    name: Project
+    filters:
+      or:
+        - file.inFolder("Projects")
+        - file.inFolder("系统实战")
+    order:
+      - title
+      - file.name
+      - file.path
+      - type
+      - status
+      - maturity

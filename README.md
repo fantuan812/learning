@@ -57,6 +57,8 @@ updated: 2026-08-20
 - [游戏AI/](游戏AI/README.md) —— 游戏 AI 知识库（决策架构 / 移动学习与服务端 / 评测与安全）
 - [游戏测试与质量/](游戏测试与质量/README.md) —— 游戏测试与质量保障知识库（测试策略 / 自动化 / 压测 / CI 门禁）
 
+跨目录学习不依赖物理搬迁：从 [领域 MOC](00_Index/domains/README.md) 查看各域学习顺序，从 [跨域主题地图](00_Index/axes/跨域主题.md) 判定同一主题的主责 Canonical，从 [知识边界与生命周期](00_Index/axes/知识边界与生命周期.md) 决定新材料落点。
+
 ### 多智能体知识库控制面
 
 仓库根配置了 Codex 多智能体知识库控制面：主线程作为 Orchestrator 决策，kb_scanner / kb_analyzer / kb_architect / kb_curator / kb_auditor 默认只读取证；具体模型、推理档位与并发以当前运行时实际能力和用户选择为准，项目配置中的默认值不能作为当前可用性的证据。入口与状态：
@@ -65,6 +67,7 @@ updated: 2026-08-20
 - [.kb/](.kb/README.md) —— 控制平面状态（manifest / taxonomy / aliases / decisions / review-queue / plans）；
 - [.agents/](.agents/README.md) —— 项目级 Skill（knowledge-base-organizer）；
 - [00_Index/](00_Index/README.md) —— 全局导航索引（含 [MOC.md](00_Index/MOC.md)）；
+- [Agent 协作与发布规则](references/agent协作与发布规则.md) —— 多 Agent 串行写入、独立审核与 Git 发布门禁；
 - [Inbox/](Inbox/README.md) / [Archive/](Archive/README.md) —— 未处理材料入口 / 历史原材料；
 - [Knowledge/](Knowledge/README.md) / [Projects/](Projects/README.md) —— 通用与项目知识的规范位置。
 

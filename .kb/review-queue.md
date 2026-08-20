@@ -56,6 +56,22 @@ Status: Pending
 
 ---
 
+## TAXONOMY-PILOT-01（物理目录重构试点）
+
+Current: 第一阶段已选择 virtual-first，现有六大领域继续作为 Canonical；领域 MOC、跨域主题与 Base 承担学习顺序和横向关系，正文路径未移动。
+
+Suggested: 第一阶段稳定后，只选择一个小域（优先评估 `游戏测试与质量`）或一个单一语义族做物理试点；试点前必须生成 old→new 映射、唯一 Canonical、全部入链/出链、README/MOC/manifest 影响和逐批回滚清单。
+
+Confidence: 0.65
+
+Reason: 已确认少数跨域歧义，但尚无证据证明物理搬迁收益高于链接与历史风险；需要用小批试点数据验证。
+
+Suggested action: 用户批准后独立试点；不得与 Split/Merge 或正文重写同批执行
+
+Status: Pending
+
+---
+
 ## LYRA-COV-01（LyraGame/UI 专项缺口）
 
 Current: LyraGame/UI（79 文件）仅 3 覆盖（4%）。43 篇的"UI"实为插件注入机制；Lyra 自有控件（HUD 布局/Foundation 控件族/IndicatorSystem 头顶指示器/Weapons UI 准星与命中标记/LyraUIManagerSubsystem/LyraSettingScreen）完全未分析。

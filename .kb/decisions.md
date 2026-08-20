@@ -16,6 +16,38 @@ updated: 2026-08-20
 
 > 知识成熟度：L2（决策记录，只增不改历史条目）。
 
+## KD-016
+
+### Subject
+
+知识体系重规划采用“先虚拟重构、后小域物理试点”（2026-08-20）。
+
+### Options
+
+1. 立即把全部知识搬入新的物理目录树，同时改写链接和 manifest。
+2. 保留现有 Canonical 路径，先用 Domain MOC、横向主题、生命周期规则和 Obsidian Base 建立虚拟结构；只有通过独立闸门后才做单域试点。
+3. 完全冻结结构，不处理已确认的跨域歧义与导航缺口。
+
+### Decision
+
+Option 2。第一阶段创建六个领域 MOC、跨域主题地图、知识边界与生命周期规则及四个 Base 视图；不移动、重命名、拆分或合并正文，不改变 H1、type、maturity、verified 或现有链接。第二阶段只能在用户再次批准且小域/主题族满足 old→new 映射、唯一 Canonical、入链影响和回滚清单后启动。
+
+### Reason
+
+当前证据支持局部重叠（背包、NavMesh、网络复制、Dedicated Server、GAS/Buff 等），不支持判定整棵物理目录树失效。虚拟视图可以先验证 Domain → Subdomain → Topic、Primary/Secondary 分工和 Obsidian 消费体验，同时避免数百相对链接、README、manifest 与 backlinks 的同步风险。
+
+### Confidence
+
+0.94
+
+### Affected files
+
+`00_Index/domains/*.md`、`00_Index/axes/*.md`、`00_Index/Knowledge.base`、全局导航、`.kb/taxonomy.yaml`、当前计划、review queue、audit、manifest 与协作规范；知识正文路径不在第一阶段范围。
+
+### Status
+
+Accepted（第一阶段已执行并审计；物理试点保持 Pending）
+
 ## KD-015
 
 ### Subject
