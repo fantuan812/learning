@@ -6,17 +6,22 @@
 
 # Goal（当前）
 
-收口 Lyra 39-56 核心源码覆盖与审查问题（2026-08-18）：补齐核心生成/移动/状态、网络复制与模块化引擎、输入重映射/辅助瞄准、ShooterCore 核心玩法的真实源码证据，更新导航、覆盖矩阵与 manifest，并完成全库复验。
+收口计算机与工程基础体系全面审查问题（2026-08-20）：修复格式与技术表述、校准成熟度证据、将 13 篇短专题补至 300 行以上，并同步导航、taxonomy、manifest 与审计记录。
 
 # Scope（当前）
 
-- 文档口径：工作日志的进阶道具完备性按“有出边的品质”表达；Lyra 系列统一为 39-56，根 README、分类 README、路线图和交叉阅读同步。
-- 控制面：current plan、audit、review queue 只把当前状态作为可执行事实，历史发现保留为历史记录；已执行/已决策条目不再标记 Pending。
-- 索引：重新计算 331 个 Markdown 条目的 bytes/lines，确保 `.kb/manifest.yaml` 与磁盘一致。
-- 空白策略：源码附录完整保留代码字符、注释、条件编译和文件尾换行；仅统一代码围栏内的行尾及缩进空白以通过 diff 门禁，并在附录说明格式归一；普通 Markdown 继续执行 whitespace 检查。
-- 验证：运行 `scripts/check_repo.ps1`、全库链接/围栏检查、manifest 统计和 `git diff --check`。
+- 内容：基础层 16 分类、40 篇正文；修复审查发现的 C++、PageFault、Paxos、Quorum、TLS、QUIC 与 io_uring 表述，并补齐独立虚拟化专题。
+- 深度：13 篇低于 300 行的新增专题补齐最小示例、配置、预期输出、Benchmark、故障矩阵和验收记录。
+- 证据：7 篇没有实际 Evidence 的 L3 文档降为 L2，并明确命令计划与运行证据的边界。
+- 控制面：同步基础层状态表、taxonomy、manifest、README 与 audit；历史 Lyra 记录继续作为历史快照保留。
+- 验证：运行 `scripts/check_repo.ps1`、UTF-8/BOM/围栏/字面换行检查、manifest 集合与 bytes/lines 比对、`git diff --check`。
 
 # Current State
+
+- 2026-08-20 基础层正文 40 篇、分类 README 17 篇；13 篇审查短文及新增虚拟化专题均已达到 300 行以上。
+- 5 篇字面 `` `r`n `` 元数据问题已清零；C++、PageFault、Paxos/Quorum、TLS/QUIC、io_uring 表述已修订。
+- 无真实 Evidence 的 7 篇 L3 已降为 L2；运行结果落盘后再按证据升级。
+- 控制面同步与最终门禁已完成：全库 386 个 Markdown（正文 315、README 71），基础域正文 40 篇；`check_repo.ps1` PASS、FAIL 0，12 条 WARN 均为既有控制面/日志/笔记/路线图短文；以下 Lyra/R4 项目状态作为历史记录保留。
 
 - R4 四项结构性操作已执行完毕（KD-012）。
 - Lyra 专项审查（R4-LYRA）修复完毕；覆盖率审查（R4-LYRA-COVERAGE）完成，补篇 49/50 已执行（覆盖率 32.4%→35.2%）。

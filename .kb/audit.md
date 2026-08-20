@@ -260,3 +260,16 @@
 ### 当前仍明确的下一步
 
 核心玩法和引擎桥已达到可复核的静态源码覆盖，但不能据此声称 Lyra 全部 756 个 Source/Plugins 文件都已深读。下一轮应优先把 Settings/UI/Feedback/Performance/Replays/Hotfix/Cosmetics 的 L0/L1 条目提升为真实函数或全文附录，并为 53-56 补 PIE、Dedicated Server、网络切换和设备矩阵结果。
+
+## 计算机与工程基础全面审查收口（2026-08-20）
+
+> 范围：复核 `00-计算机与工程基础/` 的 16 分类、40 篇正文及其导航、成熟度、控制面和当前未提交工作树；历史 Lyra 审计保留为历史快照。
+
+- 格式：修复 5 篇正文中的字面 `` `r`n `` 元数据，复查基础域字面换行残留为 0；Markdown 保持 UTF-8 无 BOM，代码围栏闭合。
+- 技术表述：修正 no-throw guarantee、析构异常规范、major/minor page fault、Paxos prepare/promise、Quorum 条件、TLS 客户端认证、QUIC 共享拥塞控制与 `IORING_SETUP_COOP_TASKRUN` 边界。
+- 证据：7 篇仅有命令计划、没有归档脚本/原始结果的 L3 文档降为 L2，并写明证据状态；实际运行证据落盘后再升级。
+- 深度：原 13 篇低于 300 行的基础专题已扩写至 300 行以上，补充最小程序、环境与配置、预期输出、Benchmark、故障注入、回滚和验收模板；新增 301 行虚拟化专题，覆盖硬件辅助隔离与开销验证。
+- 导航：基础层状态表按实际 40 篇重算；taxonomy 扩展为 16 个子域；`.kb/README.md` 的 taxonomy 状态与 audit 日期同步。
+- 索引：manifest 按磁盘 386 个 Markdown 机械重建，路径集合完全一致，逐条 `bytes`、`lines`、`maturity` 不一致项为 0。
+- 门禁：全库正文 315、README 71，基础域正文 40；`check_repo.ps1` PASS、FAIL 0，12 条 WARN 均为既有控制面、日志、笔记、路线图或维护 Skill 短文；UTF-8 解码、BOM、替换字符和基础域代码围栏检查均无异常，`git diff --check` 退出码为 0。
+- 发布边界：本轮未获 commit/push 授权；全部变更保留在工作树，不将静态示例或计划误报为已运行结果。

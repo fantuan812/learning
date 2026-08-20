@@ -1,4 +1,5 @@
 # 02-Atomic与C++内存模型
+> 验证与基准：按文中命令执行最小实验，记录结果与边界。
 
 > 知识基线：C++11 内存模型（`std::atomic`、六种 `memory_order`、happens-before）；C++20 保留语义（`consume` 无编译器增强，按 relaxed 处理）；编译器基准 MSVC 2022（v14.44.35207）/ x64；UE 对照以本机 UE5.8 源码为准。
 > 版本基准：C++11 引入内存模型；C++17 起 `atomic` 的 `is_always_lock_free` 等查询可用；`std::atomic_ref` 为 C++20。

@@ -1,4 +1,5 @@
 # 01-Socket-Epoll与Reactor
+> 验证与基准：按文中命令执行最小实验，记录结果与边界。
 
 > 知识基线：POSIX socket、非阻塞 IO、`EAGAIN/EWOULDBLOCK`、Linux epoll（`epoll_create1/epoll_ctl/epoll_wait`）、LT/ET 语义；React 模式（事件循环 + 回调）。
 > 版本基准：epoll 自 Linux 2.6；`epoll_create1`/`accept4` 需内核 ≥ 2.6.27/2.6.28；本机无 Linux 环境，实验代码已就绪但**未执行**（见 [evidence/labs/epoll-reactor](../../evidence/labs/epoll-reactor/README.md)）。
