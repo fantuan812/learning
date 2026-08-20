@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "05 Chaos 破坏系统与 Field System"
+status: stable
+verified: []
+maturity: L2
+---
 # 05 Chaos 破坏系统与 Field System
 > 知识成熟度：L2（本轮审计修订时补标）。
 

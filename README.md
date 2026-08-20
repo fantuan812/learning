@@ -1,8 +1,22 @@
+---
+type: Index
+title: "Learning"
+description: "游戏全栈工程知识体系的人类入口与全局导航。"
+tags:
+  - game-development
+  - knowledge-base
+  - okf
+status: stable
+verified: []
+maturity: L2
+updated: 2026-08-20
+---
+
 # Learning
 
-自动同步目录：C:\project\git -> https://github.com/fantuan812/learning.git
+仓库：[fantuan812/learning](https://github.com/fantuan812/learning)。本地仓库根同时作为 OKF bundle 与 Obsidian vault，不依赖固定绝对路径。
 
-## 三层知识视图：知识树 · 技能树 · 项目树
+## 四层知识视图：知识树 · 技能树 · 项目树 · Evidence
 
 仓库按「知识树 + 技能树 + 项目树 + Evidence」四层组织：知识树回答"有什么主题"，技能树回答"掌握到什么程度"，项目树回答"能不能把一条业务链路完整跑通"，Evidence 回答"你凭什么证明它是对的"。
 
@@ -45,7 +59,7 @@
 
 ### 多智能体知识库控制面
 
-仓库根配置了 Codex 多智能体知识库控制面：主线程作为 Orchestrator 决策，五个只读子代理（kb_scanner / kb_analyzer / kb_architect / kb_curator / kb_auditor）负责取证与分析，模型统一为 `opencode-go/deepseek-v4-flash`（推理档位 max）。入口与状态：
+仓库根配置了 Codex 多智能体知识库控制面：主线程作为 Orchestrator 决策，kb_scanner / kb_analyzer / kb_architect / kb_curator / kb_auditor 默认只读取证；具体模型、推理档位与并发以当前运行时实际能力和用户选择为准，项目配置中的默认值不能作为当前可用性的证据。入口与状态：
 
 - [AGENTS.md](AGENTS.md) —— 最高层行为规则；
 - [.kb/](.kb/README.md) —— 控制平面状态（manifest / taxonomy / aliases / decisions / review-queue / plans）；
@@ -53,6 +67,17 @@
 - [00_Index/](00_Index/README.md) —— 全局导航索引（含 [MOC.md](00_Index/MOC.md)）；
 - [Inbox/](Inbox/README.md) / [Archive/](Archive/README.md) —— 未处理材料入口 / 历史原材料；
 - [Knowledge/](Knowledge/README.md) / [Projects/](Projects/README.md) —— 通用与项目知识的规范位置。
+
+### OKF 与 Obsidian 互操作层
+
+仓库采用 GoogleCloudPlatform/knowledge-catalog 发布的 Open Knowledge Format（OKF）v0.2 互操作层。2026-08-20 已完成本库 profile 范围迁移：390/390 篇受检文档通过 Strict，2 篇操作性文档按 profile 排除；这表示本库轻量门禁通过，不等同于官方通用 OKF parser 认证。未来导入 legacy 内容仍按 hybrid 流程分批审查；L0~L5、Canonical Location、taxonomy 与 manifest 继续承担原职责，不另建一套知识分类。
+
+- [index.md](index.md) —— OKF/Obsidian 根入口；GitHub 入口仍是本 README；
+- [OKF 兼容规范](references/OKF-兼容规范.md) —— `type`、来源、验证状态、时效与渐进迁移规则；
+- [Obsidian 协作指南](references/Obsidian协作指南.md) —— 将仓库根打开为 vault、模板/Bases 与 Git/Sync 单写者边界；
+- [Knowledge.base](00_Index/Knowledge.base) —— 通过 Obsidian Bases 查看已迁移条目的 Properties；
+- [OKF 知识条目模板](references/templates/OKF-知识条目.md) —— 新条目默认 `status: draft / verified: [] / maturity: L0`；
+- [OKF profile](.kb/okf-profile.yaml) / [Bundle log](log.md) —— 机器规则与只增不改的格式变更记录。
 
 ### 技能树 —— 掌握深度（成熟度 L0~L5）
 

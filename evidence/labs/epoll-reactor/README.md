@@ -1,3 +1,10 @@
+---
+type: Evidence
+title: "Evidence · epoll-reactor：epoll LT/ET + Reactor 最小实现"
+status: stable
+verified: []
+maturity: L0
+---
 # Evidence · epoll-reactor：epoll LT/ET + Reactor 最小实现
 
 > 状态：**待执行**（代码已就绪；epoll 为 Linux 专有 API，本机 Windows 环境未运行）

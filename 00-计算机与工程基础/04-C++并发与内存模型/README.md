@@ -1,3 +1,10 @@
+---
+type: Index
+title: "04-C++并发与内存模型 · 分类"
+status: stable
+verified: []
+maturity: L0
+---
 # 04-C++并发与内存模型 · 分类
 
 > 定位：线程、原子、内存序、无锁与缓存竞争的底层原理，配本机可复现实验（evidence/labs/atomic-memory-order、evidence/labs/false-sharing）。

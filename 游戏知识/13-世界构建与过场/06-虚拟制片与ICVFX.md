@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "06 虚拟制片与 ICVFX（Virtual Production & In-Camera VFX）"
+status: stable
+verified: []
+maturity: L2
+---
 # 06 虚拟制片与 ICVFX（Virtual Production & In-Camera VFX）
 > 知识成熟度：L2（本轮审计修订时补标）。
 

@@ -1,3 +1,10 @@
+---
+type: Index
+title: "13 世界构建与过场"
+status: stable
+verified: []
+maturity: L0
+---
 # 13 世界构建与过场
 
 > 适用范围：UE 客户端 · 大世界构建与影视演出

@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "01-ServerMainLoop与TickScheduler"
+status: stable
+verified: []
+maturity: L4
+---
 # 01-ServerMainLoop与TickScheduler
 
 > 知识基线：实时服务器固定步长主循环、accumulator 模式、时间预算；UE 对照以本机 UE5.8 源码为准（`Misc/App.h`、`Engine/Classes/Engine/NetDriver.h`、`Engine/Public/TickTaskManagerInterface.h`）。

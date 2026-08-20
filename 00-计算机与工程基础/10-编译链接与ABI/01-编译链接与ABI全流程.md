@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "编译、链接与 ABI 全流程"
+status: stable
+verified: []
+maturity: L2
+---
 # 编译、链接与 ABI 全流程
 > 验证与基准：按文中命令执行最小实验，记录结果与边界。
 

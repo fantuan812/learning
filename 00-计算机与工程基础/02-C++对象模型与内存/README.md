@@ -1,3 +1,10 @@
+---
+type: Index
+title: "02-C++对象模型与内存"
+status: stable
+verified: []
+maturity: L0
+---
 # 02-C++对象模型与内存
 
 > 定位：解释对象布局、对齐、虚派发、分配器与缓存行为。

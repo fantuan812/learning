@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "12-世界时间确定性与GameClock"
+status: stable
+verified: []
+maturity: L2
+---
 # 12-世界时间确定性与GameClock
 
 > 知识基线：时间源分类（wall/monotonic/game/tick/scheduled）、GameClock 单一权威、世界减速/暂停语义、跨服与重连时间对齐；UE 对照以 `FApp` 时间 API（`Engine\Source\Runtime\Core\Public\Misc\App.h`）与 [游戏知识/01-引擎基础](../../游戏知识/01-引擎基础/README.md) 为参照。

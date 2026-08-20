@@ -1,3 +1,10 @@
+---
+type: Index
+title: "06-世界模拟与运行时 · 知识库（14 篇已落地）"
+status: stable
+verified: []
+maturity: L0
+---
 # 06-世界模拟与运行时 · 知识库（14 篇已落地）
 
 > 定位：MMO / 实时游戏服务器 Runtime 层——服务器如何"把世界跑起来"。重点不是 Web 后端，而是 Main Loop、Tick、Entity、Scene、AOI、同步裁剪、跨服迁移与时间预算。

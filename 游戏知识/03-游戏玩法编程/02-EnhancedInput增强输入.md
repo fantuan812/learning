@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "02 Enhanced Input 增强输入"
+status: stable
+verified: []
+maturity: L2
+---
 # 02 Enhanced Input 增强输入
 > 知识成熟度：L2（本轮审计修订时补标）。
 

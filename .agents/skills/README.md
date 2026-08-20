@@ -1,3 +1,10 @@
+---
+type: Index
+title: ".agents/skills —— 项目级 Skills"
+status: stable
+verified: []
+maturity: L0
+---
 # .agents/skills —— 项目级 Skills
 
 | Skill | 用途 |

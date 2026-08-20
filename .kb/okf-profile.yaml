@@ -1,0 +1,136 @@
+# Learning repository profile for Open Knowledge Format v0.2 from GoogleCloudPlatform/knowledge-catalog.
+version: 1
+okf_version: "0.2"
+bundle_root: "."
+compatibility: migrated
+
+conformance:
+  legacy_documents: migrated
+  new_documents: required
+  modified_documents: required
+  full_strict_migration: complete_profile_scope
+  future_legacy_intake: hybrid
+  official_parser_conformance: not_claimed
+  snapshot:
+    date: "2026-08-20"
+    scanned: 390
+    conformant: 390
+    legacy: 0
+    excluded: 2
+
+reserved_names:
+  - index.md
+  - log.md
+
+operational_exclusions:
+  - ".agents/skills/**/SKILL.md"
+  - "learning/log.md"
+
+frontmatter:
+  required:
+    - type
+  recommended:
+    - title
+    - description
+    - resource
+    - tags
+    - status
+    - verified
+    - sources
+    - generated
+    - stale_after
+  extensions:
+    - maturity
+    - updated
+    - domain
+    - subdomain
+    - topic
+    - canonical
+    - scope
+    - confidence
+
+local_vocabulary:
+  type_values_are_local: true
+  unknown_type_values_are_allowed: true
+  knowledge_types:
+    - Concept
+    - Principle
+    - Architecture
+    - Mechanism
+    - Implementation
+    - Tutorial
+    - Troubleshooting
+    - BestPractice
+    - Comparison
+    - CaseStudy
+    - Reference
+    - Research
+    - Project
+    - Decision
+    - Experience
+    - Interview
+  support_types:
+    - Index
+    - Policy
+    - Plan
+    - Evidence
+    - Template
+  scope:
+    - universal
+    - project
+    - mixed
+    - temporary
+
+okf_fields:
+  status:
+    allowed:
+      - draft
+      - stable
+      - deprecated
+    default_when_absent: stable
+  generated:
+    representation: "mapping"
+    required_within_mapping:
+      - by
+    optional_within_mapping:
+      - at
+  verified:
+    representation: "one verification event mapping or a list of verification event mappings"
+    required_within_event:
+      - by
+      - at
+    empty_list_means: "no verification event recorded"
+    trust_tiers_are_derived: true
+    derived_trust_tiers:
+      - unverified
+      - machine-confirmed
+      - human-reviewed
+  actor_convention:
+    tool: "tool-name/version"
+    human: "human:<identifier>"
+    process: "process:<identifier>"
+
+identity:
+  concept_id: "repository-relative path without the .md suffix"
+  canonical_source: "document canonical field, preserved through .kb/aliases.yaml and .kb/decisions.md"
+
+links:
+  portable_default: "standard relative Markdown links"
+  relations:
+    - is_a
+    - part_of
+    - depends_on
+    - uses
+    - implemented_by
+    - related_to
+    - alternative_to
+    - contrasts_with
+    - extends
+    - example_of
+    - applied_in
+
+verification:
+  implementation: "lightweight lint for the documented YAML subset, not a general YAML parser"
+  changed: "scripts/check_okf.ps1 -Mode Changed"
+  audit: "scripts/check_okf.ps1 -Mode Audit"
+  strict: "scripts/check_okf.ps1 -Mode Strict (profile scope only)"

@@ -1,3 +1,10 @@
+---
+type: Index
+title: "05-数据结构与复杂度"
+status: stable
+verified: []
+maturity: L0
+---
 # 05-数据结构与复杂度
 
 > 定位：从抽象数据类型、复杂度到缓存友好实现，服务 UE、服务器和工具链的容器选型。

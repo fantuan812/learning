@@ -1,3 +1,10 @@
+---
+type: Evidence
+title: "Evidence · tick-scheduler：Server Main Loop 模拟"
+status: stable
+verified: []
+maturity: L0
+---
 # Evidence · tick-scheduler：Server Main Loop 模拟
 
 > 状态：已执行（2026-08-12，Windows x64 / MSVC）

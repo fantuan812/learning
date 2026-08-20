@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "UE5.8 Lyra 源码解析 51：GAS 扩展与能力费用源码"
+status: stable
+verified: []
+maturity: L2
+---
 # UE5.8 Lyra 源码解析 51：GAS 扩展与能力费用源码
 
 > 本篇补完 Lyra `AbilitySystem` 模块中前三篇（42/45）未单独深入的"能力系统扩展子集"：

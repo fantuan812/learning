@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "02-STL 容器与 Allocator"
+status: stable
+verified: []
+maturity: L2
+---
 # 02-STL 容器与 Allocator
 
 > 知识成熟度：L2

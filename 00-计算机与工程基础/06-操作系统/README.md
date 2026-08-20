@@ -1,3 +1,10 @@
+---
+type: Index
+title: "06-操作系统"
+status: stable
+verified: []
+maturity: L0
+---
 # 06-操作系统
 
 > 定位：进程、线程、虚拟内存、调度和系统调用，为客户端与服务器解释资源与延迟。

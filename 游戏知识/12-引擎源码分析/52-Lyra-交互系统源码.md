@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "UE5.8 Lyra 源码解析 52：交互系统源码"
+status: stable
+verified: []
+maturity: L2
+---
 # UE5.8 Lyra 源码解析 52：交互系统源码
 
 > 本篇完整分析 Lyra `Interaction` 模块（`Source\LyraGame\Interaction\`）的全部 17 个源文件：

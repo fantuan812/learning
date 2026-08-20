@@ -1,3 +1,10 @@
+---
+type: Index
+title: ".kb/plans —— 执行计划"
+status: stable
+verified: []
+maturity: L0
+---
 # .kb/plans —— 执行计划
 
 | 文件 | 用途 |

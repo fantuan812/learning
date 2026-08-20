@@ -1,3 +1,10 @@
+---
+type: Index
+title: "计算机体系结构与性能"
+status: stable
+verified: []
+maturity: L0
+---
 # 计算机体系结构与性能
 
 - [处理器、存储层次与性能工程](./01-处理器存储层次与性能工程.md)

@@ -1,3 +1,10 @@
+---
+type: Index
+title: "游戏算法 · 寻路与图论（Pathfinding & Graph Theory）"
+status: stable
+verified: []
+maturity: L0
+---
 # 游戏算法 · 寻路与图论（Pathfinding & Graph Theory）
 
 > 本目录是《游戏算法》知识库的第一部分：**寻路与图论**。从图论基础出发，依次覆盖 BFS/DFS/Dijkstra 等经典搜索、游戏寻路的事实标准 A* 及其工业级优化（二叉堆、跳点搜索 JPS、分层寻路 HPA*），再到支撑 RTS 千人同屏的流场（Flow Field）群体寻路，最后补上让这一切跑得动的高性能空间分区与索引结构（均匀网格、四叉树/八叉树、BVH、KD 树、空间哈希）。

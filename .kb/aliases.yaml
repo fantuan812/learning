@@ -1,5 +1,11 @@
 # 同义分类映射：新 Topic 创建前先查这里，避免多 Agent 产生同义分类。
 aliases:
+  OKF:
+    canonical: "Open Knowledge Format"
+  OpenKnowledgeFormat:
+    canonical: "Open Knowledge Format"
+  MOC:
+    canonical: "Map of Content"
   AStar:
     canonical: "A*"
   A-Star:

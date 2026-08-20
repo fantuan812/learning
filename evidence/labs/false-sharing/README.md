@@ -1,3 +1,10 @@
+---
+type: Evidence
+title: "Evidence · false-sharing：缓存行竞争 Benchmark"
+status: stable
+verified: []
+maturity: L0
+---
 # Evidence · false-sharing：缓存行竞争 Benchmark
 
 > 状态：已执行（2026-08-12，Windows x64 / MSVC；注意本机为虚拟化/受限调度环境，见"局限"）

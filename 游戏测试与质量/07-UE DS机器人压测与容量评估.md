@@ -1,3 +1,10 @@
+---
+type: BestPractice
+title: "07 · UE Dedicated Server 机器人压测与容量评估"
+status: stable
+verified: []
+maturity: L2
+---
 # 07 · UE Dedicated Server 机器人压测与容量评估
 > 知识成熟度：L2（本轮审计修订时补标）。
 

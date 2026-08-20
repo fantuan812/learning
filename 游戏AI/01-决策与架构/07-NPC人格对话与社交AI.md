@@ -1,3 +1,10 @@
+---
+type: Architecture
+title: "07 NPC 人格、对话与社交 AI"
+status: stable
+verified: []
+maturity: L2
+---
 # 07 NPC 人格、对话与社交 AI
 > 知识成熟度：L2（本轮审计修订时补标）。
 

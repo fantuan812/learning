@@ -1,3 +1,10 @@
+---
+type: Index
+title: "02 渲染与图形 — 知识库导航"
+status: stable
+verified: []
+maturity: L0
+---
 # 02 渲染与图形 — 知识库导航
 
 ## 分类简介

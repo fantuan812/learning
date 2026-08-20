@@ -1,3 +1,22 @@
+---
+type: Policy
+title: "Knowledge Base Agent Instructions"
+description: "Repository-wide governance for knowledge organization, OKF interoperability, agent collaboration, and publication."
+tags:
+  - knowledge-base
+  - governance
+  - okf
+status: stable
+verified: []
+maturity: L2
+updated: 2026-08-20
+sources:
+  - id: google-okf-v0.2
+    title: "Open Knowledge Format specification"
+    author: "Google Cloud"
+    resource: "https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md"
+---
+
 # Knowledge Base Agent Instructions
 
 > 知识成熟度：L2（控制面行为规则，随维护修订）。
@@ -19,6 +38,53 @@ The goal is to maintain a knowledge system that is:
 - suitable for RAG and agent workflows
 
 Always optimize for long-term knowledge structure rather than short-term folder neatness.
+
+---
+
+# OKF Interoperability and Obsidian
+
+This repository uses Open Knowledge Format (OKF) v0.2 from the
+GoogleCloudPlatform/knowledge-catalog project through the repository profile in
+`.kb/okf-profile.yaml`. The profile-scope migration completed on 2026-08-20:
+390/390 scanned documents conform, with 2 documented operational exclusions.
+Every newly created or modified non-reserved Markdown document must start with
+YAML frontmatter containing a non-empty `type`. Future imported legacy content
+uses the hybrid batch-review workflow. `index.md` and `log.md` are OKF reserved
+names and may omit concept metadata.
+
+Use `references/OKF-兼容规范.md` as the repository mapping. The existing control
+plane remains authoritative:
+
+- taxonomy classifies Domain → Subdomain → Topic;
+- canonical rules choose one authoritative location;
+- `.kb/manifest.yaml` inventories the current files;
+- OKF frontmatter makes each profile-scoped document portable to other consumers.
+
+`maturity` (L0–L5 evidence depth) and `verified` events are independent.
+`verified` is an optional `{ by, at }` mapping or list; consumers derive the
+unverified / machine-confirmed / human-reviewed trust tier from its actors.
+Never store that derived tier as the `verified` value, and never infer maturity
+from it. Preserve unknown frontmatter fields. Prefer standard Markdown links;
+Obsidian wikilinks may be an additional convenience but never the only portable
+relationship.
+
+Treat the repository root as the Obsidian vault. Do not overwrite a user's
+existing `.obsidian` state. `workspace*.json` is per-device UI state, not shared
+knowledge. Git remains the source of truth for Markdown, MOCs, templates, and
+the OKF profile; do not let Git and Obsidian Sync write the same files at the
+same time.
+
+Before final validation run both:
+
+```powershell
+& (Join-Path $RepoRoot 'scripts/check_okf.ps1') -Root $RepoRoot -Mode Changed
+& (Join-Path $RepoRoot 'scripts/check_repo.ps1') -Root $RepoRoot
+```
+
+`Audit` mode must normally report a zero legacy backlog. `Strict` is the
+repository profile's final gate for non-excluded documents; because this
+checker lints a documented YAML subset and retains operational exclusions, it
+is not by itself a claim of complete official OKF parser conformance.
 
 ---
 

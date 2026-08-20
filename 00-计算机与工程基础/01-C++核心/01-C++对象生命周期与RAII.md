@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "01-C++对象生命周期与RAII"
+status: stable
+verified: []
+maturity: L2
+---
 # 01-C++对象生命周期与RAII
 > 验证与基准：按文中命令执行最小实验，记录结果与边界。
 

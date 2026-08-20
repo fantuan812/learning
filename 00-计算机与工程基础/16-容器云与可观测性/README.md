@@ -1,3 +1,10 @@
+---
+type: Index
+title: "16-容器云与可观测性"
+status: stable
+verified: []
+maturity: L0
+---
 # 16-容器云与可观测性
 
 定位：补充 Linux 容器、资源隔离、指标、日志、追踪、SLO 与容量工程基础。

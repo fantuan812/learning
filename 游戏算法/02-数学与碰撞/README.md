@@ -1,3 +1,10 @@
+---
+type: Index
+title: "02 · 数学与碰撞"
+status: stable
+verified: []
+maturity: L0
+---
 # 02 · 数学与碰撞
 
 > 游戏算法知识库 · 分类导航

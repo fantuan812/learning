@@ -1,3 +1,10 @@
+---
+type: BestPractice
+title: "06 · UE Dedicated Server 联机验收与 Gauntlet"
+status: stable
+verified: []
+maturity: L2
+---
 # 06 · UE Dedicated Server 联机验收与 Gauntlet
 > 知识成熟度：L2（本轮审计修订时补标）。
 

@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "07 Entity Ownership 与 Authority"
+status: stable
+verified: []
+maturity: L2
+---
 # 07 Entity Ownership 与 Authority
 
 > 知识基线：实时游戏服务器的权威模拟与实体所有权模型；本文不把网络连接所有权、数据库主从和平台实例租约混为一谈。

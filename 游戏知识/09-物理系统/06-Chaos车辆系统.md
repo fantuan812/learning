@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "06 Chaos 车辆系统"
+status: stable
+verified: []
+maturity: L1
+---
 # 06 Chaos 车辆系统
 > 知识成熟度：L1（本轮审计修订时补标）。
 

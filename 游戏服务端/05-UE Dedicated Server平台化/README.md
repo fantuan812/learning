@@ -1,3 +1,10 @@
+---
+type: Index
+title: "05-UE Dedicated Server 平台化"
+status: stable
+verified: []
+maturity: L0
+---
 # 05-UE Dedicated Server 平台化
 
 > 面向游戏服务端平台团队，说明 UE Dedicated Server 实例如何被构建、分配、运行、观测、摘流量和回收。

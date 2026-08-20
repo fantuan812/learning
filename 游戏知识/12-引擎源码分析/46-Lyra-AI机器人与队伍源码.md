@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "UE5.8 Lyra 源码解析 46：AI 机器人与队伍系统"
+status: stable
+verified: []
+maturity: L2
+---
 # UE5.8 Lyra 源码解析 46：AI 机器人与队伍系统
 
 > 本篇沿两条链路阅读 Lyra 5.8 源码：一条是“Experience 加载完成 → `ULyraBotCreationComponent` 生成控制器 → `ALyraPlayerBotController` 获得 PlayerState 与 Pawn → 队伍归属跟随”；另一条是“`ULyraTeamCreationComponent` 创建队伍 → `ULyraTeamSubsystem` 注册队伍信息 → `CanCauseDamage` 过滤伤害 → DisplayAsset/异步节点驱动颜色 UI”。

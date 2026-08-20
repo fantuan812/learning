@@ -1,3 +1,10 @@
+---
+type: Architecture
+title: "UE Dedicated Server 实例生命周期与平台化"
+status: stable
+verified: []
+maturity: L2
+---
 # UE Dedicated Server 实例生命周期与平台化
 > 知识成熟度：L2（本轮审计修订时补标）。
 

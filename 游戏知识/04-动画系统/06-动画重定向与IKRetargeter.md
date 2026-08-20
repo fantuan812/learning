@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "06 动画重定向与 IK Retargeter"
+status: stable
+verified: []
+maturity: L2
+---
 # 06 动画重定向与 IK Retargeter
 > 知识成熟度：L2（本轮审计修订时补标）。
 

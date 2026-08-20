@@ -1,3 +1,10 @@
+---
+type: BestPractice
+title: "游戏AI「战斗与Boss设计」全解"
+status: stable
+verified: []
+maturity: L2
+---
 # 游戏AI「战斗与Boss设计」全解
 > 知识成熟度：L2（本轮审计修订时补标）。
 

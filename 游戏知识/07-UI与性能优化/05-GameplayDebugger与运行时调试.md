@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "05 GameplayDebugger 与运行时调试"
+status: stable
+verified: []
+maturity: L2
+---
 # 05 GameplayDebugger 与运行时调试
 > 知识成熟度：L2（本轮审计修订时补标）。
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。

@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "13-世界Snapshot与故障恢复"
+status: stable
+verified: []
+maturity: L3
+---
 # 13-世界Snapshot与故障恢复
 
 > 知识基线：全量快照 + 增量事件（delta/event）的世界持久化模型、崩溃恢复状态机（Crash → Restart → Restore → Reconcile）、客户端重连补偿；与 [12-世界时间确定性与GameClock](12-世界时间确定性与GameClock.md) 的时间基准、[04-Scene-Map-Zone与实例管理](04-Scene-Map-Zone与实例管理.md) 的实例管理配套。

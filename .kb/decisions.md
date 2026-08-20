@@ -1,6 +1,84 @@
+---
+type: Decision
+title: "Knowledge Base Decision Log"
+description: "知识库结构、迁移、控制面和发布边界的架构决策记录。"
+tags:
+  - decision-log
+  - knowledge-base
+  - okf
+status: stable
+verified: []
+maturity: L2
+updated: 2026-08-20
+---
+
 # Knowledge Base Decision Log
 
 > 知识成熟度：L2（决策记录，只增不改历史条目）。
+
+## KD-015
+
+### Subject
+
+执行 OKF-MIGRATION-01：将剩余 369 篇 legacy Markdown 分域迁移到最小 OKF frontmatter（2026-08-20）。
+
+### Options
+
+1. 继续仅按触碰迁移，保留 369 篇 legacy。
+2. 一次性不经检查机械写入全部文件。
+3. 按支持/证据、基础、算法+AI、服务端、游戏知识五批迁移，每批使用已审查类型映射并通过门禁后继续。
+
+### Decision
+
+Option 3。用户明确“继续做迁移”，视为批准 review queue 中的分域迁移。每篇只写入 `type`、安全转义的首个 H1 `title`、`status: stable`、`verified: []` 与原有 `maturity`；无显式成熟度的支持文档使用 L0。不生成来源、验证事件、生成者或更新时间，不修改正文、路径、taxonomy 或链接。
+
+### Reason
+
+分批可以把 369 文件的大 diff 切成可验证边界；保守 `Concept` 兜底比按关键词伪造精确类型更可信。成熟度沿用正文既有证据，`verified: []` 明确迁移不等于复核，符合 OKF 与本库 profile 的正交规则。
+
+### Confidence
+
+0.93
+
+### Affected files
+
+369 篇 legacy Markdown、`.kb/manifest.yaml`、`.kb/plans/current.md`、`.kb/review-queue.md`、`.kb/audit.md`、`log.md`、`learning/log.md`。
+
+### Status
+
+已执行（2026-08-20）：369 篇按五批完成；profile Scanned 390 / Conformant 390 / Legacy 0 / Excluded 2，Strict PASS。330 篇正文去前缀 SHA-256 与基线一致，其余 39 篇为 `+7/-0`；轻量 lint 不等于官方通用 OKF parser 认证。本状态已收口 KD-014 中“Strict 迁移留待 review queue”的历史阶段，KD-014 原文只保留为当时决策快照。
+
+## KD-014
+
+### Subject
+
+将 GoogleCloudPlatform/knowledge-catalog 的 Open Knowledge Format（OKF）v0.2 与 Obsidian 协作层融入现有知识体系（2026-08-20）。
+
+### Options
+
+1. 一次性给全部 386 篇 Markdown 机械添加 frontmatter，并立即声称全库严格 OKF 合规。
+2. 采用 hybrid：仓库根作为 bundle，新增 `index.md` / `log.md` / profile；新建或修改文档强制 `type`，legacy 只审计并按触碰迁移；Obsidian 直接消费同一仓库，但不接管用户 `.obsidian` 状态。
+3. 在独立子目录复制一套 OKF 内容，保留现有仓库不变。
+
+### Decision
+
+Option 2。OKF 作为互操作格式层，不替代现有 Domain → Subdomain → Topic taxonomy、Canonical Location、L0~L5、MOC 或 manifest。根 `README.md` 服务 GitHub，根 `index.md` 服务 OKF/Obsidian，`00_Index/MOC.md` 服务主题导航；根 `log.md` 记录 bundle 变化，`learning/log.md` 继续记录维护经验。Changed 门禁约束本次及后续触碰文档；Audit 展示 legacy 欠账；Strict 留待独立批准的 profile 范围迁移，且不替代通用 YAML/OKF 解析器。
+
+### Reason
+
+OKF v0.2 的唯一强制 frontmatter 字段是 `type`，与当前 Markdown 体系天然兼容。hybrid 能立即建立来源、验证状态、时效和 Obsidian Properties/Bases 能力，同时避免 386 篇无语义机械 diff、错误 type 推断和链接风险。复制一套内容会违反 Canonical Knowledge Rule。
+
+### Confidence
+
+0.92
+
+### Affected files
+
+`index.md`、`log.md`、`.kb/okf-profile.yaml`、`references/OKF-兼容规范.md`、`references/Obsidian协作指南.md`、`references/templates/`、`00_Index/Knowledge.base`、`scripts/check_okf.ps1` 以及本轮同步的控制面/导航文件。
+
+### Status
+
+已执行（2026-08-20；hybrid 接入与门禁通过，legacy Strict 迁移保留在 review queue）
 
 ## KD-013
 

@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "08 关卡流送（Level Streaming）"
+status: stable
+verified: []
+maturity: L2
+---
 # 08 关卡流送（Level Streaming）
 > 知识成熟度：L2（本轮审计修订时补标）。
 

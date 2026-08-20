@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "A* 寻路算法优化（游戏服务器 / 假人 AI）"
+status: stable
+verified: []
+maturity: L0
+---
 # A* 寻路算法优化（游戏服务器 / 假人 AI）
 
 > 定位：个人速查笔记（非正式知识文档），正式知识按主题归入六大知识域，入口见根 README。

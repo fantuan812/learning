@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "08 跨 Zone 与跨服迁移"
+status: stable
+verified: []
+maturity: L2
+---
 # 08 跨 Zone 与跨服迁移
 
 > 知识基线：实时游戏服务器的 Zone/Shard/World handoff；本文关注运行时状态迁移，不替代数据库迁移与平台区域容灾。

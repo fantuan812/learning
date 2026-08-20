@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "UE5.8 Lyra 源码解析 39：架构总览与阅读路线"
+status: stable
+verified: []
+maturity: L2
+---
 # UE5.8 Lyra 源码解析 39：架构总览与阅读路线
 
 > Lyra 最值得学习的不是某一个“射击游戏功能”，而是它如何把资产、插件、网络、角色、能力、输入和 UI 组织成可装配、可卸载、可多人同步的项目骨架。

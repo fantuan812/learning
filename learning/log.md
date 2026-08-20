@@ -27,3 +27,6 @@
 - 2026-08-17 17:41:15 +08:00：Lyra 源码附录的代码字符、注释、条件编译和文件尾换行属于证据边界；为满足 diff 门禁，可只统一代码围栏内的行尾及缩进空白，并在附录明确“格式归一、内容未删改”，不能裁剪源码内容。
 - 2026-08-18 12:10:43 +08:00：2026-08-18 服务端 Runtime 增量维护：W2 方案的 06-世界模拟与运行时编号必须作为 canonical 来源（02 Timer、07 EntityOwnership、08 跨 Zone 迁移）；正文落地后应全库把旧的“规划”引用升级为真实相对链接并同步 06/服务端 README、方案状态、taxonomy 与 manifest。manifest 的 lines 采用 Get-Content 行数（不计文件尾 LF），而 check_repo 的 split 计数可能多 1，更新索引时需保持既有口径。
 - 2026-08-18 18:55:51 +08:00：2026-08-18 游戏 AI/算法增量维护：Decision Trace、Debug Visualization、回放、Telemetry、RVO/ORCA、AI LOD、Tick Budget 与场景回归已有跨文档覆盖，新增正文应避免重复；真正缺口是方案 W8 明列但无专篇的 Reservoir Sampling、Poisson-disk、Monte Carlo 与置信区间。新增概率采样篇后必须同步算法分类 README、游戏 AI 学习路径、交叉阅读与 manifest，并保留分布假设、随机流、分层/重要性权重和 CI 证据边界。
+- 2026-08-20 16:25:15 +08:00：本轮将 Google Open Knowledge Format v0.2 以 hybrid 模式接入现有知识库：新建/修改 Markdown 强制 type，legacy 只审计并按触碰迁移；maturity 与 verified 正交；Obsidian 直接消费仓库根且 workspace 状态不共享。新增 check_okf 的 Changed/Audit/Strict 三模式，并在 PowerShell 5.1/pwsh 下验证。
+- 2026-08-20 16:47:14 +08:00：OKF 的 verified 必须保存 {by, at} 验证事件，human-reviewed 等只是按 actor 推导的 trust tier；status 只使用 draft/stable/deprecated。hybrid 的 Strict 仅是本库 profile 范围迁移门禁，轻量 YAML lint 与排除项不能冒充完整官方 OKF parser。
+- 2026-08-20 17:24:10 +08:00：大规模 OKF frontmatter 迁移应按不重叠目录分批，每篇只前置固定最小元数据；逐批同时校验 git diff +7/-0、去前缀正文 SHA-256、Changed/Strict 与 manifest 精确集合，才能把格式迁移和正文改写明确分离。

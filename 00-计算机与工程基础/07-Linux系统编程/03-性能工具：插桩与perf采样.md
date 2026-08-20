@@ -1,3 +1,10 @@
+---
+type: Tutorial
+title: "03-性能工具：插桩与perf采样"
+status: stable
+verified: []
+maturity: L2
+---
 # 03-性能工具：插桩与perf采样
 > 验证与基准：按文中命令执行最小实验，记录结果与边界。
 

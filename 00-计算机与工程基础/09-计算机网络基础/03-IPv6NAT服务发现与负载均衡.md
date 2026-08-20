@@ -1,3 +1,10 @@
+---
+type: Architecture
+title: "IPv6、NAT、服务发现与负载均衡"
+status: stable
+verified: []
+maturity: L2
+---
 # IPv6、NAT、服务发现与负载均衡
 > 验证与基准：按文中命令执行最小实验，记录结果与边界。
 

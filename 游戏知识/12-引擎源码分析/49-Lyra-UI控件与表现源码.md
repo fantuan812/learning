@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "UE5.8 Lyra 源码解析 49：UI 控件与表现源码"
+status: stable
+verified: []
+maturity: L2
+---
 # UE5.8 Lyra 源码解析 49：UI 控件与表现源码
 
 > 本篇聚焦 `LyraGame/UI` 模块（共 79 个文件）——把 CommonUI 的激活栈、UMG/Slate 桥接与 Lyra 的玩法状态衔接起来，回答"Lyra 的准星、命中标记、头顶指示器、加载屏、设置页这些控件到底由谁、如何驱动"。LYRA 批次 2 另补深挖了底层 **CommonGame 插件** 的 UI 管理族（`UGameUIManagerSubsystem`/`UGameUIPolicy`/`UPrimaryGameLayout`/`UCommonUIExtensions`/`UCommonMessagingSubsystem`），即 `ULyraUIManagerSubsystem` 背后的"每 LocalPlayer 一根 UI 管理管线"。

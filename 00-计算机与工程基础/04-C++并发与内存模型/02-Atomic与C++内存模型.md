@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "02-Atomic与C++内存模型"
+status: stable
+verified: []
+maturity: L4
+---
 # 02-Atomic与C++内存模型
 > 验证与基准：按文中命令执行最小实验，记录结果与边界。
 

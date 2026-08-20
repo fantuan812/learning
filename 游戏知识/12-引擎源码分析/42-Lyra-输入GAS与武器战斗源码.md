@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "UE5.8 Lyra 源码解析 42：输入、GAS 与武器战斗调用链"
+status: stable
+verified: []
+maturity: L2
+---
 # UE5.8 Lyra 源码解析 42：输入、GAS 与武器战斗调用链
 
 > 本篇追踪一次“按下开火键”的完整路径：Enhanced Input → InputTag → AbilitySpec → 本地预测 → TargetData → 服务器权威效果 → Health/Death。

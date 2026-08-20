@@ -1,14 +1,28 @@
+---
+type: Index
+title: "方案 · 仓库完善执行计划"
+description: "仓库级路线图、状态矩阵、OKF 迁移和验收入口。"
+tags:
+  - roadmap
+  - knowledge-base
+  - okf
+status: stable
+verified: []
+maturity: L2
+updated: 2026-08-20
+---
+
 # 方案 · 仓库完善执行计划
 
 > 定位：集中保存仓库级建设方案、阶段目标、执行顺序与验收标准。
 > 本目录不替代各知识库 README；各知识库 README 描述“当前有什么”，本目录描述“下一步怎么建设”。
-> 最后更新：2026-08-18（补齐游戏服务端 Runtime 第二阶段主链）。
+> 最后更新：2026-08-20（融入 OKF v0.2 hybrid 规则与 Obsidian 协作门禁）。
 
 ## 方案列表
 
 | 方案 | 定位 | 状态 |
 | --- | --- | --- |
-| [知识体系完善执行方案](知识体系完善执行方案.md) | 将当前知识库从“高覆盖文档库”升级为“知识 + Demo + Test + Benchmark + 项目复盘”的工程能力库 | 执行基线 |
+| [知识体系完善执行方案](知识体系完善执行方案.md) | 将当前知识库升级为“知识树 + 技能树 + 项目树 + Evidence + OKF 互操作层”的工程能力库 | 执行基线 |
 
 ## 使用方式
 
@@ -17,6 +31,7 @@
 3. 新增正文仍遵循 `references/写作规范.md`；L3/L4/L5 必须有真实 Evidence。
 4. 新增目录或正文时同步对应 README、`references/仓库结构.md` 与根 `README.md`。
 5. 每次交付前运行 `scripts/check_repo.ps1`，并把新增的成熟度、Evidence 与计划状态纳入门禁。
+6. 新建或修改 Markdown 同时运行 `scripts/check_okf.ps1 -Mode Changed`；legacy 全量迁移只有在独立审批后才使用 Strict。
 
 ## 维护原则
 

@@ -1,6 +1,6 @@
 ---
 name: knowledge-base-organizer
-description: Organize, classify, deduplicate, refactor, audit, or restructure a Markdown or technical knowledge base. Use for Inbox processing, knowledge taxonomy work, document merging/splitting, MOC construction, AI conversation extraction, and knowledge-base maintenance.
+description: Organize, classify, deduplicate, refactor, audit, or restructure a Markdown or technical knowledge base. Use for Inbox processing, knowledge taxonomy work, document merging/splitting, MOC construction, OKF metadata migration, Obsidian-compatible navigation, AI conversation extraction, and knowledge-base maintenance.
 ---
 
 > 知识成熟度：L2（工作流 Skill，随使用修订）。
@@ -21,6 +21,27 @@ Classify the task as:
 Prefer the smallest sufficient mode.
 
 Never run full_rebuild for ordinary new documents.
+
+---
+
+# OKF compatibility
+
+Read `.kb/okf-profile.yaml` and `references/OKF-兼容规范.md` before creating or
+modifying Markdown. The repository profile migration is complete; use hybrid
+staging only for future imported legacy content:
+
+- add a non-empty OKF `type` to every new or modified non-reserved Markdown file;
+- keep imported legacy documents readable and in place while their batch is
+  reviewed, then bring the batch into the profile before closeout;
+- preserve unknown frontmatter fields;
+- keep `maturity` and `verified` independent;
+- prefer standard relative Markdown links so Obsidian is a consumer, not a
+  second source of truth;
+- never overwrite `.obsidian` workspace state.
+
+Run `scripts/check_okf.ps1 -Mode Changed` before the existing repository gate.
+Use `Audit` to require a zero migration backlog and `Strict` as the final
+profile-scope gate. This lightweight lint is not an official general OKF parser.
 
 ---
 

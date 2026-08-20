@@ -1,3 +1,10 @@
+---
+type: Evidence
+title: "Evidence · atomic-memory-order：Atomic 与 C++ 内存模型实验"
+status: stable
+verified: []
+maturity: L0
+---
 # Evidence · atomic-memory-order：Atomic 与 C++ 内存模型实验
 
 > 状态：已执行（2026-08-12，Windows x64 / MSVC）

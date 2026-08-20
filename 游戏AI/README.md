@@ -1,3 +1,10 @@
+---
+type: Index
+title: "游戏AI · 知识库"
+status: stable
+verified: []
+maturity: L0
+---
 # 游戏AI · 知识库
 
 > 游戏人工智能的系统化知识整理：从感知-思考-行动架构、状态机/行为树/GOAP 等决策技术，到移动与群组行为、战斗 AI、学习型 AI 与服务端 AI 实践。

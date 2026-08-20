@@ -1,3 +1,17 @@
+---
+type: Evidence
+title: "Knowledge Base Audit Log"
+description: "知识库历次结构、内容、证据和质量门禁审计记录。"
+tags:
+  - audit
+  - knowledge-base
+  - okf
+status: stable
+verified: []
+maturity: L2
+updated: 2026-08-20
+---
+
 # 知识库第四轮审计报告（2026-08-14，R4）
 
 > 知识成熟度：L2（审计记录；基于本机文件实读、机械扫描与 4 个只读子代理并行语义验证）。
@@ -273,3 +287,32 @@
 - 索引：manifest 按磁盘 386 个 Markdown 机械重建，路径集合完全一致，逐条 `bytes`、`lines`、`maturity` 不一致项为 0。
 - 门禁：全库正文 315、README 71，基础域正文 40；`check_repo.ps1` PASS、FAIL 0，12 条 WARN 均为既有控制面、日志、笔记、路线图或维护 Skill 短文；UTF-8 解码、BOM、替换字符和基础域代码围栏检查均无异常，`git diff --check` 退出码为 0。
 - 发布边界：本轮未获 commit/push 授权；全部变更保留在工作树，不将静态示例或计划误报为已运行结果。
+
+## OKF v0.2 与 Obsidian hybrid 接入审计（2026-08-20）
+
+> 范围：在不移动 386 篇任务前 legacy Markdown、不覆盖用户 `.obsidian` 的前提下，将 GoogleCloudPlatform/knowledge-catalog 的 Open Knowledge Format v0.2 作为互操作层接入现有 taxonomy/canonical/manifest/L0~L5 体系。
+
+- 架构：仓库根为 bundle/vault；`README.md` 是 GitHub 人类入口，根 `index.md` 是 OKF/Obsidian 渐进入口，`00_Index/MOC.md` 是主题导航；根 `log.md` 与历史 `learning/log.md` 职责分离。
+- 语义：OKF 只强制概念文档具有非空 `type`；`status` 限于 `draft|stable|deprecated`；`verified` 保存带 `by/at` 的事件，trust tier 由 actor 推导；本库 type 词汇、maturity、canonical 与 scope 都明确为本地约定。
+- 迁移：采用 hybrid。Changed 约束新建/触碰文档；Audit 报告 legacy 欠账；Strict 仅作为 profile 范围迁移门禁。检查器是受支持 YAML 子集的 lint，不冒充通用 YAML/OKF parser。
+- Obsidian：新增 `00_Index/Knowledge.base`、知识条目模板与协作指南；标准 Markdown/YAML 是唯一共享事实，`.obsidian/workspace*.json` 作为本机动态状态忽略。
+- 校验：Windows PowerShell 5.1 与 `pwsh` 的 Changed 均通过；正反例夹具同时验证合法 block 事件/生成映射可接受，7 种非法标量、缺字段、非法日期和保留文件结构会失败。最终精确计数见当前计划和本节后续门禁输出。
+- 最终门禁：Changed 21/21 PASS；Audit 为 Conformant 21 / Legacy 369 / Excluded 2 / FAIL 0；Strict 对 369 个 legacy 返回预期 FAIL；`check_repo` 对 392 个 Markdown 返回 PASS / FAIL 0 / WARN 13；manifest 392/392 且 bytes/lines/maturity 差异 0；`git diff --check` 无 whitespace error。
+- 用户状态：任务前稳定配置 `app.json`、`appearance.json`、`core-plugins.json` 的 SHA-256 保持不变；`workspace.json` 在执行期间被外部 Obsidian 从 4849 bytes 更新为 5135 bytes，已原样保留且进入忽略规则。
+- 发布边界：未获 commit/push 授权；本轮不提交、不推送，也不把 hybrid 接入描述成全库官方严格合规。
+
+## OKF profile 范围全量迁移收口（2026-08-20）
+
+> 范围：执行用户批准的 `OKF-MIGRATION-01`，将上一轮审计确认的 369 篇 legacy Markdown 迁入本库最小 frontmatter 合同；不移动路径、taxonomy、canonical 或链接，不覆盖用户 `.obsidian`。
+
+- 批次：支持/证据 39、计算机基础 57、游戏算法+游戏 AI 47、游戏服务端 54、游戏知识 172，共 369 篇；批次互不重叠，每批完成后运行 Changed、正文完整性和仓库门禁再继续。
+- 合同：每篇只前置 7 行 `type/title/status/verified/maturity` 元数据；`status: stable` 不表示已经验证，`verified: []` 不产生验证事件；未补造 `sources`、`generated`、`description`、`tags` 或更新时间。
+- 类型：Architecture 23、BestPractice 32、Comparison 5、Concept 116、Evidence 7、Experience 4、Implementation 5、Index 60、Mechanism 106、Plan 1、Project 3、Reference 4、Research 1、Tutorial 2；含糊正文保守使用 `Concept`，未据关键词做结构移动。
+- 成熟度：迁移元数据为 L0 73、L1 8、L2 274、L3 7、L4 6、L5 1；已有正文成熟度原样保留，无显式成熟度的支持/索引文档使用 L0，`maturity` 与 `verified` 保持正交。
+- 正文完整性：所有 369 篇的 Git numstat 均为 `+7/-0`；后四批 330 篇去掉 7 行前缀后的 SHA-256 与仓库外迁移基线逐篇一致，先执行的 39 篇由严格前缀结构、`+7/-0` 与门禁共同确认无正文删改。
+- OKF 门禁：Windows PowerShell 5.1 与 `pwsh` 的 Changed/Strict 均为 Scanned 390、Conformant 390、Legacy 0、Excluded 2、WARN 0、FAIL 0、PASS；Audit 同样 PASS。2 篇排除项是 `.agents/skills/**/SKILL.md` 与 `learning/log.md` 的操作性格式合同。
+- 仓库门禁：`check_repo.ps1` 对 392 个 Markdown 返回 PASS / FAIL 0 / WARN 13；WARN 仍是短索引、计划、Skill、工作日志、路线图与笔记的既有用途豁免。标准 `git diff --check` 退出码为 0。
+- Manifest：按磁盘 392 篇机械重建；路径集合、bytes、lines 与可检测 maturity 均为 0 差异。profile/manifest 标记的是本库 profile-scope Strict，不声称通过官方通用 YAML 或 OKF parser。
+- Obsidian：Markdown Properties 与 `00_Index/Knowledge.base` 现在可覆盖全部受检条目；稳定 `.obsidian` 配置未由迁移任务修改，动态 workspace 状态继续忽略并原样保留。
+- 独立验收：复跑 Strict、manifest 路径、`git diff --check` 与历史快照语义检查；P0–P3 均无遗留问题。
+- 发布边界：本轮没有 commit/push 授权；改动只保留在工作树，未提交、未推送。

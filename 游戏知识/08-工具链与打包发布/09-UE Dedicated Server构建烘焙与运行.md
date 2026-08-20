@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "09 UE Dedicated Server 构建、烘焙与运行"
+status: stable
+verified: []
+maturity: L2
+---
 # 09 UE Dedicated Server 构建、烘焙与运行
 > 知识成熟度：L2（本轮审计修订时补标）。
 

@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "UE 引擎源码分析 04：Gameplay 框架与登录流程源码"
+status: stable
+verified: []
+maturity: L2
+---
 # UE 引擎源码分析 04：Gameplay 框架与登录流程源码
 > 知识成熟度：L2（本轮审计修订时补标）
 > 源码基线：UE 5.8.0（本机 `Engine/Build/Build.version`：Major 5 / Minor 8 / Patch 0 / CL 55116800，分支 `++UE5+Release-5.8`）。

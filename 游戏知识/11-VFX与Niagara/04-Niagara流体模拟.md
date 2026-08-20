@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "04 Niagara 流体模拟（Niagara Fluids）"
+status: stable
+verified: []
+maturity: L2
+---
 # 04 Niagara 流体模拟（Niagara Fluids）
 > 知识成熟度：L2（本轮审计修订时补标）。
 

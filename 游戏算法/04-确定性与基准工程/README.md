@@ -1,3 +1,10 @@
+---
+type: Index
+title: "04-确定性与基准工程"
+status: stable
+verified: []
+maturity: L0
+---
 # 04-确定性与基准工程
 
 > 面向动态世界、联机服务端和可回放系统的寻路确定性、数值鲁棒性与基准工程。

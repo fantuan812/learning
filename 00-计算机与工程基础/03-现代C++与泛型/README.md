@@ -1,3 +1,10 @@
+---
+type: Index
+title: "03-现代C++与泛型"
+status: stable
+verified: []
+maturity: L0
+---
 # 03-现代C++与泛型
 
 > 定位：覆盖 C++11—C++23 的泛型、概念、范围、协程和模块化设计。

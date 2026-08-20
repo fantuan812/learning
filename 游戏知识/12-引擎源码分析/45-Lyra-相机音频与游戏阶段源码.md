@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "UE5.8 Lyra 源码解析 45：相机、音频与游戏阶段"
+status: stable
+verified: []
+maturity: L2
+---
 # UE5.8 Lyra 源码解析 45：相机、音频与游戏阶段
 
 > 本篇沿“相机组件 → 相机模式栈 → 第三人称穿透预防”、“音频设置资产 → 混合效果子系统 → 设置注册表”、以及“GameState ASC → 阶段能力 → 阶段子系统”三条链阅读 Lyra 5.8 源码。

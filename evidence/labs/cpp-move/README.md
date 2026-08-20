@@ -1,3 +1,10 @@
+---
+type: Evidence
+title: "Evidence · cpp-move：Copy/Move 计数实验"
+status: stable
+verified: []
+maturity: L0
+---
 # Evidence · cpp-move：Copy/Move 计数实验
 
 > 状态：已执行（2026-08-12，Windows x64 / MSVC）

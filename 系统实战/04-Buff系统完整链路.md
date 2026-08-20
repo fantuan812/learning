@@ -1,3 +1,10 @@
+---
+type: Project
+title: "04-Buff系统完整链路"
+status: stable
+verified: []
+maturity: L3
+---
 # 04-Buff系统完整链路
 
 > 知识基线：Buff 从应用、叠加、冲突到驱散、过期的完整生命周期；冲突矩阵是正确性核心；服务端材料：[08-技能与战斗框架 §3.5 Buff 系统](../游戏服务端/03-业务系统设计/08-技能与战斗框架.md)；客户端材料：GAS（[游戏知识/03-游戏玩法编程/01-GameplayAbilitySystem能力系统](../游戏知识/03-游戏玩法编程/01-GameplayAbilitySystem能力系统.md)）。

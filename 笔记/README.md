@@ -1,3 +1,10 @@
+---
+type: Index
+title: "笔记"
+status: stable
+verified: []
+maturity: L0
+---
 # 笔记
 
 > 工作相关的零散知识点整理（保留为个人速查笔记，不替代六大知识域）。

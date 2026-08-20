@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "07 CommonUI 输入路由与焦点管理（CommonUI Input Routing & Focus Management）"
+status: stable
+verified: []
+maturity: L2
+---
 # 07 CommonUI 输入路由与焦点管理（CommonUI Input Routing & Focus Management）
 > 知识成熟度：L2（本轮审计修订时补标）。
 

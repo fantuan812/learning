@@ -1,3 +1,10 @@
+---
+type: Index
+title: "工程调试与性能分析"
+status: stable
+verified: []
+maturity: L0
+---
 # 工程调试与性能分析
 
 本目录建立从复现、定位到验证的调试闭环，覆盖调试器、崩溃转储、Sanitizer、日志、指标、采样与基准测试。

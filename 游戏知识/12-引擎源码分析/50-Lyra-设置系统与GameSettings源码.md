@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "UE5.8 Lyra 源码解析 50：设置系统与 GameSettings 源码"
+status: stable
+verified: []
+maturity: L2
+---
 # UE5.8 Lyra 源码解析 50：设置系统与 GameSettings 源码
 
 > 本篇沿「GameSettings 插件抽象 → Lyra 注册表 → 设置载体 → UI 屏」四条链阅读 Lyra 5.8 的设置系统源码，覆盖 `Plugins\GameSettings` 的 GameSetting/Registry/Value/Action/Collection 数据模型，以及 `Source\LyraGame\Settings` 的注册表、载体与 CustomSettings 扩展。

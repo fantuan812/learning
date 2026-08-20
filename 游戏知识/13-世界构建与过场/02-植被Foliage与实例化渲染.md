@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "02 植被 Foliage 与实例化渲染"
+status: stable
+verified: []
+maturity: L2
+---
 # 02 植被 Foliage 与实例化渲染
 > 知识成熟度：L2（本轮审计修订时补标）。
 

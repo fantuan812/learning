@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "Lyra 53：核心生成、移动与状态源码"
+status: stable
+verified: []
+maturity: L2
+---
 # Lyra 53：核心生成、移动与状态源码
 
 > 版本基准：UE 5.8.0；本机 CL 55116800，分支 ++UE5+Release-5.8。

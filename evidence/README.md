@@ -1,3 +1,10 @@
+---
+type: Index
+title: "Evidence · 实验与基准证据库"
+status: stable
+verified: []
+maturity: L0
+---
 # Evidence · 实验与基准证据库
 
 > 定位：为 L3~L5 知识文档提供可验证证据。原则：**保存原始数据，禁止只留结论**；公司代码无法公开时使用脱敏 Demo、伪数据、相对性能数据与可复现实验替代。

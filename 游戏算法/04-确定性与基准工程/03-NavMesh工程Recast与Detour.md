@@ -1,3 +1,10 @@
+---
+type: Architecture
+title: "NavMesh 工程：Recast 与 Detour"
+status: stable
+verified: []
+maturity: L2
+---
 # NavMesh 工程：Recast 与 Detour
 
 > 知识成熟度：L2（2026-08-13 拆分；正文逐字迁移自原《01-动态寻路确定性与基准测试》）。

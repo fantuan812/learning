@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "14 Python 编辑器脚本与资产自动化（UE 5.8）"
+status: stable
+verified: []
+maturity: L2
+---
 # 14 Python 编辑器脚本与资产自动化（UE 5.8）
 > 知识成熟度：L2（本轮审计修订时补标）。
 

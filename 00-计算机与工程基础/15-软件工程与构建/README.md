@@ -1,3 +1,10 @@
+---
+type: Index
+title: "软件工程与构建"
+status: stable
+verified: []
+maturity: L0
+---
 # 软件工程与构建
 
 本分类连接源代码、构建系统、测试和交付，面向可重复、可诊断、可演进的软件工程实践。

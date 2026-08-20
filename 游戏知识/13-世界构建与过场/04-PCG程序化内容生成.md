@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "04 PCG 程序化内容生成"
+status: stable
+verified: []
+maturity: L1
+---
 # 04 PCG 程序化内容生成
 > 知识成熟度：L1（本轮审计修订时补标）。
 

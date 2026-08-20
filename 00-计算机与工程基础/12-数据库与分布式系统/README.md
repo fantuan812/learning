@@ -1,3 +1,10 @@
+---
+type: Index
+title: "数据库与分布式系统"
+status: stable
+verified: []
+maturity: L0
+---
 # 数据库与分布式系统
 
 本目录连接单机存储与多节点服务，建立可解释、可验证的数据库和分布式系统基础。

@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "02 Niagara 高级技巧"
+status: stable
+verified: []
+maturity: L2
+---
 # 02 Niagara 高级技巧
 > 知识成熟度：L2（本轮审计修订时补标）。
 

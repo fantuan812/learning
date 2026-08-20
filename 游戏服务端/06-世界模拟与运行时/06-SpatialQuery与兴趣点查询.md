@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "06-SpatialQuery与兴趣点查询"
+status: stable
+verified: []
+maturity: L2
+---
 # 06-SpatialQuery与兴趣点查询
 
 > 知识基线：Spatial Query 是运行时按空间条件检索实体/组件的能力；AOI/Interest Management 是面向连接的可见性与复制裁剪策略。本文只规划服务端运行时边界，不把查询结果直接等同于网络可见集。

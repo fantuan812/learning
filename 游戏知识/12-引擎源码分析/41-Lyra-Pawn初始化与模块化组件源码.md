@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "UE5.8 Lyra 源码解析 41：Pawn 初始化与模块化组件状态机"
+status: stable
+verified: []
+maturity: L2
+---
 # UE5.8 Lyra 源码解析 41：Pawn 初始化与模块化组件状态机
 
 > Lyra 角色初始化最难的不是某个 API，而是多个复制对象和动态组件可能以不同顺序到达。

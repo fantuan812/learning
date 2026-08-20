@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "01-Concepts、Ranges与泛型设计"
+status: stable
+verified: []
+maturity: L2
+---
 # 01-Concepts、Ranges与泛型设计
 > 验证与基准：按文中命令执行最小实验，记录结果与边界。
 

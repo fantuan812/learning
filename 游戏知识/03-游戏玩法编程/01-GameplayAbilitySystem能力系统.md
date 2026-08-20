@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "01 Gameplay Ability System（GAS）能力系统"
+status: stable
+verified: []
+maturity: L2
+---
 # 01 Gameplay Ability System（GAS）能力系统
 > 知识成熟度：L2（本轮审计修订时补标）。
 

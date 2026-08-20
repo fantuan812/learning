@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "UE5.8 Lyra 源码解析 48：扩展插件源码"
+status: stable
+verified: []
+maturity: L2
+---
 # UE5.8 Lyra 源码解析 48：扩展插件源码
 
 > 本篇沿“扩展插件”一条线阅读 Lyra 5.8 的 `Plugins` 目录：AsyncMixin、PocketWorlds、GameSubtitles、LyraExtTool、RedRoom/GreenRoom、ModularGameplayActors 与 CommonLoadingScreen/CommonStartupLoadingScreen，覆盖异步加载生命周期、独立 UI 世界、字幕显示、编辑器批量工具、测试房间、GameFeature 可扩展基类与启动加载屏。

@@ -1,3 +1,10 @@
+---
+type: Evidence
+title: "Evidence · astar：A* 优化前后对比基准"
+status: stable
+verified: []
+maturity: L0
+---
 # Evidence · astar：A* 优化前后对比基准
 
 > 状态：已执行（2026-08-12，Windows x64 / MSVC）

@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "UE5.8 Lyra 源码解析 43：背包、装备、消息与 UI"
+status: stable
+verified: []
+maturity: L2
+---
 # UE5.8 Lyra 源码解析 43：背包、装备、消息与 UI
 
 > 本篇沿着“拾取物 → Inventory ItemInstance → QuickBar → Equipment → AbilitySet → GameplayMessage → HUD/UIExtension”的链路阅读 Lyra 5.8 源码。

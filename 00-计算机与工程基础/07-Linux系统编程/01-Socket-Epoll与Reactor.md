@@ -1,3 +1,10 @@
+---
+type: Architecture
+title: "01-Socket-Epoll与Reactor"
+status: stable
+verified: []
+maturity: L3
+---
 # 01-Socket-Epoll与Reactor
 > 验证与基准：按文中命令执行最小实验，记录结果与边界。
 

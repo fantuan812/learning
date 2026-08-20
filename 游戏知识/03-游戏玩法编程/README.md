@@ -1,3 +1,10 @@
+---
+type: Index
+title: "03 · 游戏玩法编程（Gameplay Programming）"
+status: stable
+verified: []
+maturity: L0
+---
 # 03 · 游戏玩法编程（Gameplay Programming）
 
 > 面向 Unreal Engine 5 客户端开发者的中文知识库分类。本目录收录与"玩法逻辑"直接相关的核心编程主题：能力系统（GAS）、增强输入（Enhanced Input）、GameplayTag 与数据资产、委托与对象通信、蓝图与 C++ 协作。

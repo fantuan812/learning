@@ -1,3 +1,10 @@
+---
+type: Architecture
+title: "03-Entity生命周期与组件模型"
+status: stable
+verified: []
+maturity: L3
+---
 # 03-Entity生命周期与组件模型
 
 > 知识基线：实时服务器的实体（Entity）ID 设计、Spawn/Despawn 生命周期、组件归属、实体池与悬垂防护；UE 对照以 AActor/UObject 生命周期为参照（详见 [游戏知识/01-引擎基础](../../游戏知识/01-引擎基础/README.md)）。

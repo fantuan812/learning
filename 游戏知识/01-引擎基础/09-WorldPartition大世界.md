@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "09 World Partition 大世界"
+status: stable
+verified: []
+maturity: L2
+---
 # 09 World Partition 大世界
 > 知识成熟度：L2（本轮审计修订时补标）。
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。

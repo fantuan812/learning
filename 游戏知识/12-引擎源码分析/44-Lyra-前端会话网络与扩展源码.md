@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "UE5.8 Lyra 源码解析 44：前端、会话、网络与扩展闭环"
+status: stable
+verified: []
+maturity: L2
+---
 # UE5.8 Lyra 源码解析 44：前端、会话、网络与扩展闭环
 
 > 本篇追踪 Lyra 从启动前端到进入对局的完整路径：Experience 加载完成 → CommonUser 初始化 → Press Start → 查找或创建会话 → Travel URL → 加载屏投票 → GameFeature 装配 → Dedicated Server 与测试。

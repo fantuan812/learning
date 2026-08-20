@@ -1,3 +1,10 @@
+---
+type: Evidence
+title: "Evidence · aoi：AOI / Interest Management 模拟器"
+status: stable
+verified: []
+maturity: L0
+---
 # Evidence · aoi：AOI / Interest Management 模拟器
 
 > 状态：已执行（2026-08-12，Windows x64 / MSVC）

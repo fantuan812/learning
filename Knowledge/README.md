@@ -1,3 +1,10 @@
+---
+type: Index
+title: "Knowledge —— 通用知识（Canonical）"
+status: stable
+verified: []
+maturity: L0
+---
 # Knowledge —— 通用知识（Canonical）
 
 通用知识（universal）的规范位置。

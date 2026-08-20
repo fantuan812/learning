@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "动态寻路：LPA* 与 D* Lite"
+status: stable
+verified: []
+maturity: L2
+---
 # 动态寻路：LPA* 与 D* Lite
 
 > 知识成熟度：L2（2026-08-13 拆分；正文逐字迁移自原《01-动态寻路确定性与基准测试》）。

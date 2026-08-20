@@ -1,3 +1,10 @@
+---
+type: Index
+title: "10-音频系统"
+status: stable
+verified: []
+maturity: L0
+---
 # 10-音频系统
 
 > **分类目录**：`C:\project\git\游戏知识\10-音频系统`

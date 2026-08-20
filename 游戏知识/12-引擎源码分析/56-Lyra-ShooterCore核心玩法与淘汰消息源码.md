@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "Lyra 56：ShooterCore 核心玩法与淘汰消息源码"
+status: stable
+verified: []
+maturity: L2
+---
 # Lyra 56：ShooterCore 核心玩法与淘汰消息源码
 
 > 版本基准：UE 5.8.0；本机 CL 55116800，分支 ++UE5+Release-5.8。

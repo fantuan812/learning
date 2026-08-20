@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "11 RenderTarget 与 SceneCapture 实战"
+status: stable
+verified: []
+maturity: L1
+---
 # 11 RenderTarget 与 SceneCapture 实战
 > 知识成熟度：L1（本轮审计修订时补标）。
 

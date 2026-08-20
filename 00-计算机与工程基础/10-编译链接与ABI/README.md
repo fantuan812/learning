@@ -1,3 +1,10 @@
+---
+type: Index
+title: "编译、链接与 ABI"
+status: stable
+verified: []
+maturity: L0
+---
 # 编译、链接与 ABI
 
 本目录解释源代码如何变成可执行文件，以及模块之间如何稳定调用。正文覆盖编译阶段、链接器、加载器、符号、ODR、动态库和 UE `MODULE_API`。

@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "07 GameplayTasks、StateTree、GAS 与 AI 协同闭环"
+status: stable
+verified: []
+maturity: L2
+---
 # 07 GameplayTasks、StateTree、GAS 与 AI 协同闭环
 > 知识成熟度：L2（本轮审计修订时补标）
 > 一句话定位：用 StateTree 或行为树做决策，用 GameplayTasks 做可取消的异步执行编排，用 GAS 管理能力与战斗承诺，再把感知、EQS、NavMesh 结果接回状态机，形成可观测、可回滚、可由服务端确认的 AI 行为闭环。

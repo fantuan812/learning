@@ -1,3 +1,17 @@
+---
+type: Decision
+title: "Needs Review"
+description: "置信度不足或需要用户授权的知识库结构与迁移候选。"
+tags:
+  - review-queue
+  - knowledge-base
+  - okf
+status: stable
+verified: []
+maturity: L2
+updated: 2026-08-20
+---
+
 # Needs Review
 
 > 知识成熟度：L2（低置信度操作队列，人工确认后执行）。
@@ -5,6 +19,42 @@
 低于 0.75 confidence 的结构性操作登记在此，人工确认后才执行。
 
 > 条目中的 Current/Suggested 保留问题发现时的历史快照；只有 Status 为 Pending 的有效条目才可触发后续操作。已执行/已决策条目不可按旧快照重复执行。
+
+## OKF-MIGRATION-01（legacy 全量 frontmatter 迁移）
+
+Current: 全库采用 hybrid 模式；新建或本次修改文档受 Changed 门禁约束，未触碰 legacy 文档可读但尚未全部包含 OKF `type`。
+
+Suggested: 在独立批次对 legacy 文档进行语义分类、type 复核、来源/验证事件补录与 profile-scope Strict 验收；禁止只按目录机械推断全部 type，也不把轻量 lint 冒充通用 OKF parser。
+
+Confidence: 0.65
+
+Reason: 全量迁移会改写数百篇文件；type、verified、sources 需要语义证据，机械补字段会制造虚假质量信号和大面积 diff。
+
+Suggested action: 分域迁移 + 独立审计（需用户确认批次）
+
+Status: 已执行（2026-08-20：用户明确“继续做迁移”；369 篇 legacy 按 5 批完成，profile 为 Scanned 390 / Conformant 390 / Legacy 0 / Excluded 2，Strict PASS）
+
+Outcome: 每篇仅新增 7 行最小 frontmatter；330 篇正文去前缀 SHA-256 与迁移基线一致，其余 39 篇以 `+7/-0` 和前缀门禁证明正文未改。未补造 `sources`、`generated` 或验证事件。
+
+Historical note: 本条的 Current/Suggested 是执行前快照；当前事实只以本条 Status/Outcome、KD-015 与最新 audit 为准，不得据旧措辞重新触发迁移。
+
+---
+
+## OBSIDIAN-CONFIG-01（共享 `.obsidian` 配置范围）
+
+Current: `.obsidian/app.json`、`appearance.json`、`core-plugins.json`、`workspace.json` 是任务前未跟踪用户内容；本轮只忽略 workspace 状态，不修改这些文件。
+
+Suggested: 若未来需要团队统一核心插件，再由用户确认是否纳入 `core-plugins.json`；app/appearance/hotkeys/community plugins 必须逐项审计，不默认共享。
+
+Confidence: 0.70
+
+Reason: core plugin 清单可能提升一致性，但 `.obsidian` 同时承载个人与设备状态，自动接管会覆盖用户偏好或引入插件依赖。
+
+Suggested action: 用户确认后选择性共享
+
+Status: Pending
+
+---
 
 ## LYRA-COV-01（LyraGame/UI 专项缺口）
 

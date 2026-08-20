@@ -1,7 +1,13 @@
 # Knowledge Base Taxonomy
-# 与现有仓库顶层目录一一对应；R4（2026-08-14）审计后回填 subdomains 并升为 active。
+# 与现有仓库顶层目录一一对应；2026-08-20 接入 OKF profile，但不新增来源工具分类。
 # 状态取值：draft（草案）/ active（已确认）/ archived（已归档）
-version: 2
+version: 3
+
+okf:
+  profile: ".kb/okf-profile.yaml"
+  mapping: "Domain -> Subdomain -> Topic"
+  source_is_not_taxonomy: true
+  obsidian_is_consumer: true
 
 domains:
   00-计算机与工程基础:

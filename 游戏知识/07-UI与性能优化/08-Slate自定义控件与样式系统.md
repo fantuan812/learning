@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "08 Slate 自定义控件与样式系统"
+status: stable
+verified: []
+maturity: L2
+---
 # 08 Slate 自定义控件与样式系统
 > 知识成熟度：L2（本轮审计修订时补标）。
 

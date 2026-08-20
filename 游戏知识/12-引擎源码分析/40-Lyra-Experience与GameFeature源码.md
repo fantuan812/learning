@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "UE5.8 Lyra 源码解析 40：Experience 与 GameFeature 玩法装配"
+status: stable
+verified: []
+maturity: L2
+---
 # UE5.8 Lyra 源码解析 40：Experience 与 GameFeature 玩法装配
 
 > 本篇沿着 `ALyraGameMode → ULyraExperienceManagerComponent → UGameFeaturesSubsystem → UGameFeatureAction` 精读一次玩法装配。

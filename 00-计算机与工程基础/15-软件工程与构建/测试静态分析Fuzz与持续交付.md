@@ -1,3 +1,10 @@
+---
+type: BestPractice
+title: "测试、静态分析、Fuzz 与持续交付"
+status: stable
+verified: []
+maturity: L2
+---
 # 测试、静态分析、Fuzz 与持续交付
 > 验证与基准：按文中命令执行最小实验，记录结果与边界。
 

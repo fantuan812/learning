@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "01 UMG 框架与控件系统"
+status: stable
+verified: []
+maturity: L2
+---
 # 01 UMG 框架与控件系统
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
 > 兼容性边界：适用于 UE5.8 编辑器/运行时，UE4.27 与早期 UE5 仅作迁移背景，具体模块以正文为准。

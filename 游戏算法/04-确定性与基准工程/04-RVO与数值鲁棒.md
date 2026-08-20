@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "RVO/ORCA 与数值鲁棒性"
+status: stable
+verified: []
+maturity: L2
+---
 # RVO/ORCA 与数值鲁棒性
 
 > 知识成熟度：L2（2026-08-13 拆分；正文逐字迁移自原《01-动态寻路确定性与基准测试》）。

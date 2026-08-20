@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "UE 引擎源码分析 21：Mass 与 StateTree 源码分析"
+status: stable
+verified: []
+maturity: L2
+---
 # UE 引擎源码分析 21：Mass 与 StateTree 源码分析
 > 知识成熟度：L2（本轮审计修订时补标）
 > 分工声明：本文为 UE5.8 源码层深读；概念/使用层知识见本目录 README 映射表及各篇关联阅读（不重复使用层教程）。

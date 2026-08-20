@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "io_uring 与异步 I/O"
+status: stable
+verified: []
+maturity: L2
+---
 > 知识基线：以当前标准、协议或工具链版本为准，平台差异需实测。
 > 最后更新：2026-08-20。
 > 官方参考：https://man7.org/。

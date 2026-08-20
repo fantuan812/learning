@@ -1,3 +1,10 @@
+---
+type: Index
+title: "Archive —— 历史原材料"
+status: stable
+verified: []
+maturity: L0
+---
 # Archive —— 历史原材料
 
 历史原材料与低置信度删除候选，不直接永久删除：

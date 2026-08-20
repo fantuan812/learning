@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "02-Copy-Move与值语义"
+status: stable
+verified: []
+maturity: L3
+---
 # 02-Copy-Move与值语义
 
 > 知识基线：C++11 移动语义、C++17 保证省略（guaranteed copy elision）、`std::vector` 扩容语义（`move_if_noexcept`）；编译器基准 MSVC 2022（v14.44.35207）/ x64，`/O2 /std:c++17`；UE 对照以 UE5.8 `TArray` 源码为准。

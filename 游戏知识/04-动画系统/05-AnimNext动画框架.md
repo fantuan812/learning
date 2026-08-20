@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "05 AnimNext 动画框架（新一代动画系统）"
+status: stable
+verified: []
+maturity: L1
+---
 # 05 AnimNext 动画框架（新一代动画系统）
 > 知识成熟度：L1（本轮审计修订时补标）。
 

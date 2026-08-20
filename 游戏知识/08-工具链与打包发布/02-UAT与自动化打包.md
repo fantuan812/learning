@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "02 UAT 与自动化打包"
+status: stable
+verified: []
+maturity: L2
+---
 # 02 UAT 与自动化打包
 > 知识成熟度：L2（本轮审计修订时补标）。
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。

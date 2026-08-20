@@ -1,3 +1,10 @@
+---
+type: Index
+title: "工作日志"
+status: stable
+verified: []
+maturity: L0
+---
 # 工作日志
 
 > 按日期记录的工作日志，命名格式：`YYYY-MM-DD-主题.md`。

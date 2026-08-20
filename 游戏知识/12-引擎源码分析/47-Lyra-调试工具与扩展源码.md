@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "UE5.8 Lyra 源码解析 47：调试工具与扩展源码"
+status: stable
+verified: []
+maturity: L2
+---
 # UE5.8 Lyra 源码解析 47：调试工具与扩展源码
 
 > 本篇沿“运行时调试 → 编辑器验证 → 项目测试层 → 扩展插件”四条线阅读 Lyra 5.8 源码：CheatManager 与开发者设置、LyraEditor 的验证器与 Commandlet、Gauntlet/自动化驱动/HTTP RPC 测试入口，以及 AsyncMixin、PocketWorlds 等插件。

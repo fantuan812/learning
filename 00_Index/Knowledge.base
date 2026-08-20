@@ -1,0 +1,25 @@
+filters:
+  and:
+    - 'file.ext == "md"'
+    - 'type != null'
+properties:
+  type:
+    displayName: Type
+  status:
+    displayName: Status
+  maturity:
+    displayName: Maturity
+  verified:
+    displayName: Verified
+  tags:
+    displayName: Tags
+views:
+  - type: table
+    name: Knowledge
+    order:
+      - file.name
+      - note.type
+      - note.status
+      - note.maturity
+      - note.verified
+      - note.tags

@@ -1,3 +1,10 @@
+---
+type: Index
+title: "00-计算机与工程基础 · 知识库（建设中）"
+status: stable
+verified: []
+maturity: L0
+---
 # 00-计算机与工程基础 · 知识库（建设中）
 
 > 定位：游戏客户端与服务端共同的底层底座。本层回答"为什么"——cache miss 为什么慢、false sharing 是什么、acquire/release 保证什么、移动构造为什么能优化 TArray 扩容、allocator 为什么影响服务器性能、virtual memory 与 page fault 怎么影响游戏卡顿、epoll 的 LT/ET 区别、系统调用为什么贵、NUMA 对 MMO 服务器有什么影响。

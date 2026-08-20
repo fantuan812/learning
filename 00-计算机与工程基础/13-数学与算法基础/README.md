@@ -1,3 +1,10 @@
+---
+type: Index
+title: "数学与算法基础"
+status: stable
+verified: []
+maturity: L0
+---
 # 数学与算法基础
 
 本分类提供计算机与工程实践所需的数学前置知识：离散数学、概率统计、线性代数、数值计算与算法分析。

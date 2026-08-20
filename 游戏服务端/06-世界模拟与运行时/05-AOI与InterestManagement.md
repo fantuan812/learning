@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "05-AOI与InterestManagement"
+status: stable
+verified: []
+maturity: L4
+---
 # 05-AOI与InterestManagement
 
 > 知识基线：AOI（Area of Interest）与 Interest Management 的运行时语义（Enter/Leave/Update、限流、批量）；算法层数据结构见 [游戏算法/01-寻路与图论](../../游戏算法/01-寻路与图论/README.md)（九宫格/十字链表/Quadtree）；UE 对照为 ReplicationGraph（interest management 的 UE 实现）。

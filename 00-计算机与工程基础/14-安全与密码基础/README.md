@@ -1,3 +1,10 @@
+---
+type: Index
+title: "安全与密码基础"
+status: stable
+verified: []
+maturity: L0
+---
 # 安全与密码基础
 
 本分类覆盖密码学、身份认证、授权、威胁建模、内存安全与工程安全实践。

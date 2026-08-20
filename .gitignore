@@ -4,3 +4,7 @@ evidence/**/build/
 *.obj
 *.pdb
 *.ilk
+
+# Obsidian per-device workspace state; shared notes and selected settings stay visible to Git.
+.obsidian/workspace.json
+.obsidian/workspaces.json

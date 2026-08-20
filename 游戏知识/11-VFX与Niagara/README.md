@@ -1,3 +1,10 @@
+---
+type: Index
+title: "11-VFX 与 Niagara 特效（分类导航）"
+status: stable
+verified: []
+maturity: L0
+---
 # 11-VFX 与 Niagara 特效（分类导航）
 
 > 游戏全栈知识库 · UE 客户端 · 视觉特效分类

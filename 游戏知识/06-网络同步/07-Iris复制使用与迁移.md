@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "07 Iris 复制系统：使用、启用与迁移"
+status: stable
+verified: []
+maturity: L1
+---
 # 07 Iris 复制系统：使用、启用与迁移
 > 知识成熟度：L1（本轮审计修订时补标）。
 

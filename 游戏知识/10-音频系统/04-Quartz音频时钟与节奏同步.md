@@ -1,3 +1,10 @@
+---
+type: Concept
+title: "04 Quartz 音频时钟与节奏同步"
+status: stable
+verified: []
+maturity: L1
+---
 # 04 Quartz 音频时钟与节奏同步
 > 知识成熟度：L1（本轮审计修订时补标）。
 

@@ -1,3 +1,10 @@
+---
+type: Architecture
+title: "04-Scene-Map-Zone与实例管理"
+status: stable
+verified: []
+maturity: L3
+---
 # 04-Scene-Map-Zone与实例管理
 
 > 知识基线：Map（静态定义）/Scene（运行实例）/Zone（动态分区）三层模型、玩家归属、副本与分线、动态加载卸载、场景线程/进程分布；与 [03-Entity生命周期与组件模型](03-Entity生命周期与组件模型.md)、[05-AOI与InterestManagement](05-AOI与InterestManagement.md) 配套。

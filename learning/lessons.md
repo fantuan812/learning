@@ -1,10 +1,24 @@
+---
+type: Policy
+title: "稳定维护规则"
+description: "从实际维护与用户决策中提炼、后续任务直接复用的知识库规则。"
+tags:
+  - maintenance
+  - knowledge-base
+  - okf
+status: stable
+verified: []
+maturity: L2
+updated: 2026-08-20
+---
+
 # 稳定维护规则
 
 这些规则来自实际维护中已确认、下次仍应直接应用的经验；一次性事项写入 `log.md`，不要把未验证的猜测固化为规则。
 
 ## 仓库与协作
 
-1. 目标仓库固定为 `C:\project\git`，先检查 `git status --short`，不覆盖用户已有修改。
+1. 目标仓库从当前工作区实际 Git 根核实，不依赖固定绝对路径；先检查 `git status --short`，不覆盖用户已有修改。
 2. 默认不提交、不推送；只有用户明确授权时才执行 `git commit` / `git push`。
 3. 并行修改必须按目录或文件切分，避免多个执行者同时改同一个 README；完成后立即做一次全库体检。
 4. 不修改 `C:\Program Files\Epic Games\UE_5.8`，引擎安装目录只作为只读证据源。
@@ -31,3 +45,6 @@
 16. 派发子代理前先用仓库实际清单验证路径和文件名，尤其源码分类固定为 `游戏知识/12-引擎源码分析`；批次写入范围必须不重叠，子代理 commit 后由主代理验收并 push。
 17. 与单一仓库绑定的 Skill 应直接读取仓库内的记忆和维护脚本；Skill 目录中的重复副本会独立演进并造成事实分叉，不得继续作为当前事实源。
 18. 中文 Windows 上运行 `skill-creator` 的 Python 生成器或校验器时使用 `python -X utf8`；否则默认 GBK 可能导致中文 YAML 写入非 UTF-8，或读取 UTF-8 的 `SKILL.md` 失败。
+19. 仓库 OKF v0.2 profile 范围已完成迁移；新建或修改的非 `index.md` / `log.md` Markdown 必须含非空 `type`，未来导入 legacy 内容按 hybrid 批次审查，交付前运行 Changed、Audit 与 Strict，并明确本库轻量 lint 不等于官方通用 parser。
+20. `maturity` 只表示 L0~L5 证据深度；OKF `verified` 保存带 `by/at` 的验证事件，unverified / machine-confirmed / human-reviewed 是消费者按 actor 推导的 trust tier。两者正交，不得自动互推或把派生层级写回 `verified`。
+21. Obsidian 直接消费仓库根的 Markdown、标准相对链接、Properties、Templates 与 Bases；Git 是共享事实源，`workspace.json` / `workspaces.json` 属设备状态，Git 与 Obsidian Sync 不同时写同一文件。

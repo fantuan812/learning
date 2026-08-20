@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "02 Timer 时间轮与延迟任务"
+status: stable
+verified: []
+maturity: L2
+---
 # 02 Timer 时间轮与延迟任务
 
 > 知识基线：实时游戏服务端通用运行时；时间轮是调度结构，不等同于业务定时器或平台 Cron。

@@ -1,3 +1,10 @@
+---
+type: Mechanism
+title: "03-LockFree与FalseSharing"
+status: stable
+verified: []
+maturity: L4
+---
 # 03-LockFree与FalseSharing
 
 > 知识基线：C++11 内存模型与无锁原语；x86 缓存一致性（MESI 族）与 RFO；编译器基准 MSVC 2022（v14.44.35207）/ x64；UE 对照以本机 UE5.8 源码为准。

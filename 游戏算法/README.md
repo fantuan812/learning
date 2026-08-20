@@ -1,3 +1,10 @@
+---
+type: Index
+title: "游戏算法 · 知识库"
+status: stable
+verified: []
+maturity: L0
+---
 # 游戏算法 · 知识库
 
 > 游戏开发常用算法的系统化整理：寻路与图论、数学与碰撞、概率与程序化生成、AOI 与空间索引、确定性与基准工程等。
