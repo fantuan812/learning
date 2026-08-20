@@ -299,3 +299,21 @@ Map 的只读数据（实体定义、刷怪表）；Scene 实例只持有"已加
 - [05-UE Dedicated Server平台化](<../05-UE Dedicated Server平台化/README.md>)：DS 实例生命周期。
 - [08-跨Zone与跨服迁移](08-跨Zone与跨服迁移.md)：跨进程迁移的协议细节。
 - [游戏服务端/04-平台与可靠性](../../游戏服务端/04-平台与可靠性/README.md)：实例分配的服务治理视角。
+## 数据流：玩家跨 Zone 迁移
+
+```mermaid
+sequenceDiagram
+    participant P as Player
+    participant A as Source Zone
+    participant G as Gateway
+    participant B as Target Zone
+    P->>A: 迁移请求
+    A->>G: 冻结输入+导出迁移包
+    G->>B: 分配实例并校验容量
+    B-->>G: 接收成功(新归属)
+    G-->>A: 提交迁移
+    G-->>P: 新 Zone 连接票据
+    A->>A: 释放旧实体/AOI
+```
+
+迁移包作为提交边界：目标 Zone 确认接收后才切换玩家归属，源 Zone 再释放实体，避免双写与丢失。

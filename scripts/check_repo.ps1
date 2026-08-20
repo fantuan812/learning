@@ -1,9 +1,10 @@
 ﻿[CmdletBinding()]
 param(
-    [string]$Root = 'C:\project\git'
+    [string]$Root = ''
 )
 
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($Root)) { $Root = Split-Path -Parent $PSScriptRoot }
 $rootPath = (Resolve-Path -LiteralPath $Root).Path.TrimEnd('\')
 $failures = [System.Collections.Generic.List[string]]::new()
 $warnings = [System.Collections.Generic.List[string]]::new()
@@ -453,19 +454,43 @@ foreach ($domain in $domainDefinitions) {
 # L3 必须有 Evidence/Demo 入口，L4 必须有 Benchmark/Test 证据，L5 必须有工作日志/复盘/生产证据。
 # 豁免：README、维护目录（references/learning/scripts）、工作日志/笔记/方案（过程记录与规划）。
 $changedFiles = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-try {
-    foreach ($cmd in @(
-        @('diff', '--name-only'),
-        @('diff', '--cached', '--name-only'),
-        @('ls-files', '--others', '--exclude-standard'))) {
-        $names = & git -C $rootPath -c core.quotepath=false @cmd 2>$null
-        foreach ($name in @($names)) {
-            if (-not [string]::IsNullOrWhiteSpace($name)) {
-                $changedFiles.Add([System.IO.Path]::GetFullPath((Join-Path $rootPath $name))) | Out-Null
+$safeDirectoryArg = "safe.directory=$rootPath"
+foreach ($cmd in @(
+    @('diff', '--name-only'),
+    @('diff', '--cached', '--name-only'),
+    @('ls-files', '--others', '--exclude-standard'))) {
+    # 仓库可能由不同 Windows 用户创建；仅对本次调用声明局部 safe.directory，绝不写全局配置。
+    # ErrorActionPreference=Stop 会把原生 git 的普通 stderr（例如 CRLF 转换提示）
+    # 提升为 terminating NativeCommandError；临时重定向 stderr，确保 stdout 与退出码独立。
+    $stderrPath = [System.IO.Path]::GetTempFileName()
+    try {
+        $previousErrorActionPreference = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        $gitOutput = @(& git -C $rootPath -c $safeDirectoryArg -c core.quotepath=false @cmd 2> $stderrPath)
+        $gitExitCode = $LASTEXITCODE
+        $ErrorActionPreference = $previousErrorActionPreference
+        $gitStderr = if (Test-Path -LiteralPath $stderrPath) { Get-Content -LiteralPath $stderrPath -Raw } else { '' }
+    } finally {
+        if ($null -ne $previousErrorActionPreference) { $ErrorActionPreference = $previousErrorActionPreference }
+        Remove-Item -LiteralPath $stderrPath -Force -ErrorAction SilentlyContinue
+    }
+    if ($gitExitCode -ne 0) {
+        $detail = ((@($gitStderr) + @($gitOutput) | ForEach-Object { $_.ToString().Trim() } | Where-Object { $_ }) -join ' ')
+        if ($detail.Length -gt 240) { $detail = $detail.Substring(0, 240) }
+        Add-Warning "Git 变更扫描失败（退出码 $gitExitCode，命令 git $($cmd -join ' ')）: $detail"
+        continue
+    }
+    foreach ($name in $gitOutput) {
+        $nameText = $name.ToString().Trim()
+        if (-not [string]::IsNullOrWhiteSpace($nameText)) {
+            try {
+                $changedFiles.Add([System.IO.Path]::GetFullPath((Join-Path $rootPath $nameText))) | Out-Null
+            } catch {
+                Add-Warning "Git 变更路径无法解析: $nameText"
             }
         }
     }
-} catch { }
+}
 
 $maturityMissing = 0
 $maturityMissingChanged = 0

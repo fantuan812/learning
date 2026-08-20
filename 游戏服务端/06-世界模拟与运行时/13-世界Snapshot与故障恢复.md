@@ -297,3 +297,19 @@ void RunRecovery(RecoveryStage& stage, Checkpoint& cp, EventLog& log) {
 - [游戏服务端/01-架构与网络](../../游戏服务端/01-架构与网络/README.md)：事件日志传输与消息语义。
 - [游戏服务端/04-平台与可靠性/00-平台可靠性总览与迁移说明](../../游戏服务端/04-平台与可靠性/00-平台可靠性总览与迁移说明.md)：幂等语义的服务端实现。
 - 本分类完整目录见 [06-世界模拟与运行时 README](README.md)。
+## 状态图：Snapshot、增量日志与恢复
+
+```mermaid
+stateDiagram-v2
+    [*] --> Running
+    Running --> Checkpointing: 到达检查点
+    Checkpointing --> Running: Snapshot 持久化
+    Running --> Crashed: 进程故障
+    Crashed --> Loading: 读取最近 Snapshot
+    Loading --> Replaying: 校验后加载增量
+    Replaying --> Running: 重放至提交点
+    Replaying --> Quarantine: 发现坏事件
+    Quarantine --> Running: 隔离并人工/补偿处理
+```
+
+恢复先加载完整快照，再按顺序重放未归档增量；事件幂等键保证重放安全，坏事件隔离而不阻塞整个世界。

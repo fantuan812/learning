@@ -281,7 +281,7 @@ func Migrate(ctx context.Context, req Request) Result {
 4. 为源保留回滚窗口，观测 P99 和 mailbox；
 5. 迁移成功且稳定后再释放源容量。
 
-动态分线的详细容量模型属于 `09-动态分线与负载均衡`（规划），本篇只定义迁移协议和安全边界，避免与平台扩缩容重复。
+动态分线的详细容量模型属于 [09-动态分线与负载均衡](09-动态分线与负载均衡.md)，本篇只定义迁移协议和安全边界，避免与平台扩缩容重复。
 
 ## 14. 观测与告警
 
@@ -370,8 +370,8 @@ func Migrate(ctx context.Context, req Request) Result {
 - [03-Entity生命周期与组件模型](03-Entity生命周期与组件模型.md)：Spawn/Despawn 与实体池。
 - [13-世界Snapshot与故障恢复](13-世界Snapshot与故障恢复.md)：崩溃恢复和事件重放。
 - [14-运行时背压与过载保护](14-运行时背压与过载保护.md)：过载触发迁移前的降级阶梯。
-- [游戏服务端/05-UE Dedicated Server平台化/03-DS会话注册与重连实现](../05-UE%20Dedicated%20Server平台化/03-DS会话注册与重连实现.md)：DS 会话、JIP 和重连票据边界。
+- [游戏服务端/05-UE Dedicated Server平台化/03-DS会话注册与重连实现](<../05-UE Dedicated Server平台化/03-DS会话注册与重连实现.md>)：DS 会话、JIP 和重连票据边界。
 
 ## 19. 更新日志
 
-- 2026-08-18：新建跨 Zone/跨服迁移专题，补齐状态机、冻结快照、fence、路由 epoch、重连、Timer/AOI/未决消息、故障注入和容量验收；动态分线容量模型保留在规划项。
+- 2026-08-18：新建跨 Zone/跨服迁移专题，补齐状态机、冻结快照、fence、路由 epoch、重连、Timer/AOI/未决消息、故障注入和容量验收；动态分线容量模型现由 09 篇承接。

@@ -12,7 +12,7 @@
 | [03-业务系统设计](03-业务系统设计/README.md) | 背包与道具、任务与成就、商城与经济、匹配与房间、聊天与社交、战斗结算、活动运营、技能战斗 |
 | [04-平台与可靠性](04-平台与可靠性/README.md) | 身份与权限、限流与熔断、幂等与消息语义、迁移灾备、服务治理、可观测性、灰度与复盘 |
 | [05-UE Dedicated Server平台化](<05-UE Dedicated Server平台化/README.md>) | UE Dedicated Server 实例生命周期、匹配分配契约、健康检查、裸机/VM/容器/Agones/GameLift 适配、安全、观测与发布回滚 |
-| [06-世界模拟与运行时](<06-世界模拟与运行时/README.md>) | MMO/实时服务器世界模拟：Main Loop、Timer、Entity/Scene、AOI、Authority、跨 Zone 迁移、时间预算与故障恢复（首批 11 篇已落地） |
+| [06-世界模拟与运行时](<06-世界模拟与运行时/README.md>) | MMO/实时服务器世界模拟：Main Loop、Timer、SpatialQuery、Entity/Scene、AOI、跨 Zone 迁移、动态分线、战斗降级与故障恢复（14 篇已落地） |
 
 ## 学习路径
 
@@ -22,7 +22,7 @@
 4. 再落地业务状态机：`03-业务系统设计`（背包 → 匹配 → 战斗 → 活动/技能），把幂等、结算和审计放入玩法。
 5. 再学习平台可靠性：`04-平台与可靠性/00-平台可靠性总览与迁移说明`（身份 → 流量 → 状态 → 灾备 → 观测 → 灰度）。
 6. 接着学习 Dedicated Server 平台化：[05-UE Dedicated Server平台化](<05-UE Dedicated Server平台化/README.md>)（进程 → 实例 → 分配 → 就绪 → 摘流量 → 回收）。
-7. 最后深入世界模拟运行时：`06-世界模拟与运行时`（Main Loop → Timer → Entity/Authority → Scene/AOI → 跨 Zone 迁移 → Snapshot/背压），并用 [游戏测试与质量](../游戏测试与质量/README.md) 和 [系统实战](../系统实战/README.md) 完成验证闭环。
+7. 最后深入世界模拟运行时：[06-世界模拟与运行时](06-世界模拟与运行时/README.md)（Main Loop → Timer → Entity/Authority → Scene/AOI → SpatialQuery → 跨 Zone 迁移 → 动态分线 → 大规模战斗降级 → Snapshot/背压），并用 [游戏测试与质量](../游戏测试与质量/README.md) 和 [系统实战](../系统实战/README.md) 完成验证闭环。
 
 ## 交叉引用
 

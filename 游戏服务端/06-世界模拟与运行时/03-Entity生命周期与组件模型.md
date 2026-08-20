@@ -300,3 +300,18 @@ int main() {
 - [游戏知识/01-引擎基础](../../游戏知识/01-引擎基础/README.md)：UObject/AActor 生命周期。
 - [00-计算机与工程基础/04-C++并发与内存模型](../../00-计算机与工程基础/04-C++并发与内存模型/README.md)：实体数组的缓存行与原子语义。
 - [13-世界Snapshot与故障恢复](13-世界Snapshot与故障恢复.md)（已落地）：实体状态的快照与恢复。
+## 状态图：Entity 生命周期与代际句柄
+
+```mermaid
+stateDiagram-v2
+    [*] --> Free
+    Free --> Alive: Spawn(slot,generation)
+    Alive --> Alive: 读写组件
+    Alive --> PendingDespawn: Despawn 请求
+    PendingDespawn --> Free: 清理组件/回收槽位
+    Free --> Alive: generation++ 后复用
+    Alive --> Invalid: 句柄代际不匹配
+    PendingDespawn --> Invalid: 外部访问被拒绝
+```
+
+句柄同时携带槽位与 generation；回收槽位必须递增代际，任何旧句柄在组件访问前校验失败，从而阻断悬垂引用。

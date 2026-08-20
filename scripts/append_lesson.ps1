@@ -8,7 +8,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$scriptRoot = $PSScriptRoot
 $repoRoot = Split-Path -Parent $scriptRoot
 if ([string]::IsNullOrWhiteSpace($File)) {
     $File = Join-Path $repoRoot 'learning\log.md'
