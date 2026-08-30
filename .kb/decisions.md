@@ -444,6 +444,38 @@ Option 2：主线程串行完成 P0 四组、P1 LINK-01~15、CLEAN-01；需要�
 
 Accepted
 
+## KD-017
+
+### Subject
+
+补齐仓库自动化门禁：GitHub Actions 持续校验与跨平台校验入口（2026-08-30）。
+
+### Options
+
+1. 只在本地手工跑门禁，不引入 CI。
+2. 新增 GitHub Actions 工作流（OKF Strict + check_repo + 断链 + git diff --check），并补 Linux/WSL 下无需 PowerShell 的等价校验脚本与一键入口。
+3. 重写全部门禁脚本到单一语言。
+
+### Decision
+
+Option 2：新增 `.github/workflows/validate.yml`（push/PR 触发；windows-latest 跑 check_okf Strict 与 check_repo，ubuntu-latest 跑 check_links.py 与 git diff --check）；新增 `scripts/check_links.py`（与 check_repo 链接/编码语义等价的跨平台 Python 实现）、`scripts/validate.sh`（一键校验入口）与 `scripts/README.md`（脚本说明）。CI 无本机 UE 安装时源码证据路径校验降级为 WARN，与本地行为一致。
+
+### Reason
+
+仓库门禁全部通过但只在手动触发时运行；无 CI 使门禁回归不可自动拦截。跨平台脚本让 WSL/Linux 维护者无需 Windows PowerShell 也可完成等价的链接/编码校验；布局与既有 check_repo.ps1 语义保持一致，不重写已验收门禁。
+
+### Confidence
+
+0.9
+
+### Affected files
+
+`.github/workflows/validate.yml`、`scripts/check_links.py`、`scripts/validate.sh`、`scripts/README.md`、`README.md`、`learning/log.md`、`.kb/decisions.md`。
+
+### Status
+
+Accepted（2026-08-30 已执行于本地优化副本）
+
 ## KD-002
 
 ### Subject
