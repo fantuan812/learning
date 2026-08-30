@@ -100,6 +100,15 @@ updated: 2026-08-20
 - [系统实战/](系统实战/README.md) —— 从客户端输入到服务器、数据库、测试与性能的完整链路（技能 / Buff / 假人AI 三条链路已落地）
   - 首批优先：技能系统、假人 AI + A*、Dedicated Server 上线
 
+## 门禁与自动化
+
+仓库自带两套校验（OKF 互操作门禁与仓库门禁），push / PR 时由 [validate workflow](.github/workflows/validate.yml) 自动执行，也可本地手动运行：
+
+- Windows PowerShell 5.1 / pwsh：`& .\scripts\check_okf.ps1 -Root (Get-Location) -Mode Strict`、`& .\scripts\check_repo.ps1 -Root (Get-Location)`；
+- WSL / Linux / Git Bash（无 PowerShell 时）：`bash scripts/validate.sh` —— 等价链接/编码校验 + `git diff --check`，检测到 pwsh 时自动补跑 OKF/仓库门禁；
+- 脚本清单与说明见 [scripts/](scripts/README.md)；
+- 门禁覆盖：UTF-8/BOM、代码围栏、断链、README 清单完整性、成熟度 L0–L5、领域质量与 DS 专项；CI 无本机 UE 安装时源码证据路径校验降级为 WARN。
+
 ## 目录结构
 
 - [方案/](方案/README.md) —— 仓库级建设方案、阶段目标与执行状态（以 [知识体系完善执行方案](方案/知识体系完善执行方案.md) 为基线）
