@@ -516,12 +516,16 @@ Mass 是 CPU 上的逻辑框架，实体可以有任意业务数据（血量、�
 **Q10：编辑器里怎么调试 Mass？**
 启用 MassGameplayDebug 相关模块与 GameplayDebugger 的 Mass 类别，可查看实体所属 Archetype、Fragment 数据、LOD 等级、Processor 执行顺序；编辑器内使用 MassGameplayEditor 的工具检查 Spawner 配置与模板注册情况；控制台 `stat` 类命令查看处理器耗时分布。
 
-## 关联阅读
+## 关联阅读与前后置专题
 
-- 《01-行为树详解》：Mass 群体中的"精英个体"仍可用行为树，Mass 通过 Representation 升级 Actor 后挂 BT 组件；
-- 《02-感知系统与EQS》：MassEQS 复用 EQS 查询做生成点/兴趣点评估，感知结果可写入 Fragment 驱动群体行为；
-- 《03-NavMesh寻路》：群体寻路可结合 ZoneGraph 路径走廊与 NavMesh 分区思想理解；
-- 《05-StateTree状态树》：Mass 实体的个体决策层，数据驱动、可与 Mass 实例化组合；
+- [01-行为树详解](01-行为树详解.md)：Mass 群体中的精英个体升级为 Actor 后挂载传统 BT 组件；
+- [02-感知系统与EQS](02-感知系统与EQS.md)：MassEQS 复用 EQS 查询做生成点评估，感知结果写入 Fragment 驱动群体行为；
+- [03-NavMesh寻路](03-NavMesh寻路.md)：传统导航网格与 Mass 局部避障移动的区别与分工；
+- [05-StateTree状态树](05-StateTree状态树.md)：Mass 实体的个体轻量决策层，数据绑定无缝组合；
+- [06-ZoneGraph与SmartObjects](06-ZoneGraph与SmartObjects.md)：走廊道路空间拓扑与环境智能交互插槽驱动 Mass 群体；
+- [12-21 Mass与StateTree源码](../12-引擎源码分析/21-Mass与StateTree源码.md)：Mass 连续内存 Chunk 遍历与 Archetype 内部机制源码深度剖析；
+- [00-05 数据结构复杂度与容器选型](../../00-计算机与工程基础/05-数据结构与复杂度/01-数据结构复杂度与容器选型.md)：AoS（结构体数组）与 SoA（数组结构体）在 CPU 缓存局部性中的物理机理对照；
+- [游戏AI/02-移动学习与服务端/01-移动与群组行为](../../游戏AI/02-移动学习与服务端/01-移动与群组行为.md)：Boids 群聚算法三原则与大规模移动理论；
 - UE 官方文档：Mass Entity Framework（Unreal Engine 5 文档）；
 - 源码（本机 UE 5.8）：
   - `Engine/Source/Runtime/MassEntity/Public/`：`MassEntityManager.h`、`MassEntityQuery.h`、`MassProcessor.h`、`MassExecutionContext.h`、`MassCommandBuffer.h`、`MassObserverProcessor.h`、`MassEntitySubsystem.h`；

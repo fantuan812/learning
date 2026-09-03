@@ -408,14 +408,18 @@ flowchart TD
 
 ---
 
-## 7. 关联阅读
+## 7. 关联阅读与前后置专题
 
+- [01-UMG框架与控件系统](01-UMG框架与控件系统.md)：控件层级、布局系统与失效面板基础；
+- [03-性能分析工具与Profiling](03-性能分析工具与Profiling.md)：属性绑定轮询开销排查与 Profiling 判读；
+- [04-渲染与加载性能优化](04-渲染与加载性能优化.md)：UI 渲染合批与虚拟化列表性能调优；
+- [06-UI状态与可观测性闭环](06-UI状态与可观测性闭环.md)：MVVM 与 CommonUI、Unreal Insights 串联的可观测性闭环；
+- [12-27 UMGMVVM源码](../12-引擎源码分析/27-UMGMVVM源码.md)：FMVVMFieldNotification 与绑定执行引擎底层源码剖析；
+- [12-49 Lyra-UI控件与表现源码](../12-引擎源码分析/49-Lyra-UI控件与表现源码.md)：Lyra 商业级项目中 ViewModel 扩展与表现层解耦落地；
+- [03-游戏玩法编程/04-委托事件与对象通信](../03-游戏玩法编程/04-委托事件与对象通信.md)：委托广播机制与弱引用绑定的生命周期安全；
 - [UE 5.8 官方文档：UMG Viewmodel](https://dev.epicgames.com/documentation/en-us/unreal-engine/umg-viewmodel-for-unreal-engine)（FieldNotify、Viewmodel、绑定源）
 - [UE 5.8 官方 API：ModelViewViewModel 模块](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/ModelViewViewModel)（运行时类与源码位置）
 - [UE 5.8 官方 API：UListView](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/UMG/UListView?lang=en-US)（虚拟化列表）
-- 本知识库：`01-UMG框架与控件系统.md`（控件与事件基础）
-- 本知识库：`03-性能分析工具与Profiling.md`（绑定开销分析）
-- 本知识库：`04-渲染与加载性能优化.md`（UI 渲染与内存优化）
 
 ---
 

@@ -589,12 +589,14 @@ Rewind Debugger（UE5.2+）基于 Trace 系统回放整个游戏状态；`FVisua
 
 ---
 
-## 7. 关联阅读
+## 7. 关联阅读与前后置专题
 
-- 本知识库：`07-UI与性能优化/03-性能分析工具与Profiling.md`（Unreal Insights、stat 命令，与运行时调试互补）
-- 本知识库：`05-AI系统/01-行为树详解.md`、`05-AI系统/02-感知系统与EQS.md`（GDT 的 AI 分类背后是这些系统）
-- 本知识库：`06-网络同步/02-RPC与属性同步.md`（CategoryReplicator 的复制链路原理）
-- 本知识库：`12-引擎源码分析/`（GDT 相关源码走读可参考其分析方法）
+- [03-性能分析工具与Profiling](03-性能分析工具与Profiling.md)：Unreal Insights、stat 命令与运行时调试互补；
+- [05-AI系统/01-行为树详解](../05-AI系统/01-行为树详解.md) 与 [05-AI系统/02-感知系统与EQS](../05-AI系统/02-感知系统与EQS.md)：GDT 的 AI 分类背后的底层运行系统；
+- [06-网络同步/02-RPC与属性同步](../06-网络同步/02-RPC与属性同步.md)：CategoryReplicator 跨端数据包复制链路原理；
+- [12-28 UnrealInsights与Trace源码](../12-引擎源码分析/28-UnrealInsights与Trace源码.md)：VisualLogger 接入 Trace 通道与 Rewind Debugger 源码；
+- [12-47 Lyra-调试工具与扩展源码](../12-引擎源码分析/47-Lyra-调试工具与扩展源码.md)：Lyra 商业级调试作弊工具链与编辑器验证扩展；
+- [00-11 调试与性能分析方法论](../../00-计算机与工程基础/11-工程调试与性能分析/01-调试与性能分析方法论.md)：从日志记录、断点排查到运行时可观测性的工程方法论闭环；
 - [UE 官方文档：Gameplay Debugger](https://dev.epicgames.com/documentation/zh-cn/unreal-engine/gameplay-debugger-in-unreal-engine)
 - [UE 官方文档：Visual Logger](https://dev.epicgames.com/documentation/zh-cn/unreal-engine/visual-logger-in-unreal-engine)
 - [UE 官方文档：Rewind Debugger](https://dev.epicgames.com/documentation/en-us/unreal-engine/rewind-debugger-in-unreal-engine)

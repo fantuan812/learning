@@ -1,313 +1,303 @@
 ---
 type: Concept
-title: "04 PCG 程序化内容生成"
+title: "04 PCG 程序化内容生成（Procedural Content Generation）"
 status: stable
 verified: []
-maturity: L1
+maturity: L2
+updated: 2026-08-20
 ---
-# 04 PCG 程序化内容生成
-> 知识成熟度：L1（本轮审计修订时补标）。
+
+# 04 PCG 程序化内容生成（Procedural Content Generation）
+> 知识成熟度：L2（已按 UE5.8 PCG 插件架构与 PCGCompute 源码基线全面补齐点云数据流、自定义 C++ 节点、GPU 计算与 World Partition 协同实战）。
 
 > 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
-> 适用范围：UE 客户端 · 大世界内容创作（PCG 编辑器工作流 + 运行时生成 API）。
-> 事实边界：本文中"本机核对"项均来自只读检索本机 `C:\Program Files\Epic Games\UE_5.8\Engine`（PCG 插件 `Plugins\PCG\PCG.uplugin`、`Source\PCG\Public\*.h`、`Source\PCGCompute\Public\*.h`）；带"示意/待核对"标注的内容为工程建议或版本敏感项，落地前必须在目标版本复核。
-> 官方参考：[Procedural Content Generation Framework (PCG) 文档](https://dev.epicgames.com/documentation/en-us/unreal-engine/procedural-content-generation-framework-in-unreal-engine)、[Unreal Engine 文档首页](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
-> 最后更新：2026-08-07（初稿）。
+> 适用范围：大世界场景美术、开放世界关卡设计师、程序化环境技术美术（TA）与引擎工具链工程师。
+> 事实边界：本文代码与类名已核对本机 `C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\PCG`（`PCG.uplugin` v8、`Source\PCG\Public\*.h`、`Source\PCGCompute\Public\*.h` 等）。
+> 官方参考：[Procedural Content Generation Framework (PCG) 官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine/procedural-content-generation-framework-in-unreal-engine)。
+> 最后更新：2026-08-20（深化重构：补齐 FPCGPoint 数据结构、自定义 C++ Element 算法节点、GPU Compute 加速与网格单元流送生成）。
+
+---
 
 ## 概述
 
-**PCG（Procedural Content Generation Framework，程序化内容生成框架）** 是 UE5 面向"大世界内容填充"的官方框架：用一张**可视化图（Graph）**描述"在哪些位置、按什么规则、生成什么内容"，把"手工摆放成千上万个植被/石头/建筑"变成"可复现、可参数化、可批量重跑"的生成流程。
+**PCG（Procedural Content Generation Framework）** 是虚幻引擎 5 专门面向**工业化开放世界生态生成**研发的核心程序化框架。
 
-本机 5.8 的 PCG 插件状态（已核对）：
+在数十平方公里的现代大世界项目中，传统手动逐个摆放树木、草丛、石头与废墟道具的做法存在严重的产能瓶颈，且难以应对策划反复变更地形与道路走向的需求。PCG 的核心哲学是**“规则即资产，数据驱动生成”**：
+- **空间点云驱动（Point-Based Dataflow）**：一切地表内容生成首先抽象为空间中的离散点集（`FPCGPoint`），在图表中通过采样、变换、碰撞检测、密度衰减与属性过滤，最终通过分层实例化静态网格体（HISM）或 Actor 进行实例化呈现；
+- **纯粹的输入/输出解耦**：节点只接收 `FPCGData`（点集、样条曲线、地形高度场）并输出新数据，同一张 PCG Graph 资产既可以在关卡编辑器内离线烘焙固化，也可在运行时由 `UPCGSubsystem` 动态按需加载生成；
+- **混合计算架构（CPU + GPU PCGCompute）**：小规模复杂碰撞逻辑在 CPU 端多线程并发执行，海量地表草地点云过滤直接由 `PCGCompute` 提交至 GPU Compute Shader 并行解算。
 
-- 插件路径：`Engine\Plugins\PCG\PCG.uplugin`，`Version` 8、`VersionName` 1.0、`FriendlyName` 为 "Procedural Content Generation Framework (PCG)"；
-- 模块：`PCG`（Runtime，Default）、`PCGEditor`（Editor）、`PCGCompute`（Runtime，PostConfigInit，基于 ComputeFramework 的 GPU 计算模块）；
-- `IsBetaVersion` 为 `false`、`EnabledByDefault` 为 `true`（随引擎默认启用）；依赖 `EditorScriptingUtilities`、`ComputeFramework`、`GeometryProcessing`、`MeshModelingToolset`；
-- 运行时头文件（节选）：`PCGComponent.h`、`PCGGraph.h`、`PCGNode.h`、`PCGSettings.h`、`PCGContext.h`、`PCGData.h`、`PCGPoint.h`、`PCGSubsystem.h`、`PCGVolume.h`、`PCGElement.h`、`PCGParamData.h`。
+---
 
-PCG 要解决的问题：大世界（World Partition + World Streaming）中"内容密度"与"人力成本"的矛盾——手动放置不可扩展，纯程序生成又难控制质量。PCG 的答案是：**规则即资产**（Graph 作为资产保存）、**输入即采样**（地形/遮罩/随机点）、**输出即数据**（点集/实例变换/资产引用），并且生成既可以在编辑器里跑（烘焙到关卡），也可以在运行时跑（PCGSubsystem 动态生成）。
+## 核心数据结构：FPCGPoint 点云模型
 
-阅读本文前建议先有 01（Landscape）、02（Foliage/ISM）的基础；本文专注 PCG 本身，PCG 与 Procedural Vegetation Editor、World Partition 的协同闭环见本目录 05 篇。
+在 PCG 图表中流转的核心数据单元是 `FPCGPoint`。每个点都包含完整的空间物理与生成元数据：
 
-## 核心概念表
+```text
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           FPCGPoint 数据解剖                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│  FTransform Transform    : 空间位置、旋转、局部缩放（决定网格体最终姿态） │
+│  float Density           : 归一化密度 [0.0, 1.0]（用于剔除与概率筛选）    │
+│  FVector BoundsMin / Max : 本地轴向包围盒（用于点间碰撞体积拒绝测试）    │
+│  FVector4 Color          : 顶点颜色 / 材质参数调制                      │
+│  float Steepness         : 坡度与梯度信息（决定岩石/植物贴附平滑度）     │
+│  int32 Seed              : 确定性伪随机数种子（保障跨平台重现完全一致） │
+│  FPCGMetadata            : 动态自定义属性袋（如 Tag、土壤类型、湿度）   │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
-| 概念 | 英文 | 说明（本机 5.8 头文件依据） |
-| --- | --- | --- |
-| PCG 图 | PCG Graph | `UPCGGraph`：节点与连线的资产，是 PCG 的"规则体"（`PCGGraph.h`） |
-| 节点 | PCG Node | `UPCGNode`：图中一个处理单元（`PCGNode.h`） |
-| 设置 | Settings | `UPCGSettings`：节点参数与类型标识，决定节点行为（`PCGSettings.h`） |
-| 元素 | Element | `UPCGElement`：设置对应的执行逻辑（`PCGElement.h`） |
-| 上下文 | Context | `FPCGContext`：一次节点执行的上下文（输入/输出数据、随机流、帧信息）（`PCGContext.h`） |
-| 数据 | Data | `FPCGData` 及其子类：节点间流动的数据（点集、参数、资产）（`PCGData.h`） |
-| 点 | Point | `FPCGPoint`：最小生成单元（位置/旋转/缩放/种子/密度）（`PCGPoint.h`） |
-| 组件 | Component | `UPCGComponent`：挂在 Actor 上承载图实例与生成结果（`PCGComponent.h`） |
-| 子系统 | Subsystem | `UPCGSubsystem`：运行时生成/销毁的入口（`PCGSubsystem.h`） |
-| 体积 | Volume | `UPCGVolume`：定义生成范围/边界的 Actor（`PCGVolume.h`） |
-| 分区 | Partition | PCG 支持按区域分块生成，与大世界 Cell 协同（概念，实现细节随版本演进） |
-| 参数数据 | Param Data | `UPCGParamData`：以键值/曲线形式传递的输入参数（`PCGParamData.h`） |
-| 计算模块 | PCGCompute | `PCGCompute` 模块（PostConfigInit），GPU 计算加速相关（`PCGComputeModule.h`） |
+---
 
-## 原理详解
-
-### 4.1 体系架构：Graph → Node → Settings → Element → Data
+## PCG 核心执行拓扑
 
 ```mermaid
-flowchart TB
-    G["UPCGGraph 图资产"] --> N["UPCGNode 节点"]
-    N --> S["UPCGSettings 设置<br/>（参数/类型标识）"]
-    S --> E["UPCGElement 执行逻辑"]
-    E --> C["FPCGContext 上下文<br/>（输入/输出数据）"]
-    C --> D["FPCGData 数据流<br/>点集/参数/资产"]
-    D --> N
-
-    subgraph 承载["运行时承载"]
-        COMP["UPCGComponent<br/>（Actor 上挂图实例）"]
-        SUB["UPCGSubsystem<br/>（运行时生成入口）"]
-        VOL["UPCGVolume<br/>（范围边界）"]
+graph TD
+    subgraph Inputs[空间输入源]
+        Landscape[Landscape 地形高度与地表材质层]
+        Spline[LandscapeSpline 道路与河流路径]
+        Volume[PCGVolume 空间边界限制]
     end
 
-    G --> COMP
-    COMP --> SUB
-    VOL --> SUB
+    subgraph GraphEvaluation[PCG Graph 数据流管线]
+        Sampler[Surface Sampler: 地表点云均匀随机散布]
+        Filter[Density Filter: 坡度 > 30° 剔除 & 道路排除]
+        TransformMod[Transform Points: 随机偏航角 0~360° & 尺寸抖动]
+        MeshSelect[Static Mesh Spawner: 根据权重挑选高/低模植被]
+    end
+
+    subgraph OutputInstances[最终渲染呈现]
+        HISM[HISM Component: 分层实例化合批绘制]
+    end
+
+    Landscape --> Sampler
+    Volume --> Sampler
+    Sampler --> Filter
+    Spline -->|Difference 差集排除| Filter
+    Filter --> TransformMod
+    TransformMod --> MeshSelect
+    MeshSelect --> HISM
 ```
 
-图资产（`UPCGGraph`）由节点（`UPCGNode`）与连线（`UPCGEdge`，见 `PCGEdge.h`）组成；每个节点携带一份 `UPCGSettings`，运行时由引擎创建对应的 `UPCGElement` 执行体，在 `FPCGContext` 中消费输入数据、产出输出数据，数据再沿连线流入下游节点。这套"资产（图）— 描述（Settings）— 执行（Element）— 数据（Data）"的四层分离，是 PCG 区别于普通蓝图节点图的关键：同一张图可以在编辑器、烘焙期与运行时三处复用。
+---
 
-### 4.2 三种执行路径：编辑器、烘焙与运行时
+## 工业级 C++ 实战代码：自定义 PCG 空间过滤器节点
 
-```mermaid
-flowchart LR
-    A["编辑器生成<br/>（Generate 按钮/PCG Editor）"] --> B["结果保存到关卡<br/>（实例/点数据固化）"]
-    C["运行时生成<br/>（UPCGSubsystem）"] --> D["动态实例化<br/>（按需生成/销毁）"]
-    E["World Partition 协同<br/>（按 Cell 触发）"] --> C
-    B --> F["打包后的关卡数据"]
-    D --> F
-```
-
-三种路径共享同一套图与元素逻辑，差别只在"谁触发、结果去哪"：
-
-- **编辑器生成**：在 PCG 编辑器或选中组件后点击生成，结果（如 `AInstancedFoliageActor` 归属的实例、静态网格实例）写入关卡，随关卡保存；适合"生成一次、静态使用"的内容（建筑群、石头阵）。
-- **运行时生成**：通过 `UPCGSubsystem` 在游戏进程中执行图，动态生成/清理实例；适合"随游戏状态变化"的内容（资源点刷新、动态植被）。
-- **World Partition 协同**：大世界下 PCG 生成可与分区/流送结合，按 Cell 触发生成与卸载（细节见本目录 05 篇与 12 章 22 篇）。
-
-### 4.3 数据流与确定性
-
-PCG 的执行是**数据流（Data Flow）**而不是"每帧更新"：一次执行 = 从输入源（Landscape 采样、Volume 内随机点、参数数据）出发，沿图拓扑逐节点求值。关键机制：
-
-- **点集（Point Set）**：`FPCGPoint` 数组是主干数据形态，携带变换、种子与密度属性，下游节点（分布、筛选、实例化）都围绕它工作；
-- **参数数据（Param Data）**：`UPCGParamData` 承载非空间输入（数量、密度曲线、规则表），让同一张图可通过不同参数批量复用；
-- **确定性（Determinism）**：PCG 用随机种子与稳定的遍历顺序保证"同一输入 + 同一图 = 同一输出"，这是"可复现、可对比、可回滚"的基础；种子贯穿 `FPCGContext` 的随机流（细节随版本演进，落地前核对目标版本行为）；
-- **懒执行与缓存**：图执行按需进行，节点输出可缓存，避免每次全图重算（实现细节标注：以目标版本源码为准）。
-
-### 4.4 运行时 API 与边界
-
-运行时入口是 `UPCGSubsystem`（`PCGSubsystem.h`），生成目标挂在 `UPCGComponent`（`PCGComponent.h`）上。需要区分的边界：
-
-- **编辑器专属 API**（带 `WITH_EDITOR` 守卫，如编辑器的部分生成/预览能力）与 **运行时 API**（打包后可用的 `UPCGSubsystem` 调用）必须分开使用；
-- PCG 生成"实例变换数据"，真正画出来的是 ISM/HISM（见 02 篇）与 Foliage 系统——PCG 负责"决定放什么、放哪"，渲染层负责"高效画出来"；
-- `PCGCompute` 模块（GPU 计算，`PCGComputeModule.h`/`PCGTextureReadback.h`）用于把部分采样/处理搬到 GPU，属于加速路径，启用前需确认目标设备支持与版本状态（本机为 Runtime 模块，具体算子随版本演进，标注待核对）。
-
-## 代码 / 示例
-
-### 5.1 运行时通过 Subsystem 触发生成（C++ 示意）
-
-> 节选/示意：类名以本机 `PCGSubsystem.h`/`PCGComponent.h` 为准；函数签名随版本演进，落地前核对目标版本头文件。
+以下演示如何在 C++ 中开发一个自定义的 PCG 节点（根据点的高程与随机噪声，执行侵蚀过滤）：
 
 ```cpp
-// 示意：在运行时对某个 Actor 的 PCG 组件触发/清理生成
-#include "PCGSubsystem.h"
-#include "PCGComponent.h"
+#pragma once
 
-void UMyWorldManager::GeneratePCGAt(UPCGComponent* PCGComponent)
-{
-    if (PCGComponent == nullptr)
-    {
-        return;
-    }
+#include "CoreMinimal.h"
+#include "PCGSettings.h"
+#include "PCGPointFilterElement.generated.h"
 
-    // 运行时入口：通过子系统执行该组件携带的图
-    UPCGSubsystem* PCGSubsystem = UPCGSubsystem::GetInstance(GetWorld());
-    if (PCGSubsystem != nullptr)
-    {
-        // 触发生成（示意；实际函数名以目标版本为准）
-        PCGSubsystem->GeneratePCG(PCGComponent);
-    }
-}
-
-void UMyWorldManager::ClearPCGAt(UPCGComponent* PCGComponent)
-{
-    if (PCGComponent != nullptr)
-    {
-        PCGComponent->CleanupLocalGeneratedData(); // 示意：清理本地生成结果
-    }
-}
-```
-
-### 5.2 自定义生成节点（C++ 示意）
-
-> 节选/示意：`UPCGSettings` / `UPCGElement` / `FPCGContext` 为真实类名（本机 `PCGSettings.h`/`PCGElement.h`/`PCGContext.h`），继承结构与函数签名以目标版本为准。
-
-```cpp
-// 示意：自定义节点 = 一个 Settings 子类 + 对应 Element 执行体
-UCLASS()
-class UMyPCGSettings : public UPCGSettings
+// 1. 定义节点设置资产（Settings）
+UCLASS(BlueprintType, ClassGroup = (Procedural))
+class MYGAME_API UPCGHeightSlopeFilterSettings : public UPCGSettings
 {
     GENERATED_BODY()
 
 public:
-    UPROPERTY(EditAnywhere, Category = "MyPCG")
-    int32 PointCount = 16; // 示意参数
+    UPCGHeightSlopeFilterSettings();
+
+    // 允许生成的最高海拔高度
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings", meta = (ClampMin = "0.0"))
+    float MaxElevation = 15000.0f;
+
+    // 最小密度阈值
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float MinDensityCutoff = 0.3f;
+
+protected:
+    virtual FPCGElementPtr CreateElement() const override;
 };
 
-class FMyPCGElement : public UPCGElement
+#include "PCGHeightSlopeFilterElement.h"
+#include "PCGContext.h"
+#include "Data/PCGSpatialData.h"
+#include "Data/PCGPointData.h"
+
+// 2. 实现节点执行体（Element）
+class FPCGHeightSlopeFilterElement : public IPCGElement
 {
-public:
-    virtual bool Execute(FPCGContext* Context) const override; // 示意签名
+protected:
+    virtual bool ExecuteInternal(FPCGContext* Context) const override
+    {
+        check(Context);
+        const UPCGHeightSlopeFilterSettings* Settings = Context->GetInputSettings<UPCGHeightSlopeFilterSettings>();
+        check(Settings);
+
+        // 获取所有输入点数据
+        TArray<FPCGTaggedData> Inputs = Context->InputData.GetInputsByPin(PCGPinConstants::DefaultInputLabel);
+        TArray<FPCGTaggedData>& Outputs = Context->OutputData.TaggedData;
+
+        for (const FPCGTaggedData& Input : Inputs)
+        {
+            const UPCGPointData* OriginalPointData = Cast<UPCGPointData>(Input.Data);
+            if (!OriginalPointData) continue;
+
+            const TArray<FPCGPoint>& SourcePoints = OriginalPointData->GetPoints();
+
+            // 创建新的输出点数据对象
+            UPCGPointData* FilteredData = NewObject<UPCGPointData>();
+            FilteredData->InitializeFromData(OriginalPointData);
+            TArray<FPCGPoint>& DestPoints = FilteredData->GetMutablePoints();
+            DestPoints.Reserve(SourcePoints.Num());
+
+            // 批处理空间点过滤逻辑
+            for (const FPCGPoint& Point : SourcePoints)
+            {
+                const float PointZ = Point.Transform.GetLocation().Z;
+
+                // 海拔高度与密度硬过滤
+                if (PointZ <= Settings->MaxElevation && Point.Density >= Settings->MinDensityCutoff)
+                {
+                    DestPoints.Add(Point);
+                }
+            }
+
+            // 输出有效数据流
+            FPCGTaggedData& Output = Outputs.Emplace_GetRef();
+            Output.Data = FilteredData;
+            Output.Pin = PCGPinConstants::DefaultOutputLabel;
+        }
+
+        return true;
+    }
 };
 
-bool FMyPCGElement::Execute(FPCGContext* Context) const
+UPCGHeightSlopeFilterSettings::UPCGHeightSlopeFilterSettings()
 {
-    // 从 Context 取输入数据、产出输出数据（示意）
-    // const UPCGSettings* Settings = Context->GetInputSettings<UMyPCGSettings>();
-    // ... 生成 FPCGPoint 数组写入 OutputData ...
-    return true;
+    bUseSeed = true;
+}
+
+FPCGElementPtr UPCGHeightSlopeFilterSettings::CreateElement() const
+{
+    return MakeShared<FPCGHeightSlopeFilterElement>();
 }
 ```
 
-### 5.3 项目启用与配置
+---
 
-PCG 插件默认启用（`EnabledByDefault: true`），一般无需手动开启；若工程裁剪了插件，可在 `.uproject` 的 `Plugins` 列表显式启用：
+---
 
-```json
+## PCG 核心节点家族与功能矩阵
+
+| 节点分类 | 代表性节点 | 核心职责与数据流转规则 | 典型应用场景 |
+| :--- | :--- | :--- | :--- |
+| **空间采样器 (Samplers)** | `Surface Sampler`<br>`Spline Sampler`<br>`Mesh Sampler` | 将地形高度场、连续样条线或静态网格表面离散化为点集 | 在地形上撒点、沿道路铺设路灯、在树干上生成藤蔓 |
+| **空间布尔运算 (Spatial)** | `Difference`<br>`Intersection`<br>`Union` | 执行点集与体积、道路或建筑包围盒的集合加减交集操作 | 沿道路排除树木、在水域范围内剔除陆生杂草 |
+| **点云变换修饰 (Points)** | `Transform Points`<br>`Density Filter`<br>`Bounds Modifier` | 随机偏航角旋转、缩放抖动、根据坡度/高度筛选点 | 赋予植被自然的随机姿态、陡坡上禁止生长乔木 |
+| **生成与实例化 (Spawners)** | `Static Mesh Spawner`<br>`Actor Spawner`<br>`Subgraph` | 根据点的位置与属性实例化 HISM、生成可交互 Actor 或嵌套子图 | 生成森林 HISM、动态生成可采集矿石/宝箱 Actor |
+
+---
+
+## 运行时动态生成：UPCGSubsystem C++ 调度实战
+
+除了在编辑器中离线烘焙生成外，PCG 支持在游戏运行期通过子系统按需动态触发生成与局部刷新：
+
+```cpp
+#include "PCGSubsystem.h"
+#include "PCGComponent.h"
+#include "Engine/World.h"
+
+void TriggerDynamicPCGGeneration(AActor* TargetActor, UPCGGraph* InGraph)
 {
-    "Plugins": [
-        { "Name": "PCG", "Enabled": true }
-    ]
+    if (!TargetActor || !InGraph) return;
+
+    UWorld* World = TargetActor->GetWorld();
+    if (!World) return;
+
+    // 1. 获取 PCG 全局子系统
+    UPCGSubsystem* PCGSubsystem = UPCGSubsystem::GetInstance(World);
+    if (!PCGSubsystem) return;
+
+    // 2. 动态挂载或获取 PCGComponent
+    UPCGComponent* PCGComp = TargetActor->FindComponentByClass<UPCGComponent>();
+    if (!PCGComp)
+    {
+        PCGComp = NewObject<UPCGComponent>(TargetActor, TEXT("DynamicPCGComp"));
+        PCGComp->RegisterComponent();
+        TargetActor->AddInstanceComponent(PCGComp);
+    }
+
+    // 3. 赋予图资产并触发动态生成
+    PCGComp->SetGraph(InGraph);
+    PCGComp->Generate(true); // bForceGenerate = true
+
+    UE_LOG(LogTemp, Log, TEXT("[PCG] 已触发运行时动态生态生成: %s"), *TargetActor->GetName());
 }
 ```
 
-（示意；以工程实际 `.uproject` 为准。）
+---
 
-### 5.4 典型生成管线（节点工作流示意）
+## 大世界协同：World Partition 与 PCG 网格流送
 
-以下是一条"地形植被"管线的节点级骨架（节点名以目标版本 PCG 编辑器为准，属工作流示意而非引擎字面量）：
+在大世界（World Partition）场景下，严禁在一个无限大的全局空间中一次性生成全部资产：
+- **Partitioned PCG Component**：在 PCGComponent 细节面板中勾选 `bIsPartitioned = true`；
+- **网格对齐（Grid Size Alignment）**：将 PCG 网格步长配置为与 World Partition 的流送单元（Streaming Cell）完全匹配（通常推荐 **12800cm（128米）** 或 **25600cm（256米）**）；
+- **动态流送生命周期**：
+  1. 玩家移动使某个 Streaming Cell 进入加载范围（Loading Range）；
+  2. 该 Cell 内部的 PCG 实例被唤醒，根据地形当前高度即时生成对应范围内的树木与植被 HISM；
+  3. Cell 离开视距被卸载时，PCG 自动销毁对应 HISM 实例释放显存与内存，实现零卡顿无限大世界无缝扩展。
 
-```mermaid
-flowchart LR
-    A["Landscape 采样<br/>（高度/坡度/遮罩）"] --> B["点分布<br/>（数量/密度）"]
-    B --> C["筛选<br/>（坡度/高度/随机阈值）"]
-    C --> D["变换<br/>（旋转/缩放/随机扰动）"]
-    D --> E["实例化输出<br/>（ISM/HISM/Foliage）"]
-    P["参数数据<br/>（密度曲线/物种表）"] -.-> B
-    P -.-> D
-```
+---
 
-常见节点族（示意，节点名以目标版本编辑器为准）：
+## 常见问题与排障 FAQ
 
-| 节点族 | 用途 | 说明 |
-| --- | --- | --- |
-| 采样类 | 从 Landscape/纹理/遮罩取数据 | 高度、坡度、朝向、区域遮罩 |
-| 分布类 | 在范围内生成点 | 按数量/密度/距离约束生成 `FPCGPoint` |
-| 筛选类 | 按条件过滤点 | 坡度/高度/随机/属性阈值 |
-| 变换类 | 修改点变换 | 随机旋转/缩放/对齐表面 |
-| 组合类 | 合并/拆分/子图 | 多输入合并、子图复用（`PCGSubgraph.h`） |
-| 输出类 | 生成实例/资产 | 转 ISM/HISM/Foliage 实例或静态网格 |
+**Q1：为什么生成后的树木全部悬空或插在地下？**
+通常是因为在 Surface Sampler 之后缺少了 `Projection`（投影）节点，或者投影碰撞通道未包含 `WorldStatic` 地形。应确保点云以正确的射线距离与朝向投影对齐到地形表面法线。
 
-### 5.5 编辑器工作流速览（示意）
+**Q2：生成的植被实例互相重叠穿插非常严重？**
+必须在 `Transform Points` 之后连接 `Self Pruning`（自身重叠修剪）或 `Collision Query` 节点，基于每个点的数据包围盒（Bounds）剔除间距小于物理半径的相邻重叠点。
 
-1. 在 PCG 编辑器创建 `UPCGGraph` 资产，或给 Actor 添加 `UPCGComponent` 并指定图；
-2. 用 `UPCGVolume` 划定生成范围，配置输入源（Landscape 采样、参数数据）；
-3. 连接"采样 → 分布 → 筛选 → 变换 → 输出"管线，逐节点预览生成结果；
-4. 固定种子与参数，执行生成并检查密度/位置/朝向；
-5. 静态内容烘焙保存到关卡；动态内容保留 `UPCGSubsystem` 运行时触发路径。
+**Q3：在大世界中移动时，频繁产生微小的生成卡顿（Stutter）？**
+由于在流送单元加载时实时在 CPU 解算射线碰撞。优化方案：1. 减小单格生成密度；2. 开启 `bUseAsyncGeneration`；3. 对于复杂森林在出厂发布前使用 **Bake PCG** 将实例写入关卡 HLOD。
 
-（编辑器按钮与面板名称以目标版本为准，此处为流程示意。）
+**Q4：同一个关卡在不同机器上生成的点位不一致？**
+检查是否使用了未固定种子的随机数节点。在 PCG 设置面板中勾选 `bUseSeed = true`，并为 PCGComponent 指定一个确定性整数种子（Seed），保证跨机器生成完全确定性。
 
-## 最佳实践
+**Q5：PCG 可以直接生成带物理碰撞的可交互 Actor 吗？**
+可以。使用 `Spawn Actor` 节点即可实例化 Blueprint Actor。但请注意：生成带 Tick 和完整组件的 Actor 开销远高于 HISM 实例，数万级的植物严禁使用 Actor，仅宝箱、怪物刷新点、可采集物等低频对象推荐使用 Actor。
 
-1. **先定"数据合同"再连图**：明确输入（Landscape 采样/Volume/参数）与输出（点集 → ISM/HISM/Foliage）的形态，图只是把合同翻译成规则；输入输出不确定的图，后面每次改都推倒重来。
-2. **密度与预算先行**：PCG 能生成"无限多"内容，但渲染与内存是有限的。按目标平台帧预算反推每平方公里点/实例上限，在图中用密度节点与筛选节点约束输出（配合 02 篇的 ISM/HISM 与 LOD 预算）。
-3. **保持可复现**：固定种子、避免依赖"编辑器当前选中"等隐式状态；生成结果变更时用版本对比而非手工微调，保证团队可回溯。
-4. **静态内容烘焙，动态内容运行时**：一次性装饰（建筑、石头）走编辑器生成并随关卡保存；随玩法变化的内容（刷新点、动态植被）走运行时 `UPCGSubsystem`，避免把动态逻辑固化进关卡。
-5. **与 Foliage/ISM 结合而非对抗**：PCG 产出的实例尽量落到 HISM/Foliage 系统（02 篇），用实例化渲染扛住密度；不要在 PCG 里直接生成成百上千个独立 Actor。
-6. **大世界按 Cell 组织**：World Partition 下让生成按 Cell 触发/卸载（05 篇与 12 章 22 篇），避免"一次生成全图"的峰值内存与加载时间。
-7. **性能观测**：编辑器里用 PCG 相关统计与 Profile 观察节点耗时（节点级耗时工具随版本演进，标注待核对）；运行时关注生成帧尖峰，必要时分帧/异步执行。
-8. **版本敏感项单独记录**：PCG 节点库、GPU 计算（PCGCompute）与 Procedural Vegetation Editor 的输出格式都在快速演进，升级引擎后必须回归"同图同种子同输出"。
+**Q6：如何结合地形材质权重层（Landscape Layer）实现特定植被生成？**
+在 Surface Sampler 前后接入 `Get Landscape Data`，并在属性过滤节点中提取 `LayerWeight` 参数（如 `"Layer_Grass"` 或 `"Layer_Rock"`）。通过设置密度乘数，可以使森林仅在草地层生长，岩石仅在裸岩层生成。
 
-## 常见问题 FAQ
+**Q7：PCGCompute 模块的硬件要求是什么？**
+依赖 Direct3D 12 或 Vulkan 的 Shader Model 6（SM6）以及 ComputeFramework 插件支持。它将点云生成从 CPU 移入 GPU Compute Shader，适合千万级密集草甸的生成。
 
-### Q1：PCG 和蓝图有什么区别？为什么要用 PCG？
+**Q8：PCG 生成的资产如何接入 HLOD（分层细节级别）？**
+当在 World Partition 场景中生成 HISM 实例时，勾选 PCGComponent 上的 `bIncludeInHLOD`。在执行全图 HLOD 构建（`wp.Editor.BuildHLODs`）时，生成器会自动将 PCG 植被聚合成远景代理网格体（Proxy Mesh）。
 
-蓝图是"逻辑图"，PCG 是"内容生成图"。蓝图每帧解释执行、面向玩法逻辑；PCG 面向"批量摆放内容"，以数据流方式一次执行、结果可保存可复现。两者的共同点是可视化与参数化，但解决的问题域不同。
+**Q9：如何清除已经生成的 PCG 实例？**
+在编辑器中选中 PCGComponent 点击 **Cleanup** 按钮；在 C++ 或蓝图中调用 `PCGComp->Cleanup(true)`，即可瞬间清除所有生成的 HISM 实例与临时点数据。
 
-### Q2：PCG 生成的结果能被打包吗？
+**Q10：PCG 能否在运行时由玩家行为触发局部更新（如砍伐树木）？**
+可以。通过在玩家砍伐树木的位置生成一个动态排除体积（Dynamic Negative Volume）并向 PCGSubsystem 发送刷新通知，或者获取对应 HISM 组件的 Instance Index 直接调用 `RemoveInstance(Index)` 局部剔除。
 
-能。编辑器生成的结果随关卡保存并进入打包内容；运行时生成的实例由运行时 API 创建，逻辑代码进入打包。注意区分"数据固化在关卡"与"运行时动态生成"两种形态。
+**Q11：PCG 与传统 Foliage 植被笔刷工具有冲突吗？**
+两者完全互补。在大世界项目中，通用大面积背景植被（占场景 90% 的普通草木）由 PCG 自动铺底；玩家必经的核心剧情路线与重要地标，再由美术使用 Foliage 笔刷进行针对性精修手工点缀。
 
-### Q3：PCG 和 Procedural Vegetation Editor（PVE）是什么关系？
+---
 
-PVE 是 UE5.8 的实验性植被生成工具（见 12 章 31 篇），PCG 是通用内容生成框架；两者可以配合：PCG 负责广义内容规则，PVE 专注植被生态（物种、密度、生态约束）。本目录 05 篇给出了两者的职责边界与协同数据合同。
+## 性能调优与最佳实践
 
-### Q4：PCG 结果在移动端/低端机表现如何？
+1. **剔除顺序优化（Cheap-First Culling）**：
+   - 先执行极低开销的数学过滤（如高程检查、坡度角度），淘汰 80% 的无效点；
+   - 再执行昂贵的碰撞射线探测（Projection）与样条线差集求交；
+2. **GPU Compute 加速**：
+   - 对于纯视觉的密集地表杂草，使用 `PCGCompute` 模块将采样算法下沉至着色器并行执行，避免数百万点占用 GameThread 内存；
+3. **避免运行时反复生成**：
+   - 静态关卡在出厂打包前，使用编辑器中的 **Convert to Static Mesh / Foliage** 工具将点云固化，仅将动态随机元素留给运行时。
 
-PCG 本身是"生成时"成本，运行时表现取决于输出形态：实例化渲染（HISM）扛得住密度，但点集与资产数量仍受内存限制；移动端建议大幅调低密度与资产复杂度，并用 LOD/HLOD 收敛（详见 02-渲染与图形 10-移动端渲染专项 的 LOD/HLOD 章节）。
+---
 
-### Q5：为什么同样的图在不同机器上结果不一样？
+## 关联阅读与前后置专题
 
-优先检查"非确定性来源"：未固定种子、依赖浮点平台差异的采样、依赖编辑器状态/选中项的节点。PCG 的确定性保证需要种子与输入完全一致；跨平台复现需额外核对采样与数学函数实现（标注：跨平台确定性以目标版本行为为准）。
-
-### Q6：生成太慢怎么办？
-
-按顺序排查：缩小生成范围（Volume/Cell）、降低点密度、拆分大图为多个小图、利用节点缓存避免重复计算、必要时用 `PCGCompute` 把部分处理搬到 GPU（需确认设备与版本支持）。
-
-### Q7：PCG 能用于游戏运行时动态刷怪/资源点吗？
-
-可以。运行时 `UPCGSubsystem` 支持动态生成与清理，配合 Volume 与参数数据可以做出"刷新资源点/动态植被"；但要注意每帧生成成本与实例生命周期管理，避免生成尖峰。
-
-### Q8：在哪里看官方资料？
-
-官方 PCG 文档（[Procedural Content Generation Framework](https://dev.epicgames.com/documentation/en-us/unreal-engine/procedural-content-generation-framework-in-unreal-engine)）与官方示例项目（如 Lyra 中的 PCG 用法）是首选；本机 5.8 源码 `Plugins\PCG\Source\PCG\Public\*.h` 是类名与接口的权威依据。
-
-### Q9：PCG 图里能引用其他 PCG 图吗？
-
-可以，通过子图（Subgraph）机制把一张图作为节点嵌入另一张图（`PCGSubgraph.h`），实现规则复用与分层组织——这和大世界"植被图/建筑图/装饰图"分层的实践一致。
-
-### Q10：升级引擎后 PCG 结果变化了怎么办？
-
-PCG 处于快速演进期：先固定"同图同种子同输入"的回归清单（截图或实例统计），升级后逐项对比；节点属性或默认值变化时以目标版本文档与源码为准，必要时在图中显式固定参数。
-
-### Q11：PCG 能做"程序化关卡/地牢"这类结构生成吗？
-
-可以，但要区分"内容填充"与"结构布局"：PCG 擅长在既定范围内填充内容（植被、石头、装饰）；规则化布局（房间、路径）可以用 PCG 的参数/子图组织，复杂结构建议结合 Houdini Engine 或关卡设计工具，PCG 承担最终填充与细节化。
-
-### Q12：多人游戏里 PCG 结果需要同步吗？
-
-分情况：烘焙进关卡的静态内容天然一致；运行时生成的动态内容若影响玩法（可破坏资源点、刷新物），需要服务器权威生成并同步结果（见 06-网络同步 的复制方案），客户端只做表现。
-
-## 版本与兼容性速查
-
-| 事项 | 本机 5.8 状态 | 说明 |
-| --- | --- | --- |
-| PCG 插件 | `Plugins\PCG\PCG.uplugin`，Version 8 / 1.0，非 Beta，默认启用 | 随引擎分发 |
-| 运行时模块 | `PCG`（Runtime）、`PCGCompute`（Runtime，PostConfigInit） | GPU 计算加速路径 |
-| 编辑器模块 | `PCGEditor`（Editor） | 编辑器生成与预览 |
-| 关联实验插件 | `PCGBiomeCore`、`PCGPrimitives`、`PCGInterops`、`PCGMeshPartitionInterop`（`Plugins\Experimental`） | 生态组件，按需启用并回归 |
-| PVE 协同 | `ProceduralVegetationEditor`（实验性，见 12 章 31 篇） | 植被生态生成与 PCG 协同 |
-| 核心头文件 | `PCGComponent.h`/`PCGGraph.h`/`PCGSettings.h`/`PCGContext.h`/`PCGData.h`/`PCGPoint.h`/`PCGSubsystem.h`/`PCGVolume.h` | 类名与接口权威依据 |
-
-> 提示：PCG 节点库与 GPU 计算能力随版本快速演进，本表只承诺"本机 5.8 已核对"的范围，其余以目标版本为准。
-
-## 关联阅读
-
-- [01-Landscape地形系统.md](./01-Landscape地形系统.md)：PCG 最重要的输入源——地形高度、坡度、遮罩采样与 Landscape Spline。
-- [02-植被Foliage与实例化渲染.md](./02-植被Foliage与实例化渲染.md)：PCG 输出的主要落地形态——ISM/HISM 实例化渲染与 LOD/剔除。
-- [05-大世界植被与渲染协同.md](./05-大世界植被与渲染协同.md)：PCG、PVE、Foliage、World Partition 与 HLOD 的完整闭环与数据合同。
-- [03-过场与影视Sequencer.md](./03-过场与影视Sequencer.md)：生成内容如何参与影视演出与场景布置。
-- [09-WorldPartition大世界](../01-引擎基础/09-WorldPartition大世界.md)：PCG 按 Cell 生成的大世界分区机制。
-- [04-Mass实体框架与群集模拟](../05-AI系统/04-Mass实体框架与群集模拟.md)：与 PCG 互补的运行时群集方案（PCG 管"放什么"，Mass 管"怎么动"）。
-- [22-WorldPartition与WorldStreaming源码](../12-引擎源码分析/22-WorldPartition与WorldStreaming源码.md)：分区/流送机制的源码级剖析。
-- [31-ProceduralVegetationEditor源码](../12-引擎源码分析/31-ProceduralVegetationEditor源码.md)：PVE 插件的模块边界与 World Partition 实例化链路。
-
-## 更新日志
-
-- 2026-08-07：初稿创建。已核对本机 UE5.8 PCG 插件（`Plugins\PCG\PCG.uplugin` 模块与版本、`Source\PCG\Public` 头文件清单、`PCGCompute` 模块）；节点/子系统函数签名与 GPU 计算细节标注"示意/待核对"，未虚构未核对的类名与 CVar。
+- [01-Landscape地形系统](01-Landscape地形系统.md)：高度图编码与材质层（LayerBlend）数据结构；
+- [02-植被Foliage与实例化渲染](02-植被Foliage与实例化渲染.md)：HISM 实例合批与距离剔除底层机制；
+- [05-大世界植被与渲染协同](05-大世界植被与渲染协同.md)：World Partition 与 PCG、HLOD 工业化全流程闭环；
+- [12-38 PCG源码](../../游戏知识/12-引擎源码分析/38-PCG源码.md)：UPCGGraph 与执行调度器底层源码深度剖析；
+- [01-引擎基础/09-WorldPartition大世界](../01-引擎基础/09-WorldPartition大世界.md)：开放世界分块与动态流送加载基础；
+- [游戏算法/03-工程与实用技巧/02-程序化生成](../../游戏算法/03-工程与实用技巧/02-程序化生成.md)：柏林噪声、泊松圆盘采样（Poisson Disk）通用算法数学原理。

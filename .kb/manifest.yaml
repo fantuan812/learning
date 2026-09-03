@@ -39,7 +39,7 @@ documents:
   ".kb/decisions.md":
     kind: doc
     maturity: L2
-    bytes: 24448
+    bytes: 24817
     lines: 564
   ".kb/plans/current.md":
     kind: doc

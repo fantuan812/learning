@@ -3,86 +3,76 @@ type: Index
 title: "13 世界构建与过场"
 status: stable
 verified: []
-maturity: L0
+maturity: L2
+updated: 2026-08-20
 ---
+
 # 13 世界构建与过场
 
-> 适用范围：UE 客户端 · 大世界构建与影视演出
-> 版本基准：UE 5.8（关键 API 已对照本机引擎源码逐条验证）
+> 知识成熟度：L2（子域工程手册，已按 6 篇核心专题与 UE5.8 源码基线全面标准化）。
+>
+> 领域权威导航：[游戏知识 Domain MOC](../../00_Index/domains/游戏知识.md) ｜ [游戏知识总目录](../README.md)。
 
-## 分类简介
+---
 
-「13-世界构建与过场」是知识库中"大世界内容创作 + 影视级演出"方向的分类。它承接 01-引擎基础（对象模型、Actor/Component 生命周期、关卡系统）与 12-引擎源码分析（资源加载等底层机制），聚焦引擎级三大系统：
+## 1. 核心定位与设计思想
 
-- **Landscape 地形系统**：从地形创建与雕刻、高度图数据组织、材质层（Layer Blend）权重混合、Landscape Spline 道路河流，到运行时高度查询/修改、LOD 与烘焙性能控制，以及 UE5 大世界下与 World Partition 的深度集成；
-- **Foliage 植被与实例化渲染**：Foliage 模式绘制、`AInstancedFoliageActor` 与 `FFoliageInfo` 的数据组织、ISM/HISM（`UHierarchicalInstancedStaticMeshComponent`）实例化渲染原理、植被 LOD 与剔除策略、运行时动态生成植被，以及与 Mass 群集方案的选型对比；
-- **过场与影视 Sequencer**：LevelSequence/MovieScene 资产架构（轨道/片段/键帧/绑定）、Possessable/Spawnable 绑定机制、CineCamera 电影镜头参数、子序列与模板序列工作流、MovieSceneCapture 电影渲染输出，以及运行时播放控制（`UMovieSceneSequencePlayer`）。
-- **PCG 程序化内容生成**：PCG 图资产/节点/数据流（`UPCGGraph`/`UPCGNode`/`UPCGSettings`/`FPCGData`）、编辑器与运行时生成（`UPCGSubsystem`）、确定性与种子、以及与大世界 Cell/PVE 的协同。
+「13-世界构建与过场」负责虚幻引擎中大规模开放世界的地表生成、植被生态、程序化内容规则与影视级剧情演出。在现代 AAA 大世界项目中，该子域是美术工业化资产与底层流送性能的核心枢纽：
+- **地形分块与大世界流送（Landscape）**：基于高度图数据结构与 LandscapeComponent 分块，深度集成 World Partition 与 APartitionActor，支持地表材质层（Layer Blend）多权重无缝混合与样条线（Spline）道路河流；
+- **海量植被与实例化渲染合批（Foliage）**：依托 InstancedFoliageActor 与 HISM（分层实例化静态网格体）技术，将数以十万计的草木树木合批为极少 DrawCall，配合距离剔除与网格体 LOD 保障帧率；
+- **电影级镜头与影视管线（Sequencer）**：以 LevelSequence 轨道状态机驱动 Possessable/Spawnable 角色绑定、电影级摄像机（CineCamera）焦距景深、并支持次时代 Movie Render Graph（MRG）离线渲染；
+- **程序化内容生成与虚拟制片（PCG & ICVFX）**：基于点云空间采样与规则图驱动的大世界植被群落生成（PCG），以及集成 nDisplay 多屏同步与 LiveLink 相机追踪的虚拟摄影棚制片管线。
 
-与前几个分类"讲机制"的定位不同，本分类偏"讲系统 + 讲创作流程"：既解释每个系统在引擎中的数据结构与工作管线（对照 UE 5.8 本机源码），也给出可直接上手的编辑器操作步骤与 C++/蓝图示例。
+---
 
-## 文件列表
+## 2. 专题矩阵与知识状态
 
-| 文件 | 一句话简介 |
-| --- | --- |
-| [01-Landscape地形系统.md](./01-Landscape地形系统.md) | Landscape 地形创建与雕刻、高度图编码（LandscapeDataAccess）、材质 Layer Blend 权重混合、Landscape Spline、运行时高度查询/修改、LOD 与烘焙、World Partition 配合。 |
-| [02-植被Foliage与实例化渲染.md](./02-植被Foliage与实例化渲染.md) | Foliage 绘制与数据流、AInstancedFoliageActor / FFoliageInfo、ISM 与 HISM 实例化渲染原理、LOD 与剔除、运行时生成植被、与 Mass 群集对比。 |
-| [03-过场与影视Sequencer.md](./03-过场与影视Sequencer.md) | Sequencer 资产架构（轨道/片段/键帧/绑定）、Possessable/Spawnable、CineCamera 电影镜头、子序列与模板序列、MovieSceneCapture 渲染、运行时播放控制。 |
-| [04-PCG程序化内容生成.md](./04-PCG程序化内容生成.md) | PCG 图资产/节点/设置/数据流、编辑器与运行时生成、确定性、PCGCompute 与 Foliage/ISM/World Partition 协同。 |
-| [05-大世界植被与渲染协同.md](./05-大世界植被与渲染协同.md) | 将 World Partition/World Streaming、PCG、Procedural Vegetation Editor、Foliage/ISM/HISM 与 HLOD 串成植被生成、打包、流送、渲染和销毁闭环。 |
-| [06-虚拟制片与ICVFX.md](./06-虚拟制片与ICVFX.md) | nDisplay 多屏集群、ICVFX 内镜头特效、LiveLink 相机跟踪、LED 墙舞台工作流与虚拟制片管线。 |
+| 专题文件（Canonical 路径） | 知识类型 | 成熟度 | 核心工程关注点与落地场景 |
+| :--- | :---: | :---: | :--- |
+| [01-Landscape地形系统.md](01-Landscape地形系统.md) | Concept | L2 | Landscape 架构：Component 分块、高度图编码、材质 LayerBlend 权重、LandscapeSpline 与 World Partition 流送集成 |
+| [02-植被Foliage与实例化渲染.md](02-植被Foliage与实例化渲染.md) | Concept | L2 | AInstancedFoliageActor 数据流、HISM（分层实例化）渲染合批原理、LOD 切换、距离剔除与 Mass 群集选型对比 |
+| [03-过场与影视Sequencer.md](03-过场与影视Sequencer.md) | Concept | L2 | Sequencer 轨道架构、Possessable 与 Spawnable 绑定机制、CineCamera 镜头光圈、Movie Render Graph 与运行时播放控制 |
+| [04-PCG程序化内容生成.md](04-PCG程序化内容生成.md) | Concept | L2 | PCG 图资产（UPCGGraph）、空间点采样与密度过滤、确定性随机种子、PCGCompute 与 World Partition Cell 协同生成 |
+| [05-大世界植被与渲染协同.md](05-大世界植被与渲染协同.md) | Concept | L2 | 串联 World Partition、PCG、Procedural Vegetation Editor 与 HLOD 的植被生成、烘焙、流送、渲染与销毁完整闭环 |
+| [06-虚拟制片与ICVFX.md](06-虚拟制片与ICVFX.md) | Concept | L2 | nDisplay LED 墙多节点渲染同步、内镜头视锥（Inner Frustum）畸变校正、LiveLink 摄像机外设追踪与虚拟制片全流程 |
 
-## 学习顺序建议
+---
 
-1. **先读 01-Landscape**：地形是开放世界的"地基"，植被与过场都依赖"世界里有东西可放、有场景可拍"；
-2. **再读 02-Foliage**：植被是地形之上数量最大的内容层，理解实例化渲染原理后才能正确评估性能与选型；
-3. **最后读 03-Sequencer**：过场是"消费"前面所有场景资产的演出层，需要理解绑定与播放架构才能做运行时控制。
-4. **再读 04-PCG**：大世界内容"规则化填充"的生成框架——理解图资产与数据流后，用 05 篇串起 PCG/PVE/Foliage/World Partition 的完整闭环。
+## 3. 逻辑学习顺序建议
 
-速查路径：
+```mermaid
+flowchart TD
+    A[01 Landscape地形系统<br/>高度图/分块/WorldPartition] --> B[02 植被Foliage与实例化渲染<br/>HISM合批/LOD/距离剔除]
+    B --> C[04 PCG程序化内容生成<br/>点云图驱动/空间规则]
+    C --> D[05 大世界植被与渲染协同<br/>流送/HLOD/全链路闭环]
+    A --> E[03 过场与影视Sequencer<br/>CineCamera/MovieRenderGraph]
+    E --> F[06 虚拟制片与ICVFX<br/>nDisplay/LiveLink/LED墙]
+```
 
-- 想快速搭一个可跑的大世界原型：01 → 02，03 的渲染细节可后补；
-- 正在做过场/演出系统：直接精读 03，遇到"镜头里没东西"回 01/02 查地形与植被；
-- 正在做运行时世界修改（挖坑/铺路/种树）：精读 01 的运行时章节 + 02 的运行时生成章节；
-- 正在做大世界性能优化：01 的 LOD/烘焙章节 + 02 的剔除章节 + 03 的渲染输出章节。
+1. **第一阶段（大世界地基与植被填充）**：精读 `01-Landscape地形系统` 与 `02-植被Foliage与实例化渲染`，掌握开放世界地形创建、材质混合与 HISM 实例合批渲染机制。
+2. **第二阶段（程序化工业生成与闭环）**：深入 `04-PCG程序化内容生成` 与 `05-大世界植被与渲染协同`，掌握用规则图自动铺设森林、道路与岩石群落并与大世界流送对齐。
+3. **第三阶段（影视级演出与虚拟制片）**：研读 `03-过场与影视Sequencer` 与 `06-虚拟制片与ICVFX`，掌握剧情动画分镜镜头调度与影视级实拍合成。
 
-## 与 01-引擎基础 08/09（关卡流送 / WorldPartition）的关系
+---
 
-本分类的地形与植被大量依赖 UE5 大世界特性（World Partition、ISM 分区、HLOD），这些特性的底层加载/分区机制规划在 **01-引擎基础 08-关卡流送与加载、09-WorldPartition 大世界分区** 两篇中讲解：前者讲 Level Streaming 的加载规则与生命周期，后者讲 WP 的数据分区、Streaming Cell 加载与 HLOD 生成。两边是"机制层"与"应用层"的分工：
+## 4. 游戏与引擎工程落地场景
 
-| 层面 | 01-引擎基础 08/09（机制层） | 13 本分类（应用层） |
-| --- | --- | --- |
-| 关注点 | 关卡怎么被加载/卸载、数据怎么分区、HLOD 怎么生成 | 地形与植被怎么做出来、怎么绘制、怎么运行时修改 |
-| 视角 | 引擎流程与对象生命周期 | 创作工具与运行时 API |
-| 交叉点 | WP 网格单元、StreamingSource、HLOD 代理、LWC | Landscape 的 `APartitionActor` 继承、`AISMPartitionActor` 实例分区、Landscape HLOD、Foliage 按 Cell 加载 |
+- **数十平方公里开放世界植被渲染**：使用 PCG 在 Landscape 坡度小于 30 度的区域自动撒布草丛与树木，底层生成为 HISM 实例，并开启 HLOD 远景聚合网格体，保持 10 万植被同屏不掉帧；
+- **剧情对话与自由镜头平滑切入**：通过 Sequencer 的 Possessable 绑定场景现有玩家 Pawn，以 CineCamera 混合过渡动画，播放完毕后无缝交还玩家控制权；
+- **地质动态改造与道路开辟**：利用 LandscapeSpline 动态压平地形并沿曲线生成沥青公路网格体，实时更新碰撞与寻路网格（NavMesh）。
 
-典型交叉示例：
+---
 
-- 09 篇解释 `UWorldPartition` 如何把关卡拆成 Streaming Cell；01 篇（本分类）说明为什么 `ALandscapeProxy` 在 UE 5.8 中直接继承 `APartitionActor`（源码 `Runtime\Landscape\Classes\LandscapeProxy.h`），以及地形如何以整体 Actor 横跨多个 Cell 而不产生接缝；
-- 08/09 篇讲 HLOD 的生成管线；02 篇讲 Foliage 实例如何在分区 Actor（`AISMPartitionActor`）间按 Cell 组织与加载；
-- 阅读时对"什么时候加载/卸载"有疑问，先回 01-引擎基础 08/09 篇；对"这块地形数据长什么样、怎么改"有疑问，留在本分类。
+## 5. 跨域技术依赖与前后置导航
 
-底层对照可再延伸至 [12-引擎源码分析](../12-引擎源码分析/README.md) 的 13-资源加载与异步加载源码篇；Landscape 材质与 Foliage 光照表现与 [02-渲染与图形](../02-渲染与图形/README.md) 的 Nanite/Lumen 篇直接相关。
-
-## 前置知识
-
-- 01-引擎基础：UObject / Actor / Component 生命周期（本分类大量涉及组件与 Actor 类型）；
-- 基本关卡编辑经验（放置 Actor、材质实例、蓝图）；
-- 03-游戏玩法编程 的蓝图与 C++ 协作篇（示例代码阅读前提）。
-
-## 版本与源码基准
-
-- 引擎版本：UE 5.8（本机安装目录 `C:\Program Files\Epic Games\UE_5.8`）；
-- 关键源码对照文件（路径相对 `Engine\Source\Runtime`）：
-  - Landscape：`Landscape\Classes\Landscape.h`、`Landscape\Classes\LandscapeProxy.h`、`Landscape\Classes\LandscapeComponent.h`、`Landscape\Public\LandscapeDataAccess.h`、`Landscape\Classes\LandscapeSplinesComponent.h`；
-  - Foliage：`Foliage\Public\InstancedFoliage.h`、`Foliage\Public\InstancedFoliageActor.h`、`Foliage\Public\FoliageType.h`、`Foliage\Public\FoliageStatistics.h`；`Engine\Classes\Components\HierarchicalInstancedStaticMeshComponent.h`；
-  - Sequencer：`LevelSequence\Public\LevelSequence.h`、`LevelSequence\Public\LevelSequencePlayer.h`、`LevelSequence\Public\LevelSequenceActor.h`、`LevelSequence\Public\LevelSequenceDirector.h`；`MovieScene\Public\MovieSceneSequence.h`、`MovieScene\Public\MovieScene.h`、`MovieScene\Public\MovieSceneSection.h`、`MovieScene\Public\MovieSceneSequencePlayer.h`；`CinematicCamera\Public\CineCameraActor.h`、`CinematicCamera\Public\CineCameraComponent.h`；`MovieSceneCapture\Public\MovieSceneCapture.h`、`MovieSceneCapture\Public\MovieSceneCaptureSettings.h`。
-
-文中标注"源码验证"的 API 均来自上述文件，行号以本机 5.8 源码为准；不同小版本行号可能漂移，请以类名/函数名为准。
-
-## 阅读约定
-
-- 代码以 C++ 为主、编辑器操作为辅；所有运行时示例建议放入独立测试工程验证；
-- 编辑器专属 API（带 `WITH_EDITOR` 守卫）与运行时 API 会明确区分；
-- 官方未公开或版本敏感的运行时修改方案会明确标注风险等级；
-- "本机源码"指 `C:\Program Files\Epic Games\UE_5.8`。
+- **向下扎根（计算机与算法底座）**：
+  - 空间分区与八叉树：[游戏算法 01-寻路与图论](../../游戏算法/01-寻路与图论/README.md)
+  - 程序化生成算法：[游戏算法 03-工程与实用技巧](../../游戏算法/03-工程与实用技巧/README.md)
+- **向上驱动（引擎源码剖析）**：
+  - 大世界流送源码：[12-22 WorldPartition源码](../12-引擎源码分析/22-WorldPartition与WorldStreaming源码.md)
+  - 地形与植被源码：[12-23 Landscape与Foliage源码](../12-引擎源码分析/23-Landscape与Foliage源码.md)
+  - PCG 源码实现：[12-38 PCG源码](../12-引擎源码分析/38-PCG源码.md)
+  - Sequencer 源码：[12-24 Sequencer与MRG源码](../12-引擎源码分析/24-Sequencer与MovieRenderGraph源码.md)
+- **横向协同（基础与渲染）**：
+  - 大世界流送基础：[01-引擎基础/09-WorldPartition大世界](../01-引擎基础/09-WorldPartition大世界.md)
+  - 虚拟纹理与地表混合：[02-渲染与图形/07-虚拟纹理与材质混合](../02-渲染与图形/07-虚拟纹理与材质混合.md)

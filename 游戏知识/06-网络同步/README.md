@@ -1,171 +1,84 @@
 ---
 type: Index
-title: "06 · 网络同步"
+title: "06 网络同步"
 status: stable
 verified: []
-maturity: L0
----
-# 06 · 网络同步
-
-> 本分类面向 UE5 客户端开发者，系统讲解 Unreal Engine 的多人在线游戏网络架构与同步技术。
-> 覆盖范围：客户端-服务器架构与权威性、Actor 复制、RPC 与属性同步、客户端预测与延迟补偿、多人游戏框架与连接流程。
-> 同步目录：`C:\project\git\游戏知识\06-网络同步` → https://github.com/fantuan812/learning.git
-
+maturity: L2
+updated: 2026-08-20
 ---
 
-## 分类简介
+# 06 网络同步
 
-网络同步是多人游戏开发中最容易"出问题"也最难调试的部分。UE 的网络系统建立在**客户端-服务器（Client-Server）架构**之上：服务器是唯一权威（Authority），负责所有游戏逻辑的最终裁决；客户端负责输入采集、表现渲染与本地预测。
-
-本分类把 UE 网络同步拆成九个递进的主题：
-
-1. **网络架构与复制基础**：先回答"谁说了算"与"东西怎么传到别人机器上"这两个根本问题，包括 NetMode / NetRole、Actor 复制管线、NetConnection 与通道、带宽控制。
-2. **RPC 与属性同步**：掌握两种远程通信手段——RPC（函数级远程调用）与属性复制（状态级自动同步），以及可靠性、条件、频率、抖动与插值等工程细节。
-3. **客户端预测与延迟补偿**：解决"手感"问题——如何在有延迟的前提下让移动、射击等操作响应及时，同时保证服务器权威不被破坏。
-4. **多人游戏框架与玩家状态**：把知识落到框架层面——PlayerController / Pawn / PlayerState / GameState 各自在网络中的角色，以及连接、登录、进入游戏的完整流程。
-5. **ReplicationGraph 兴趣管理**：大规模场景的服务器性能保障——用节点图 + 2D 网格兴趣管理替代"全量遍历 × 每连接排序"，配合类级复制参数与调试命令调优。
-6. **在线子系统与会话匹配**：平台接入层——OnlineSubsystem 的登录、会话创建/搜索/加入/邀请与 Matchmaking，以及 OSS 会话与游戏内会话的区别与衔接。
-7. **Iris 复制使用与迁移**：下一代复制系统的使用层——如何启用、与经典路径/ReplicationGraph 的关系、迁移清单与限制（实验性）。
-
-建议在阅读本分类前先掌握 `01-引擎基础`（UObject / Actor / Gameplay 框架）与 `03-游戏玩法编程`（输入系统、GAS）的基础内容。
+> 知识成熟度：L2（子域工程手册，已按 9 篇核心专题与 UE5.8 源码基线全面标准化）。
+>
+> 领域权威导航：[游戏知识 Domain MOC](../../00_Index/domains/游戏知识.md) ｜ [游戏知识总目录](../README.md)。
 
 ---
 
-## 知识地图
+## 1. 核心定位与设计思想
+
+「06-网络同步」负责虚幻引擎多人在线游戏中的状态同步、指令分发与网络公平性保障。虚幻引擎网络体系基于经典的**客户端-服务器（C/S）架构**与**服务器绝对权威（Server Authority）**模型：
+- **权威性与角色分工**：通过 NetRole（Role/RemoteRole）区分自主代理（AutonomousProxy）、模拟代理（SimulatedProxy）与权威（Authority），服务器是唯一状态真理源；
+- **状态复制与远程过程调用**：属性复制（Replication）保障最终一致性，RPC（Server/Client/NetMulticast）驱动离散事件通信，配合 FastArraySerializer 与条件复制（DOREPLIFETIME_CONDITION）精细控制带宽；
+- **客户端自主预测与延迟补偿**：在 CharacterMovementComponent 框架下，客户端以本地输入先行模拟（SavedMove），服务器回溯校验时间戳并纠偏（ServerMove），实现无卡顿移动手感；
+- **空间兴趣管理与下一代复制体系**：通过 ReplicationGraph 节点空间网格剪裁解决大地图全量遍历开销，并演进至 UE5.8 下一代数据驱动、并行化脏标记处理的 Iris 复制系统。
+
+---
+
+## 2. 专题矩阵与知识状态
+
+| 专题文件（Canonical 路径） | 知识类型 | 成熟度 | 核心工程关注点与落地场景 |
+| :--- | :---: | :---: | :--- |
+| [01-网络架构与复制基础.md](01-网络架构与复制基础.md) | Concept | L2 | C/S 权威性模型、NetMode/NetRole 状态机、Actor 复制管线、NetConnection 通道与带宽预算控制 |
+| [02-RPC与属性同步.md](02-RPC与属性同步.md) | Concept | L2 | Server/Client/NetMulticast RPC、属性复制与 OnRep 回调、条件复制、同步频率与丢包插值 |
+| [03-客户端预测与延迟补偿.md](03-客户端预测与延迟补偿.md) | Concept | L2 | CMC 网络移动预测、SavedMove 历史输入缓冲、服务器矫正回放、延迟补偿（Lag Compensation）击中回溯 |
+| [04-多人游戏框架与玩家状态.md](04-多人游戏框架与玩家状态.md) | Concept | L2 | PlayerController/Pawn/PlayerState/GameState 网络所有权映射、连接握手三阶段与登录时序 |
+| [05-ReplicationGraph兴趣管理.md](05-ReplicationGraph兴趣管理.md) | Concept | L2 | ReplicationGraph 节点图、2D 网格空间裁剪节点、动态优先级排序与大型万人大世界复制优化 |
+| [06-在线子系统与会话匹配.md](06-在线子系统与会话匹配.md) | Concept | L2 | OnlineSubsystem（OSS）跨平台接口、Steam/EOS 会话创建/搜索/加入、好友邀请与大厅匹配（Matchmaking） |
+| [07-Iris复制使用与迁移.md](07-Iris复制使用与迁移.md) | Concept | L2 | Iris 下一代复制系统：数据导向并行打包、属性状态描述符、与经典 ReplicationGraph 差异与平滑迁移 |
+| [08-网络调试与性能分析.md](08-网络调试与性能分析.md) | Concept | L2 | 弱网仿真（PktLag/PktLoss）、NetTrace 网络通道捕获、NetworkProfiler 带宽诊断与丢包断线排障 |
+| [09-网络回放与DemoNetDriver.md](09-网络回放与DemoNetDriver.md) | Concept | L2 | DemoNetDriver 录制与播放流、UReplaySubsystem、时间轴跳跃检查点（Checkpoint）与观战视角管理 |
+
+---
+
+## 3. 逻辑学习顺序建议
 
 ```mermaid
-flowchart LR
-    subgraph 阶段一["阶段一：打地基"]
-        A["01 网络架构与复制基础<br/>架构 / 权威 / Actor复制 / NetConnection"]
-    end
-    subgraph 阶段二["阶段二：通信手段"]
-        B["02 RPC与属性同步<br/>远程调用 / 状态同步 / 频率与插值"]
-    end
-    subgraph 阶段三["阶段三：手感与公平"]
-        C["03 客户端预测与延迟补偿<br/>移动预测 / 回滚 / 延迟补偿"]
-    end
-    subgraph 阶段四["阶段四：框架落地"]
-        D["04 多人游戏框架与玩家状态<br/>框架对象 / 登录流程 / 连接管理"]
-    end
-    A --> B --> C --> D
+flowchart TD
+    A[01 网络架构与复制基础<br/>权威模型/NetRole/Actor] --> B[02 RPC与属性同步<br/>状态同步/OnRep/条件复制]
+    B --> C[03 客户端预测与延迟补偿<br/>SavedMove/网络回溯]
+    A --> D[04 多人游戏框架与玩家状态<br/>Controller/Pawn/登录时序]
+    B --> E[05 ReplicationGraph兴趣管理<br/>空间网格裁剪/带宽压降]
+    D --> F[06 在线子系统与会话匹配<br/>OSS/EOS/Steam/Matchmaking]
+    E --> G[07 Iris复制使用与迁移<br/>下一代并行打包体系]
+    B --> H[08 网络调试与 09 网络回放<br/>NetTrace/DemoNetDriver]
 ```
 
----
-
-## 文件列表
-
-| 文件 | 一句话简介 |
-| --- | --- |
-| [01-网络架构与复制基础.md](01-网络架构与复制基础.md) | 客户端-服务器架构与权威性模型、Actor 复制机制、NetConnection 与通道、UE5 Iris 简述 |
-| [02-RPC与属性同步.md](02-RPC与属性同步.md) | Server/Client/Multicast 三类 RPC 与可靠性、属性复制与条件、同步频率、抖动与插值 |
-| [03-客户端预测与延迟补偿.md](03-客户端预测与延迟补偿.md) | CharacterMovement 网络移动、SavedMove 与回滚重放、服务器延迟补偿（回退命中检测） |
-| [04-多人游戏框架与玩家状态.md](04-多人游戏框架与玩家状态.md) | PlayerController/Pawn/PlayerState/GameState 网络角色、连接握手与登录流程、NetConnection 管理 |
-| [05-ReplicationGraph兴趣管理.md](05-ReplicationGraph兴趣管理.md) | ReplicationGraph 节点图架构、网格兴趣管理、自定义节点与大规模多人复制优化 |
-| [06-在线子系统与会话匹配.md](06-在线子系统与会话匹配.md) | OnlineSubsystem 架构、会话创建/搜索/加入/邀请、Matchmaking 与 Steam/EOS 平台对接 |
-| [07-Iris复制使用与迁移.md](07-Iris复制使用与迁移.md) | Iris 复制系统启用与迁移：与经典路径/ReplicationGraph 的关系、迁移清单、限制与试点策略（实验性） |
-| [08-网络调试与性能分析.md](08-网络调试与性能分析.md) | 联机问题定位方法论、Pkt* 网络仿真参数、NetDriver 统计与 net.* 命令、NetTrace/Insights 网络通道分析与带宽基线对比 |
-| [09-网络回放与DemoNetDriver.md](09-网络回放与DemoNetDriver.md) | 回放系统（5.8 入口为 UReplaySubsystem）、DemoNetDriver 录制/播放/检查点、观战与流送、回放限制与兼容提示 |
+1. **第一阶段（基础心智与通信语法）**：精读 `01-网络架构与复制基础` 与 `02-RPC与属性同步`，牢固建立“服务器是唯一权威”的工程意识，掌握属性复制与 RPC 的严谨选型。
+2. **第二阶段（手感保障与多人框架）**：深入 `03-客户端预测与延迟补偿` 与 `04-多人游戏框架与玩家状态`，解决弱网环境下的位移拉扯与玩家登录初始化数据对齐。
+3. **第三阶段（性能扩展与现代架构）**：研读 `05-ReplicationGraph` 与 `07-Iris复制使用与迁移`，掌握大地图海量实体复制开销的工业化裁剪手段。
+4. **第四阶段（平台接入与运维诊断）**：学习 `06-在线子系统`、`08-网络调试与性能分析` 与 `09-网络回放`，打通平台对接与线上疑难网络 Bug 定位闭环。
 
 ---
 
-## 学习顺序建议
+## 4. 游戏与引擎工程落地场景
 
-### 路径 A：按依赖顺序（推荐）
-
-1. **先读 `01-网络架构与复制基础.md`**
-   建立全局心智模型：网络模式、网络角色、谁有权威、Actor 如何被复制。不搞懂 NetRole 与 Relevancy，后面所有代码都难以理解。
-2. **再读 `02-RPC与属性同步.md`**
-   学会两种通信"语法"。RPC 与属性复制的取舍贯穿整个 UE 网络开发，是本分类最常用的工具。
-3. **然后读 `03-客户端预测与延迟补偿.md`**
-   在掌握同步手段后，研究"手感"问题：为什么角色移动要预测、服务器如何修正、射击如何做延迟补偿。
-4. **最后读 `04-多人游戏框架与玩家状态.md`**
-   把零散知识串成完整流程：从玩家点击连接，到进入游戏、生成 Pawn、看到其他玩家，全程发生了什么。
-
-### 路径 B：按需求速查
-
-- 只想知道"游戏怎么连起来的"→ 先看 `04` 的登录流程章节，再回头补 `01`。
-- 正在写"同步血量/得分/物品"→ 直接看 `02` 的属性同步章节。
-- 正在调"角色移动发飘、瞬移、橡皮筋"→ 直接看 `03`。
-- 正在做帧同步/状态同步方案选型 → 先看 `01` 的架构对比与 `03` 的预测模型。
+- **FPS/TPS 射击命中延迟补偿**：服务器收到开火 RPC 后，根据客户端网络往返时延（RTT）与时间戳，将目标玩家碰撞体回溯到历史帧位置进行射线检测，消除“打中了但没伤害”的延迟感；
+- **开放世界海量实体带宽暴增治理**：配置 ReplicationGraph 网格节点（Grid Node），仅对玩家视距 150 米内的 Actor 执行属性复制，远距离对象降频到 2Hz 或完全剔除，将每秒带宽稳定在 25KB/s 以内；
+- **弱网 200ms 高丢包移动抗拉扯**：优化 CMC 的 `MaxClientError` 与网络浮点量化编码，配合丢包插值（Smoothing），实现高网络抖动下的平滑位移。
 
 ---
 
-## 各篇内容预览
+## 5. 跨域技术依赖与前后置导航
 
-### 01-网络架构与复制基础.md
-
-从"为什么 UE 采用客户端-服务器而不是 P2P"讲起，对比监听服务器（Listen Server）与专用服务器（Dedicated Server）的优劣；然后深入 Actor 复制管线：`bReplicates`、`Replicated` 属性、`OnRep` 回调、条件复制、Relevancy 判定、`NetUpdateFrequency` 与 `NetPriority` 的带宽调度；最后介绍 UNetConnection、控制/语音/Actor 通道与连接状态机，并简述 UE5 新一代 Iris 复制系统。
-
-### 02-RPC与属性同步.md
-
-详解 `UFUNCTION(Server/Client/NetMulticast)` 三类 RPC 的调用方向、可靠性（Reliable/Unreliable）、`WithValidation` 校验，并用 Mermaid 图展示 RPC 从调用到执行的完整路径；属性同步部分覆盖 `DOREPLIFETIME` 宏族、`COND_*` 条件、`OnRep` 通知、Fast Array 高效数组复制，以及同步频率、抖动来源与插值平滑策略。
-
-### 03-客户端预测与延迟补偿.md
-
-围绕 CharacterMovementComponent 讲解网络移动模型：AutonomousProxy 本地预测 → `ServerMove` 上行 → 服务器权威修正 → `ClientAdjustPosition` 下行 → SavedMove 回滚重放；随后讲解延迟补偿（Lag Compensation）的服务器时间窗回滚命中检测，以及射击/动画预测、插值与外推的取舍。
-
-### 04-多人游戏框架与玩家状态.md
-
-梳理 GameInstance / GameMode / GameState / PlayerState / PlayerController / Pawn 在网络中的分布与职责；用时序图还原从连接建立（UDP）、Hello/Login/Welcome 握手、PreLogin/Login/PostLogin 到 RestartPlayer 的完整登录流程；最后介绍 NetConnection 的细节（地址、状态、流量、踢人、断线处理）与 Seamless Travel。
-
-### 07-Iris复制使用与迁移.md
-
-Iris 是新一代复制系统（实验性）：本机 5.8 中由 `Source/Runtime/Net/Iris` 与 `EngineReplicationBridge`（`ShouldUseIrisReplication`）接入 `UNetDriver`（`IsUsingIrisReplication` 分支）；本文讲"怎么开、怎么迁、有什么限制"——启用决策、与 ReplicationGraph 的调度层关系、迁移清单（Fast Array/COND_*/子对象/GUID）与试点灰度策略；实现层深读见 12 章 20 篇。
-
----
-
-## 术语速查表
-
-| 术语 | 英文 | 中文含义 | 详细出处 |
-| --- | --- | --- | --- |
-| NetMode | Network Mode | 当前进程的网络模式（单机/监听/专用服务器/客户端） | 01 |
-| NetRole | Network Role | 当前 Actor 在某连接视角下的角色（权威/自主代理/模拟代理） | 01 |
-| Authority | Authority | 权威：服务器对游戏状态的最终裁决权 | 01 |
-| Replication | Replication | 复制：把服务器状态同步到客户端的过程 | 01 |
-| Relevancy | Relevancy | 相关性：判断某 Actor 是否需要复制给某连接 | 01 |
-| NetUpdateFrequency | Net Update Frequency | Actor 每秒检查并发送更新的次数 | 01 |
-| NetPriority | Net Priority | Actor 在网络带宽预算中的发送优先级 | 01 |
-| NetConnection | Net Connection | 服务器与单个客户端之间的逻辑连接 | 01 / 04 |
-| Channel | Channel | 连接内按用途划分的通信通道（控制/语音/Actor） | 01 |
-| RPC | Remote Procedure Call | 远程过程调用：让函数在另一台机器上执行 | 02 |
-| Reliable / Unreliable | Reliable / Unreliable | 可靠（保证送达与顺序）/ 不可靠（尽力而为） | 02 |
-| Replicated Property | Replicated Property | 由服务器自动同步到客户端的属性 | 02 |
-| OnRep / RepNotify | Replication Notify | 客户端收到复制属性更新时触发的回调 | 02 |
-| Fast Array | Fast Array Serializer | 高效复制数组的序列化器 | 02 |
-| Autonomous Proxy | Autonomous Proxy | 拥有本地控制权与预测能力的代理（自己控制的角色） | 03 |
-| Simulated Proxy | Simulated Proxy | 只做插值模拟的代理（看到的其他玩家） | 03 |
-| Saved Move | Saved Move | 客户端保存的移动输入历史，用于回滚重放 | 03 |
-| Correction | Correction | 服务器对客户端预测位置的修正 | 03 |
-| Lag Compensation | 延迟补偿 | 服务器按客户端时间戳回滚状态做命中判定 | 03 |
-| PlayerController | Player Controller | 玩家输入/视角控制对象，存在于服务器与所属客户端 | 04 |
-| PlayerState | Player State | 跨客户端可见的玩家信息（名字/分数/队伍） | 04 |
-| GameState | Game State | 复制到所有人的全局游戏状态 | 04 |
-| GameMode | Game Mode | 仅存在于服务器的规则对象 | 04 |
-| Possess | Possess | 控制器接管（附身）Pawn 的过程 | 04 |
-| Seamless Travel | Seamless Travel | 无缝切换地图，保留连接与控制器 | 04 |
-| Iris | Iris Replication System | UE5 引入的下一代复制系统（实验性） | 01 |
-
----
-
-## 撰写与阅读约定
-
-- 示例以 C++ 为主（UE 5.8 语法），涉及网络宏（`UFUNCTION`、`DOREPLIFETIME` 等）会单独说明其含义。
-- 涉及流程的地方使用 Mermaid 图辅助理解；图中中文为概念标注，非引擎字面量。
-- 引擎 API 在不同版本间有小幅差异（如 Iris 的启用方式），文中会标注版本相关说明。
-- 阅读时建议打开引擎源码对照：`Engine/Source/Runtime/Engine/Private/NetDriver.cpp`、`DataChannel.cpp`、`CharacterMovementComponent.cpp`、`GameModeBase.cpp`。
-
----
-
-## 关联资源
-
-- 官方文档：Unreal Engine 5 Networking Overview、Replication、RPCs、Replicated Properties、Client-Side Prediction
-- 引擎源码目录：`Engine/Source/Runtime/Engine/Classes/Engine/`、`Engine/Source/Runtime/Engine/Private/Net/`
-- 本仓库相关分类：[01-引擎基础](../01-引擎基础/README.md)（UObject/Actor 基础）、[03-游戏玩法编程](../03-游戏玩法编程/README.md)（输入与 GAS）
-- 社区资源：Epic 官方示例项目 ShooterGame / Lyra（Lyra 是研究多人框架与移动预测的最佳参考）
-
----
-
-## 更新日志
-
-- 2026-08-03：创建本分类，完成 01 ~ 06 六篇正文与导航页。
-- 2026-08-07：新增 07-Iris复制使用与迁移篇（Iris 启用决策、迁移清单与限制）。
+- **向下扎根（计算机底座）**：
+  - Socket 非阻塞与 Epoll：[00-07 Linux系统编程](../../00-计算机与工程基础/07-Linux系统编程/README.md)
+  - 网络分层协议与 UDP/TCP：[00-09 计算机网络基础](../../00-计算机与工程基础/09-计算机网络基础/README.md)
+- **向上驱动（引擎源码剖析）**：
+  - 网络复制与 RPC 源码：[12-09 网络复制与RPC源码](../12-引擎源码分析/09-网络复制与RPC源码.md)
+  - UNetDriver 通信链路：[12-33 UNetDriver与连接通道源码](../12-引擎源码分析/33-UNetDriver与连接通道源码.md)
+  - ReplicationGraph 源码：[12-34 ReplicationGraph源码](../12-引擎源码分析/34-ReplicationGraph源码.md)
+  - Iris 复制系统源码：[12-20 Iris复制源码](../12-引擎源码分析/20-Iris复制源码.md)
+- **横向协同（服务端与实战）**：
+  - 游戏服务端状态同步：[游戏服务端 01-架构与网络](../../游戏服务端/01-架构与网络/03-帧同步与状态同步.md)
+  - Dedicated Server 平台化：[游戏服务端 05-UE Dedicated Server平台化](../../游戏服务端/05-UE%20Dedicated%20Server平台化/README.md)

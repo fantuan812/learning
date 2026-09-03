@@ -485,12 +485,15 @@ Mass 实体不是 Actor，不能直接挂 `UStateTreeComponent`。做法：自�
 **Q10：StateTree 能做"效用 AI"（Utility AI）吗？**
 可以——`Considerations`（`UStateTreeConsiderationBase`）为子状态打分，配合 `TrySelectChildrenWithHighestUtility`（或按效用概率随机）选择行为，`Weight` 调权重。这是 StateTree 内置的 Utility 支持，比行为树"手写装饰器打分"更规范。
 
-## 关联阅读
+## 关联阅读与前后置专题
 
-- 《01-行为树详解》：行为树与 StateTree 的对比基础；`UBTTask_RunStateTree` 让两者嵌套协作；
-- 《02-感知系统与EQS》：感知结果通过绑定/事件送入 StateTree；`StateTreeRunEnvQueryTask` 在树内直接跑 EQS；
-- 《03-NavMesh寻路》：`StateTreeMoveToTask` 底层依赖导航系统，理解寻路代价与接受半径有助于调参；
-- 《04-Mass实体框架与群集模拟》：Mass 提供群体数量与表现，StateTree 提供个体决策，二者是官方推荐组合；
+- [01-行为树详解](01-行为树详解.md)：行为树与 StateTree 的对比基础；`UBTTask_RunStateTree` 让两者嵌套协作；
+- [02-感知系统与EQS](02-感知系统与EQS.md)：感知结果通过属性绑定/事件送入 StateTree，`StateTreeRunEnvQueryTask` 在树内直接跑 EQS；
+- [03-NavMesh寻路](03-NavMesh寻路.md)：`StateTreeMoveToTask` 底层依赖导航系统，理解寻路代价与接受半径有助于调参；
+- [04-Mass实体框架与群集模拟](04-Mass实体框架与群集模拟.md)：Mass 提供群体数量与表现，StateTree 提供个体决策，二者是官方推荐组合；
+- [07-GameplayTasks-StateTree-GAS-AI协同](07-GameplayTasks-StateTree-GAS-AI协同.md)：StateTree 与 GameplayTasks、GAS 技能的现代 AI 架构整合；
+- [12-21 Mass与StateTree源码](../12-引擎源码分析/21-Mass与StateTree源码.md)：StateTree 编译流水线与执行上下文数据结构源码深度剖析；
+- [游戏AI/01-决策与架构/02-状态机与层次状态机](../../游戏AI/01-决策与架构/02-状态机与层次状态机.md)：层次状态机（HFSM）通用数学模型与状态转移理论；
 - UE 官方文档：StateTree（Unreal Engine 5 文档，含编辑器教程与 C++ 节点示例）；
 - 源码（本机 UE 5.8）：
   - `Engine/Plugins/Runtime/StateTree/Source/StateTreeModule/Public/`：`StateTree.h`、`StateTreeState.h`（编辑器定义）、`StateTreeTypes.h`（转换/触发器/状态类型枚举）、`StateTreeExecutionContext.h`、`StateTreeTaskBase.h`、`StateTreeEvaluatorBase.h`、`StateTreeConditionBase.h`、`StateTreeConsiderationBase.h`、`StateTreeSchema.h`、`StateTreePropertyBindings.h`、`StateTreeEvents.h`；

@@ -58,7 +58,7 @@ Accepted
 
 ### Decision
 
-Option 2。依据 KD-016 的物理稳定性契约，保持 13 子域物理目录与 158 篇正文 + 1 篇全栈闭环总览的 Canonical 物理路径不变，防止全库断链与 Git 历史断裂。将 `00_Index/domains/游戏知识.md` 从简易清单（48 行）大幅重构升级为涵盖 13 大子域 158 核心专题全景矩阵、五大工程角色学习路径（Gameplay/客户端、引擎底层/源码、技术美术/渲染、多人联机/DS架构、工具链与工程效能）、跨域技术映射网格及源码证据索引的权威 Domain MOC；重构 `游戏知识/README.md` 领域总入口，确立六层推导模型与工程协作规范；全面标准化升级 13 个子域 README 为工业级子域工程手册（统一定位与核心问题、专题矩阵、学习顺序、工程落地与跨域依赖）；重点治理 13 篇零外链孤岛正文，织密前置/后置与跨域互链，使知识孤岛清零；最后机械重建 manifest 并确保门禁 100% 通过。
+Option 2。依据 KD-016 的物理稳定性契约，保持 13 子域物理目录与 158 篇正文 + 1 篇全栈闭环总览的 Canonical 物理路径不变，防止全库断链与 Git 历史断裂。将 `00_Index/domains/游戏知识.md` 从简易清单（48 行）大幅重构升级为涵盖 13 大子域 158 核心专题全景矩阵、五大工程角色学习路径（Gameplay/客户端、引擎底层/源码、技术美术/渲染、多人联机/DS架构、工具链与工程效能）、跨域技术映射网格及源码证据索引的权威 Domain MOC；重构 `游戏知识/README.md` 领域总入口，确立六层推导模型与工程协作规范；全面标准化升级 13 个子域 README 为工业级子域工程手册（统一定位与核心问题、专题矩阵、学习顺序、工程落地与跨域依赖）；重点治理 13 篇零外链孤岛正文，织密前置/后置与跨域互链，使知识孤岛清零；同时对 8 篇关键专题（01-11 多线程与任务系统、02-10 移动端渲染、02-11 RenderTarget与SceneCapture、04-05 AnimNext、06-07 Iris、09-06 Chaos车辆、10-04 Quartz、13-04 PCG）进行深度重构与源码/代码扩充，全域正文行数均 ≥ 300 行并 100% 达成 L2 成熟度；最后机械重建 manifest 并确保门禁 100% 通过。
 
 ### Reason
 
@@ -70,11 +70,11 @@ Option 2。依据 KD-016 的物理稳定性契约，保持 13 子域物理目录
 
 ### Affected files
 
-`00_Index/domains/游戏知识.md`、`游戏知识/README.md`、`游戏知识/*/README.md`（13 篇）、`游戏知识/**/*.md`（13 篇孤岛正文）、`.kb/decisions.md`、`.kb/manifest.yaml`、`.kb/plans/current.md`。
+`00_Index/domains/游戏知识.md`、`游戏知识/README.md`、`游戏知识/*/README.md`（13 篇）、`游戏知识/**/*.md`（13 篇孤岛正文 + 8 篇强化正文）、`.kb/decisions.md`、`.kb/manifest.yaml`、`.kb/plans/current.md`、`.kb/taxonomy.yaml`、`learning/log.md`。
 
 ### Status
 
-Accepted（已规划并准备执行）
+Accepted（已执行并通过验证）
 
 ## KD-017
 

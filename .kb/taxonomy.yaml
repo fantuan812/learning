@@ -66,7 +66,7 @@ domains:
       09-物理系统: Chaos、碰撞、约束、破坏、车辆。
       10-音频系统: 播放、衰减、MetaSound、Quartz。
       11-VFX与Niagara: Niagara 粒子、流体与性能。
-      12-引擎源码分析: UE5.8 引擎源码纵深层（01-48）。
+      12-引擎源码分析: UE5.8 引擎源码纵深层（01-56）。
       13-世界构建与过场: Landscape、Foliage、PCG、Sequencer、ICVFX。
   游戏服务端:
     description: 游戏服务端架构、网络、数据业务、业务系统、平台可靠性、DS 平台化与世界模拟运行时。

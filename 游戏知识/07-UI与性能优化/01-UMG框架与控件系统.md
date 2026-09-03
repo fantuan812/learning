@@ -484,14 +484,18 @@ void UMyListWidget::HandleItemClicked()
 
 ---
 
-## 7. 关联阅读
+## 7. 关联阅读与前后置专题
 
+- [02-UI数据绑定与MVVM](02-UI数据绑定与MVVM.md)：从 Tick 属性轮询到原生 MVVM 数据驱动的架构跃迁；
+- [03-性能分析工具与Profiling](03-性能分析工具与Profiling.md)：使用 Unreal Insights 与 stat 命令精细分析 Slate 绘制耗时；
+- [04-渲染与加载性能优化](04-渲染与加载性能优化.md)：UI 渲染 DrawCall 合批、图集打包与内存开销优化；
+- [07-CommonUI输入路由与焦点管理](07-CommonUI输入路由与焦点管理.md)：跨平台多端输入路由与焦点栈管理；
+- [08-Slate自定义控件与样式系统](08-Slate自定义控件与样式系统.md)：底层 SWidget 声明式绘制与 FSlateStyleSet 定制；
+- [12-14 UMG与Slate源码](../12-引擎源码分析/14-UMG与Slate源码.md)：SObjectWidget 桥接与 Slate 渲染批次裁剪源码底层；
+- [00-02 C++对象模型与内存](../../00-计算机与工程基础/02-C++对象模型与内存/README.md)：UI 控件树深层递归与虚表派发开销的第一性原理分析；
 - [UE 5.8 官方文档：UMG UI Designer 快速入门](https://dev.epicgames.com/documentation/en-us/unreal-engine/umg-ui-designer-quick-start-guide-in-unreal-engine)（布局、控件与 Widget Blueprint）
 - [UE 5.8 官方文档：Slate UI Framework](https://dev.epicgames.com/documentation/en-us/unreal-engine/slate-user-interface-programming-framework-for-unreal-engine)（底层架构）
 - [UE 5.8 官方文档：Common UI](https://dev.epicgames.com/documentation/unreal-engine/common-ui-plugin-for-advanced-user-interfaces-in-unreal-engine?lang=en-US)（输入路由与焦点）
-- 本知识库：`02-UI数据绑定与MVVM.md`（数据驱动刷新）
-- 本知识库：`03-性能分析工具与Profiling.md`（UI 耗时分析）
-- 本知识库：`04-渲染与加载性能优化.md`（UI 渲染与内存优化）
 
 ---
 

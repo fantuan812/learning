@@ -285,12 +285,15 @@ Groom 本身不参与骨骼蒙皮；它通过 GroomBindingAsset 把发根"钉"�
 **Q9：角色换发型时绑定资产要重建吗？**
 只要**几何拓扑或发根位置**变化就需要重建绑定；仅改材质/宽度/颜色不需要。换体型（骨骼网格变化）必须用新 `TargetSkeletalMesh` 重建，并核对 `SourceMeshRequestedLOD` 与 `TargetMeshRequestedMinLOD` 的匹配。
 
-## 7. 关联阅读
+## 7. 关联阅读与前后置专题
 
-- 本目录 `01-渲染管线概览.md`：发丝渲染在延迟/前向管线中的位置；
-- 本目录 `04-Nanite与Lumen.md`：虚拟化几何体（Nanite）与全局光照原理，Nanite Strands 依赖同一套体系；
-- 本目录 `03-光照与阴影系统.md`：深阴影贴图与体积阴影的配合；
-- 本目录 `09-光线追踪与路径追踪.md`：`r.RayTracing.Shadows.EnableHairVoxel`、光追反射中毛发的处理；
+- [01-渲染管线概览](01-渲染管线概览.md)：发丝渲染在延迟/前向管线中的位置与 RDG 依赖图调度；
+- [04-Nanite与Lumen](04-Nanite与Lumen.md)：虚拟化几何体（Nanite）与全局光照原理，Nanite Strands 依赖同一套体系；
+- [03-光照与阴影系统](03-光照与阴影系统.md)：深阴影贴图（DeepShadow）与体积阴影的配合；
+- [09-光线追踪与路径追踪](09-光线追踪与路径追踪.md)：`r.RayTracing.Shadows.EnableHairVoxel` 与光追反射中发丝加速结构处理；
+- [11-01 Niagara粒子系统基础](../11-VFX与Niagara/01-Niagara粒子系统基础.md)：引导发物理模拟与约束解算依托 Niagara 物理后端；
+- [12-10 渲染线程与RHI源码](../12-引擎源码分析/10-渲染线程与RHI源码.md)：底层 RHI 绘制调用与 HairStrands 顶点着色器分发；
+- [00-08 编译器优化与GPU异构](../../00-计算机与工程基础/08-计算机体系结构与性能/04-编译器优化与GPU异构.md)：现代 GPU 计算着色器调度与毛发 Strand 宽相位剔除底层原理；
 - 引擎源码：`Engine\Plugins\Runtime\HairStrands\Source\HairStrandsCore\Public\GroomAsset.h`、`GroomAssetPhysics.h`、`GroomBindingAsset.h`；`Engine\Source\Runtime\Renderer\Private\HairStrands\`（Visibility / DeepShadow / Transmittance / RenderCurveRaster）；
 - 官方文档：Hair Rendering and Simulation（Groom）页面，UE 5.8 Release Notes 中 HairStrands 部分（Nanite Strands 实验特性）。
 

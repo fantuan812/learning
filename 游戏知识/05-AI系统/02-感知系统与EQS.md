@@ -506,10 +506,14 @@ void AAController::OnCoverQueryFinished(TSharedPtr<FEnvQueryResult> Result)
 **Q8：EQS 蓝图中怎么把结果给行为树用？**
 `Run EQS Query` 任务的 `Blackboard Key` 选择目标键；或者用 `Find EQS Query Results` 蓝图节点在事件中接收 `FEnvQueryResult`。
 
-## 关联阅读
+## 关联阅读与前后置专题
 
-- 《01-行为树详解》：感知与 EQS 的结果通过黑板驱动行为树；
-- 《03-NavMesh寻路》：EQS 的 PathingGrid 与 Pathfinding 测试依赖导航系统；
+- [01-行为树详解](01-行为树详解.md)：感知与 EQS 的结果通过黑板驱动行为树；
+- [03-NavMesh寻路](03-NavMesh寻路.md)：EQS 的 PathingGrid 与 Pathfinding 测试依赖导航系统；
+- [08-AI调试与性能分析](08-AI调试与性能分析.md)：EQS 候选点热力图与 VisualLogger 感知刺激捕获；
+- [12-12 行为树与AI源码](../12-引擎源码分析/12-行为树与AI源码.md)：AIPerceptionSystem 批量刺激分发与底层源码实现；
+- [12-46 Lyra-AI机器人与队伍源码](../12-引擎源码分析/46-Lyra-AI机器人与队伍源码.md)：Lyra 项目中机器人感知目标筛选与队伍过滤机制；
+- [游戏AI/01-决策与架构/01-AI总体架构与感知](../../游戏AI/01-决策与架构/01-AI总体架构与感知.md)：游戏 AI 整体感知模型与刺激过滤理论；
 - UE 官方文档：AI Perception（感知）、Environment Query System；
 - 源码：`Engine/Source/Runtime/AIModule/Classes/Perception/` 与 `EnvironmentQuery/`；
 - 示例：Lyra 中的感知与 EQS 配置、AITesting 工程、Epic 官方 EQS 教程（EQS 掩体查询）。

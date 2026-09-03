@@ -3,7 +3,8 @@ type: Index
 title: "12 · 引擎源码分析"
 status: stable
 verified: []
-maturity: L0
+maturity: L2
+updated: 2026-08-20
 ---
 # 12 · 引擎源码分析
 
