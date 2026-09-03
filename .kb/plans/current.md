@@ -22,16 +22,16 @@ updated: 2026-08-20
 
 # Goal（当前）
 
-在已发布的 OKF 全库迁移之上重整知识结构：先建立可审计的领域 MOC、跨域 Canonical 关系、生命周期路由和 Obsidian 属性视图，再决定是否需要物理目录迁移。第一阶段保护现有正文路径、成熟度、验证事件和链接。
+系统整理与深度优化“00-计算机与工程基础”知识体系：从孤立专题升级为网状贯通的底层工程底座。建立清晰的“底座原理 → 机制设计 → 游戏工程落地（UE5客户端/服务端/算法/质量）”推导链路；完善领域级 Domain MOC、总 README 与 16 个子域 README；补充跨专题互链以消除 33 篇知识孤岛；保持物理路径与 OKF 元数据稳定，确保全部仓库与格式门禁 100% 通过。
 
 # Scope（当前）
 
-- 创建 `00_Index/domains/` 下六个 Domain MOC，按真实目录组织学习路径和领域边界。
-- 创建 `00_Index/axes/` 下“跨域主题”“知识边界与生命周期”两个横向视图，明确唯一 Primary Canonical 与提升流程。
-- 将 `00_Index/Knowledge.base` 扩展为 All / Review / Evidence / Project 四个视图；Bases 只消费 Properties，不成为新事实源。
-- 更新 Global MOC、根索引、README、taxonomy、结构/Obsidian/Agent 协作规则和控制面；最终机械重建 manifest。
-- 不移动、重命名、拆分或合并知识正文；不改正文 H1、`type`、`maturity`、`verified`、`sources` 与既有 Canonical 路径。
-- 不修改或纳入用户 `.obsidian`；Obsidian 对 `.base` 的自动规范化按外部工作区变化保留并语义审查。
+- 领域导航升级：将 `00_Index/domains/计算机与工程基础.md` 升级为具备 16 子域 40 专题全景图、五大工程角色学习路径（客户端/引擎、服务端、算法/AI、性能与质量、分布式系统）、跨域工程映射网格及证据链索引的权威 Domain MOC。
+- 领域根入口升级：更新 `00-计算机与工程基础/README.md`，给出三层推导架构图、完整的 40 篇填充矩阵与成熟度/类型分布、子域边界与编号稳定性说明。
+- 16 子域 README 深度标准化：将 16 个二级 README 从简易清单升级为规范的子域工程手册（定位与核心问题、主题矩阵与状态、逻辑学习顺序、游戏与引擎工程映射、前置/后置跨域依赖）。
+- 消除正文知识孤岛：为 33 篇缺乏内部链接的正文补充结构化的“关联知识与前置/后置专题”小节，建立底座内与跨域的网状互链。
+- 控制面与工具链同步：更新 `.kb/taxonomy.yaml`、`.kb/decisions.md`（KD-017）、重建 `.kb/manifest.yaml`，运行 `check_okf.ps1` 与 `check_repo.ps1` 校验。
+- 边界与约束：依据 KD-016，保持现有 40 篇正文物理文件名和路径稳定（避免断链与 Git 历史断裂），不变更各篇已审查的 maturity/verified，不修改用户 `.obsidian`。
 
 # Current State
 
@@ -43,29 +43,28 @@ updated: 2026-08-20
 
 # Findings（当前）
 
-- 六大领域的根 README 与全部二级目录 README 均存在；主知识树保持“Domain → Subdomain → Topic”即可承载当前内容。
-- `Knowledge/` 与 `Projects/` 仍是骨架，不应把六大领域机械搬入；只有无既有领域归属的 universal 内容或明确项目身份才启用。
-- NavMesh、行为树、GAS/Buff、网络复制、Dedicated Server、性能证据和背包存在真实跨域关系，适合用 Primary/Secondary 链接表达。
-- `00-计算机与工程基础` 的编号有缺口或重复，但路径稳定；学习顺序应由 MOC 表达，当前不重编号。
-- 大规模物理移动会同时影响相对链接、README 清单、manifest、Obsidian backlinks 和 Git 历史；第一阶段没有足够证据承担该成本。
+- 基础底座已具备 16 个子域、40 篇正文（均 ≥300 行），覆盖 C++、OS、体系结构、网络、编译、分布式、数学、安全与工程效能，具备深厚的知识积累。
+- 导航层次严重不足：原 `00_Index/domains/计算机与工程基础.md`（仅 51 行）仅含 16 个二级 README 链接，缺乏 40 篇专题展开、角色学习路径与跨域知识映射。
+- 子域 README 高度骨架化：08、09、10、11、14、16 等多个子域 README 仅 14~19 行，缺乏结构化的专题表格、成熟度标注、游戏研发映射和依赖说明。
+- 正文孤岛现象严重：40 篇正文中多达 33 篇内部 Markdown 链接数为 0，未形成知识网络。
+- 编号与命名存在历史缺口或冲突：04 并发存在两个 02 且缺 01；07 系统编程存在两个 03 且缺 02；08 缺 02；13、14、15、16 存在无编号与带编号混用。依据 KD-016 决策，物理路径保持稳定以防止全库断链，通过 MOC 与 README 提供规范的语义学习序列。
 
 # Proposed Taxonomy Changes
 
-- taxonomy 升级为 virtual-first 导航：保留物理 Canonical 路径，通过 Domain MOC、横向 axes 与 Base 形成三轴视图。
-- 三轴分别是 Canonical Domain、OKF knowledge type、scope/lifecycle；目录不再承担全部学习顺序和跨域关系。
-- 物理重构状态保持 `gated`；必须先完成小域或单一主题族的链接影响和回滚审计。
+- 保持 16 子域物理目录与 40 篇正文文件名不变，保持 Canonical 路径权威性。
+- 在 `00_Index/domains/计算机与工程基础.md` 和各子域 README 中提供规范化的语义主题全景和多维度学习路径。
+- 同步 `.kb/taxonomy.yaml` 中的子域描述，确保与实际覆盖完全一致。
 
 # File Operations（当前）
 
 | Action | Paths | Confidence | Reason |
 | --- | --- | ---: | --- |
-| CreateMOC | `00_Index/domains/*.md`、`00_Index/axes/*.md` | 0.94 | 建立虚拟领域和横向关系，不复制正文 |
-| Extend | `00_Index/MOC.md`、`README.md`、`index.md`、`00_Index/README.md` | 0.96 | 暴露新的导航入口 |
-| Extend | `00_Index/Knowledge.base` | 0.90 | 使用官方支持的 filter、groupBy 和 folder 过滤构建四个视图 |
-| UpdateMetadata | `.kb/taxonomy.yaml` | 0.92 | 登记 virtual-first 导航契约和物理试点闸门 |
-| CreatePolicy | `references/agent协作与发布规则.md` | 0.95 | 补齐 Skill 所需的协作与发布速查入口 |
-| CreateTool | `scripts/rebuild_manifest.ps1` | 0.96 | 将 manifest 的机械重算固化为可重复命令 |
-| Rebuild | `.kb/manifest.yaml` | 0.98 | 收口后机械同步 Markdown 路径、bytes、lines、maturity |
+| Extend | `00_Index/domains/计算机与工程基础.md` | 0.98 | 升级为包含 16 子域 40 专题、五大角色路径、跨域映射和证据链的 Domain MOC |
+| Extend | `00-计算机与工程基础/README.md` | 0.98 | 升级三层架构图、填充状态表、成熟度分布与子域边界规范 |
+| Extend | `00-计算机与工程基础/*/README.md` (16 篇) | 0.96 | 全面标准化 16 个子域 README：定位、专题矩阵、学习顺序、工程落地、跨域依赖 |
+| Extend | `00-计算机与工程基础/**/*.md` (33 篇孤岛正文) | 0.95 | 补齐“关联知识与前置/后置专题”小节，消除知识孤岛，织密知识网络 |
+| UpdateMetadata | `.kb/decisions.md` | 0.95 | 记录 KD-017 计算机与工程基础知识体系整理优化决策 |
+| Rebuild | `.kb/manifest.yaml` | 0.99 | 机械同步所有被更新文件的 lines、bytes 与校验项 |
 
 # Merge Plan
 
@@ -95,23 +94,25 @@ updated: 2026-08-20
 
 # Execution Progress（当前）
 
-1. [x] 提交并推送 OKF 全库迁移；远端 SHA 与本地 `9beb653` 一致。
-2. [x] 并行盘点目录、领域边界、跨域主题和 Obsidian Bases 官方语法。
-3. [x] 选择 virtual-first：冻结物理 Canonical 路径，拒绝立即全量搬迁。
-4. [x] 创建六个 Domain MOC、两个横向 axes 和四个 Base 视图。
-5. [x] 同步 taxonomy、全局导航、协作规范、decision/review queue/audit/log。
-6. [x] 重建 manifest，运行 OKF、仓库、链接、编码和差异门禁。
-7. [x] 独立审核第一阶段结果，形成物理试点准入清单。
-8. [x] 机械重建 manifest（404 篇），同步工作日志与已处理 review queue 状态。
+1. [x] 全面盘点“00-计算机与工程基础”16 个子域、40 篇核心专题，梳理完整知识依赖图谱与跨域工程映射。
+2. [x] 升级 `00_Index/domains/计算机与工程基础.md` 为权威 Domain MOC（160 行，覆盖 40 专题矩阵、五大角色学习拓扑、业务映射网格及证据链索引）。
+3. [x] 升级 `00-计算机与工程基础/README.md` 领域总入口（三层推导架构、完整填充矩阵与物理路径稳定性规范）。
+4. [x] 体系化升级 16 个子域的 `README.md`，统一结构为核心定位、专题矩阵、学习顺序、工程落地与跨域导航。
+5. [x] 深度排查发现并彻底重写 02-01（对象布局虚函数）与 03-01（Concepts 与 Ranges）中残留的历史重复占位内容，恢复为 370+ 行深度实战技术专著。
+6. [x] 为全量 40 篇正文补齐结构化“关联知识与工程落地”小节，消除 33 篇知识孤岛，使每篇均具备 5~14 条前后置与业务互链。
+7. [x] 登记架构决策 KD-017 到 `.kb/decisions.md`。
+8. [x] 机械重建 `.kb/manifest.yaml`（404 篇），全量通过 Changed、Strict 及 check_repo 质量门禁。
 
 # Final Validation（当前）
 
-- `check_okf Changed`：Scanned 22 / Conformant 22 / FAIL 0；Strict：Scanned 402 / Conformant 402 / Excluded 2 / FAIL 0。
-- `check_repo.ps1`：404 个 Markdown，PASS / FAIL 0 / WARN 21；新增 WARN 均为短 MOC/axes 导航与过程日志，属于用途预期。
-- manifest 与磁盘 404/404，路径、kind、bytes、lines、maturity 差异均为 0；Windows PowerShell 5.1 与 pwsh 生成结果完全相同。
-- 本地链接、UTF-8/BOM、`git diff --check` 均通过；tracked 知识正文变化 0，tracked `.obsidian` 变化 0。
-- 独立语义审计 P0–P3 为 0；`TAXONOMY-PILOT-01` 保持 Pending，不在 Phase A 偷跑物理迁移。
-- 发布状态：OKF 迁移提交已推送；本结构整理阶段尚未提交、尚未推送。
+- `check_okf Changed`：Scanned 59 / Conformant 59 / FAIL 0 / RESULT: PASS。
+- `check_okf Strict`：Scanned 402 / Conformant 402 / Excluded 2 / FAIL 0 / RESULT: PASS。
+- `check_repo.ps1`：404 个 Markdown（正文 330，README 74），FAIL 0 / RESULT: PASS。
+- 质量元数据：版本缺失 0、日期缺失 0、官方链接缺失 0、源码占位 0。
+- 领域质量门禁：基线缺失 0、日期缺失 0、来源缺失 0、验证入口缺失 0、旧规范引用缺失 0。
+- 相对链接检查：全库涉及“00-计算机与工程基础”的相对路径 100% 存在，断链数为 0。
+- 正文深度：基础域 40 篇正文行数均 ≥300 行（真实技术内容，机械重复归零）。
+- 孤岛清零：基础域 40 篇正文内部 Markdown 互链数均在 5~14 条，零外链文档数清零。
 
 ---
 

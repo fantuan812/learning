@@ -3,27 +3,60 @@ type: Index
 title: "07-Linux系统编程 · 分类"
 status: stable
 verified: []
-maturity: L0
+maturity: L2
+updated: 2026-08-20
 ---
+
 # 07-Linux系统编程 · 分类
 
-> 定位：Linux 下的网络与系统编程基础（socket、epoll、IO 多路复用、信号、性能工具），服务端自研网关/代理/匹配服的底层支撑。
+> 定位：Linux 环境下的网络与系统编程核心基石——非阻塞 Socket、I/O 多路复用（select/poll/epoll）、Reactor 反应器设计模式、io_uring 异步提交环以及 Linux perf 硬件采样与耗时插桩诊断。
 
-## 文件列表
+---
 
-| 文件 | 简介 | 成熟度 |
-| --- | --- | --- |
-| [01-Socket-Epoll与Reactor](01-Socket-Epoll与Reactor.md) | 阻塞/非阻塞、select/poll/epoll、LT/ET、Reactor、partial read/write、背压；实验代码就绪待 Linux 执行 | L3 |
-| [03-性能工具：插桩与perf采样](<03-性能工具：插桩与perf采样.md>) | 耗时点测试方法：C++ 插桩（steady_clock/RAII/编译器插桩）与 Linux perf 采样（record/report/火焰图/关键指标）；服务端场景统计模式与容量衔接 | L2 |
-| [03-io_uring与异步I-O](03-io_uring与异步I-O.md) | 共享队列异步 I/O、网络状态机、批量提交与诊断 | L2 |
+## 1. 专题矩阵与当前状态
 
-## 规划
+> 路径说明：物理文件名遵循仓库稳定契约保留，逻辑序列由本表第一列“逻辑序号”规范呈现。
 
-- `02-Linux信号与进程管理`（规划）：信号、daemon、systemd 集成；
-- `04-Linux诊断工具`（规划）：strace/ss/netstat 等（与 08 体系结构篇互补；perf 已落地为 03 篇）。
+| 逻辑序号 | 专题文件与 Canonical 路径 | 知识类型 | 成熟度 | 核心范畴与工程解答 |
+| :---: | :--- | :---: | :---: | :--- |
+| **01** | [01-Socket-Epoll与Reactor](01-Socket-Epoll与Reactor.md) | Architecture | L3 | 阻塞/非阻塞模式、Epoll 内核红黑树与就绪链表、水平触发（LT）vs 边缘触发（ET）正确读写逻辑、Reactor 事件循环、Partial Write 与背压处理。 |
+| **02** | [03-io_uring与异步I-O](03-io_uring与异步I-O.md) | Mechanism | L2 | 共享提交队列（SQ）与完成队列（CQ）环形缓冲区、内核轮询（SQPOLL）、零拷贝（Zero-Copy）、批量系统调用合并与高性能高吞吐场景应用。 |
+| **03** | [03-性能工具：插桩与perf采样](03-性能工具：插桩与perf采样.md) | Tutorial | L2 | 服务端耗时瓶颈定位：C++ RAII 细粒度计时插桩与 Linux perf 硬件性能计数器周期采样（IPC/Cache-Miss）、火焰图生成与热点闭环定位。 |
 
-## 与 UE/服务端的对接
+---
 
-- 自研网关/登录服/匹配服/DS 平台代理：本分类是底层基础；
-- UE DS 的 Linux 部署参数（端口、连接、SIGTERM）见 [游戏服务端/05-UE Dedicated Server平台化](<../../游戏服务端/05-UE Dedicated Server平台化/README.md>)。
-- [03-io_uring与异步I-O](03-io_uring与异步I-O.md)：提交队列、完成队列、零拷贝与工程模式。
+## 2. 逻辑学习顺序与依赖关系
+
+```text
+01. Epoll 与 Reactor 网络引擎 (01-Socket-Epoll与Reactor.md)
+  └─→ 02. 新一代异步 I/O 引擎 (03-io_uring与异步I-O.md)
+        └─→ 03. 运行态耗时定位与性能采样 (03-性能工具：插桩与perf采样.md)
+```
+
+1. **第一阶段：掌握高并发服务端标配——Epoll Reactor**
+   - 研读 [01-Socket-Epoll与Reactor](01-Socket-Epoll与Reactor.md)；重点掌握非阻塞套接字读写循环，为何 ET 模式下必须持续 `read()` 直至返回 `EAGAIN`，以及写缓冲区满时如何注册 `EPOLLOUT` 事件防范数据丢失与内存膨胀。
+2. **第二阶段：探索现代内核异步前沿——io_uring**
+   - 研读 [03-io_uring与异步I-O](03-io_uring与异步I-O.md)；掌握提交队列与完成队列的双环工作模式，对比 Epoll 仍需每次系统调用陷入内核的物理限制，评估其在存储大日志与网络批量处理中的收益。
+3. **第三阶段：建立可量化的线上排障与分析能力**
+   - 研读 [03-性能工具：插桩与perf采样](03-性能工具：插桩与perf采样.md)；掌握如何通过 RAII 计时宏快速粗定位耗时，再结合 `perf record -g` 生成火焰图深入底层内核与硬件瓶颈。
+
+---
+
+## 3. 游戏研发与工程落地对接
+
+- **自研游戏网关服务器（Gateway）**：
+  - 核心网络层采用单线程 Reactor 循环处理百万级玩家连接接入、加解密与协议分包，将完整数据包分发给后端逻辑服；
+  - 背压机制实践：当逻辑服处理迟缓或客户端网络拥塞时，暂停读取该套接字事件，触发 TCP 滑动窗口收缩，阻止网关内存被打爆。
+- **游戏逻辑服与 AI 线程性能调优**：
+  - 在主 Tick 调度、AOI 广播和怪物行为树决策中植入插桩宏，实时上报帧耗时超标告警；
+  - 遇到线上 CPU 100% 突发异常时，使用 `perf top` 与 `perf record -F 99 -p <pid>` 秒级锁定死循环或无谓自旋的精确指令地址。
+
+---
+
+## 4. 跨域与相关导航
+
+- [00-计算机与工程基础 总索引](../README.md)
+- [计算机与工程基础 Domain MOC](../../00_Index/domains/计算机与工程基础.md)
+- [06-操作系统/01-进程线程虚拟内存与系统调用](../06-操作系统/01-进程线程虚拟内存与系统调用.md)
+- [09-计算机网络基础/01-网络分层协议与工程实践](../09-计算机网络基础/01-网络分层协议与工程实践.md)
+- [游戏服务端/01-架构与网络/05-并发与高性能](../../游戏服务端/01-架构与网络/05-并发与高性能.md)
