@@ -7,6 +7,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+$OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 if ([string]::IsNullOrWhiteSpace($Root)) { $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path) }
 $rootPath = (Resolve-Path -LiteralPath $Root).Path
 
@@ -33,7 +35,13 @@ function Get-ChangedMarkdown {
 function Get-MarkdownFiles {
     param([string]$ScanMode)
     if ($ScanMode -eq 'Changed') { return Get-ChangedMarkdown }
-    return @(Get-ChildItem -LiteralPath $rootPath -Recurse -File -Filter '*.md' | Where-Object { $_.FullName -notmatch '(?i)[\\/]\.git[\\/]' -and $_.FullName -notmatch '(?i)[\\/]\.agents[\\/]skills[\\/].*[\\/]SKILL\.md$' -and $_.FullName -notmatch '(?i)[\\/]learning[\\/]log\.md$' } | ForEach-Object FullName)
+    return @(Get-ChildItem -LiteralPath $rootPath -Recurse -File -Filter '*.md' | Where-Object {
+        $_.FullName -notmatch '(?i)[\\/]\.git[\\/]' -and
+        $_.FullName -notmatch '(?i)[\\/]\.img-work([\\/]|$)' -and
+        $_.FullName -notmatch '(?i)[\\/]references[\\/]UnrealEngine-5\.8-Docs([\\/]|$)' -and
+        $_.FullName -notmatch '(?i)[\\/]\.agents[\\/]skills[\\/].*[\\/]SKILL\.md$' -and
+        $_.FullName -notmatch '(?i)[\\/]learning[\\/]log\.md$'
+    } | ForEach-Object FullName)
 }
 
 function Get-FrontmatterField {

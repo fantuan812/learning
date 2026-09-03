@@ -6,6 +6,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 $rootPath = [System.IO.Path]::GetFullPath($Root)
 $manifestPath = Join-Path $rootPath '.kb\manifest.yaml'
 $utf8NoBom = [System.Text.UTF8Encoding]::new($false, $true)
@@ -32,17 +34,20 @@ function Quote-Yaml([string]$Value) {
     return '"' + $Value.Replace('\', '\\').Replace('"', '\"') + '"'
 }
 
-$files = @(Get-ChildItem -LiteralPath $rootPath -Recurse -File -Filter '*.md' |
-    Where-Object { $_.FullName -notmatch '[\\/]\.git([\\/]|$)' })
-$fileByPath = @{}
-$orderedPaths = New-Object System.Collections.Generic.List[string]
-foreach ($file in $files) {
-    $relative = Get-RelativePath $rootPath $file.FullName
-    $fileByPath[$relative] = $file
-    $orderedPaths.Add($relative)
+$tracked = @(& git -c core.quotepath=false -C $rootPath ls-files '*.md' 2>$null)
+if ($LASTEXITCODE -eq 0 -and $tracked.Count -gt 0) {
+    $ordered = @($tracked | Sort-Object -Unique)
+} else {
+    $files = @(Get-ChildItem -LiteralPath $rootPath -Recurse -File -Filter '*.md' |
+        Where-Object { $_.FullName -notmatch '[\\/]\.git([\\/]|$)' })
+    $orderedPaths = New-Object System.Collections.Generic.List[string]
+    foreach ($file in $files) {
+        $relative = Get-RelativePath $rootPath $file.FullName
+        $orderedPaths.Add($relative)
+    }
+    $ordered = $orderedPaths.ToArray()
+    [System.Array]::Sort($ordered, [System.StringComparer]::Ordinal)
 }
-$ordered = $orderedPaths.ToArray()
-[System.Array]::Sort($ordered, [System.StringComparer]::Ordinal)
 
 $lines = New-Object System.Collections.Generic.List[string]
 $lines.Add('# Knowledge Base Manifest')
@@ -60,11 +65,12 @@ $lines.Add('')
 $lines.Add('documents:')
 
 foreach ($relative in $ordered) {
-    $file = $fileByPath[$relative]
-    $bytes = [System.IO.File]::ReadAllBytes($file.FullName)
+    $fullFilePath = Join-Path $rootPath $relative
+    $bytes = [System.IO.File]::ReadAllBytes($fullFilePath)
     $text = $utf8NoBom.GetString($bytes)
-    $lineCount = [System.IO.File]::ReadAllLines($file.FullName, $utf8NoBom).Count
-    $kind = if ($file.Name -eq 'README.md') { 'README' } else { 'doc' }
+    $lineCount = [System.IO.File]::ReadAllLines($fullFilePath, $utf8NoBom).Count
+    $fileName = [System.IO.Path]::GetFileName($fullFilePath)
+    $kind = if ($fileName -eq 'README.md') { 'README' } else { 'doc' }
     $maturity = Get-Maturity $text
 
     $lines.Add("  $(Quote-Yaml $relative):")
@@ -76,4 +82,4 @@ foreach ($relative in $ordered) {
 
 $content = [string]::Join("`n", $lines) + "`n"
 [System.IO.File]::WriteAllText($manifestPath, $content, $utf8NoBom)
-Write-Host "Manifest rebuilt: $($files.Count) Markdown files -> $manifestPath"
+Write-Host "Manifest rebuilt: $($ordered.Count) Markdown files -> $manifestPath"

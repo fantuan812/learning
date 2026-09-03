@@ -31,3 +31,5 @@
 - 2026-08-20 16:47:14 +08:00：OKF 的 verified 必须保存 {by, at} 验证事件，human-reviewed 等只是按 actor 推导的 trust tier；status 只使用 draft/stable/deprecated。hybrid 的 Strict 仅是本库 profile 范围迁移门禁，轻量 YAML lint 与排除项不能冒充完整官方 OKF parser。
 - 2026-08-20 17:24:10 +08:00：大规模 OKF frontmatter 迁移应按不重叠目录分批，每篇只前置固定最小元数据；逐批同时校验 git diff +7/-0、去前缀正文 SHA-256、Changed/Strict 与 manifest 精确集合，才能把格式迁移和正文改写明确分离。
 - 2026-08-20 18:12:19 +08:00：目录树仍能表达主领域时，先用 Domain MOC、跨域 Primary/Secondary 与 Bases 建立虚拟结构；物理移动必须另列 old→new、入链影响和回滚清单，并与正文拆分分批执行。
+- 2026-09-02 21:30:00 +08:00：完成知识库例行整理与控制面审计：优化 rebuild_manifest 脚本提高在包含外部参考文档环境下的检索性能；机械重建 .kb/manifest.yaml（403→404 篇，补录 2026-08-26 套装与技能系统解耦工作日志）；更新 review queue 中 OBSIDIAN-CONFIG-01 为已执行（基础配置已归档且 workspace 状态已隔离）；全库 404 篇 Markdown 的 OKF frontmatter、相对链接与物理文件完全一致。
+- 2026-09-03 10:15:00 +08:00：完成游戏服务端知识体系重构与导航升级：升级 00_Index/domains/游戏服务端.md 为全景 Domain MOC，绘制 Mermaid 分层架构图并补齐 6 大子域 47 篇文档全量索引与品类架构选型矩阵；重构游戏服务端/README.md 工业级拓扑、五大工程支柱与跨域协同契约；优化 check_okf.ps1 与 check_repo.ps1 排除大体积外部参考文档与终端编码乱码；全库 404 篇 check_repo PASS，check_okf Strict PASS，manifest 机械重建同步。

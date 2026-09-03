@@ -102,12 +102,13 @@ updated: 2026-08-20
 5. [x] 同步 taxonomy、全局导航、协作规范、decision/review queue/audit/log。
 6. [x] 重建 manifest，运行 OKF、仓库、链接、编码和差异门禁。
 7. [x] 独立审核第一阶段结果，形成物理试点准入清单。
+8. [x] 机械重建 manifest（404 篇），同步工作日志与已处理 review queue 状态。
 
 # Final Validation（当前）
 
-- `check_okf Changed`：Scanned 22 / Conformant 22 / FAIL 0；Strict：Scanned 401 / Conformant 401 / Excluded 2 / FAIL 0。
-- `check_repo.ps1`：403 个 Markdown，PASS / FAIL 0 / WARN 21；新增 WARN 均为短 MOC/axes 导航，属于用途预期。
-- manifest 与磁盘 403/403，路径、kind、bytes、lines、maturity 差异均为 0；Windows PowerShell 5.1 与 pwsh 生成结果完全相同。
+- `check_okf Changed`：Scanned 22 / Conformant 22 / FAIL 0；Strict：Scanned 402 / Conformant 402 / Excluded 2 / FAIL 0。
+- `check_repo.ps1`：404 个 Markdown，PASS / FAIL 0 / WARN 21；新增 WARN 均为短 MOC/axes 导航与过程日志，属于用途预期。
+- manifest 与磁盘 404/404，路径、kind、bytes、lines、maturity 差异均为 0；Windows PowerShell 5.1 与 pwsh 生成结果完全相同。
 - 本地链接、UTF-8/BOM、`git diff --check` 均通过；tracked 知识正文变化 0，tracked `.obsidian` 变化 0。
 - 独立语义审计 P0–P3 为 0；`TAXONOMY-PILOT-01` 保持 Pending，不在 Phase A 偷跑物理迁移。
 - 发布状态：OKF 迁移提交已推送；本结构整理阶段尚未提交、尚未推送。

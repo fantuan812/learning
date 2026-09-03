@@ -42,17 +42,17 @@ Historical note: 本条的 Current/Suggested 是执行前快照；当前事实�
 
 ## OBSIDIAN-CONFIG-01（共享 `.obsidian` 配置范围）
 
-Current: `.obsidian/app.json`、`appearance.json`、`core-plugins.json`、`workspace.json` 是任务前未跟踪用户内容；本轮只忽略 workspace 状态，不修改这些文件。
+Current: `.obsidian/app.json`、`appearance.json`、`core-plugins.json`、`graph.json` 已归档纳入版本控制（commit d4ca7c3），`.gitignore` 精确忽略 `workspace.json` / `workspaces.json` 设备状态。
 
-Suggested: 若未来需要团队统一核心插件，再由用户确认是否纳入 `core-plugins.json`；app/appearance/hotkeys/community plugins 必须逐项审计，不默认共享。
+Suggested: 保持当前轻量共享策略；若后续引入社区插件或新核心插件，逐项审计后再提交。
 
-Confidence: 0.70
+Confidence: 0.90
 
-Reason: core plugin 清单可能提升一致性，但 `.obsidian` 同时承载个人与设备状态，自动接管会覆盖用户偏好或引入插件依赖。
+Reason: core plugin 清单（bases/properties/sync/graph 等）已稳定生效，设备工作区状态已隔离，无冲突风险。
 
-Suggested action: 用户确认后选择性共享
+Suggested action: 维持现状，按需增量维护
 
-Status: Pending
+Status: 已执行（2026-09-02：归档基础配置并固化 .gitignore 忽略规则）
 
 ---
 

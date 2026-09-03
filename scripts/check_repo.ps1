@@ -1,9 +1,11 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [string]$Root = ''
 )
 
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+$OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 if ([string]::IsNullOrWhiteSpace($Root)) { $Root = Split-Path -Parent $PSScriptRoot }
 $rootPath = (Resolve-Path -LiteralPath $Root).Path.TrimEnd('\')
 $failures = [System.Collections.Generic.List[string]]::new()
@@ -161,7 +163,11 @@ function Resolve-LocalTarget([string]$SourceFile, [string]$Target) {
 }
 
 $mdFiles = @(Get-ChildItem -LiteralPath $rootPath -Recurse -File -Filter '*.md' |
-    Where-Object { $_.FullName -notmatch '\\.git(\\|$)' })
+    Where-Object {
+        $_.FullName -notmatch '\\.git(\\|$)' -and
+        $_.FullName -notmatch '(?i)[\\/]\.img-work([\\/]|$)' -and
+        $_.FullName -notmatch '(?i)[\\/]references[\\/]UnrealEngine-5\.8-Docs([\\/]|$)'
+    })
 if ($mdFiles.Count -eq 0) { Add-Failure '没有发现 Markdown 文件' }
 
 $linkedByFile = @{}
@@ -236,7 +242,11 @@ foreach ($file in $mdFiles) {
 }
 
 $allDirs = @($rootPath) + @(Get-ChildItem -LiteralPath $rootPath -Recurse -Directory |
-    Where-Object { $_.FullName -notmatch '\\.git(\\|$)' } | ForEach-Object { $_.FullName })
+    Where-Object {
+        $_.FullName -notmatch '\\.git(\\|$)' -and
+        $_.FullName -notmatch '(?i)[\\/]\.img-work([\\/]|$)' -and
+        $_.FullName -notmatch '(?i)[\\/]references[\\/]UnrealEngine-5\.8-Docs([\\/]|$)'
+    } | ForEach-Object { $_.FullName })
 foreach ($dir in $allDirs) {
     if (Test-MaintenancePath $dir) { continue }
     $immediateMd = @(Get-ChildItem -LiteralPath $dir -File -Filter '*.md')
