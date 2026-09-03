@@ -82,6 +82,41 @@ stateDiagram-v2
 
 每个阶段要有 deadline、幂等键和可查询状态。重试同一 `migration_id` 不应创建第二个目标实体或第二次发放奖励。
 
+### 4.1 边界缓冲与幽灵代理（Boundary Buffering & Ghost Proxy）
+
+在连续无缝大世界（Seamless Open World）中，为了杜绝跨越 Zone 边界时的“黑屏加载条”或“角色瞬移动态卡顿”，工业级游戏服务端采用**边界过渡带（Border Transition Zone）+ 幽灵镜像代理（Ghost/Proxy Entity）**机制：
+
+```mermaid
+flowchart LR
+    subgraph ZoneA["源服务器 Zone A (拥有 Authority)"]
+        RealEntity["真实主实体 (Authority)<br/>- 接受玩家输入<br/>- 推进技能与状态机<br/>- 执行物理碰撞"]
+    end
+
+    subgraph BorderZone["边界过渡外扩带 (宽 30~50 米)"]
+        Sensor["空间触发体积 (Overlap Volume)<br/>检测玩家接近边界"]
+    end
+
+    subgraph ZoneB["目标服务器 Zone B (预热与接管)"]
+        GhostEntity["幽灵镜像实体 (Ghost Proxy)<br/>- 只读镜像, 不跑业务逻辑<br/>- 加入 Zone B 本地 AOI 空间格<br/>- 周围 Zone B 玩家可提前感知视线"]
+    end
+
+    Sensor -->|接近边界 50 米| RealEntity
+    RealEntity -.->|增量同步位移与外观| GhostEntity
+    RealEntity ==>|真正跨越分界中线| Handoff["触发两阶段 Authority 移交<br/>网关瞬间切换包路由指针"]
+    Handoff ==>|Ghost 晋升为 Authority| GhostEntity
+    Handoff -.->|原主实体降级为只读 Ghost| RealEntity
+```
+
+1. **预热阶段（Pre-warming）**：
+   - 玩家进入距边界 50 米缓冲区时，Zone A 通过内网向 Zone B 发起预留请求；
+   - Zone B 在本地内存预分配实体插槽，生成只读 `Ghost Proxy`，并将其加入 Zone B 的 AOI 网格中；
+   - Zone B 内的原住玩家此时已经能够在远端平滑看到该玩家走过来（消除“走到脸上突然刷出来”的视觉瑕疵）。
+2. **移交瞬间（Authority Handoff）**：
+   - 当玩家坐标跨越绝对中线时，触发两阶段握手协议；
+   - 网关层收到协调者指令，原子递增 `route_epoch`，将客户端后续所有的 UDP 输入包直接转发给 Zone B；
+   - Zone B 将 `Ghost Proxy` 瞬间原地提升为拥有绝对权威的 `Authority Entity`；
+   - Zone A 降级为 Ghost，并在 3 秒宽限期后优雅销毁内存资源。客户端无任何感知，连招与移动完全不间断。
+
 ## 5. 迁移协议字段
 
 ### 5.1 请求与预留
