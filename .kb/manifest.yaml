@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-09-03 (paths, bytes, lines, and maturity mechanically recalculated).
+# Generated: 2026-09-04 (paths, bytes, lines, and maturity mechanically recalculated).
 version: 4
 
 okf:
@@ -479,8 +479,8 @@ documents:
   "learning/log.md":
     kind: doc
     maturity: L0
-    bytes: 23409
-    lines: 40
+    bytes: 24699
+    lines: 41
   "log.md":
     kind: doc
     maturity: L2
@@ -1719,8 +1719,8 @@ documents:
   "游戏知识/12-引擎源码分析/03-Actor与Component生命周期源码.md":
     kind: doc
     maturity: L2
-    bytes: 24370
-    lines: 577
+    bytes: 17691
+    lines: 352
   "游戏知识/12-引擎源码分析/04-Gameplay框架与登录流程源码.md":
     kind: doc
     maturity: L2
@@ -1854,8 +1854,8 @@ documents:
   "游戏知识/12-引擎源码分析/30-Lumen与MegaLights源码.md":
     kind: doc
     maturity: L2
-    bytes: 30885
-    lines: 434
+    bytes: 15580
+    lines: 312
   "游戏知识/12-引擎源码分析/31-ProceduralVegetationEditor源码.md":
     kind: doc
     maturity: L2
@@ -1874,8 +1874,8 @@ documents:
   "游戏知识/12-引擎源码分析/34-ReplicationGraph源码.md":
     kind: doc
     maturity: L2
-    bytes: 33311
-    lines: 474
+    bytes: 16736
+    lines: 377
   "游戏知识/12-引擎源码分析/35-Nanite源码.md":
     kind: doc
     maturity: L2
@@ -1894,8 +1894,8 @@ documents:
   "游戏知识/12-引擎源码分析/38-PCG源码.md":
     kind: doc
     maturity: L2
-    bytes: 25431
-    lines: 372
+    bytes: 17187
+    lines: 379
   "游戏知识/12-引擎源码分析/39-Lyra源码总览与阅读路线.md":
     kind: doc
     maturity: L2

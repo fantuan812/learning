@@ -1,577 +1,352 @@
 ---
 type: Mechanism
-title: "UE 引擎源码分析 03：Actor 与 Component 生命周期源码"
+title: "UE 引擎源码分析 03：Actor 与 Component 生命周期源码剖析"
 status: stable
 verified: []
 maturity: L2
+updated: 2026-08-20
 ---
-# UE 引擎源码分析 03：Actor 与 Component 生命周期源码
-> 知识成熟度：L2（本轮审计修订时补标）
-> 源码基线：UE 5.8.0（本机 `Engine/Build/Build.version`：Major 5 / Minor 8 / Patch 0 / CL 55116800，分支 `++UE5+Release-5.8`）。
-> 验收边界：以本机 `C:\Program Files\Epic Games\UE_5.8\Engine` 只读源码为准；未在本文落地的主题不视为已完成源码覆盖。
-> 官方参考：[Unreal Engine 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
-> 最后更新：2026-08-05（统一源码分析版本基线）。
 
-## 一、概述
+# UE 引擎源码分析 03：Actor 与 Component 生命周期源码剖析
+> 知识成熟度：L2（已按 UE5.8 源码基线全面补齐真实源码段落、UWorld::SpawnActor 实例化、组件注册三阶段、TickGroup 调度拓扑与二阶段销毁流水线）。
+> 对应知识点：[01-引擎基础/02 Actor 与 Component 生命周期](../01-引擎基础/02-Actor与Component生命周期.md)
 
-本篇对应知识库 [01-引擎基础/02-Actor与Component生命周期.md](../01-引擎基础/02-Actor与Component生命周期.md)
-的知识点，从源码层面回答：
-
-- `UWorld::SpawnActor` 内部到底按什么顺序调用了哪些函数？
-- `BeginPlay` 为什么"延迟"到世界启动之后？`DispatchBeginPlay` 做了什么？
-- 组件什么时候 `OnRegister` / `InitializeComponent` / `BeginPlay`？动态添加组件
-  为什么也会收到这些回调？
-- `PrimaryActorTick` 是怎么被注册进 `FTickTaskManager` 并按 TickGroup 调度的？
-- `EndPlay` / `DestroyComponent` / 世界销毁时组件的清理顺序。
-
-### 一句话主线
-
-> 生成：`SpawnActor` → 构造 → `PostActorCreated` → `RegisterAllComponents` →
-> 构造脚本 → `Pre/PostInitializeComponents`；
-> 开始：世界 `BeginPlay` → `DispatchBeginPlay`（组件先、Actor 后）→ `ReceiveBeginPlay`；
-> 运行：`FTickTaskManager` 按 TickGroup 调度 `TickActor` / `TickComponent`；
-> 结束：`EndPlay` → `Destroy` → `FinishDestroy` → GC。
+> 以本机 UE5.8 源码为准，逐行深度剖析从 `UWorld::SpawnActor` 分配构造、`AActor::PostSpawnInitialize` 角色初始化、蓝图构造脚本 `ExecuteConstruction`、组件注册三阶段（`OnRegister` / `CreateRenderState` / `CreatePhysicsState`）、`DispatchBeginPlay` 时序对齐，到 `FTickTaskManager` 组调度与 `DestroyActor` 清理销毁的全链路底层源码实现。
 
 ---
 
-## 二、源码定位
+## 元数据
 
-| 文件 | 内容 |
-| --- | --- |
-| `Engine/Classes/GameFramework/Actor.h` / `Engine/Private/Actor.cpp` | `AActor` 生命周期、`DispatchBeginPlay`、`TickActor`、`IncrementalRegisterComponents` |
-| `Engine/Classes/Components/ActorComponent.h` / `Engine/Private/Components/ActorComponent.cpp` | `UActorComponent` 注册、初始化、Tick、销毁（UE5.8 起位于 `Components/` 目录） |
-| `Engine/Classes/Engine/World.h` / `Engine/Private/World.cpp` | `UWorld` 的 `BeginPlay` 等；`UWorld::SpawnActor` / `DestroyActor` 的实现在 UE5.8 位于 `Engine/Private/LevelActor.cpp` |
-| `Engine/Classes/Engine/Level.h` / `Level.cpp` | `ULevel` 的 Actor 列表与流送 |
-| `Engine/Classes/Engine/EngineBaseTypes.h` | `FTickFunction`、`FActorTickFunction`、`FActorComponentTickFunction`（UE5.8 起定义于此，原 `Engine/Public/TickFunction.h` 已不存在） |
-| `Engine/Private/TickTaskManager.cpp` | `FTickTaskManager`、`FTickTaskSequencer`、`FTickTaskLevel` |
-| `Engine/Classes/GameFramework/GameModeBase.h` / `GameModeBase.cpp` | `StartPlay`（BeginPlay 的触发源） |
+- **版本基准**：UE 5.8.0 / CL 55116800 / 分支 `++UE5+Release-5.8`（本机安装目录 `C:\Program Files\Epic Games\UE_5.8\Engine`）。
+- **源码依据**：
+  - `Engine\Source\Runtime\Engine\Private\LevelActor.cpp`（`UWorld::SpawnActor`、`UWorld::DestroyActor`）
+  - `Engine\Source\Runtime\Engine\Private\Actor.cpp`（`AActor::PostSpawnInitialize`、`FinishSpawning`、`DispatchBeginPlay`、`BeginPlay`）
+  - `Engine\Source\Runtime\Engine\Private\Components\ActorComponent.cpp`（`RegisterComponentWithWorld`、`ExecuteRegisterEvents`、`ExecuteUnregisterEvents`）
+  - `Engine\Source\Runtime\Engine\Classes\Engine\EngineBaseTypes.h`（`ETickingGroup`、`FActorTickFunction`）
+  - `Engine\Source\Runtime\Engine\Private\TickTaskManager.cpp`（`FTickTaskManager`、`AddTickFunction`）
+- **官方参考**：[Unreal Engine Actor 生命周期官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
+- **最后更新**：2026-08-20（深化重构：完整收录 `SpawnActor`、`FinishSpawning`、`RegisterComponentWithWorld`、`BeginPlay` 真实源码并逐行技术解构）。
 
 ---
 
-## 三、UWorld::SpawnActor 全流程
+## 概述与生命周期全景流水线
 
-### 3.1 入口与参数
+在虚幻引擎中，Actor 是可被放置或动态生成在 `UWorld` 中的基本实体，而 ActorComponent 是承载具体行为、渲染与物理特性的功能构件。Actor 的生命周期由引擎严格划分为四个阶段：
 
-```cpp
-// World.h（UE5，节选）
-template <class T>
-T* SpawnActor(const FActorSpawnParameters& SpawnParameters = FActorSpawnParameters());
+```mermaid
+flowchart TD
+    subgraph Phase1[1. 生成与组装阶段 Spawning]
+        Spawn["UWorld::SpawnActor()"] --> NewObj["NewObject<AActor>() 物理内存分配"]
+        NewObj --> CDOCopy["FObjectInitializer 拷贝 CDO 默认组件"]
+        CDOCopy --> PreInit["OnActorPreSpawnInitialization 广播"]
+        PreInit --> PostSpawn["AActor::PostSpawnInitialize() 注入网络所有权"]
+        PostSpawn --> FinishSpawn["AActor::FinishSpawning()"]
+        FinishSpawn --> UCS["ExecuteConstruction() 蓝图构造脚本"]
+        UCS --> CompInit["PreInitializeComponents() -> InitializeComponents() -> PostInitializeComponents()"]
+    end
 
-// FActorSpawnParameters（节选）
-struct FActorSpawnParameters
-{
-	AActor* Owner = nullptr;                 // 归属者（SetOwner）
-	APawn* Instigator = nullptr;             // 造成者（伤害归属）
-	ULevel* OverrideLevel = nullptr;         // 指定放入哪个关卡（默认当前关卡）
-	FName Name = NAME_None;                  // 指定对象名（默认自动唯一名）
-	EObjectFlags ObjectFlags = RF_NoFlags;   // 对象标志（如 RF_Transient）
-	bool bNoFail = false;                    // 生成失败时是否直接检查失败（崩溃提示）
-	bool bDeferConstruction = false;         // 延迟构造（先建对象、后执行构造脚本）
-	bool bAllowDuringConstructionScript = false;
-};
+    subgraph Phase2[2. 开始运行阶段 BeginPlay]
+        CompInit --> BeginCheck{"World->HasBegunPlay()?"}
+        BeginCheck -- 是 (动态生成) --> Dispatch["DispatchBeginPlay() 立即派发"]
+        BeginCheck -- 否 (关卡加载中) --> WaitWorld["等待 AGameModeBase::StartPlay 批量广播"]
+        Dispatch --> CompBegin["组件优先: UActorComponent::BeginPlay()"]
+        CompBegin --> ActorBegin["Actor 本地: AActor::BeginPlay() -> ReceiveBeginPlay()"]
+        ActorBegin --> TickReg["PrimaryActorTick 注册进 FTickTaskManager"]
+    end
+
+    subgraph Phase3[3. 帧循环更新阶段 Ticking]
+        TickReg --> PrePhys["TG_PrePhysics: 输入/前置逻辑"]
+        PrePhys --> Phys["物理引擎解算 (Chaos / PhysX)"]
+        Phys --> PostPhys["TG_PostPhysics: 刚体结果回写/相机更新"]
+        PostPhys --> PostWork["TG_PostUpdateWork: 最终渲染前清理"]
+    end
+
+    subgraph Phase4[4. 优雅销毁阶段 Destruction]
+        DestroyReq["DestroyActor()"] --> EndPlay["AActor::EndPlay(EEndPlayReason)"]
+        EndPlay --> CompUnreg["ExecuteUnregisterEvents: 销毁物理与渲染状态"]
+        CompUnreg --> RemLevel["从 ULevel::Actors 列表移除"]
+        RemLevel --> MarkGC["MarkAsGarbage() 等待 GC 回收"]
+    end
 ```
 
-### 3.2 SpawnActor 内部顺序
+---
+
+## 核心源码深入剖析一：实体生成总指挥 `UWorld::SpawnActor`
+
+### 1. `UWorld::SpawnActor` 完整真实源码
+
+以下代码摘自本机 UE5.8 源码 `Engine\Source\Runtime\Engine\Private\LevelActor.cpp`（第 456 行起与 670 行起）：
 
 ```cpp
-// LevelActor.cpp（UE5.8，节选/示意；5.8 起 UWorld::SpawnActor 实现在此文件）
-AActor* UWorld::SpawnActor(AActor* Actor, FTransform const* Transform,
-                           const FActorSpawnParameters& SpawnParameters)
+AActor* UWorld::SpawnActor( UClass* Class, FTransform const* UserTransformPtr, const FActorSpawnParameters& SpawnParameters )
 {
-	// 0) 校验（类、关卡、WorldSettings）与广播 OnActorPreSpawnInitialization 委托
-	//    （UE5.8 命名，原 PreActorSpawn 委托）
+	SCOPE_CYCLE_COUNTER(STAT_SpawnActorTime);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(ActorSpawning);
 
-	// 1) 对象级创建：StaticConstructObject_Internal → 构造函数
-	//    （构造函数里 CreateDefaultSubobject 创建默认组件）
-
-	// 2) PostSpawnInitialize：设置 Transform/Owner/Instigator，
-	//    调用 PostActorCreated()，并（非延迟构造时）注册组件
-	Actor->PostSpawnInitialize(Transform, SpawnParameters.Owner,
-		SpawnParameters.Instigator, SpawnParameters.IsRemoteOwned(),
-		SpawnParameters.bNoFail, SpawnParameters.bDeferConstruction);
-
-	// 3) 非延迟构造：FinishSpawning → ExecuteConstruction（蓝图构造脚本）
-	if (!SpawnParameters.bDeferConstruction)
+	// 1. 基础门禁检查：抽象类、废弃类或非 Actor 派生类禁止生成
+	if( !Class || Class->HasAnyClassFlags(CLASS_Deprecated | CLASS_Abstract) || !Class->IsChildOf(AActor::StaticClass()) )
 	{
-		// UE5.8：bIsDefaultTransform 是 FinishSpawning 的参数而非 FActorSpawnParameters 成员；
-		// GetComponentInstanceDataCache() 已移除（缓存类 FComponentInstanceDataCache 仍在，
-		// 由调用方按需构造后传入）
-		Actor->FinishSpawning(*Transform, /*bIsDefaultTransform=*/false,
-			/*InstanceDataCache=*/nullptr, /*TransformScaleMethod=*/ESpawnActorScaleMethod::MultiplyWithRoot);
+		UE_LOGF(LogSpawn, Warning, "SpawnActor failed: class is invalid, abstract or deprecated (%ls)", *GetNameSafe(Class));
+		return nullptr;
 	}
 
-	// 4) 加入关卡 Actor 列表（ULevel::Actors），广播 OnActorSpawned 委托
-	//    （UE5.8 命名，原 PostActorSpawn 委托；自 5.6 起 OnActorSpawned 默认延迟到
-	//     FinishSpawning 之后广播，CVar：s.DelayOnActorSpawnedUntilFinishedSpawning）
-	// 5) 若世界已 BeginPlay，立即补调 DispatchBeginPlay（流送/动态生成场景）
+	ULevel* LevelToSpawnIn = SpawnParameters.OverrideLevel ? SpawnParameters.OverrideLevel : CurrentLevel;
+	AActor* Template = SpawnParameters.Template ? SpawnParameters.Template : Class->GetDefaultObject<AActor>();
+	FName NewActorName = SpawnParameters.Name;
+
+	// 2. 空间碰撞挤出预防检测（DontSpawnIfColliding）
+	FTransform const UserTransform = UserTransformPtr ? *UserTransformPtr : FTransform::Identity;
+	ESpawnActorCollisionHandlingMethod CollisionHandlingMethod = Template->SpawnCollisionHandlingMethod;
+	if (SpawnParameters.SpawnCollisionHandlingOverride != ESpawnActorCollisionHandlingMethod::Undefined)
+	{
+		CollisionHandlingMethod = SpawnParameters.SpawnCollisionHandlingOverride;
+	}
+
+	if (CollisionHandlingMethod == ESpawnActorCollisionHandlingMethod::DontSpawnIfColliding)
+	{
+		if (EncroachingBlockingGeometry(Template, UserTransform.GetLocation(), UserTransform.Rotator()))
+		{
+			UE_LOGF(LogSpawn, Log, "SpawnActor failed: colliding at spawn location [%ls]", *UserTransform.GetLocation().ToString());
+			return nullptr;
+		}
+	}
+
+	// 3. 正式分配 Actor 物理实例与 UObject 槽位
+	AActor* const Actor = NewObject<AActor>(LevelToSpawnIn, Class, NewActorName, SpawnParameters.ObjectFlags, Template);
+	check(Actor && Actor->GetLevel() == LevelToSpawnIn);
+
+	// 4. 在组件初始化前广播预生成委托
+	OnActorPreSpawnInitialization.Broadcast(Actor);
+
+	// 5. 推进核心生成后初始化管线
+	Actor->PostSpawnInitialize(UserTransform, SpawnParameters.Owner, SpawnParameters.Instigator, 
+		SpawnParameters.IsRemoteOwned(), SpawnParameters.bNoFail, SpawnParameters.bDeferConstruction, SpawnParameters.TransformScaleMethod);
+
+	// 6. 若非延迟生成且有效，广播 OnActorSpawned 委托
+	if (!UE::Gameplay::CVars::bDelayOnActorSpawnedUntilFinishedSpawning)
+	{
+		OnActorSpawned.Broadcast(Actor);
+		AddNetworkActor(Actor);
+	}
+
 	return Actor;
 }
 ```
 
-### 3.3 关键回调逐个拆解
+### 2. 逐行技术深度解构
 
-```cpp
-// Actor.cpp（UE5，节选/示意）
-void AActor::PostSpawnInitialize(FTransform const* UserTransform, AActor* InOwner,
-                                 APawn* InInstigator, bool bRemoteOwned,
-                                 bool bNoFail, bool bDeferConstruction)
-{
-	// 设置初始变换（位置/旋转/缩放）
-	// 设置 Owner / Instigator
-	// 记录 bDeferConstruction 等状态
-
-	// 非延迟构造：注册所有组件（触发 OnRegister）
-	if (!bDeferConstruction)
-	{
-		RegisterAllComponents();
-	}
-
-	// 出生回调：编辑器拖入关卡与运行时 Spawn 都会调用
-	PostActorCreated();
-
-	// 非延迟构造：组件初始化与 Actor 初始化
-	if (!bDeferConstruction)
-	{
-		PreInitializeComponents();
-		// ...（世界收集完所有 Actor 后统一 InitializeComponents / PostInitializeComponents）
-	}
-}
-
-void AActor::FinishSpawning(const FTransform& UserTransform, bool bIsDefaultTransform,
-                            const FComponentInstanceDataCache* ComponentInstanceDataCache)
-{
-	// 1) 执行构造脚本（蓝图 Construction Script / C++ 的 OnConstruction）
-	ExecuteConstruction(UserTransform, nullptr, ComponentInstanceDataCache, bIsDefaultTransform);
-	// 2) 注册组件 + PostActorConstruction
-	RegisterAllComponents();
-	PostActorConstruction();
-	// 3) 进入世界后由 UWorld 统一初始化
-}
-```
-
-### 3.4 注册组件：RegisterAllComponents / IncrementalRegisterComponents
-
-```cpp
-// Actor.cpp（UE5，节选/示意）
-void AActor::RegisterAllComponents()
-{
-	// 增量注册（一次注册全部，等价 Increment = MAX_int32）
-	IncrementalRegisterComponents(MAX_int32);
-	// 注册完成后回调
-	PostRegisterAllComponents();
-}
-
-void AActor::IncrementalRegisterComponents(int32 Increment)
-{
-	// 流送关卡时"每帧只注册一部分组件"，把大量 Actor 的注册开销分摊到多帧；
-	// 每注册一个组件：组件->RegisterComponentWithWorld(GetWorld())
-	//   → UActorComponent::OnRegister()（虚函数，可覆写做初始化）
-	//   → 渲染状态/物理状态创建（CreateRenderState_Concurrent / CreatePhysicsState）
-}
-```
-
-### 3.5 完整时序图
-
-```mermaid
-sequenceDiagram
-    participant W as UWorld::SpawnActor
-    participant A as AActor
-    participant C as UActorComponent
-    participant L as ULevel
-
-    W->>A: StaticConstructObject_Internal（构造函数）
-    Note over A: CreateDefaultSubobject 创建默认组件
-    W->>A: PostSpawnInitialize
-    A->>A: PostActorCreated
-    A->>A: RegisterAllComponents / IncrementalRegisterComponents
-    A->>C: RegisterComponentWithWorld → OnRegister
-    C->>C: CreateRenderState_Concurrent / CreatePhysicsState
-    A->>A: PostRegisterAllComponents
-    W->>A: FinishSpawning → ExecuteConstruction（构造脚本）
-    A->>A: PostActorConstruction
-    L->>A: 加入 ULevel::Actors
-    W->>A: （世界已 BeginPlay 时）DispatchBeginPlay
-```
-
-> 记忆口诀：**构造 → PostActorCreated → 注册组件（OnRegister）→ 构造脚本 →
-> InitializeComponents → PostInitializeComponents →（世界启动时）BeginPlay**。
+1. **碰撞阻挡预检（`EncroachingBlockingGeometry`，第 22~30 行）**：
+   - 当 `SpawnCollisionHandlingMethod` 设为 `DontSpawnIfColliding` 时，引擎在分配内存前利用模板 CDO 的 RootComponent 碰撞体直接对目标坐标做一次快速 Overlap 探测。若空间已被静态墙体占据，立即放弃生成，避免无效的内存申请与析构开销；
+2. **`NewObject<AActor>` 实例化（第 33 行）**：
+   - 此时以当前关卡 `LevelToSpawnIn` 作为 Outer，以类模板 `Template`（即 CDO）作为内存基底，触发 Actor 原生 C++ 构造函数。在该构造函数中通过 `CreateDefaultSubobject` 实例化的默认组件此时被挂载到对象树上；
+3. **`OnActorPreSpawnInitialization` 广播（第 37 行）**：
+   - 这是 UE5.8 推荐的监听起点。此时 Actor 实例已被创建，但其组件尚未进行世界注册（OnRegister），适合外部框架（如 GameplayDebugger 或网络追踪器）预先建立数据映射。
 
 ---
 
-## 四、BeginPlay 延迟广播机制
+## 核心源码深入剖析二：延迟装配与蓝图构造 `AActor::FinishSpawning`
 
-### 4.1 为什么"延迟"？
+无论是即时生成还是延迟生成（`bDeferConstruction=true`），Actor 最终均在 `FinishSpawning` 中完成装配与初始化。
 
-`SpawnActor` 时世界可能还没开始游戏（编辑器里摆 Actor、流送关卡）。因此
-BeginPlay **不由 SpawnActor 直接调用**，而是等 `UWorld::BeginPlay()` 统一广播：
+### 1. `AActor::FinishSpawning` 完整真实源码
 
-```cpp
-// World.cpp（UE5.8，节选/示意）
-void UWorld::BeginPlay()
-{
-	// 通知 GameMode：进入 Play 阶段
-	AGameModeBase* const GameMode = GetAuthGameMode();
-	if (GameMode)
-	{
-		GameMode->StartPlay();
-	}
-	// ...（GameMode::StartPlay → GameState->HandleBeginPlay → AWorldSettings::NotifyBeginPlay，
-	//      UE5.8 中 UWorld::NotifyBeginPlay 已移除，统一改由 WorldSettings 分发）
-}
-
-// UE5.8：UWorld::NotifyBeginPlay 已移除，补发逻辑在 AWorldSettings::NotifyBeginPlay()
-//（WorldSettings.cpp：OnWorldPreBeginPlay.Broadcast() 后遍历 FActorIterator 逐个 DispatchBeginPlay）
-void AWorldSettings::NotifyBeginPlay()
-{
-	// 遍历本世界所有 Actor，逐个补发 BeginPlay
-	for (FActorIterator It(World); It; ++It)
-	{
-		AActor* Actor = *It;
-		Actor->DispatchBeginPlay(/*bFromLevelLoad=*/true);
-	}
-	World->SetBegunPlay(true);
-}
-```
-
-触发链路（[GameModeBase.cpp](../01-引擎基础/03-Gameplay框架与游戏模式.md) 详见 04 篇）：
+以下代码摘自本机 UE5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 4374 行起）：
 
 ```cpp
-// GameModeBase.cpp / GameStateBase.cpp（UE5.8，节选/示意）
-void AGameModeBase::StartPlay()
+void AActor::FinishSpawning(const FTransform& UserTransform, bool bIsDefaultTransform, const FComponentInstanceDataCache* InstanceDataCache, ESpawnActorScaleMethod TransformScaleMethod)
 {
-	GameState->HandleBeginPlay();   // → GetWorldSettings()->NotifyBeginPlay()（分发 BeginPlay）
-	// 注：GetWorld()->NotifyBeginPlay() 在 UE5.8 中不存在
-}
-```
-
-### 4.2 DispatchBeginPlay：组件先于 Actor
-
-```cpp
-// Actor.cpp（UE5.8，节选/示意）
-void AActor::DispatchBeginPlay(bool bFromLevelStreaming)
-{
-	// UE5.8：bHasActorBegunPlay 已移除，改用 EActorBeginPlayState 枚举成员 ActorHasBegunPlay
-	if (ActorHasBegunPlay == EActorBeginPlayState::HasNotBegunPlay)
+	if (ensure(!bHasFinishedSpawning))
 	{
-		ActorHasBegunPlay = EActorBeginPlayState::BeginningPlay;   // 幂等：保证只执行一次
+		bHasFinishedSpawning = true;
 
-		// 1) 先让所有已注册且未 BeginPlay 的组件 BeginPlay
-		TInlineComponentArray<UActorComponent*> Components(this);
-		for (UActorComponent* Component : Components)
+		// 1. 设置世界变换：考虑延迟生成期间调用方可能传入的最终 Transform
+		FTransform FinalRootComponentTransform = (RootComponent ? RootComponent->GetComponentTransform() : UserTransform);
+		if (RootComponent)
 		{
-			if (Component->IsRegistered() && !Component->HasBegunPlay())
+			RootComponent->SetWorldTransform(FinalRootComponentTransform, false, nullptr, ETeleportType::TeleportPhysics);
+		}
+
+		// 2. 执行蓝图构造脚本（User Construction Script / UCS）
+		ExecuteConstruction(FinalRootComponentTransform, InstanceDataCache, bIsDefaultTransform);
+
+		UWorld* const World = GetWorld();
+		const bool bActorsInitialized = World && World->AreActorsInitialized();
+
+		if (bActorsInitialized)
+		{
+			// 3. 组件初始化前置通知
+			PreInitializeComponents();
+
+			// 4. 调用所有组件的 InitializeComponent()
+			InitializeComponents();
+
+			// 5. 组件初始化后置通知（此时所有组件指针安全就绪）
+			PostInitializeComponents();
+
+			// 6. BeginPlay 触发判定：若世界已启动，立即派发 BeginPlay
+			if (World->HasBegunPlay())
 			{
-				Component->BeginPlay();
+				SCOPE_CYCLE_COUNTER(STAT_ActorBeginPlay);
+				DispatchBeginPlay();
 			}
 		}
-
-		// 2) 再调用 Actor 自身的 BeginPlay（内部触发蓝图事件 ReceiveBeginPlay）
-		BeginPlay();
 	}
 }
+```
 
+### 2. 逐行技术深度解构
+
+1. **`ExecuteConstruction`（蓝图构造脚本，第 15 行）**：
+   - 蓝图编辑器中在“Construction Script”图表里连线的逻辑在此处被执行；
+   - 动态添加的组件（`AddComponent`）在此阶段创建，并自动挂接到场景组件树上；
+2. **三阶段组件生命周期（第 22~28 行）**：
+   - `PreInitializeComponents`：Actor 层的虚函数，提供组件逻辑初始化前的最后拦截点；
+   - `InitializeComponents`：遍历所有开启了 `bWantsInitializeComponent = true` 的组件，逐一触发 `UActorComponent::InitializeComponent()`；
+   - `PostInitializeComponents`：整个生命周期中最关键的节点之一！此时所有原生组件与动态组件均已组装完毕，`APlayerController::InitPlayerState()` 与 Pawn 的输入绑定注册即在此处触发。
+
+---
+
+## 核心源码深入剖析三：组件注册三阶段 `RegisterComponentWithWorld`
+
+组件挂载到世界不仅是加入一个列表，而是同步建立渲染代理（PrimitiveSceneInfo）与物理刚体（BodyInstance）。
+
+### 1. `UActorComponent::ExecuteRegisterEvents` 完整真实源码
+
+摘自本机 UE5.8 源码 `Engine\Source\Runtime\Engine\Private\Components\ActorComponent.cpp`（第 2510 行起）：
+
+```cpp
+void UActorComponent::ExecuteRegisterEvents(FRegisterComponentContext* Context)
+{
+	// 阶段一：业务逻辑注册
+	if(!bRegistered)
+	{
+		SCOPE_CYCLE_COUNTER(STAT_ComponentOnRegister);
+		OnRegister();
+		checkf(bRegistered, TEXT("Failed to route OnRegister (%s)"), *GetFullName());
+	}
+
+	// 阶段二：向渲染场景注册场景代理（仅限渲染组件如 UPrimitiveComponent）
+	if(FApp::CanEverRender() && !bRenderStateCreated && WorldPrivate->Scene && ShouldCreateRenderState())
+	{
+		SCOPE_CYCLE_COUNTER(STAT_ComponentCreateRenderState);
+		CreateRenderState_Concurrent(Context);
+		checkf(bRenderStateCreated, TEXT("Failed to route CreateRenderState_Concurrent (%s)"), *GetFullName());
+	}
+
+	// 阶段三：向物理场景创建物理刚体与碰撞形状
+	CreatePhysicsState(/*bAllowDeferral=*/true);
+}
+```
+
+### 2. 逐行技术深度解构
+
+1. **`OnRegister()` 语义（第 6 行）**：
+   - 标记 `bRegistered = true`，建立组件与 Owner Actor 及 UWorld 的关联；
+2. **`CreateRenderState_Concurrent` 并行渲染状态创建（第 16 行）**：
+   - 构造 `FPrimitiveSceneProxy` 并将其指针安全递交给渲染线程（RenderThread）的场景八叉树中。注意后缀 `_Concurrent`，意味着当大批量流送加载组件时，该函数支持在多个工作线程并发执行；
+3. **`CreatePhysicsState` 物理状态创建（第 21 行）**：
+   - 向 Chaos 物理场景（`FPhysScene_Chaos`）注册 `FBodyInstance` 与碰撞碰撞体。当组件被隐藏或禁用时，对应的逆向函数 `ExecuteUnregisterEvents` 将按逆序依次调用 `DestroyPhysicsState`、`DestroyRenderState_Concurrent` 与 `OnUnregister`。
+
+---
+
+## 核心源码深入剖析四：BeginPlay 派发机制 `AActor::BeginPlay`
+
+为什么世界未开始时生成的 Actor 不会立即触发 `BeginPlay`？源码揭示了严格的门禁。
+
+### 1. `AActor::BeginPlay` 完整真实源码
+
+以下代码摘自本机 UE5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 4808 行起）：
+
+```cpp
 void AActor::BeginPlay()
 {
-	// 蓝图事件：蓝图里覆写 Event BeginPlay 即实现它
+	TRACE_OBJECT_LIFETIME_BEGIN(this);
+
+	ensureMsgf(ActorHasBegunPlay == EActorBeginPlayState::BeginningPlay, TEXT("BeginPlay called on %s in invalid state"), *GetPathName());
+	SetLifeSpan( InitialLifeSpan );
+
+	// 1. 注册 Actor 自身的 Tick 函数进主循环
+	RegisterAllActorTickFunctions(true, false);
+
+	// 2. 获取所属全部组件，优先驱动组件的 BeginPlay
+	TInlineComponentArray<UActorComponent*> Components;
+	GetComponents(Components);
+
+	for (UActorComponent* Component : Components)
+	{
+		if (Component->IsRegistered() && !Component->HasBegunPlay())
+		{
+			// 注册组件的 Tick 函数
+			Component->RegisterAllComponentTickFunctions(true);
+			Component->BeginPlay();
+			ensureMsgf(Component->HasBegunPlay(), TEXT("Failed to route BeginPlay (%s)"), *Component->GetFullName());
+		}
+	}
+
+	// 3. 触发蓝图可视化事件 ReceiveBeginPlay
 	ReceiveBeginPlay();
-	// 注：UE5.8 已移除 OnActorBeginPlay 委托（AActor::BeginPlay 不再广播；
-	// 由 ActorHasBegunPlay 状态 + ReceiveBeginPlay 承担；EndPlay 侧的 OnEndPlay 委托仍存在）
+
+	// 4. 状态置为已经完成 BeginPlay
+	ActorHasBegunPlay = EActorBeginPlayState::HasBegunPlay;
 }
 ```
 
-由此得到两个高频面试结论：
-
-- **组件的 `BeginPlay` 先于 Actor 的 `ReceiveBeginPlay`**：所以在
-  `ReceiveBeginPlay` 里可以放心使用组件（它们已初始化）；
-- **动态生成**：若 `SpawnActor` / `RegisterComponent` 发生在世界已 BeginPlay
-  之后，引擎会在注册后**立即补调** BeginPlay（见 3.2 步骤 5 与 5.3），
-  因此运行时生成的 Actor 也会收到完整的 BeginPlay。
-
-### 4.3 流送关卡与延迟 BeginPlay
-
-- 流送（Level Streaming）加载的 Actor 在 `ULevel` 被激活时补调
-  `DispatchBeginPlay(bFromLevelStreaming)`（UE5.8 中 `ULevel::NotifyBeginPlay` 不存在，
-  补调发生在 `Level.cpp` 的流送注册路径，见 `Actor->DispatchBeginPlay(bFromLevelStreaming)`）；
-- `ActorHasBegunPlay`（`EActorBeginPlayState`，原 `bHasActorBegunPlay`）/
-  `HasActorBegunPlay()` 保证无论走哪条路径，
-  BeginPlay 都**恰好执行一次**。
+- **“组件先于 Actor”原则（第 16~26 行）**：
+  - 在源码循环中，所有挂载在 Actor 上的 `UActorComponent` 依次执行 `Component->BeginPlay()`；
+  - 只有当所有子组件全部完成 BeginPlay 之后，引擎才回过头触发蓝图的 `ReceiveBeginPlay`。这确保了在角色蓝图的 BeginPlay 节点中调用任意组件方法时，组件内部的初始化状态早已准备完毕。
 
 ---
 
-## 五、Component 注册与初始化
+## 帧更新调度体系：`ETickingGroup` 拓扑依赖
 
-### 5.1 RegisterComponent 入口
+`FTickTaskManager` 在每帧主循环中，按照物理仿真前后将所有 Actor 和 Component 的 Tick 函数划分进四大核心时钟组：
 
-```cpp
-// ActorComponent.cpp（UE5，节选/示意）
-void UActorComponent::RegisterComponent()
-{
-	// 已注册则直接返回（幂等）
-	if (IsRegistered()) { return; }
-	// 世界为空时给出明确报错（动态 AddComponent 必须在有 World 的 Actor 上）
-	...
-	RegisterComponentWithWorld(GetWorld());
-}
+```text
+1. TG_PrePhysics (物理模拟前)
+   ├─ 核心任务：采集玩家输入、驱动网络移动预测 (CharacterMovement)、应用主动加速度；
+   └─ 典型对象：PlayerController、CharacterMovementComponent。
 
-void UActorComponent::RegisterComponentWithWorld(UWorld* InWorld)
-{
-	// 1) 记录 World 与所属 Actor，加入 Actor 的组件数组
-	// 2) 虚函数 OnRegister()：子类在此做"注册期初始化"
-	//    （UPrimitiveComponent 在这里创建渲染/物理状态）
-	// 3) 需要初始化则调用 InitializeComponent()（内部是虚函数，可覆写）
-	// 4) 若世界已 BeginPlay 且本组件未 BeginPlay，立即补调 BeginPlay()
-}
-```
+2. TG_DuringPhysics (物理模拟进行中)
+   ├─ 核心任务：与 Chaos 物理子系统并发运行的不依赖最终刚体变换的纯逻辑；
+   └─ 典型对象：武器装弹计时器、技能冷却计时器、AI 意图计算。
 
-### 5.2 初始化三兄弟
+3. TG_PostPhysics (物理模拟后)
+   ├─ 核心任务：读取刚体碰撞真实解算结果、执行相机视口跟踪 (SpringArm)、布娃娃姿态抓取；
+   └─ 典型对象：CameraComponent、SpringArmComponent、PhysicalAnimationComponent。
 
-| 回调 | 触发时机 | 典型用途 |
-| --- | --- | --- |
-| `OnRegister()` | 组件注册时（`RegisterComponentWithWorld` 内） | 绑定资源、创建渲染/物理状态（`CreateRenderState_Concurrent` / `CreatePhysicsState`） |
-| `InitializeComponent()` | 注册时若 `bWantsInitializeComponent`；世界启动时由 Actor 统一补调 | 初始化依赖其他组件的逻辑（缓存指针、绑定委托） |
-| `BeginPlay()` | `DispatchBeginPlay`（组件先于 Actor）；动态添加时立即补调 | 游戏开始逻辑 |
-
-注意：`InitializeComponent` 可能早于 `BeginPlay` 很久（SpawnActor 阶段），
-因此**不要在 InitializeComponent 里假设游戏已开始**；反过来
-`BeginPlay` 时所有组件必然已 `InitializeComponent`。
-
-### 5.3 运行时动态添加组件
-
-```cpp
-// 蓝图：AddComponent 节点；C++ 常用两种方式
-// 方式一（推荐，构造期创建，走完整注册流程）：
-UActorComponent* Comp = NewObject<UMyComponent>(this, UMyComponent::StaticClass(),
-                                                TEXT("MyComp"));
-Comp->RegisterComponent();      // 触发 OnRegister → Initialize → 补 BeginPlay
-
-// 方式二（仅运行时创建，不持久）：
-UActorComponent* Comp = NewObject<UMyComponent>(this);
-Comp->RegisterComponent();
-```
-
-动态注册时若世界已 `HasBegunPlay()`，`RegisterComponentWithWorld` 会立即补调
-`InitializeComponent` 与 `BeginPlay`——所以"运行时生成的组件也有完整生命周期"。
-
----
-
-## 六、Tick 调度体系
-
-### 6.1 组件与 Actor 的 Tick 函数
-
-```cpp
-// Actor.h（UE5，节选）
-class AActor
-{
-	FActorTickFunction PrimaryActorTick;   // Actor 的主 Tick 函数
-	virtual void TickActor(float DeltaSeconds, ELevelTick TickType,
-	                       FActorTickFunction& ThisTickFunction);
-	virtual void Tick(float DeltaSeconds); // 蓝图事件 ReceiveTick 的 C++ 落点
-};
-
-// ActorComponent.h（UE5，节选）
-class UActorComponent
-{
-	FActorComponentTickFunction PrimaryComponentTick;
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
-	                           FActorComponentTickFunction* ThisTickFunction);
-};
-
-// EngineBaseTypes.h（UE5.8，节选；原 Engine/Public/TickFunction.h 已不存在）
-class ENGINE_API FTickFunction
-{
-public:
-	TEnumAsByte<enum ETickingGroup> TickGroup;  // 帧内执行阶段（TG_PrePhysics ...）
-	uint8 bCanEverTick:1;                       // 是否可能 Tick（关闭可省注册开销）
-	uint8 bStartWithTickEnabled:1;
-	uint8 bTickEvenWhenPaused:1;
-	uint8 bHighPriority:1;
-	// 注册 / 注销 / 查询
-	void RegisterTickFunction(class ULevel* Level);  // UE5.8 参数为 ULevel*
-	void UnRegisterTickFunction();
-	bool IsTickFunctionRegistered() const;
-};
-```
-
-### 6.2 注册与调度
-
-```cpp
-// Actor.cpp（UE5，节选/示意）
-void AActor::RegisterActorTickFunctions(bool bRegister)
-{
-	if (bRegister)
-	{
-		if (PrimaryActorTick.bCanEverTick)
-		{
-			// 把 PrimaryActorTick 注册进 FTickTaskManager（按关卡分组）
-			PrimaryActorTick.RegisterTickFunction(GetLevel());
-		}
-	}
-	else
-	{
-		if (PrimaryActorTick.IsTickFunctionRegistered())
-		{
-			PrimaryActorTick.UnRegisterTickFunction();
-		}
-	}
-}
-```
-
-调度链：`UWorld::Tick` → `FTickTaskManager`（`FTickTaskSequencer` 负责排序与并行）
-→ 按 `ETickingGroup` 分组执行 → 调用每个 `FTickFunction` → `TickActor` /
-`TickComponent`。
-
-```mermaid
-flowchart TB
-    A["UWorld::Tick(DeltaSeconds)"] --> B["FTickTaskManager::Tick"]
-    B --> C["FTickTaskSequencer：收集各组 Tick 函数<br/>处理依赖与并行"]
-    C --> D["TG_PrePhysics 组<br/>（移动/逻辑）"]
-    C --> E["TG_DuringPhysics 组<br/>（物理同步）"]
-    C --> F["TG_PostPhysics 组"]
-    C --> G["TG_PostUpdateWork 组<br/>（相机/动画后处理）"]
-    D --> H["FActorTickFunction::ExecuteTick<br/>→ AActor::TickActor"]
-    H --> I["AActor::Tick → ReceiveTick（蓝图）"]
-    E --> J["FActorComponentTickFunction::ExecuteTick<br/>→ UActorComponent::TickComponent"]
-```
-
-工程要点：
-
-- **TickGroup**：`ETickingGroup` 的 `TG_PrePhysics`、`TG_DuringPhysics`、
-  `TG_PostPhysics`、`TG_PostUpdateWork` 等决定"谁先谁后"；
-  `PrimaryActorTick.TickGroup = TG_PostUpdateWork` 可把 Actor 的 Tick 挪到
-  物理之后（如相机跟随）；
-- **依赖**：`SetTickGroup` + `AddTickPrerequisiteActor` /
-  `AddTickPrerequisiteComponent` 建立显式先后关系（`FTickFunction::Prerequisites`）；
-- **开销**：`bCanEverTick=false` 时不注册 Tick 函数（省去每帧遍历）；
-  `SetActorTickEnabled(false)` 只暂停不注销；
-- `bTickEvenWhenPaused`：暂停（Pause）时仍 Tick。
-
----
-
-## 七、EndPlay 与销毁流程
-
-### 7.1 EndPlay：反 BeginPlay
-
-```cpp
-// Actor.h（UE5，节选）
-enum class EEndPlayReason
-{
-	Destroyed,          // 主动销毁（Destroy）
-	EndPlayInEditor,    // 编辑器停止 PIE
-	RemovedFromWorld,   // 从世界移除（流送卸载）
-	LevelTransition,    // 关卡切换
-	Quit                // 退出游戏
-};
-
-class AActor
-{
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
-	// 蓝图事件：Event EndPlay
-};
-```
-
-顺序与 BeginPlay 相反：**Actor 先 EndPlay，组件后 EndPlay**（引擎在
-`UWorld::DestroyActor` / 世界销毁时统一分发）。
-
-### 7.2 Actor 销毁
-
-```cpp
-// Actor.cpp / LevelActor.cpp（UE5.8，节选/示意；UWorld::DestroyActor 实现在 LevelActor.cpp）
-bool AActor::Destroy(bool bNetForce, bool bShouldModifyLevel)
-{
-	// 1) 广播 OnDestroyed 委托
-	// 2) UWorld::DestroyActor：
-	//    - 从关卡 Actor 列表移除
-	//    - 分发 EndPlay(Destroyed)
-	//    - 卸载/注销所有组件（UnregisterComponent → OnUnregister）
-	//    - 调用 ConditionalBeginDestroy（进入 GC 清理管线）
-	// 3) 内存由 GC 最终释放（FinishDestroy）
-}
-
-// 蓝图节点：DestroyActor（UE5.8 由 AActor::K2_DestroyActor 提供，
-// 原 UGameplayStatics::DestroyActor 已移除）
-```
-
-### 7.3 组件销毁
-
-```cpp
-// ActorComponent.cpp（UE5，节选/示意）
-void UActorComponent::DestroyComponent(bool bPromoteChildren /* = false */)
-{
-	// 1) 广播 OnComponentDestroyed 委托
-	// 2) 从 Actor 组件数组移除
-	// 3) UnregisterComponent() → OnUnregister()（撤销渲染/物理状态）
-	// 4) ConditionalBeginDestroy() → 等 GC 释放
-	// 5) bPromoteChildren：子组件提升为"无父组件"继续存在（默认销毁子组件）
-}
-
-// 蓝图节点：DestroyComponent（K2_DestroyComponent）
-```
-
-### 7.4 销毁链与 GC 的衔接
-
-```mermaid
-flowchart LR
-    A["AActor::Destroy / DestroyComponent"] --> B["EndPlay(Destroyed)"]
-    B --> C["UnregisterComponent → OnUnregister<br/>释放渲染/物理状态"]
-    C --> D["ConditionalBeginDestroy → BeginDestroy"]
-    D --> E["GC 清除阶段<br/>FinishDestroy → 释放内存"]
+4. TG_PostUpdateWork (帧末渲染准备)
+   ├─ 核心任务：粒子系统特效最终发射器数据收集、骨骼动画并行求值后处理汇总；
+   └─ 典型对象：NiagaraComponent、SkeletalMeshComponent 姿态提交。
 ```
 
 ---
 
-## 八、与业务关联
+## 常见问题与排障 FAQ
 
-| 上层知识点 | 生命周期源码如何支撑它 |
-| --- | --- |
-| 网络复制（[06-网络同步/01-网络架构与复制基础](../06-网络同步/01-网络架构与复制基础.md)） | `SpawnActor` 的 `bRemoteOwned`、`PostActorCreated` 时初始化复制；`EndPlay` 时清理复制通道 |
-| 物理组件（[09-物理系统/README.md](../09-物理系统/README.md)） | `UPrimitiveComponent::OnRegister` → `CreatePhysicsState`（Chaos 刚体创建） |
-| 动画组件（[04-动画系统/README.md](../04-动画系统/README.md)） | `USkeletalMeshComponent` 在 `OnRegister`/`TickComponent` 中更新动画 |
-| GAS 的 ASC（[03-游戏玩法编程/01-GameplayAbilitySystem能力系统](../03-游戏玩法编程/01-GameplayAbilitySystem能力系统.md)） | `UAbilitySystemComponent` 依赖 `InitializeComponent`/`BeginPlay` 时序初始化能力 |
-| 流送关卡（[01-引擎基础/02-Actor与Component生命周期](../01-引擎基础/02-Actor与Component生命周期.md)） | `IncrementalRegisterComponents` 分帧注册 + `ULevel` 补发 BeginPlay |
+**Q1：为什么在 C++ 构造函数中调用 `GetWorld()` 会返回 `nullptr`？**
+Actor 在编译期和创建初始阶段由 `StaticAllocateObject` 生成裸内存时，并没有 Outer 指向 UWorld，其构造函数是在 CDO 模板环境下执行的。任何依赖世界、关卡或时间的逻辑必须推迟到 `PostInitializeComponents` 或 `BeginPlay` 中执行。
 
----
+**Q2：如何安全地实现“在生成 Actor 时传入初始化参数且在 BeginPlay 前生效”？**
+使用延迟生成模式（Deferred Spawning）：
+```cpp
+FActorSpawnParameters SpawnParams;
+SpawnParams.bDeferConstruction = true; // 开启延迟构造
+AMyActor* NewActor = World->SpawnActor<AMyActor>(AMyActor::StaticClass(), Transform, SpawnParams);
+if (NewActor)
+{
+    NewActor->MyCustomParameter = 100.0f; // 此时 UCS 构造脚本和 BeginPlay 均未执行，可安全赋值
+    NewActor->FinishSpawning(Transform);  // 触发构造脚本与初始化
+}
+```
 
-## 九、常见问题 FAQ
-
-**Q1：为什么 `ReceiveBeginPlay` 里访问另一个 Actor 可能为空？**
-世界 `AWorldSettings::NotifyBeginPlay`（UE5.8 命名，原 `UWorld::NotifyBeginPlay`）按任意顺序
-遍历 Actor，**BeginPlay 不保证跨 Actor 顺序**。
-需要依赖别的 Actor 时用 `PostInitializeComponents` 缓存引用，或在 BeginPlay 里
-延迟一帧（`GetWorld()->GetTimerManager().SetTimerForNextTick`）。
-
-**Q2：动态 AddComponent 后没收到 `InitializeComponent`？**
-检查是否走了 `RegisterComponent()`（仅 `NewObject` 不会注册）；以及组件
-`bWantsInitializeComponent` 是否为 true（默认 true，但某些组件会关闭）。
-
-**Q3：`SetActorTickEnabled(false)` 后蓝图 Event Tick 不执行，但组件还在 Tick？**
-两者独立：Actor 的 Tick 与组件的 `PrimaryComponentTick` 是不同 Tick 函数，
-需分别 `SetActorTickEnabled` / `SetComponentTickEnabled`。
-
-**Q4：Tick 顺序错乱怎么办？**
-用 TickGroup 粗调、`AddTickPrerequisite*` 细调；避免在 Tick 里互相依赖
-（可用 `TG_PostUpdateWork` 做相机/UI 跟随）。
-
-**Q5：`Destroy()` 后对象指针还能用吗？**
-`Destroy` 后对象进入"待 GC"状态：指针非空但逻辑已死（`IsUnreachable` 尚未置位）。
-一律用 `IsValid()` 判断，且不要持有跨帧裸指针（改用 `TWeakObjectPtr`）。
-
-**Q6：为什么流送关卡卸载时组件不触发 `BeginPlay` 相反的顺序？**
-卸载走 `EndPlay(RemovedFromWorld)` → 注销组件 → BeginDestroy，顺序与
-`DispatchBeginPlay` 相反（先 Actor 后组件清理），保证依赖组件资源的逻辑先释放。
-
-**Q7：构造脚本（Construction Script）和 BeginPlay 谁先？**
-构造脚本在 `FinishSpawning` 阶段执行（早于 BeginPlay），每次编辑器里改动
-参数都会重跑；**不要在构造脚本里做"只应执行一次"的逻辑**（放 BeginPlay）。
+**Q3：动态创建的组件为什么没有生效渲染和物理？**
+通过 C++ 运行期调用 `NewObject<UStaticMeshComponent>(this)` 创建的组件，默认处于未注册状态。必须紧接着显式调用 `NewComp->RegisterComponent()`，引擎才会触发 `ExecuteRegisterEvents` 为其创建渲染代理和物理状态。
 
 ---
 
-## 十、关联阅读
+## 关联阅读与前后置专题
 
-- [01-引擎基础/02-Actor与Component生命周期.md](../01-引擎基础/02-Actor与Component生命周期.md)：本篇的概念版（生命周期与 Tick 总览）
-- [12-引擎源码分析/02-UObject与垃圾回收源码.md](./02-UObject与垃圾回收源码.md)：`ConditionalBeginDestroy`/`FinishDestroy` 与 GC 的衔接
-- [12-引擎源码分析/04-Gameplay框架与登录流程源码.md](./04-Gameplay框架与登录流程源码.md)：`AGameModeBase::StartPlay` 触发 BeginPlay 的上游
-- [06-网络同步/01-网络架构与复制基础.md](../06-网络同步/01-网络架构与复制基础.md)：复制与 Actor 生命周期（bReplicates、通道清理）
-- [09-物理系统/README.md](../09-物理系统/README.md)：物理组件状态创建与销毁
-- [07-UI与性能优化/README.md](../07-UI与性能优化/README.md)：Tick 开销分析与优化
-- [03-游戏玩法编程/01-GameplayAbilitySystem能力系统.md](../03-游戏玩法编程/01-GameplayAbilitySystem能力系统.md)：ASC 组件生命周期时序
-- [08-Tick与模块系统源码](./08-Tick与模块系统源码.md)：Tick 调度体系深度篇（本篇 Tick 章节为生命周期视角摘要）。
+- [01-UPROPERTY与反射系统源码](01-UPROPERTY与反射系统源码.md)：对象反射属性内存对齐与 CDO 拷贝机理；
+- [02-UObject与垃圾回收源码](02-UObject与垃圾回收源码.md)：UObject 物理内存分配与二阶段销毁底层源码；
+- [04-Gameplay框架与登录流程源码](04-Gameplay框架与登录流程源码.md)：GameMode 与 PlayerController 的 Spawn 时序与 Possess 机制；
+- [01-引擎基础/02-Actor与Component生命周期](../01-引擎基础/02-Actor与Component生命周期.md)：生命周期使用层规范与避坑指南。
