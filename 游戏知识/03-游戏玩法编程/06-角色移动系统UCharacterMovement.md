@@ -658,6 +658,7 @@ void AMyDronePawn::Move(const FInputActionValue& Value)
 
 ## 七、关联阅读
 
+- [系统实战/02-角色移动完整链路](../../系统实战/02-角色移动完整链路.md)：输入采样、SavedMoves 队列、ServerMove 协议压缩、服务端防加速作弊校验与 Mesh 相对偏移平滑消抖 15 步端到端实战闭环。
 - [02-EnhancedInput增强输入](./02-EnhancedInput增强输入.md)：`AddMovementInput` 的输入来源（Move 动作 → 移动意图）。
 - [04-委托事件与对象通信](./04-委托事件与对象通信.md)：`LandedDelegate` / `OnCharacterMovementUpdated` / `MovementModeChangedDelegate` 的绑定与生命周期。
 - [05-蓝图与C++协作](./05-蓝图与C++协作.md)：`BlueprintNativeEvent`（`CanJumpInternal`）、`BlueprintImplementableEvent`（`K2_OnMovementModeChanged`）的协作模式。

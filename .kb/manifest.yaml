@@ -39,13 +39,13 @@ documents:
   ".kb/decisions.md":
     kind: doc
     maturity: L2
-    bytes: 28780
-    lines: 596
+    bytes: 36575
+    lines: 689
   ".kb/plans/current.md":
     kind: doc
     maturity: L2
-    bytes: 10978
-    lines: 127
+    bytes: 5741
+    lines: 108
   ".kb/plans/README.md":
     kind: README
     maturity: L0
@@ -89,8 +89,8 @@ documents:
   "00_Index/domains/游戏AI.md":
     kind: doc
     maturity: L2
-    bytes: 20453
-    lines: 246
+    bytes: 20765
+    lines: 247
   "00_Index/domains/游戏测试与质量.md":
     kind: doc
     maturity: L2
@@ -109,7 +109,7 @@ documents:
   "00_Index/domains/游戏知识.md":
     kind: doc
     maturity: L2
-    bytes: 31333
+    bytes: 31592
     lines: 182
   "00_Index/MOC.md":
     kind: doc
@@ -479,8 +479,8 @@ documents:
   "learning/log.md":
     kind: doc
     maturity: L0
-    bytes: 24699
-    lines: 41
+    bytes: 27273
+    lines: 44
   "log.md":
     kind: doc
     maturity: L2
@@ -591,6 +591,11 @@ documents:
     maturity: L0
     bytes: 1740
     lines: 26
+  "系统实战/02-角色移动完整链路.md":
+    kind: doc
+    maturity: L3
+    bytes: 22859
+    lines: 376
   "系统实战/03-技能释放完整链路.md":
     kind: doc
     maturity: L3
@@ -609,8 +614,8 @@ documents:
   "系统实战/README.md":
     kind: README
     maturity: L0
-    bytes: 4628
-    lines: 69
+    bytes: 5381
+    lines: 70
   "游戏AI/01-决策与架构/01-AI总体架构与感知.md":
     kind: doc
     maturity: L2
@@ -659,8 +664,8 @@ documents:
   "游戏AI/02-移动学习与服务端/02-战斗与Boss设计.md":
     kind: doc
     maturity: L2
-    bytes: 37424
-    lines: 597
+    bytes: 37642
+    lines: 598
   "游戏AI/02-移动学习与服务端/03-学习型AI.md":
     kind: doc
     maturity: L2
@@ -681,11 +686,16 @@ documents:
     maturity: L2
     bytes: 17881
     lines: 312
+  "游戏AI/02-移动学习与服务端/07-战斗AI编排与战术协同.md":
+    kind: doc
+    maturity: L2
+    bytes: 18425
+    lines: 355
   "游戏AI/02-移动学习与服务端/README.md":
     kind: README
     maturity: L2
-    bytes: 8276
-    lines: 109
+    bytes: 9274
+    lines: 115
   "游戏AI/03-评测与安全/01-AI评测回放.md":
     kind: doc
     maturity: L2
@@ -709,8 +719,8 @@ documents:
   "游戏AI/README.md":
     kind: README
     maturity: L2
-    bytes: 12174
-    lines: 148
+    bytes: 12411
+    lines: 149
   "游戏测试与质量/01-测试金字塔与测试策略.md":
     kind: doc
     maturity: L2
@@ -864,8 +874,8 @@ documents:
   "游戏服务端/03-业务系统设计/08-技能与战斗框架.md":
     kind: doc
     maturity: L2
-    bytes: 17892
-    lines: 323
+    bytes: 18152
+    lines: 324
   "游戏服务端/03-业务系统设计/README.md":
     kind: README
     maturity: L0
@@ -1324,8 +1334,8 @@ documents:
   "游戏知识/03-游戏玩法编程/06-角色移动系统UCharacterMovement.md":
     kind: doc
     maturity: L2
-    bytes: 40858
-    lines: 668
+    bytes: 41112
+    lines: 669
   "游戏知识/03-游戏玩法编程/07-相机系统与视口.md":
     kind: doc
     maturity: L2
@@ -1374,13 +1384,13 @@ documents:
   "游戏知识/04-动画系统/02-动画蒙太奇与混合空间.md":
     kind: doc
     maturity: L2
-    bytes: 25186
-    lines: 468
+    bytes: 25383
+    lines: 469
   "游戏知识/04-动画系统/03-IK与程序化动画.md":
     kind: doc
     maturity: L2
-    bytes: 27333
-    lines: 422
+    bytes: 27531
+    lines: 423
   "游戏知识/04-动画系统/04-动画性能与预算分配.md":
     kind: doc
     maturity: L2
@@ -1401,11 +1411,16 @@ documents:
     maturity: L2
     bytes: 24551
     lines: 322
+  "游戏知识/04-动画系统/08-动作战斗系统与打击手感.md":
+    kind: doc
+    maturity: L2
+    bytes: 32046
+    lines: 581
   "游戏知识/04-动画系统/README.md":
     kind: README
     maturity: L2
-    bytes: 6005
-    lines: 80
+    bytes: 8043
+    lines: 90
   "游戏知识/05-AI系统/01-行为树详解.md":
     kind: doc
     maturity: L2
@@ -2029,5 +2044,5 @@ documents:
   "游戏知识/README.md":
     kind: README
     maturity: L2
-    bytes: 13491
+    bytes: 13506
     lines: 147

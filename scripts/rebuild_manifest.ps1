@@ -34,7 +34,7 @@ function Quote-Yaml([string]$Value) {
     return '"' + $Value.Replace('\', '\\').Replace('"', '\"') + '"'
 }
 
-$tracked = @(& git -c core.quotepath=false -C $rootPath ls-files '*.md' 2>$null)
+$tracked = @(& git -c core.quotepath=false -C $rootPath ls-files --cached --others --exclude-standard '*.md' 2>$null)
 if ($LASTEXITCODE -eq 0 -and $tracked.Count -gt 0) {
     $ordered = @($tracked | Sort-Object -Unique)
 } else {

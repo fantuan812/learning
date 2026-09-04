@@ -58,7 +58,7 @@ domains:
       01-引擎基础: UObject、反射、Actor 生命周期、World、流送。
       02-渲染与图形: 渲染管线、材质、光照、Nanite、Lumen、后处理。
       03-游戏玩法编程: GAS、输入、Tag、委托、移动、背包、存档。
-      04-动画系统: 动画蓝图、蒙太奇、IK、AnimNext。
+      04-动画系统: 动画蓝图、蒙太奇、IK、AnimNext、动作战斗与打击手感。
       05-AI系统: 行为树、感知、NavMesh、Mass、StateTree。
       06-网络同步: 复制、RPC、预测、ReplicationGraph、回放。
       07-UI与性能优化: UMG、MVVM、Profiling、调试。
