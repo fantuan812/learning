@@ -687,3 +687,79 @@ AGENTS.md 要求"Never begin by moving files"；审计阶段只读；结构性�
 ### Status
 
 Accepted
+
+## KD-024
+
+### Subject
+
+知识库与 Agent 整体架构重构：责任分层、规则单一事实源和可执行验收（2026-09-07）。
+
+### Options
+
+1. 将现有中文领域整体搬入 Knowledge，重新建立目录与导航。
+2. 保留正文路径，重构控制面与 Agent 契约，统一新材料落点，增加架构一致性检查。
+3. 只写设计建议，保持现有角色冲突与别名环不变。
+
+### Decision
+
+采用 Option 2。用户已明确授权本轮重构，内部计划和评审不构成新的用户批准请求。
+
+- architecture.json 独占顶层路径的责任层登记；taxonomy 保留兼容 domains 注册并负责领域语义。
+- 现有六个领域是通用知识的主要 Canonical；Knowledge 仅承接经决策确认的领域外扩展。来源集合允许保留书籍章节与日期组织。
+- 根 AGENTS 保留最小契约并按任务加载细则；知识组织、协作发布分别只有一份详细规则。项目 Skill 负责路由，角色配置负责单一职责和默认权限。
+- 保留五个分析角色，补执行者、整合者和验证者；共享文件单写者，不相交执行范围可以并行。模型和推理强度继承当次运行时选择。
+- 修复 Inventory/背包系统与 Determinism/确定性的循环，并把行为树和 PCG 的别名收敛为单跳标准词。
+- 增加目录覆盖、入口、别名与 manifest 检查及负向自测；修复 manifest 生成器的 safe.directory 使用与跨宿主确定性排序。
+
+### Reason
+
+审计发现 AGENTS 的 universal 落点与现行生命周期规则不一致；协作参考把写入和发布全归主线程，与角色矩阵冲突；角色文件固定模型会覆盖任务选择；别名环会阻止递归归一化终止。这些问题可以直接通过结构契约与校验解决，无须迁移数百篇知识正文。
+
+### Confidence
+
+0.95。路径、权限和别名问题有实际文件证据；配置静态检查不代表当前宿主已经加载新角色。
+
+### Affected files
+
+精确改动与职责见 [.kb/plans/current.md](plans/current.md) 的 File Operations；整体责任与验收见 [知识库架构](../references/知识库架构.md)。
+
+### Consequences
+
+本决策替代根 AGENTS 和旧参考中的“通用知识一律进入 Knowledge”“所有写入必须由主线程完成”等冲突表述；历史记录不回写。原有 dirty README、references/仓库结构.md 和读书笔记保持不变，现行合同通过 index、Global MOC、.kb 和 AGENTS 接入。
+
+本轮重构不自动修复既有 29 项内容质量失败、不提升成熟度、不修改个人 Obsidian 状态；各门禁的本轮结果以 current plan 为准。没有提交或推送。
+
+### Status
+
+Accepted（用户授权的架构方案；实施与验收状态见当前计划）。
+
+## KD-025
+
+### Subject
+
+统一知识扫描范围，隔离 Git 忽略的未跟踪工具缓存（2026-09-08）。
+
+### Options
+
+1. 保持检查器递归扫描磁盘、manifest 扫描 Git 的不同口径。
+2. 让检查与清单共同使用 Git 可见且实际存在的 Markdown 集合。
+
+### Decision
+
+采用 Option 2。共享脚本 [get_kb_markdown.ps1](../scripts/get_kb_markdown.ps1) 返回已跟踪文件及未忽略的新文件；删除但未提交的文件跳过，Git 错误终止，原有两个路径排除保留。check_repo 的目录导航与 OKF 的检查范围使用同一集合；OKF 操作性排除保持原义。
+
+### Reason
+
+并行阅读任务新增了翻译缓存与本地依赖，已在用户 .gitignore 中排除；旧检查器仍扫描它们，造成工具文件被误当知识正文，且与 manifest 范围不一致。统一选择源解决职责错误，不修改来源内容和质量判断规则。
+
+### Confidence
+
+0.99。测试明确证明未忽略的新 Markdown 受检、已跟踪且匹配 ignore 的 Markdown 仍受检、忽略缓存排除、Git 失效报错。
+
+### Affected files
+
+scripts/get_kb_markdown.ps1、scripts/test_kb_scope.ps1、scripts/check_repo.ps1、scripts/check_okf.ps1、scripts/rebuild_manifest.ps1、scripts/check_architecture.ps1，以及架构说明、导航、manifest 和当前计划。
+
+### Status
+
+Accepted。范围回归双环境通过，内容规则保持原样；遗留正文与外部导入问题按当前计划分别报告。

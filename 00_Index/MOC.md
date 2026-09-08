@@ -24,6 +24,7 @@ updated: 2026-08-20
 - [Obsidian Knowledge Base](Knowledge.base)
 - [OKF 兼容规范](../references/OKF-兼容规范.md)
 - [Obsidian 协作指南](../references/Obsidian协作指南.md)
+- [知识库架构与事实源](../references/知识库架构.md)：整体分层、依赖方向、权威文件与维护验收
 
 ## 知识树（Domain）
 
@@ -49,7 +50,7 @@ updated: 2026-08-20
 
 ## 通用知识入口（Knowledge）
 
-- [Knowledge](../Knowledge/README.md)：通用知识新主题入口（当前骨架，待流入）
+- [Knowledge](../Knowledge/README.md)：经分类决策确认的领域外通用主题扩展口
 
 ## 证据与方案（Evidence / Plans）
 
@@ -64,5 +65,7 @@ updated: 2026-08-20
 - [Agent 协作与发布规则](../references/agent协作与发布规则.md)：多 Agent 写入与 Git 发布门禁
 - [工作日志](../工作日志/README.md)：真实工作与复盘
 - [笔记](../笔记/README.md)：短笔记与实验速查
+- [读书笔记](../读书笔记/README.md)：保留书目与章节上下文的来源集合，关联领域主文
+- [Agent 配置与角色](../.codex/README.md)：运行配置、角色职责及验证边界
 - [learning](../learning/lessons.md)：稳定维护规则与经验日志
 - [OKF bundle log](../log.md)：格式和兼容级别变更

@@ -162,12 +162,7 @@ function Resolve-LocalTarget([string]$SourceFile, [string]$Target) {
     return [System.IO.Path]::GetFullPath((Join-Path $sourceDir $pathPart))
 }
 
-$mdFiles = @(Get-ChildItem -LiteralPath $rootPath -Recurse -File -Filter '*.md' |
-    Where-Object {
-        $_.FullName -notmatch '\\.git(\\|$)' -and
-        $_.FullName -notmatch '(?i)[\\/]\.img-work([\\/]|$)' -and
-        $_.FullName -notmatch '(?i)[\\/]references[\\/]UnrealEngine-5\.8-Docs([\\/]|$)'
-    })
+$mdFiles = @(& (Join-Path $PSScriptRoot 'get_kb_markdown.ps1') -Root $rootPath)
 if ($mdFiles.Count -eq 0) { Add-Failure '没有发现 Markdown 文件' }
 
 $linkedByFile = @{}
@@ -241,21 +236,34 @@ foreach ($file in $mdFiles) {
     $linkedByFile[$file.FullName] = $linked
 }
 
-$allDirs = @($rootPath) + @(Get-ChildItem -LiteralPath $rootPath -Recurse -Directory |
-    Where-Object {
-        $_.FullName -notmatch '\\.git(\\|$)' -and
-        $_.FullName -notmatch '(?i)[\\/]\.img-work([\\/]|$)' -and
-        $_.FullName -notmatch '(?i)[\\/]references[\\/]UnrealEngine-5\.8-Docs([\\/]|$)'
-    } | ForEach-Object { $_.FullName })
+$scopedPaths = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+$directoryFiles = @{}
+$directoryChildren = @{}
+$directorySet = [Collections.Generic.SortedSet[string]]::new([StringComparer]::Ordinal)
+[void]$directorySet.Add($rootPath)
+foreach ($file in $mdFiles) {
+    [void]$scopedPaths.Add($file.FullName)
+    $dir = $file.DirectoryName
+    if (-not $directoryFiles.ContainsKey($dir)) { $directoryFiles[$dir] = [Collections.Generic.List[IO.FileInfo]]::new() }
+    $directoryFiles[$dir].Add($file)
+    while ($dir -ne $rootPath) {
+        [void]$directorySet.Add($dir)
+        $parent = [IO.Path]::GetDirectoryName($dir)
+        if (-not $directoryChildren.ContainsKey($parent)) { $directoryChildren[$parent] = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase) }
+        [void]$directoryChildren[$parent].Add($dir)
+        $dir = $parent
+    }
+}
+$allDirs = @($directorySet)
 foreach ($dir in $allDirs) {
     if (Test-MaintenancePath $dir) { continue }
-    $immediateMd = @(Get-ChildItem -LiteralPath $dir -File -Filter '*.md')
+    $immediateMd = @($directoryFiles[$dir] | Where-Object { $null -ne $_ })
     $readme = Join-Path $dir 'README.md'
-    if ($dir -ne $rootPath -and $immediateMd.Count -gt 0 -and -not (Test-Path -LiteralPath $readme -PathType Leaf)) {
+    if ($dir -ne $rootPath -and $immediateMd.Count -gt 0 -and -not ($scopedPaths.Contains($readme))) {
         Add-Failure "含 Markdown 的目录缺 README.md: $(Get-RepoRelative $dir)"
         continue
     }
-    if (-not (Test-Path -LiteralPath $readme -PathType Leaf)) { continue }
+    if (-not ($scopedPaths.Contains($readme))) { continue }
     $readmeLinks = $linkedByFile[$readme]
     if ($null -eq $readmeLinks) { $readmeLinks = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase) }
     foreach ($body in ($immediateMd | Where-Object { $_.Name -ne 'README.md' })) {
@@ -263,22 +271,22 @@ foreach ($dir in $allDirs) {
             Add-Failure "README 文件清单缺少链接: $(Get-RepoRelative $body.FullName)（目录 $(Get-RepoRelative $dir)）"
         }
     }
-    foreach ($child in (Get-ChildItem -LiteralPath $dir -Directory)) {
-        if (Test-MaintenancePath $child.FullName) { continue }
-        $childReadme = Join-Path $child.FullName 'README.md'
-        if ((Test-Path -LiteralPath $childReadme -PathType Leaf) -and -not $readmeLinks.Contains($childReadme)) {
+    foreach ($child in (@($directoryChildren[$dir]) | Where-Object { $null -ne $_ })) {
+        if (Test-MaintenancePath $child) { continue }
+        $childReadme = Join-Path $child 'README.md'
+        if (($scopedPaths.Contains($childReadme)) -and -not $readmeLinks.Contains($childReadme)) {
             Add-Failure "上级 README 缺少子目录导航: $(Get-RepoRelative $childReadme)（上级 $(Get-RepoRelative $dir)）"
         }
     }
 }
 
 $rootReadme = Join-Path $rootPath 'README.md'
-if (Test-Path -LiteralPath $rootReadme -PathType Leaf) {
+if ($scopedPaths.Contains($rootReadme)) {
     $rootLinks = $linkedByFile[$rootReadme]
-    foreach ($top in (Get-ChildItem -LiteralPath $rootPath -Directory)) {
-        if (Test-MaintenancePath $top.FullName) { continue }
-        $topReadme = Join-Path $top.FullName 'README.md'
-        if ((Test-Path -LiteralPath $topReadme -PathType Leaf) -and -not $rootLinks.Contains($topReadme)) {
+    foreach ($top in (@($directoryChildren[$rootPath]) | Where-Object { $null -ne $_ })) {
+        if (Test-MaintenancePath $top) { continue }
+        $topReadme = Join-Path $top 'README.md'
+        if (($scopedPaths.Contains($topReadme)) -and -not $rootLinks.Contains($topReadme)) {
             Add-Failure "根 README 缺少顶层导航: $(Get-RepoRelative $topReadme)"
         }
     }

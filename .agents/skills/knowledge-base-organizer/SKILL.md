@@ -1,234 +1,34 @@
 ---
 name: knowledge-base-organizer
-description: Organize, classify, deduplicate, refactor, audit, or restructure a Markdown or technical knowledge base. Use for Inbox processing, knowledge taxonomy work, document merging/splitting, MOC construction, OKF metadata migration, Obsidian-compatible navigation, AI conversation extraction, and knowledge-base maintenance.
+description: Maintain this knowledge base through scoped edits, topic organization, Inbox processing, metadata maintenance, or architecture audits and refactoring.
 ---
-
-> 知识成熟度：L2（工作流 Skill，随使用修订）。
 
 # Knowledge Base Organizer
 
-## Determine operation mode
-
-Classify the task as:
-
-- single_document
-- inbox_cleanup
-- incremental_update
-- topic_cleanup
-- audit
-- full_rebuild
-
-Prefer the smallest sufficient mode.
-
-Never run full_rebuild for ordinary new documents.
-
----
-
-# OKF compatibility
-
-Read `.kb/okf-profile.yaml` and `references/OKF-兼容规范.md` before creating or
-modifying Markdown. The repository profile migration is complete; use hybrid
-staging only for future imported legacy content:
-
-- add a non-empty OKF `type` to every new or modified non-reserved Markdown file;
-- keep imported legacy documents readable and in place while their batch is
-  reviewed, then bring the batch into the profile before closeout;
-- preserve unknown frontmatter fields;
-- keep `maturity` and `verified` independent;
-- prefer standard relative Markdown links so Obsidian is a consumer, not a
-  second source of truth;
-- never overwrite `.obsidian` workspace state.
-
-Run `scripts/check_okf.ps1 -Mode Changed` before the existing repository gate.
-Use `Audit` to require a zero migration backlog and `Strict` as the final
-profile-scope gate. This lightweight lint is not an official general OKF parser.
-
----
-
-# Single Document
-
-Use:
-
-kb_analyzer
-
-Then search existing related knowledge.
-
-Decide:
-
-- Extend
-- Merge
-- Create
-- Archive
-
-Ask kb_curator when semantic overlap exists.
-
----
-
-# Inbox Cleanup
-
-1. Inventory Inbox.
-2. Spawn kb_analyzer workers for independent documents or batches.
-3. Wait for analysis.
-4. Cluster documents by topic.
-5. Search existing canonical knowledge.
-6. Ask kb_curator to review duplicates.
-7. Ask kb_architect only for unresolved structural questions.
-8. Produce migration plan.
-9. Ask kb_auditor to review.
-10. Execute approved changes serially.
-
----
-
-# Topic Cleanup
-
-1. Inspect the target topic.
-2. Identify all related documents.
-3. Analyze knowledge boundaries.
-4. Detect duplicates and overlaps.
-5. Propose canonical documents.
-6. Propose Merge/Split/Rename.
-7. Audit.
-8. Execute.
-
----
-
-# Full Rebuild
-
-Full rebuild is expensive.
-
-Use only when explicitly required or structurally necessary.
-
-Workflow:
-
-kb_scanner
-    ↓
-
-parallel kb_analyzer workers
-    ↓
-
-topic clustering
-    ↓
-
-kb_architect
-    ↓
-
-kb_curator
-    ↓
-
-migration plan
-    ↓
-
-kb_auditor
-    ↓
-
-single integrator execution
-    ↓
-
-kb_auditor final validation
-
-Do not allow subagents to modify files during analysis. The kb_scanner,
-kb_analyzer, kb_architect, kb_curator, and kb_auditor roles are read-only
-analysis/review roles. Content writes are performed only by an explicitly
-allowlisted content executor; shared MOCs, taxonomy, and plans are updated
-serially by the single integrator. The verifier/auditor remains read-only.
-
----
-
-# Parallelization
-
-Good parallel tasks:
-
-- scanning independent directories
-- analyzing independent document batches
-- duplicate candidate analysis
-- topic coverage analysis
-- relationship discovery
-
-Bad parallel tasks:
-
-- moving overlapping directories
-- editing the same MOC
-- merging the same documents
-- changing taxonomy files
-- renaming shared structures
-
-Write-heavy work should normally be serial. Do not grant analysis roles
-content-write or publication authority; publication follows the repository's
-authoritative AGENTS rules.
-
----
-
-# Required Planning
-
-Before structural changes create or update:
-
-.kb/plans/current.md
-
-Include:
-
-# Goal
-
-# Scope
-
-# Current State
-
-# Findings
-
-# Proposed Taxonomy Changes
-
-# File Operations
-
-# Merge Plan
-
-# Split Plan
-
-# Needs Review
-
-# Risks
-
-# Audit Result
-
-# Execution Progress
-
-# Final Validation
-
-Keep it updated while executing.
-
----
-
-# Migration Plan
-
-Before executing produce:
-
-| ID | Current | Target | Action | Confidence | Reason |
-|---|---|---|---|---|---|
-
-Allowed actions:
-
-- Keep
-- Move
-- Rename
-- Merge
-- Split
-- Archive
-- Create
-- Extend
-
-Actions below 0.75 confidence go to review queue.
-
----
-
-# Final Validation
-
-After execution:
-
-1. check moved files exist
-2. check source duplicates
-3. check links
-4. check MOCs
-5. check taxonomy
-6. check aliases
-7. check decision records
-8. run kb_auditor
-
-Only report completion after validation.
+> 知识成熟度：L2（仓库工作流规则，不代表内容或运行时已验证）。
+
+选择能完成用户目标的最小模式。纯文本指令路径以仓库根为基准，Markdown 链接相对本文件；先遵循 [AGENTS.md](../../../AGENTS.md)。
+
+| 模式 | 工作与按需加载 |
+| --- | --- |
+| 单文档或小编辑 | 只读目标与相关 Canonical；按目标修改，不启动全库扫描或结构计划 |
+| 元数据维护 | 读取 references/OKF-兼容规范.md 与 .kb/okf-profile.yaml |
+| Inbox / 主题整理 | 读取 references/知识组织规则.md；盘点目标、找既有主题、分析重复与边界 |
+| 审计 | 保持只读，按范围检查并报告 evidence，不因发现问题自动修复 |
+| 全库重构 | 仅在用户要求或有结构失配证据时使用；加载 references/知识库架构.md 与知识组织规则 |
+
+需要 Agent 协作、执行交接或发布时，读取 references/agent协作与发布规则.md。
+该文档是角色与流程详细事实源；本 Skill 不重定义角色或权限。
+
+编辑前确定精确文件 allowlist、写者与现有 dirty 基线。
+结构变更先维护 .kb/plans/current.md 的目标、映射、范围、风险及验收；非结构小编辑在任务消息记录即可。
+内部分析与审核不增加用户确认门槛，用户已授权范围内直接完成。
+独立正文可按不相交 allowlist 并行；共享导航与控制面由指定整合者串行更新。
+
+主题或 Inbox 工作先搜索既有 Canonical，再决定 Extend / Merge / Create / Archive；
+遇到 taxonomy 冲突才进行结构设计。低置信度操作进入 .kb/review-queue.md。
+具体分类、信息保存和迁移规则按知识组织规则执行，不强制移动所有通用内容到 Knowledge。
+
+完成时运行根 AGENTS 适用检查。内容与导航收敛后由整合者更新 manifest；
+对照基线报告 changes、evidence、risks，明确已执行、未验证、既有失败。
+提交与推送必须按协作规则的显式授权门禁另行处理。

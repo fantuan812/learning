@@ -33,9 +33,9 @@ aliases:
   GameplayTask:
     canonical: "GameplayTasks"
   BehaviorTree:
-    canonical: "行为树"
+    canonical: "Behavior Tree"
   BehaviourTree:
-    canonical: "行为树"
+    canonical: "Behavior Tree"
   行为树:
     canonical: "Behavior Tree"
   NavMesh:
@@ -49,7 +49,7 @@ aliases:
   PCG:
     canonical: "Procedural Content Generation"
   程序化内容生成:
-    canonical: "PCG"
+    canonical: "Procedural Content Generation"
   能力系统:
     canonical: "Gameplay Ability System"
   背包:
@@ -57,7 +57,7 @@ aliases:
   背包系统:
     canonical: "Inventory"
   Inventory:
-    canonical: "背包系统"
+    canonical: "Inventory"
   Buff:
     canonical: "Buff"
   GameClock:
@@ -67,6 +67,6 @@ aliases:
   兴趣管理:
     canonical: "Interest Management"
   Determinism:
-    canonical: "确定性"
+    canonical: "Determinism"
   确定性:
     canonical: "Determinism"

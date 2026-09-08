@@ -13,6 +13,7 @@ okf_version: "0.2"
 ## 主要入口
 
 - [知识体系总览](README.md)
+- [知识库架构与事实源](references/知识库架构.md)
 - [Global MOC](00_Index/MOC.md)
 - [领域 MOC](00_Index/domains/README.md)
 - [跨域主题地图](00_Index/axes/跨域主题.md)
@@ -26,6 +27,7 @@ okf_version: "0.2"
 - [OKF 兼容规范](references/OKF-兼容规范.md)
 - [Obsidian 协作指南](references/Obsidian协作指南.md)
 - [Agent 协作与发布规则](references/agent协作与发布规则.md)
+- [Agent 配置与角色](.codex/README.md)
 - [写作与验收规范](references/写作规范.md)
 - [OKF profile](.kb/okf-profile.yaml)
 - [Bundle 更新记录](log.md)

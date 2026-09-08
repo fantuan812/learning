@@ -34,20 +34,14 @@ function Quote-Yaml([string]$Value) {
     return '"' + $Value.Replace('\', '\\').Replace('"', '\"') + '"'
 }
 
-$tracked = @(& git -c core.quotepath=false -C $rootPath ls-files --cached --others --exclude-standard '*.md' 2>$null)
-if ($LASTEXITCODE -eq 0 -and $tracked.Count -gt 0) {
-    $ordered = @($tracked | Sort-Object -Unique)
-} else {
-    $files = @(Get-ChildItem -LiteralPath $rootPath -Recurse -File -Filter '*.md' |
-        Where-Object { $_.FullName -notmatch '[\\/]\.git([\\/]|$)' })
-    $orderedPaths = New-Object System.Collections.Generic.List[string]
-    foreach ($file in $files) {
-        $relative = Get-RelativePath $rootPath $file.FullName
-        $orderedPaths.Add($relative)
-    }
-    $ordered = $orderedPaths.ToArray()
-    [System.Array]::Sort($ordered, [System.StringComparer]::Ordinal)
+$scriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
+$files = @(& (Join-Path $scriptDirectory 'get_kb_markdown.ps1') -Root $rootPath)
+$orderedPaths = New-Object System.Collections.Generic.List[string]
+foreach ($file in $files) {
+    $orderedPaths.Add((Get-RelativePath $rootPath $file.FullName))
 }
+$ordered = $orderedPaths.ToArray()
+[System.Array]::Sort($ordered, [System.StringComparer]::Ordinal)
 
 $lines = New-Object System.Collections.Generic.List[string]
 $lines.Add('# Knowledge Base Manifest')

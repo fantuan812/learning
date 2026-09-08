@@ -8,3 +8,9 @@ evidence/**/build/
 # Obsidian per-device workspace state; shared notes and selected settings stay visible to Git.
 .obsidian/workspace.json
 .obsidian/workspaces.json
+
+# Temporary AI / PDF cache and local environment
+.kb_work/
+.py_libs/
+__pycache__/
+*.pyc

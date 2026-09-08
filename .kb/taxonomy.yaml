@@ -1,7 +1,9 @@
 # Knowledge Base Taxonomy
-# 与现有仓库顶层目录一一对应；2026-08-20 接入 OKF profile，但不新增来源工具分类。
+# domains 保留兼容的领域/辅助目录登记；顶层责任层唯一清单为 architecture.json。
+# 新增主题以现有领域为先；来源集合不是主题主分类。
 # 状态取值：draft（草案）/ active（已确认）/ archived（已归档）
-version: 4
+version: 5
+architecture: ".kb/architecture.json"
 
 okf:
   profile: ".kb/okf-profile.yaml"
@@ -125,7 +127,7 @@ domains:
     status: active
     subdomains: {}
   Knowledge:
-    description: 通用知识新主题入口（当前骨架，待流入）。
+    description: 经分类决策确认的领域外通用主题扩展口；不得复制既有六领域。
     status: active
     subdomains: {}
   Projects:

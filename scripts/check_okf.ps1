@@ -32,18 +32,21 @@ function Get-ChangedMarkdown {
     return @($items | Sort-Object -Unique)
 }
 
+$allMarkdown = @(& (Join-Path $PSScriptRoot 'get_kb_markdown.ps1') -Root $rootPath)
+function Test-OperationalExclusion([string]$Path) {
+    return ($Path -match '(?i)[\\/]\.agents[\\/]skills[\\/].*[\\/]SKILL\.md$' -or $Path -match '(?i)[\\/]learning[\\/]log\.md$')
+}
 function Get-MarkdownFiles {
     param([string]$ScanMode)
-    if ($ScanMode -eq 'Changed') { return Get-ChangedMarkdown }
-    return @(Get-ChildItem -LiteralPath $rootPath -Recurse -File -Filter '*.md' | Where-Object {
-        $_.FullName -notmatch '(?i)[\\/]\.git[\\/]' -and
-        $_.FullName -notmatch '(?i)[\\/]\.img-work([\\/]|$)' -and
-        $_.FullName -notmatch '(?i)[\\/]references[\\/]UnrealEngine-5\.8-Docs([\\/]|$)' -and
-        $_.FullName -notmatch '(?i)[\\/]\.agents[\\/]skills[\\/].*[\\/]SKILL\.md$' -and
-        $_.FullName -notmatch '(?i)[\\/]learning[\\/]log\.md$'
-    } | ForEach-Object FullName)
+    $changedSet = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    if ($ScanMode -eq 'Changed') {
+        foreach ($path in (Get-ChangedMarkdown)) { [void]$changedSet.Add($path) }
+    }
+    foreach ($file in $allMarkdown) {
+        if (Test-OperationalExclusion $file.FullName) { continue }
+        if ($ScanMode -ne 'Changed' -or $changedSet.Contains($file.FullName)) { $file.FullName }
+    }
 }
-
 function Get-FrontmatterField {
     param([string[]]$FrontmatterLines, [string]$Name)
     for ($i = 0; $i -lt $FrontmatterLines.Count; $i++) {
@@ -230,7 +233,7 @@ function Test-Note($Path) {
 }
 
 $files = @(Get-MarkdownFiles $Mode)
-$excluded = @(Get-ChildItem -LiteralPath $rootPath -Recurse -File -Filter '*.md' | Where-Object { $_.FullName -match '(?i)[\\/]\.agents[\\/]skills[\\/].*[\\/]SKILL\.md$' -or $_.FullName -match '(?i)[\\/]learning[\\/]log\.md$' }).Count
+$excluded = @($allMarkdown | Where-Object { Test-OperationalExclusion $_.FullName }).Count
 $warn=0; $fail=0; $legacy=0; $ok=0
 foreach ($f in $files) {
     try { $r=Test-Note $f; if ($r.State -eq 'PASS'){$ok++} elseif($r.State -eq 'WARN'){$warn++;$legacy++} else{$fail++}; if($r.State -ne 'PASS'){ Write-Output ("{0}: {1} [{2}]" -f ($f.Substring($rootPath.Length+1)),$r.Reason,$r.State) } }
