@@ -4,6 +4,11 @@ title: "03-Entity生命周期与组件模型"
 status: stable
 verified: []
 maturity: L3
+updated: 2026-09-30
+sources:
+  - id: cpp-optional
+    title: "C++ working draft: optional objects"
+    resource: "https://eel.is/c++draft/optional"
 ---
 # 03-Entity生命周期与组件模型
 
@@ -11,7 +16,7 @@ maturity: L3
 > 版本基准：本层为通用服务器设计；UE5.8 的 Actor 生命周期差异见 3.7。
 > 适用范围：MMO/实时服务器实体管理；与 [01-ServerMainLoop与TickScheduler](01-ServerMainLoop与TickScheduler.md) 的 Tick 边界、[05-AOI与InterestManagement](05-AOI与InterestManagement.md) 的登记/注销配合。
 > 官方参考：[cppreference - std::pmr/内存与容器](https://en.cppreference.com/w/cpp/memory)、[UE5.8 Actor 生命周期文档](https://dev.epicgames.com/documentation/en-us/unreal-engine/actors-in-unreal-engine)。
-> 最后更新：2026-08-13（首版）。
+> 最后更新：2026-09-30（修正分配失败身份冲突、退场查询契约与代际耗尽；保留原领域结构）。
 > 知识成熟度：L3（示例代码可编译运行 + 验证入口；未做独立 Benchmark）。
 
 ## 1. 概述
@@ -66,7 +71,7 @@ struct EntityId {
 
 工程要点：
 
-- **槽位上限**决定 ID 宽度与池大小；世代溢出（32 位）前要设计归零策略（实践中不会发生，但要有断言）；
+- **槽位上限**决定 ID 宽度与池大小；世代位宽有限，不能归零后继续发号：旧句柄可能重新命中。达到上限后退役该槽位，或在能证明没有旧引用时更换完整池 epoch；不能用“实践中不会发生”代替边界策略；
 - **ID 校验**：所有跨系统引用一律走 `GetEntity(id)` + 世代校验，禁止直接存 `Entity*` 跨 Tick 持有。
 
 ### 3.2 Spawn/Despawn 生命周期
@@ -77,15 +82,15 @@ Spawn:
   → 广播 Enter 事件 → 标记"已生成"（本 Tick 不可被逻辑访问之前完成）
 
 Despawn:
-  广播 Leave/移除事件 → 从所有系统注销（AOI/任务/聊天/战斗锁定）
-  → 释放组件 → 回收槽位（世代+1）→ 延迟到 Tick 边界执行
+  标记 Retiring（拒绝新查询）→ 广播 Leave/移除事件 → 从所有系统注销（AOI/任务/聊天/战斗锁定）
+  → 在安全的 Tick 边界释放组件 → 回收槽位（世代+1；耗尽则退役）
 ```
 
 关键规则：
 
 1. **销毁延迟到 Tick 边界**：逻辑执行中途销毁实体，其他系统可能还在引用——用"待销毁队列"，Tick 结束时统一回收（游戏引擎的标准做法，UE 的 `AActor::Destroy` 也是延迟到帧末）；
 2. **注销先于释放**：先让所有系统停止引用（AOI Leave、任务移除、战斗锁定解除），再回收内存；
-3. **事件顺序确定**：Spawn 事件在"初始化完成"后、Despawn 事件在"注销开始"前——订阅者不依赖未定义顺序。
+3. **事件顺序确定**：Spawn 事件在"初始化完成"后、Despawn 事件在"禁止新查询"后且"注销开始"前——订阅者不依赖未定义顺序。
 
 ### 3.3 组件模型
 
@@ -156,7 +161,7 @@ TWeakObjectPtr（UE）→ UObject 场景
 
 ```text
 Spawn 契约：ID 分配 → 组件构造 → 初始化 → 登记所有系统 → 广播 Spawned（此后才可被逻辑访问）
-Despawn 契约：广播 Despawning（订阅者停止引用）→ 各系统注销 → 组件释放 → 槽位回收（世代+1）
+Despawn 契约：Alive → Retiring（立即拒绝新查询）→ 广播 Despawning → 各系统注销 → 组件释放 → 槽位回收（世代+1 或退役）
 ```
 
 契约要点：
@@ -164,60 +169,90 @@ Despawn 契约：广播 Despawning（订阅者停止引用）→ 各系统注销
 - **Spawned 广播前禁止逻辑访问**：其他系统在本 Tick 内看到"半初始化"实体会读到垃圾数据；
 - **Despawning 广播后禁止新引用**：任务、战斗锁定、聊天 @ 都要在此刻解绑；
 - **事件带版本**：事件消息带实体世代，消费者可识别"这是旧世代的事件"，直接丢弃；
-- **订阅顺序无关**：任何系统在 Despawning 后访问 `GetEntity(id)` 必须得到 null（世代已变）——契约由 ID 校验兜底，而不是依赖订阅顺序。
+- **订阅顺序无关**：任何系统在 Despawning 后访问 `GetEntity(id)` 必须得到 null（状态已是 Retiring；此时世代可以尚未递增）——查询同时检查状态和世代，不依赖订阅顺序。需要清理旧组件的订阅者使用受限清理上下文，不能再通过普通查询取得可操作实体。
 
 这个契约同时是单测的骨架：测试"Spawn 后立即可用"与"Despawn 后引用失效"两个方向。
 
-## 4. 示例：ID 池与 Spawn/Despawn（可编译节选）
+## 4. 示例：容量耗尽、两阶段退场与代际退役
+
+> 2026-09-30 修正：原示例以 `{0, 0}` 表示分配失败，但首个实体恰好也是 `{slot=0, gen=0}`。容量为 1 时，第二次 Spawn 的“失败 ID”可通过 IsAlive，甚至错误销毁首个实体。这里用 `std::optional<EntityId>` 区分无结果和实体身份；不能只把哨兵换成另一个仍可分配的值。
+
+以下为独立 C++17 回归程序中的类节选，不含 `main`。完整源码、12 项断言和运行方式见 [Entity 生命周期回归证据](../../evidence/tests/gameplay-core/README.md#2026-09-30-边界回归补充)。
 
 ```cpp
 #include <cstdint>
 #include <cstdio>
+#include <limits>
+#include <optional>
 #include <vector>
 
-struct EntityId { uint32_t slot = 0; uint32_t gen = 0; };
+struct EntityId { uint32_t slot; uint32_t gen; };
 
 class EntityPool {
-    struct Slot { uint32_t gen = 0; bool alive = false; };
+    enum class State { Free, Alive, Retiring, Retired };
+    struct Slot { uint32_t gen = 1; State state = State::Free; };
     std::vector<Slot> slots_;
     std::vector<uint32_t> free_;
+    // A smaller ceiling allows the overflow policy to be exercised without billions of cycles.
+    uint32_t maxGeneration_;
 public:
-    explicit EntityPool(uint32_t cap) : slots_(cap) {
+    explicit EntityPool(uint32_t cap,
+        uint32_t maxGeneration = std::numeric_limits<uint32_t>::max())
+        : slots_(cap), maxGeneration_(maxGeneration ? maxGeneration : 1) {
         for (uint32_t i = 0; i < cap; ++i) free_.push_back(cap - 1 - i);
     }
-    EntityId Spawn() {
-        if (free_.empty()) return {0, 0};            // 容量耗尽（返回无效 ID）
-        uint32_t s = free_.back();
+    std::optional<EntityId> Spawn() {
+        if (free_.empty()) return std::nullopt;
+        const uint32_t s = free_.back();
         free_.pop_back();
-        slots_[s].alive = true;
-        return {s, slots_[s].gen};
-    }
-    void Despawn(EntityId id) {
-        if (!IsAlive(id)) return;
-        slots_[id.slot].alive = false;
-        slots_[id.slot].gen++;                        // 世代递增：旧引用失效
-        free_.push_back(id.slot);
+        slots_[s].state = State::Alive;
+        return EntityId{s, slots_[s].gen};
     }
     bool IsAlive(EntityId id) const {
-        return id.slot < slots_.size() && slots_[id.slot].alive && slots_[id.slot].gen == id.gen;
+        return id.slot < slots_.size() && slots_[id.slot].state == State::Alive &&
+               slots_[id.slot].gen == id.gen;
+    }
+    bool BeginDespawn(EntityId id) {
+        if (!IsAlive(id)) return false;
+        slots_[id.slot].state = State::Retiring;
+        // Broadcast Despawning only AFTER this point; reentrant lookup now fails.
+        return true;
+    }
+    bool FinishDespawn(EntityId id) {
+        if (id.slot >= slots_.size()) return false;
+        Slot& slot = slots_[id.slot];
+        if (slot.gen != id.gen || slot.state != State::Retiring) return false;
+        // Subscriber/component cleanup is the caller's responsibility before this call.
+        if (slot.gen == maxGeneration_) {
+            slot.state = State::Retired; // Fail closed, never wrap into an old identity.
+        } else {
+            ++slot.gen;
+            slot.state = State::Free;
+            free_.push_back(id.slot);
+        }
+        return true;
     }
 };
 
-int main() {
-    EntityPool pool(4);
-    EntityId a = pool.Spawn();
-    EntityId old = a;
-    pool.Despawn(a);
-    EntityId b = pool.Spawn();                        // 复用槽位
-    printf("old alive? %d  (期望 0：世代失效)\n", pool.IsAlive(old));
-    printf("b alive? %d  (期望 1)\n", pool.IsAlive(b));
-    return 0;
-}
 ```
 
-运行：`cl /nologo /utf-8 /O2 /std:c++17 /EHsc entity_pool.cpp && entity_pool.exe`（预期输出 `old alive? 0`、`b alive? 1`）。
+调用顺序是 `BeginDespawn` → 注销/清理 → `FinishDespawn`。前者立即阻止普通查询，后者才允许槽位复用；重复调用或迟到的旧句柄不会把新实体清走。若中途清理失败，槽位保留 Retiring、暂不复用，并报告错误重试清理；这比过早复用更安全，但需要告警，不能无限积累。
 
-扩展练习：给 `EntityPool` 增加 `SpawnBatch`（批量生成）与"待销毁队列"（Despawn 延迟到 Tick 边界统一回收），并断言"销毁前所有系统已注销"。
+本例是单线程身份协议，不实现组件容器、异常恢复、Tick 队列或并发读者保护。返回裸指针后的使用期仍必须由单线程阶段、锁或 epoch/RCU 等另行保障；“验证过 generation”不是跨线程借用期保护。
+
+### 4.1 把容量指标分清楚
+
+- `active_entities`：当前可操作实体数量。
+- `retiring_entities`：等待清理、不可重新分配的数量。
+- `free_slots`：可以再次分配的槽位数量。
+- `retired_slots`：代际耗尽后永久退出分配的槽位数量。
+- `historical_identity_entries`：若另有注册表或墓碑，统计其历史累计规模。
+
+测试不能只循环同一个固定 ID，再声称覆盖了“每次生成新 GUID”的真实流程。容量测试应分别使用固定键复用、持续新键、清理失败、旧事件迟到四种负载；同时观察活跃量和历史表大小。此处是通用测试建议，不声称某个 UE 项目已经运行这些用例。
+
+### 4.2 验证结论的边界
+
+已运行的 12 项模型断言覆盖零容量、满池、越界、无效世代、退出时查询拒绝、清理前禁复用、重复退场、槽位复用、迟到清理和代际耗尽策略。缩小上限为 2 是为了触发退役分支，不是宣称执行过 2³² 次循环；详见证据目录的原始结果。本文仍保留 L3，不把模型通过等同真实服或 UE 生命周期验收。
 
 ## 5. 最佳实践
 

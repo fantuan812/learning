@@ -1,10 +1,10 @@
 # Gameplay-core evidence builder (Windows).
-# Compiles the four programmes and writes raw output into results/.
+# Compiles the five programmes and writes raw output into results/.
 # Toolchain: MSYS2 MinGW-w64 g++ (default C:\msys64\mingw64\bin\g++.exe).
 # If g++ is not on PATH, pass -Gxx to point at the compiler explicitly.
 [CmdletBinding()]
 param(
-    [string]$Root = (Split-Path -Parent $PSScriptRoot),
+    [string]$Root = (Join-Path $PSScriptRoot '../../../..'),
     [string]$Gxx = 'C:\msys64\mingw64\bin\g++.exe'
 )
 
@@ -26,7 +26,7 @@ $target = (& $Gxx -dumpmachine 2>&1 | Select-Object -First 1)
 $compiler = (& $Gxx --version 2>&1 | Select-Object -First 1)
 
 $status = 0
-foreach ($t in @('inventory_txn', 'buff_conflict', 'skill_pipeline', 'attr_modifier_bench')) {
+foreach ($t in @('inventory_txn', 'buff_conflict', 'skill_pipeline', 'attr_modifier_bench', 'entity_lifecycle')) {
     Push-Location $here
     try {
         & $Gxx -std=c++17 -O2 -o "build/$t.exe" "src/$t.cpp"
@@ -40,7 +40,9 @@ foreach ($t in @('inventory_txn', 'buff_conflict', 'skill_pipeline', 'attr_modif
         $lines.Add("# command    : g++ -std=c++17 -O2 -o build/$t.exe src/$t.cpp ; ./build/$t.exe")
         $lines.Add("#")
         $lines.AddRange([string[]](& "./build/$t.exe" 2>&1))
-        $lines.Add("# exit_code  : $LASTEXITCODE")
+        $runStatus = $LASTEXITCODE
+        $lines.Add("# exit_code  : $runStatus")
+        if ($runStatus -ne 0) { $status = 1 }
         [System.IO.File]::WriteAllLines((Join-Path $resDir "$t.txt"), $lines, [System.Text.UTF8Encoding]::new($false))
         Write-Host "wrote results/$t.txt"
     } finally {
