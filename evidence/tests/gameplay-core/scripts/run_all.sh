@@ -19,7 +19,7 @@ CORES="$(nproc 2>/dev/null || echo unknown)"
 OSLINE="$(uname -s -m 2>/dev/null || echo unknown)"
 
 status=0
-for t in inventory_txn buff_conflict skill_pipeline attr_modifier_bench; do
+for t in inventory_txn buff_conflict skill_pipeline attr_modifier_bench entity_lifecycle; do
   if ! "$CXX" -std=c++17 -O2 -o "build/$t.exe" "src/$t.cpp"; then
     echo "compile failed: $t" >&2
     status=1
@@ -34,7 +34,11 @@ for t in inventory_txn buff_conflict skill_pipeline attr_modifier_bench; do
     echo "# command    : $CXX -std=c++17 -O2 -o build/$t.exe src/$t.cpp && ./build/$t.exe"
     echo "#"
     ./"build/$t.exe"
-    echo "# exit_code  : $?"
+    run_status=$?
+    echo "# exit_code  : $run_status"
+    if [ "$run_status" -ne 0 ]; then
+      status=1
+    fi
   } > "results/$t.txt" 2>&1
   echo "wrote results/$t.txt"
 done

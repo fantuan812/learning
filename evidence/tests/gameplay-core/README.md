@@ -63,7 +63,7 @@ sources:
 bash evidence/tests/gameplay-core/scripts/run_all.sh
 ```
 
-两个脚本只重新编译其固定列表中的四个原有程序，并把**未经修改的原始输出**写入 `results/*.txt`（`build/` 已被 `.gitignore` 忽略）。
+两个脚本重新编译其固定列表中的五个程序，并把**未经修改的原始输出**写入 `results/*.txt`（`build/` 已被 `.gitignore` 忽略）。
 
 ## 输入
 
@@ -127,7 +127,7 @@ bash evidence/tests/gameplay-core/scripts/run_all.sh
 
 ### 复现命令
 
-新增 `entity_lifecycle` 尚未纳入旧 runner 固定列表，使用下面的独立命令；旧脚本的最终返回码未可靠汇总程序运行失败，不能仅凭 runner 返回 0 判定所有测试成功，应检查各程序返回码与结果。
+`entity_lifecycle` 已纳入两个 runner；任一程序编译或运行失败，runner 最终返回非零，并继续尝试后续程序。下列独立命令便于只运行本次两个回归程序。PowerShell 默认 Root 已改为从脚本目录定位仓库根；该脚本修改仅静态审查，当前 Linux 环境没有 pwsh，未声称 Windows/PowerShell 运行通过。Shell 用受控编译器 fixture 验证全成功、编译失败、运行失败及新增 Entity 失败的返回码；同时复现旧版吞掉运行失败的问题，共 5 项检查通过。另在隔离目录实际编译运行全部五个程序，返回码均为 0：背包 7 项、Buff 12 项、技能 14 项、Entity 12 项、属性基准 401 项，均 fail=0；未覆盖或改写历史 Windows 原始结果。
 
 在仓库根执行，不需要 UE 或第三方库：
 
