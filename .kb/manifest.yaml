@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-09-24; changed-document bytes/lines refreshed 2026-09-30. Other entries preserved; full rebuild pending.
+# Generated: 2026-09-30 (paths, bytes, lines, and maturity mechanically recalculated; Python equivalent).
 version: 4
 
 okf:
@@ -19,12 +19,12 @@ documents:
   ".agents/skills/README.md":
     kind: README
     maturity: L0
-    bytes: 292
+    bytes: 285
     lines: 12
   ".agents/skills/knowledge-base-organizer/README.md":
     kind: README
     maturity: L0
-    bytes: 275
+    bytes: 268
     lines: 12
   ".agents/skills/knowledge-base-organizer/SKILL.md":
     kind: doc
@@ -44,7 +44,7 @@ documents:
   ".kb/audit.md":
     kind: doc
     maturity: L2
-    bytes: 59264
+    bytes: 59263
     lines: 430
   ".kb/decisions.md":
     kind: doc
@@ -79,12 +79,12 @@ documents:
   "00-计算机与工程基础/01-C++核心/01-C++对象生命周期与RAII.md":
     kind: doc
     maturity: L2
-    bytes: 19324
+    bytes: 18978
     lines: 346
   "00-计算机与工程基础/01-C++核心/02-Copy-Move与值语义.md":
     kind: doc
     maturity: L3
-    bytes: 22631
+    bytes: 22624
     lines: 310
   "00-计算机与工程基础/01-C++核心/README.md":
     kind: README
@@ -124,7 +124,7 @@ documents:
   "00-计算机与工程基础/04-C++并发与内存模型/02-Atomic与C++内存模型.md":
     kind: doc
     maturity: L4
-    bytes: 21901
+    bytes: 21593
     lines: 308
   "00-计算机与工程基础/04-C++并发与内存模型/02-线程同步与锁.md":
     kind: doc
@@ -134,7 +134,7 @@ documents:
   "00-计算机与工程基础/04-C++并发与内存模型/03-LockFree与FalseSharing.md":
     kind: doc
     maturity: L4
-    bytes: 21375
+    bytes: 21368
     lines: 307
   "00-计算机与工程基础/04-C++并发与内存模型/04-线程池、任务调度与协程调度.md":
     kind: doc
@@ -174,7 +174,7 @@ documents:
   "00-计算机与工程基础/06-操作系统/03-文件系统与存储栈.md":
     kind: doc
     maturity: L2
-    bytes: 14366
+    bytes: 14355
     lines: 358
   "00-计算机与工程基础/06-操作系统/04-权限安全与隔离.md":
     kind: doc
@@ -189,7 +189,7 @@ documents:
   "00-计算机与工程基础/07-Linux系统编程/01-Socket-Epoll与Reactor.md":
     kind: doc
     maturity: L3
-    bytes: 22046
+    bytes: 21732
     lines: 314
   "00-计算机与工程基础/07-Linux系统编程/03-io_uring与异步I-O.md":
     kind: doc
@@ -199,7 +199,7 @@ documents:
   "00-计算机与工程基础/07-Linux系统编程/03-性能工具：插桩与perf采样.md":
     kind: doc
     maturity: L2
-    bytes: 19375
+    bytes: 19041
     lines: 334
   "00-计算机与工程基础/07-Linux系统编程/README.md":
     kind: README
@@ -384,8 +384,8 @@ documents:
   "00_Index/axes/跨域主题.md":
     kind: doc
     maturity: L2
-    bytes: 5731
-    lines: 67
+    bytes: 9373
+    lines: 86
   "00_Index/domains/README.md":
     kind: README
     maturity: L2
@@ -429,7 +429,7 @@ documents:
   "Archive/README.md":
     kind: README
     maturity: L0
-    bytes: 497
+    bytes: 490
     lines: 19
   "Inbox/README.md":
     kind: README
@@ -439,12 +439,12 @@ documents:
   "Knowledge/README.md":
     kind: README
     maturity: L0
-    bytes: 1011
+    bytes: 1004
     lines: 20
   "Projects/README.md":
     kind: README
     maturity: L0
-    bytes: 937
+    bytes: 930
     lines: 24
   "README.md":
     kind: README
@@ -459,32 +459,32 @@ documents:
   "evidence/algorithms/aoi/README.md":
     kind: README
     maturity: L0
-    bytes: 3875
+    bytes: 3868
     lines: 71
   "evidence/algorithms/astar/README.md":
     kind: README
     maturity: L0
-    bytes: 4037
+    bytes: 4030
     lines: 79
   "evidence/labs/atomic-memory-order/README.md":
     kind: README
     maturity: L0
-    bytes: 3341
+    bytes: 3334
     lines: 72
   "evidence/labs/cpp-move/README.md":
     kind: README
     maturity: L0
-    bytes: 4313
+    bytes: 4306
     lines: 87
   "evidence/labs/epoll-reactor/README.md":
     kind: README
     maturity: L0
-    bytes: 2825
+    bytes: 2818
     lines: 67
   "evidence/labs/false-sharing/README.md":
     kind: README
     maturity: L0
-    bytes: 3769
+    bytes: 3762
     lines: 66
   "evidence/labs/profiling/README.md":
     kind: README
@@ -494,7 +494,7 @@ documents:
   "evidence/server/tick-scheduler/README.md":
     kind: README
     maturity: L0
-    bytes: 3419
+    bytes: 3412
     lines: 63
   "evidence/tests/aoi-scale/README.md":
     kind: README
@@ -534,7 +534,7 @@ documents:
   "learning/log.md":
     kind: doc
     maturity: L0
-    bytes: 46464
+    bytes: 46463
     lines: 54
   "log.md":
     kind: doc
@@ -589,27 +589,27 @@ documents:
   "工作日志/2026-08-03-假人AI-A星优化与耗时测试.md":
     kind: doc
     maturity: L0
-    bytes: 2567
+    bytes: 2560
     lines: 46
   "工作日志/2026-08-05-假人寻路路径缓存方案.md":
     kind: doc
     maturity: L0
-    bytes: 6528
+    bytes: 6521
     lines: 113
   "工作日志/2026-08-14-时装三品质进阶与升级系统.md":
     kind: doc
     maturity: L0
-    bytes: 5139
+    bytes: 5132
     lines: 75
   "工作日志/2026-08-18-服务器代码规则.md":
     kind: doc
     maturity: L0
-    bytes: 5471
+    bytes: 5464
     lines: 89
   "工作日志/2026-08-26-套装绑定技能开发与技能系统解耦.md":
     kind: doc
     maturity: L0
-    bytes: 17290
+    bytes: 16991
     lines: 299
   "工作日志/2026-09-08-周卡活动开发与活动基类解耦.md":
     kind: doc
@@ -639,37 +639,37 @@ documents:
   "游戏AI/01-决策与架构/01-AI总体架构与感知.md":
     kind: doc
     maturity: L2
-    bytes: 30946
+    bytes: 30329
     lines: 624
   "游戏AI/01-决策与架构/02-状态机与层次状态机.md":
     kind: doc
     maturity: L2
-    bytes: 28316
+    bytes: 27781
     lines: 542
   "游戏AI/01-决策与架构/03-行为树通用原理.md":
     kind: doc
     maturity: L2
-    bytes: 31677
+    bytes: 31052
     lines: 632
   "游戏AI/01-决策与架构/04-Utility与GOAP.md":
     kind: doc
     maturity: L2
-    bytes: 28684
+    bytes: 28124
     lines: 567
   "游戏AI/01-决策与架构/05-博弈搜索与对战AI.md":
     kind: doc
     maturity: L2
-    bytes: 20795
+    bytes: 20434
     lines: 370
   "游戏AI/01-决策与架构/06-模糊逻辑与连续决策.md":
     kind: doc
     maturity: L2
-    bytes: 17171
+    bytes: 16857
     lines: 321
   "游戏AI/01-决策与架构/07-NPC人格对话与社交AI.md":
     kind: doc
     maturity: L2
-    bytes: 18849
+    bytes: 18540
     lines: 309
   "游戏AI/01-决策与架构/README.md":
     kind: README
@@ -719,7 +719,7 @@ documents:
   "游戏AI/03-评测与安全/01-AI评测回放.md":
     kind: doc
     maturity: L2
-    bytes: 45967
+    bytes: 44318
     lines: 1656
   "游戏AI/03-评测与安全/02-自动测试玩家与AI回归基准.md":
     kind: doc
@@ -854,12 +854,12 @@ documents:
   "游戏服务端/04-平台与可靠性/01-身份认证与权限模型.md":
     kind: doc
     maturity: L2
-    bytes: 24525
+    bytes: 24345
     lines: 338
   "游戏服务端/04-平台与可靠性/02-限流熔断背压与过载保护.md":
     kind: doc
     maturity: L2
-    bytes: 20725
+    bytes: 20513
     lines: 310
   "游戏服务端/04-平台与可靠性/03-幂等重试与消息语义.md":
     kind: doc
@@ -874,22 +874,22 @@ documents:
   "游戏服务端/04-平台与可靠性/05-服务发现配置中心与治理.md":
     kind: doc
     maturity: L2
-    bytes: 23157
+    bytes: 23004
     lines: 311
   "游戏服务端/04-平台与可靠性/06-SLI-SLO与可观测性.md":
     kind: doc
     maturity: L2
-    bytes: 21400
+    bytes: 21236
     lines: 343
   "游戏服务端/04-平台与可靠性/07-故障恢复容灾与多活.md":
     kind: doc
     maturity: L2
-    bytes: 20960
+    bytes: 20785
     lines: 321
   "游戏服务端/04-平台与可靠性/08-灰度发布回滚与事故复盘.md":
     kind: doc
     maturity: L2
-    bytes: 20262
+    bytes: 20084
     lines: 320
   "游戏服务端/04-平台与可靠性/README.md":
     kind: README
@@ -1014,57 +1014,57 @@ documents:
   "游戏测试与质量/01-测试金字塔与测试策略.md":
     kind: doc
     maturity: L2
-    bytes: 28980
+    bytes: 28973
     lines: 386
   "游戏测试与质量/02-客户端自动化测试.md":
     kind: doc
     maturity: L2
-    bytes: 24741
+    bytes: 24734
     lines: 403
   "游戏测试与质量/03-服务端测试与机器人压测.md":
     kind: doc
     maturity: L2
-    bytes: 25480
+    bytes: 25473
     lines: 443
   "游戏测试与质量/04-性能兼容与网络异常测试.md":
     kind: doc
     maturity: L2
-    bytes: 25752
+    bytes: 25745
     lines: 415
   "游戏测试与质量/05-CI质量门禁与缺陷管理.md":
     kind: doc
     maturity: L2
-    bytes: 23897
+    bytes: 23890
     lines: 398
   "游戏测试与质量/06-UE Dedicated Server联机验收与Gauntlet.md":
     kind: doc
     maturity: L2
-    bytes: 42159
+    bytes: 41319
     lines: 840
   "游戏测试与质量/07-UE DS机器人压测与容量评估.md":
     kind: doc
     maturity: L2
-    bytes: 13204
+    bytes: 12871
     lines: 333
   "游戏测试与质量/08-存档版本迁移与兼容性测试.md":
     kind: doc
     maturity: L2
-    bytes: 22318
+    bytes: 21924
     lines: 395
   "游戏测试与质量/09-安全合规与反作弊测试.md":
     kind: doc
     maturity: L2
-    bytes: 21019
+    bytes: 20655
     lines: 365
   "游戏测试与质量/10-本地化无障碍与多端体验验收.md":
     kind: doc
     maturity: L2
-    bytes: 23925
+    bytes: 23511
     lines: 415
   "游戏测试与质量/README.md":
     kind: README
     maturity: L0
-    bytes: 28526
+    bytes: 28519
     lines: 385
   "游戏知识/00-全栈运行闭环.md":
     kind: doc
@@ -1154,7 +1154,7 @@ documents:
   "游戏知识/02-渲染与图形/05-后处理与画面特效.md":
     kind: doc
     maturity: L2
-    bytes: 23674
+    bytes: 23202
     lines: 479
   "游戏知识/02-渲染与图形/06-Groom毛发系统.md":
     kind: doc
@@ -1249,8 +1249,8 @@ documents:
   "游戏知识/03-游戏玩法编程/12-SaveGame存档系统与序列化.md":
     kind: doc
     maturity: L2
-    bytes: 21920
-    lines: 317
+    bytes: 46016
+    lines: 513
   "游戏知识/03-游戏玩法编程/13-背包与装备系统.md":
     kind: doc
     maturity: L2
@@ -1259,8 +1259,8 @@ documents:
   "游戏知识/03-游戏玩法编程/README.md":
     kind: README
     maturity: L2
-    bytes: 7921
-    lines: 89
+    bytes: 8489
+    lines: 93
   "游戏知识/04-动画系统/01-动画蓝图与状态机.md":
     kind: doc
     maturity: L2
@@ -1274,7 +1274,7 @@ documents:
   "游戏知识/04-动画系统/03-IK与程序化动画.md":
     kind: doc
     maturity: L2
-    bytes: 27531
+    bytes: 27108
     lines: 423
   "游戏知识/04-动画系统/04-动画性能与预算分配.md":
     kind: doc
@@ -1364,8 +1364,8 @@ documents:
   "游戏知识/06-网络同步/03-客户端预测与延迟补偿.md":
     kind: doc
     maturity: L2
-    bytes: 24643
-    lines: 491
+    bytes: 30389
+    lines: 406
   "游戏知识/06-网络同步/04-多人游戏框架与玩家状态.md":
     kind: doc
     maturity: L2
@@ -1399,12 +1399,12 @@ documents:
   "游戏知识/06-网络同步/README.md":
     kind: README
     maturity: L2
-    bytes: 7110
-    lines: 84
+    bytes: 7607
+    lines: 88
   "游戏知识/07-UI与性能优化/01-UMG框架与控件系统.md":
     kind: doc
     maturity: L2
-    bytes: 23453
+    bytes: 22951
     lines: 502
   "游戏知识/07-UI与性能优化/02-UI数据绑定与MVVM.md":
     kind: doc
@@ -1559,7 +1559,7 @@ documents:
   "游戏知识/10-音频系统/01-音频基础与播放.md":
     kind: doc
     maturity: L2
-    bytes: 23775
+    bytes: 23336
     lines: 451
   "游戏知识/10-音频系统/02-衰减与3D空间音效.md":
     kind: doc
@@ -1609,12 +1609,12 @@ documents:
   "游戏知识/12-引擎源码分析/01-UPROPERTY与反射系统源码.md":
     kind: doc
     maturity: L2
-    bytes: 120653
+    bytes: 118361
     lines: 2293
   "游戏知识/12-引擎源码分析/02-UObject与垃圾回收源码.md":
     kind: doc
     maturity: L2
-    bytes: 114704
+    bytes: 112602
     lines: 2102
   "游戏知识/12-引擎源码分析/03-Actor与Component生命周期源码.md":
     kind: doc
@@ -1654,12 +1654,12 @@ documents:
   "游戏知识/12-引擎源码分析/10-渲染线程与RHI源码.md":
     kind: doc
     maturity: L2
-    bytes: 140709
+    bytes: 138483
     lines: 2226
   "游戏知识/12-引擎源码分析/11-动画系统求值源码.md":
     kind: doc
     maturity: L2
-    bytes: 173449
+    bytes: 170585
     lines: 2864
   "游戏知识/12-引擎源码分析/12-行为树与AI源码.md":
     kind: doc
@@ -1679,22 +1679,22 @@ documents:
   "游戏知识/12-引擎源码分析/15-物理系统源码.md":
     kind: doc
     maturity: L2
-    bytes: 81900
+    bytes: 81869
     lines: 1556
   "游戏知识/12-引擎源码分析/16-音频系统源码.md":
     kind: doc
     maturity: L2
-    bytes: 78432
+    bytes: 77118
     lines: 1314
   "游戏知识/12-引擎源码分析/17-Niagara源码.md":
     kind: doc
     maturity: L2
-    bytes: 86017
+    bytes: 84604
     lines: 1413
   "游戏知识/12-引擎源码分析/18-RigVM与ControlRig源码.md":
     kind: doc
     maturity: L2
-    bytes: 32079
+    bytes: 31558
     lines: 521
   "游戏知识/12-引擎源码分析/19-高优先级源码覆盖路线图.md":
     kind: doc
@@ -1804,7 +1804,7 @@ documents:
   "游戏知识/12-引擎源码分析/40-Lyra-Experience与GameFeature源码.md":
     kind: doc
     maturity: L2
-    bytes: 163425
+    bytes: 159555
     lines: 4274
   "游戏知识/12-引擎源码分析/41-Lyra-Pawn初始化与模块化组件源码.md":
     kind: doc
@@ -1869,27 +1869,27 @@ documents:
   "游戏知识/12-引擎源码分析/53-Lyra核心生成移动与状态源码.md":
     kind: doc
     maturity: L2
-    bytes: 91471
+    bytes: 88694
     lines: 2905
   "游戏知识/12-引擎源码分析/54-Lyra网络复制与引擎模块化特性源码.md":
     kind: doc
     maturity: L2
-    bytes: 111557
+    bytes: 108700
     lines: 2988
   "游戏知识/12-引擎源码分析/55-Lyra输入重映射与辅助瞄准源码.md":
     kind: doc
     maturity: L2
-    bytes: 124634
+    bytes: 121238
     lines: 3505
   "游戏知识/12-引擎源码分析/56-Lyra-ShooterCore核心玩法与淘汰消息源码.md":
     kind: doc
     maturity: L2
-    bytes: 69411
+    bytes: 67496
     lines: 2035
   "游戏知识/12-引擎源码分析/README.md":
     kind: README
     maturity: L2
-    bytes: 42704
+    bytes: 42375
     lines: 329
   "游戏知识/13-世界构建与过场/01-Landscape地形系统.md":
     kind: doc
@@ -2069,22 +2069,22 @@ documents:
   "笔记/A星算法优化.md":
     kind: doc
     maturity: L0
-    bytes: 5279
+    bytes: 5272
     lines: 75
   "笔记/README.md":
     kind: README
     maturity: L0
-    bytes: 899
+    bytes: 892
     lines: 20
   "笔记/perf性能分析.md":
     kind: doc
     maturity: L0
-    bytes: 4315
+    bytes: 4308
     lines: 73
   "笔记/插桩测试.md":
     kind: doc
     maturity: L0
-    bytes: 3709
+    bytes: 3702
     lines: 64
   "系统实战/01-角色进入游戏完整链路.md":
     kind: doc
@@ -2114,7 +2114,7 @@ documents:
   "系统实战/07-假人AI完整链路.md":
     kind: doc
     maturity: L5
-    bytes: 22203
+    bytes: 22196
     lines: 307
   "系统实战/10-性能问题定位完整链路.md":
     kind: doc

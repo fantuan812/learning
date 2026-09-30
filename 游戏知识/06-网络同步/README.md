@@ -4,7 +4,7 @@ title: "06 网络同步"
 status: stable
 verified: []
 maturity: L2
-updated: 2026-08-20
+updated: 2026-09-30
 ---
 
 # 06 网络同步
@@ -20,7 +20,7 @@ updated: 2026-08-20
 「06-网络同步」负责虚幻引擎多人在线游戏中的状态同步、指令分发与网络公平性保障。虚幻引擎网络体系基于经典的**客户端-服务器（C/S）架构**与**服务器绝对权威（Server Authority）**模型：
 - **权威性与角色分工**：通过 NetRole（Role/RemoteRole）区分自主代理（AutonomousProxy）、模拟代理（SimulatedProxy）与权威（Authority），服务器是唯一状态真理源；
 - **状态复制与远程过程调用**：属性复制（Replication）保障最终一致性，RPC（Server/Client/NetMulticast）驱动离散事件通信，配合 FastArraySerializer 与条件复制（DOREPLIFETIME_CONDITION）精细控制带宽；
-- **客户端自主预测与延迟补偿**：在 CharacterMovementComponent 框架下，客户端以本地输入先行模拟（SavedMove），服务器回溯校验时间戳并纠偏（ServerMove），实现无卡顿移动手感；
+- **客户端自主预测与延迟补偿**：在 CharacterMovementComponent 框架下，客户端以本地输入先行模拟（SavedMove），服务器验证时间并确认/纠偏（ServerMove），减轻等待网络往返的操作延迟；
 - **空间兴趣管理与下一代复制体系**：通过 ReplicationGraph 节点空间网格剪裁解决大地图全量遍历开销，并演进至 UE5.8 下一代数据驱动、并行化脏标记处理的 Iris 复制系统。
 
 ---
@@ -31,7 +31,7 @@ updated: 2026-08-20
 | :--- | :---: | :---: | :--- |
 | [01-网络架构与复制基础.md](01-网络架构与复制基础.md) | Concept | L2 | C/S 权威性模型、NetMode/NetRole 状态机、Actor 复制管线、NetConnection 通道与带宽预算控制 |
 | [02-RPC与属性同步.md](02-RPC与属性同步.md) | Concept | L2 | Server/Client/NetMulticast RPC、属性复制与 OnRep 回调、条件复制、同步频率与丢包插值 |
-| [03-客户端预测与延迟补偿.md](03-客户端预测与延迟补偿.md) | Concept | L2 | CMC 网络移动预测、SavedMove 历史输入缓冲、服务器矫正回放、延迟补偿（Lag Compensation）击中回溯 |
+| [03-客户端预测与延迟补偿.md](03-客户端预测与延迟补偿.md) | Concept | L2 | CMC ACK 与输入重放、三种时间域、有界历史查询、命中公平性策略与 C++11 练习 |
 | [04-多人游戏框架与玩家状态.md](04-多人游戏框架与玩家状态.md) | Concept | L2 | PlayerController/Pawn/PlayerState/GameState 网络所有权映射、连接握手三阶段与登录时序 |
 | [05-ReplicationGraph兴趣管理.md](05-ReplicationGraph兴趣管理.md) | Concept | L2 | ReplicationGraph 节点图、2D 网格空间裁剪节点、动态优先级排序与大型万人大世界复制优化 |
 | [06-在线子系统与会话匹配.md](06-在线子系统与会话匹配.md) | Concept | L2 | OnlineSubsystem（OSS）跨平台接口、Steam/EOS 会话创建/搜索/加入、好友邀请与大厅匹配（Matchmaking） |
@@ -63,9 +63,9 @@ flowchart TD
 
 ## 4. 游戏与引擎工程落地场景
 
-- **FPS/TPS 射击命中延迟补偿**：服务器收到开火 RPC 后，根据客户端网络往返时延（RTT）与时间戳，将目标玩家碰撞体回溯到历史帧位置进行射线检测，消除“打中了但没伤害”的延迟感；
+- **FPS/TPS 射击命中延迟补偿**：服务器收到开火 RPC 后，校验请求时间、历史窗口与表现缓冲，在明确遮挡策略下查询历史形状；解释攻击方与防守方之间的公平性取舍；
 - **开放世界海量实体带宽暴增治理**：配置 ReplicationGraph 网格节点（Grid Node），仅对玩家视距 150 米内的 Actor 执行属性复制，远距离对象降频到 2Hz 或完全剔除，将每秒带宽稳定在 25KB/s 以内；
-- **弱网 200ms 高丢包移动抗拉扯**：优化 CMC 的 `MaxClientError` 与网络浮点量化编码，配合丢包插值（Smoothing），实现高网络抖动下的平滑位移。
+- **弱网 200ms 高丢包移动抗拉扯**：先记录 ACK、未确认输入、修正幅度与实际 RTT，再验证自定义输入重放及表现平滑；误差阈值不能代替正确模拟。
 
 ---
 
@@ -82,3 +82,7 @@ flowchart TD
 - **横向协同（服务端与实战）**：
   - 游戏服务端状态同步：[游戏服务端 01-架构与网络](../../游戏服务端/01-架构与网络/03-帧同步与状态同步.md)
   - Dedicated Server 平台化：[游戏服务端 05-UE Dedicated Server平台化](../../游戏服务端/05-UE%20Dedicated%20Server平台化/README.md)
+
+## 6. 本轮深化后的能力验收
+
+先读 [03 客户端预测与延迟补偿](03-客户端预测与延迟补偿.md)的时间域与实现契约，再完成独立历史查询模型和弱网测试矩阵。目标是能解释“哪一个输入被确认、查询的是哪一刻、为何拒绝回退”，而不只是会调用 RPC。纯 C++11 断言不代表 UE 多人测试已通过；继续沿[跨域主题递进路线](../../00_Index/axes/跨域主题.md#知识面持续深化路线)连接世界时钟、碰撞与质量域。
