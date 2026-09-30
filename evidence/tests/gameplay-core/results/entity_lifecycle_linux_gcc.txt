@@ -1,0 +1,33 @@
+date=2026-09-30
+Linux x86_64
+g++ (Debian 14.2.0-19) 14.2.0
+cc6a28be747b87fed19af989c5404b6ff5259924bfb474f21f649d75ea6b8871  evidence/tests/gameplay-core/src/entity_lifecycle.cpp
+flags=-std=c++17 -O2 -Wall -Wextra -Werror
+PASS E1 zero capacity has no identity
+PASS E2 exhaustion cannot alias live slot zero
+PASS E3 out-of-bounds handle rejected
+PASS E4 fabricated zero-generation handle rejected
+PASS E5 retirement invalidates before callbacks
+PASS E6 retiring slot cannot be reused before cleanup
+PASS E7 repeated begin is harmless
+PASS E8 repeated finish cannot double-free
+PASS E9 reuse rejects stale identity
+PASS E10 stale cleanup cannot destroy replacement
+PASS E11 test ceiling reached through ordinary reuse
+PASS E12 exhausted generation retires slot permanently
+RESULT pass=12 fail=0
+flags=-std=c++17 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer
+ASAN_OPTIONS=detect_leaks=0 (LeakSanitizer unsupported under sandbox ptrace; ASan and UBSan remain enabled)
+PASS E1 zero capacity has no identity
+PASS E2 exhaustion cannot alias live slot zero
+PASS E3 out-of-bounds handle rejected
+PASS E4 fabricated zero-generation handle rejected
+PASS E5 retirement invalidates before callbacks
+PASS E6 retiring slot cannot be reused before cleanup
+PASS E7 repeated begin is harmless
+PASS E8 repeated finish cannot double-free
+PASS E9 reuse rejects stale identity
+PASS E10 stale cleanup cannot destroy replacement
+PASS E11 test ceiling reached through ordinary reuse
+PASS E12 exhausted generation retires slot permanently
+RESULT pass=12 fail=0

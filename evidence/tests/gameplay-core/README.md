@@ -11,14 +11,21 @@ tags:
 status: stable
 verified: []
 maturity: L0
-updated: 2026-09-11
+updated: 2026-09-30
+sources:
+  - id: gcc-finite-math
+    title: "GCC optimization options"
+    resource: "https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html"
+  - id: cpp-optional
+    title: "C++ working draft: optional objects"
+    resource: "https://eel.is/c++draft/optional"
 ---
 
 # Gameplay 核心机制可运行证据
 
-> 证据范围：本机可编译运行的 4 个测试/基准程序 + 未修改的原始输出已归档（29 条断言全部通过）；不涉及多机与线上环境，也不涉及 UE 运行时。按本仓库约定，`evidence/` 属维护基础设施，其 README 的 maturity 字段不参与知识成熟度门禁；本目录的证据强度在正文中按"已验证事实 / 未验证边界"分别陈述。
+> 历史证据范围（2026-09-11）：当时本机可编译运行的 4 个测试/基准程序 + 未修改的原始输出已归档（29 条断言全部通过）；不涉及多机与线上环境，也不涉及 UE 运行时。按本仓库约定，`evidence/` 属维护基础设施，其 README 的 maturity 字段不参与知识成熟度门禁；本目录的证据强度在正文中按"已验证事实 / 未验证边界"分别陈述。
 
-本目录用四个互不依赖的最小 C++ 程序，把 Gameplay 工程师日常最依赖但最容易"只写结论、不留证据"的四类机制固化成可运行断言与可复现基准：**背包事务原子性/幂等、Buff 冲突矩阵、技能请求管线门禁与确定性、属性修正器聚合性能**。
+本目录原有四个互不依赖的最小 C++ 程序，把 Gameplay 工程师日常最依赖但最容易"只写结论、不留证据"的四类机制固化成可运行断言与可复现基准：**背包事务原子性/幂等、Buff 冲突矩阵、技能请求管线门禁与确定性、属性修正器聚合性能**。
 
 ## 问题
 
@@ -56,7 +63,7 @@ updated: 2026-09-11
 bash evidence/tests/gameplay-core/scripts/run_all.sh
 ```
 
-两个脚本都会重新编译 `src/*.cpp` 并把**未经修改的原始输出**写入 `results/*.txt`（`build/` 已被 `.gitignore` 忽略）。
+两个脚本只重新编译其固定列表中的四个原有程序，并把**未经修改的原始输出**写入 `results/*.txt`（`build/` 已被 `.gitignore` 忽略）。
 
 ## 输入
 
@@ -107,6 +114,45 @@ bash evidence/tests/gameplay-core/scripts/run_all.sh
 - **存在运行间波动**：同一程序重复运行，属性基准 p50 在 1750–1760 µs 之间、加速比在 7.4–7.8x 之间波动；`results/` 中保存的是某一次的真实输出，不取多次最优值。
 - **模型简化**：背包为槽位模型（无绑定/唯一物品/耐久），Buff 为离散时长模型（无属性快照/快照重算），技能无目标筛选与命中判定，属性无依赖链与脏传播。
 - 本目录**不主张**线上容量结论；线上预算仍需在真实 DS 环境复测。
+
+## 2026-09-30 边界回归补充
+
+本次只重新运行 `skill_pipeline` 和新增 `entity_lifecycle`，不改写上面的 Windows 历史性能数据，也不声称重跑其余三个程序。环境为 Linux x86_64、GCC 14.2.0、C++17；新增程序测试身份协议，不是 UE Actor 实现。
+
+### 缺陷与修正
+
+1. 原 Entity 示例满池返回 `{0,0}`，与首个存活实体身份冲突。改为 optional 空结果；引入 Retiring 状态，在广播前使普通查询失败；代际达到上限时退役槽位而不回绕。
+2. 原技能管线只有距离上下界比较，NaN 可绕过范围拒绝。现在先 `std::isfinite`，拒绝 NaN/正负无穷，再做有限距离范围检查；失败路径只更新拒绝计数，不扣蓝、不写冷却或施法状态。
+3. 模型中的距离和时间仍是测试输入；线上必须由服务器权威状态计算/验证，不能直接相信客户端上报。修改并不等同完成反作弊系统。
+
+### 复现命令
+
+新增 `entity_lifecycle` 尚未纳入旧 runner 固定列表，使用下面的独立命令；旧脚本的最终返回码未可靠汇总程序运行失败，不能仅凭 runner 返回 0 判定所有测试成功，应检查各程序返回码与结果。
+
+在仓库根执行，不需要 UE 或第三方库：
+
+```bash
+mkdir -p /tmp/learning-boundary-tests
+g++ -std=c++17 -O2 -Wall -Wextra -Werror evidence/tests/gameplay-core/src/entity_lifecycle.cpp -o /tmp/learning-boundary-tests/entity
+/tmp/learning-boundary-tests/entity
+g++ -std=c++17 -O2 -Wall -Wextra -Werror evidence/tests/gameplay-core/src/skill_pipeline.cpp -o /tmp/learning-boundary-tests/skill
+/tmp/learning-boundary-tests/skill
+```
+
+预期分别为 `pass=12 fail=0` 与 `pass=14 fail=0`。程序用显式返回码报告失败，未依赖会被 NDEBUG 去掉的 assert。额外使用 `-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer` 重编译运行，结果见原始日志。初次 LeakSanitizer 因宿主 ptrace 报运行环境错误，随后以 `ASAN_OPTIONS=detect_leaks=0` 运行；地址与未定义行为检查保留，内存泄漏检查未通过验证。
+
+不要为这些边界测试开启 `-ffast-math` 或 `-ffinite-math-only`：GCC 官方选项说明允许优化器假定没有 NaN/Inf，这会破坏“先检验非有限值”的前提。该约束属于构建契约，需要在生产编译配置中单独检查，不能只凭单测通过推断。
+
+### 验证矩阵与原始结果
+
+| 程序 | 新增覆盖 | 实际结果入口 |
+| --- | --- | --- |
+| Entity 身份 | 0/满容量、无效句柄、退出期间隔离、重复清理、迟到清理、代际退役，共 12 项 | [entity_lifecycle_linux_gcc.txt](results/entity_lifecycle_linux_gcc.txt) |
+| 技能门禁 | 保留 S1–S10，新增 S11–S13 非有限值及 S14 有限边界，共 14 项 | [skill_pipeline_linux_gcc.txt](results/skill_pipeline_linux_gcc.txt) |
+
+实体源码见 [entity_lifecycle.cpp](src/entity_lifecycle.cpp)，技能源码见 [skill_pipeline.cpp](src/skill_pipeline.cpp)。日志同时记录源码 SHA-256 和实际编译命令，避免以后代码变化却继续引用旧结果。原来的 `skill_pipeline.txt` 仍是旧版十项用例的历史结果，不代表当前版本只有十项。
+
+边界：此次没有运行 Windows/MSVC、UE 自动化、网络乱序或多线程压力测试；关闭 LeakSanitizer 后 ASan/UBSan 对本次模型运行无报错，不证明业务、所有输入或线程安全。实体上限为 2 的测试仅验证溢出保护分支，不是真实循环 2³² 次。
 
 ## 关联知识文档
 

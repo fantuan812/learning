@@ -2,6 +2,8 @@
 // deterministic replay, client prediction rollback).
 // Build: g++ -std=c++17 -O2 -o skill_pipeline.exe skill_pipeline.cpp
 #include <cstdio>
+#include <cmath>
+#include <limits>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -65,6 +67,8 @@ public:
         if (cd != a.cooldownEnd.end() && r.nowMs < cd->second) { ++a.rejected; return "cooldown"; }
         if (a.mana < d->manaCost) { ++a.rejected; return "no-mana"; }
         if (d->hostile && r.targetId == 0) { ++a.rejected; return "invalid-target"; }
+        // Range comparisons alone do not reject NaN. Validate before mutation.
+        if (!std::isfinite(r.targetDistance)) { ++a.rejected; return "invalid-distance"; }
         if (r.targetDistance < d->minRange || r.targetDistance > d->maxRange) {
             ++a.rejected; return "out-of-range";
         }
@@ -235,11 +239,44 @@ void TestInterrupt() {
           "castingUntil=" + std::to_string(a.castingUntilMs));
 }
 
+
+void TestNonFiniteDistance() {
+    SkillServer s = MakeServer();
+    const double values[] = {std::numeric_limits<double>::quiet_NaN(),
+                             std::numeric_limits<double>::infinity(),
+                            -std::numeric_limits<double>::infinity()};
+    const char* names[] = {"S11 NaN rejected without gameplay mutations",
+                           "S12 positive infinity rejected without mutations",
+                           "S13 negative infinity rejected without mutations"};
+    for (int i = 0; i < 3; ++i) {
+        Actor a;
+        const auto beforeHash = a.acceptedHash;
+        const std::string r = s.Handle(a, Request{88, 1, 9, 0, values[i]});
+        Check(r == "invalid-distance" && a.mana == 100 && a.cooldownEnd.empty() &&
+              a.gcdUntilMs == 0 && a.castingUntilMs == 0 && a.castingSkill == 0 &&
+              a.applied.empty() && a.accepted == 0 && a.rejected == 1 &&
+              a.acceptedHash == beforeHash, names[i], "reason=" + r);
+    }
+}
+
+void TestRangeBoundaries() {
+    SkillServer s = MakeServer();
+    const double values[] = {-1.0, 0.0, 5.0, 5.01};
+    const char* expected[] = {"out-of-range", "accepted", "accepted", "out-of-range"};
+    bool ok = true;
+    for (int i = 0; i < 4; ++i) {
+        Actor a;
+        const std::string result = s.Handle(a, Request{90, 1, 9, 0, values[i]});
+        ok = (result == expected[i]) && ok;
+    }
+    Check(ok, "S14 finite inclusive range boundaries preserved", "[-1, 0, 5, 5.01]");
+}
+
 }  // namespace
 
 int main() {
     std::printf("gameplay-core | skill request pipeline test suite\n");
-    std::printf("compiler=%s c++17 O2\n", __VERSION__);
+    std::printf("compiler=%s (build flags recorded by runner)\n", __VERSION__);
     std::printf("--------------------------------------------------------------------------------\n");
     TestAccept();
     TestCooldownGate();
@@ -251,6 +288,8 @@ int main() {
     TestDeterminism();
     TestPredictionRollback();
     TestInterrupt();
+    TestNonFiniteDistance();
+    TestRangeBoundaries();
     std::printf("--------------------------------------------------------------------------------\n");
     std::printf("RESULT pass=%d fail=%d\n", gPass, gFail);
     return gFail == 0 ? 0 : 1;

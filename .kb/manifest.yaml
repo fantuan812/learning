@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-09-24 (mechanical rebuild after control-plane append (audit/log) 2026-09-24).
+# Generated: 2026-09-24; changed-document bytes/lines refreshed 2026-09-30. Other entries preserved; full rebuild pending.
 version: 4
 
 okf:
@@ -514,8 +514,8 @@ documents:
   "evidence/tests/gameplay-core/README.md":
     kind: README
     maturity: L0
-    bytes: 8493
-    lines: 119
+    bytes: 12350
+    lines: 165
   "evidence/tests/match-core/README.md":
     kind: README
     maturity: L0
@@ -944,8 +944,8 @@ documents:
   "游戏服务端/06-世界模拟与运行时/03-Entity生命周期与组件模型.md":
     kind: doc
     maturity: L3
-    bytes: 18881
-    lines: 325
+    bytes: 22155
+    lines: 360
   "游戏服务端/06-世界模拟与运行时/04-Scene-Map-Zone与实例管理.md":
     kind: doc
     maturity: L3
@@ -1124,8 +1124,8 @@ documents:
   "游戏知识/01-引擎基础/11-多线程与任务系统.md":
     kind: doc
     maturity: L2
-    bytes: 17980
-    lines: 412
+    bytes: 22212
+    lines: 471
   "游戏知识/01-引擎基础/README.md":
     kind: README
     maturity: L2
