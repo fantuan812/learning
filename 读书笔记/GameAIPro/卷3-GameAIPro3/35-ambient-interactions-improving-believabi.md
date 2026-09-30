@@ -1000,7 +1000,6 @@ STRIPS 的数学严格性赋予了离线编译器极其强大的形式化分析�
                   |  Unified STRIPS Rules Execution    |
                   +------------------------------------+
   * Logic centralized in single interaction script; self-contained, validated, scalable.
-```
 
 ### 5.2 核心工业级工程价值维度
 

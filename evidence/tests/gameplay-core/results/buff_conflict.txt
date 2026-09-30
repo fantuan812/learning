@@ -1,0 +1,25 @@
+# evidence   : tests/gameplay-core/buff_conflict
+# generated  : 2026-09-11T10:29:15+0800
+# host       : MINGW64_NT-10.0-26200 x86_64 (cores=16)
+# target     : x86_64-w64-mingw32
+# compiler   : g++.exe (Rev6, Built by MSYS2 project) 16.1.0
+# command    : g++ -std=c++17 -O2 -o build/buff_conflict.exe src/buff_conflict.cpp && ./build/buff_conflict.exe
+#
+gameplay-core | buff conflict matrix test suite
+compiler=16.1.0 c++17 O2
+----------------------------------------------------------------------
+PASS  R1 same buff refreshes duration, no extra stack      remaining=10.000000
+PASS  R2 stacking increments then caps at maxStacks        stacks=5
+PASS  R3 same group+level different id replaces            old=0 new=1
+PASS  R5 higher level suppresses lower in same group       lowSuppressed=1 highActive=1
+PASS  R6 lower resumes when higher expires and time remains resumed=1 remaining=3.500000
+PASS  E2 suppressed buff expires instead of resuming       low=0 high=0
+PASS  R4 exclusion group removes the other group on apply  excluded=0
+PASS  R7 dispel by school removes magic incl. suppressed   removed=3 curseLeft=1
+PASS  R8 re-apply from new source refreshes and rebinds source source=9
+PASS  R9 periodic re-apply refreshes without stacking      instances=1 stacks=1
+PASS  E1 zero-duration buff is never inserted              reason=expired-on-apply
+PASS  E3 lower level cannot overwrite an active higher level reason=blocked-by-higher
+----------------------------------------------------------------------
+RESULT pass=12 fail=0 rules=R1-R9+E1-E3
+# exit_code  : 0

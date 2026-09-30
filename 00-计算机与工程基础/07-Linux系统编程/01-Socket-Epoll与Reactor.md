@@ -293,8 +293,6 @@ IOCP（完成端口，Proactor 形态）；UE 的网络层跨平台封装了这�
 
 ## 9. 术语速查
 
-## 10. 关联阅读
-
 | 术语 | 含义 |
 | --- | --- |
 | LT | Level Triggered：就绪态持续触发，事件循环需自行确认 |
@@ -302,6 +300,8 @@ IOCP（完成端口，Proactor 形态）；UE 的网络层跨平台封装了这�
 | EAGAIN | 非阻塞 fd 无数据/缓冲满的返回码（ET 读取终止条件） |
 | EPOLLOUT | 可写事件（只在写缓冲非空时注册，避免事件风暴） |
 | SO_REUSEPORT | 多进程/线程各自监听同一端口的内核负载均衡 |
+
+## 10. 关联阅读
 
 - [Evidence · epoll-reactor](../../evidence/labs/epoll-reactor/README.md)：可运行代码与预期输出。
 - [07-Linux系统编程 README](README.md)：本分类导航。

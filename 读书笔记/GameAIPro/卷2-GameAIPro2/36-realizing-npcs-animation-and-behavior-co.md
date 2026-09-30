@@ -1344,7 +1344,6 @@ $$S_{\text{screen}}(\mathbf{x}_{\text{cover}}) = \begin{cases} 1.0, & \text{if }
 |  - Additive Noise Engine (单帧待机姿态 + 去同步多层微晃动合成)                                    |
 |  - Locomotion / Steering Controller (保持动量与意图导向的导航执行)                              |
 +-------------------------------------------------------------------------------------------------+
-```
 
 ### 7.2 核心工程准则（Engineering Takeaways）
 1. **覆盖度与原创性守恒（Coverage vs. Authored Fidelity）：** 利用低成本的程序化修饰（叠加层、噪声、微行为组合）扩展动作覆盖率，避免无限膨胀的骨骼资产摧毁物理内存与流式加载带宽。

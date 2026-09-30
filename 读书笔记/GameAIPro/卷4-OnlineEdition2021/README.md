@@ -30,7 +30,7 @@ updated: 2026-09-07
 | **第02章** | [Efficient, Event-Based Simulations](02-efficient-event-based-simulations.md) | **已重构** |
 | **第03章** | [Gearing the Tactics Genre: Simultaneous AI Actions in Gears Tactics](03-gearing-the-tactics-genre-simultaneous-a.md) | **已重构** |
 | **第04章** | [Knowledge is Power, an Overview of AI Knowledge Representation in Games](04-knowledge-is-power-an-overview-of-ai-kno.md) | **已重构** |
-| **第05章** | [Taming Spatial Queries – Tips for Natural Position Selection](http://www.gameaipro.com/GameAIProOnlineEdition2021/GameAIProOnlineEdition2021_Chapter05_Taming_Spatial_Queries_Tips_for_Natural_Position_Selection.pdf) | *待处理* |
+| **第05章** | [Taming Spatial Queries – Tips for Natural Position Selection](05-taming-spatial-queries-tips-for-natural.md) | **已重构** |
 | **第06章** | [Flooding the Influence Map for Chase in Dishonored 2](06-flooding-the-influence-map-for-chase-in-.md) | **已重构** |
 | **第07章** | [Managing Pacing in Procedural Levels in Warframe](07-managing-pacing-in-procedural-levels-in-.md) | **已重构** |
 | **第08章** | [Cinematic Gameplay in Watchdogs 2: Pose Matching and AI Coordination](08-cinematic-gameplay-in-watchdogs-2-pose-m.md) | **已重构** |

@@ -178,7 +178,7 @@ flowchart TD
 ```mermaid
 sequenceDiagram
     participant R as FDeferredShadingSceneRenderer
-    participant V as Nanite::FNaniteVisibility(CPU)
+    participant V as FNaniteVisibility(CPU，全局命名空间)
     participant C as Nanite::FRenderer(GPU)
     participant E as NaniteComposition(导出)
     R->>V: BeginVisibilityFrame()+PerformNaniteVisibility<br/>(分类 RasterBin/ShadingBin)
@@ -225,7 +225,7 @@ GPU 侧由 `FRenderer` 完成；`RenderNanite` 只负责搭 RDG 依赖、喂视�
    MaxVisiblePatches/MaxVisibleAssemblyParts` 驱动；`MaxVisibleClusters <= MAX_CLUSTERS` 有
    `checkf` 断言，约 500 行）。可见簇记录按 96/64 位打包（`FVisibleCluster` 字段位宽自检）。
    曲面细分启用时另建 patch 缓冲（`Nanite.SplitWorkQueue`、`Nanite.VisiblePatches` 等）。
-2. **`AddPass_PrimitiveFilter`**（约 6970 行）：按视图过滤 primitive（`r.Nanite.FilterPrimitives=1`）。
+2. **`AddPass_PrimitiveFilter`**（定义在 4237 行，主 Pass 中于 6970 行调用）：按视图过滤 primitive（`r.Nanite.FilterPrimitives=1`）。
 3. **`AddPass_InstanceHierarchyAndClusterCull`**（约 4626 行）：实例级剔除——先剔除实例
    （视锥/距离/HZB），再对剩余实例的簇做节点与簇剔除；`FInstanceCull_CS`
    （约 904 行，`/Engine/Private/Nanite/NaniteInstanceCulling.usf` 的 `InstanceCull`）负责实例剔除，

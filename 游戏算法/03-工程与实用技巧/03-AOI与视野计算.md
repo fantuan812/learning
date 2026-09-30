@@ -338,3 +338,4 @@ void updateVision(Player* p, const std::vector<TileCoord>& oldTiles,
 - 云风《游戏之旅：我的编程感悟》及博客（AOI 十字链表、服务端架构讨论）；
 - MMO 同步综述：Bernier, "Latency Compensating Methods in Client/Server In-game Protocol Design"。
 - [服务端/06-世界模拟与运行时/05-AOI与InterestManagement](../../游戏服务端/06-世界模拟与运行时/05-AOI与InterestManagement.md)：Enter/Leave/限流/批量在真实服务器 Tick/Scene 流程中的运行时语义（本文=算法与通用实现层，分工互指）。
+- [游戏知识/06-网络同步/05-ReplicationGraph兴趣管理](../../游戏知识/06-网络同步/05-ReplicationGraph兴趣管理.md)：AOI 过滤后的复制路由与连接兴趣集如何落到 UE ReplicationGraph 引擎实现。

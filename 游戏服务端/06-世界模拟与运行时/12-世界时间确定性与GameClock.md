@@ -290,14 +290,14 @@ NTP 校时会回拨（甚至负跳变），导致 `dt < 0`、世界倒退；单�
 
 ## 8. 术语速查
 
-## 9. 关联阅读
-
 | 术语 | 含义 |
 | --- | --- |
 | wall / monotonic / game | 真实时间 / 单调时钟 / 世界时间三类时间源 |
 | GameClock | 服务器唯一世界时间权威（支持暂停/减速/迁移） |
 | worldLag | 世界时间与真实时间的偏差（过载/降级的观测指标） |
 | 事件时间戳 | 审计事件用真实时间、玩法事件用世界时间（日志双写） |
+
+## 9. 关联阅读
 
 - [01-ServerMainLoop与TickScheduler](01-ServerMainLoop与TickScheduler.md)：固定步长与 catch-up/drop 的时间语义。
 - [14-运行时背压与过载保护](14-运行时背压与过载保护.md)：worldLag 与降级联动。

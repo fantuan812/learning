@@ -849,7 +849,6 @@ private:
      [Simulation] <--- 传统方式：高随机度，遍历大量极端低质走法
            |          --- 引入兴趣驱动：使用兴趣度过滤着法，阻断荒谬变例
     [Backpropagation]
-```
 
 ### 6.2 兴趣驱动的高效模拟（Interest-Guided Simulation）
 

@@ -1,7 +1,7 @@
 ---
 type: Reference
-title: "第5章 Taming Spatial Queries â Tips for Natural Position Selection"
-description: "Game AI Pro 工业级精读：Taming Spatial Queries â Tips for Natural Position Selection。系统解析核心AI机制、设计考量、数学模型与工业级落地方案。"
+title: "第5章 Taming Spatial Queries – Tips for Natural Position Selection"
+description: "Game AI Pro 工业级精读：Taming Spatial Queries – Tips for Natural Position Selection。系统解析核心AI机制、设计考量、数学模型与工业级落地方案。"
 tags:
   - game-ai
   - game-ai-pro
@@ -14,10 +14,10 @@ maturity: L2
 updated: 2026-09-07
 ---
 
-# 第5章 Taming Spatial Queries â Tips for Natural Position Selection
+# 第5章 Taming Spatial Queries – Tips for Natural Position Selection
 
 > 来源：*Game AI Pro 4 (Online Edition 2021)*, Chapter 5.  
-> 原文作者 / 资源：[Taming Spatial Queries â Tips for Natural Position Selection](http://www.gameaipro.com/GameAIProOnlineEdition2021/GameAIProOnlineEdition2021_Chapter05_Taming_Spatial_Queries_Tips_for_Natural_Position_Selection.pdf)（全书官方免费开放获取 PDF 视觉多模态端到端重构）。  
+> 原文作者 / 资源：[Taming Spatial Queries – Tips for Natural Position Selection](http://www.gameaipro.com/GameAIProOnlineEdition2021/GameAIProOnlineEdition2021_Chapter05_Taming_Spatial_Queries_Tips_for_Natural_Position_Selection.pdf)（全书官方免费开放获取 PDF 视觉多模态端到端重构）。  
 > 核心定位：本章由 Gemini 3.8 Flash 基于 Game AI Pro 权威原版 PDF 视觉多模态精准重构，系统呈现现代商业游戏 AI 决策逻辑、代码实现与工程权衡。  
 > 专栏导航：[卷4-OnlineEdition2021](README.md) ｜ [专栏首页](../README.md)
 

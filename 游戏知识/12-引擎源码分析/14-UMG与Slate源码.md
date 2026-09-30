@@ -4,19 +4,22 @@ title: "UE 引擎源码分析 14：UMG 与 Slate 源码剖析"
 status: stable
 verified: []
 maturity: L2
+updated: 2026-09-15
 ---
 # UE 引擎源码分析 14：UMG 与 Slate 源码剖析
 > 知识成熟度：L2（本轮审计修订时补标）
-> 源码基线：UE 5.8.0（本机 `Engine/Build/Build.version`：Major 5 / Minor 8 / Patch 0 / CL 55116800，分支 `++UE5+Release-5.8`）。
-> 验收边界：以本机 `C:\Program Files\Epic Games\UE_5.8\Engine` 只读源码为准；未在本文落地的主题不视为已完成源码覆盖。
+> 版本基准：UE 5.8.2（源码 checkout `C:\Users\zhaozhiqi\Documents\GitHub\UnrealEngine`；`Engine/Build/Build.version`：MajorVersion 5 / MinorVersion 8 / PatchVersion 2 / CompatibleChangelist 55116800，BranchName `UE5`）。
+> 验收边界：以该 checkout 的 `Engine/Source` 只读源码为准；未在本文落地的主题不视为已完成源码覆盖。
+> 行号口径：文中「第 N 行」一律指**相对 `Engine/Source/` 的路径**下、该文件在 UE 5.8.2（CompatibleCL 55116800）中的行号；文首旧版安装路径 `C:\Program Files\Epic Games\UE_5.8\Engine\Source` 一律按同一份 checkout 重新核对。节选块内的 `// …（节选：省略第 A~B 行，共 K 行）` 恒满足 `K = B - A + 1`。
+> 源码依据（本轮逐块机械抽取的真实文件与行区间，路径相对 `Engine/Source/`）：`SWidget.h` 140~167、274、294、296~303、892、1757~1780、1856~1858；`SWidget.cpp` 679~714、1473~1490、1497~1517、1539~1578、1624~1655、1788~1802、1804~1838、1840~1894；`SPanel.h` 21~48；`SPanel.cpp` 10~43；`SBoxPanel.h` 43、174、320~337、478；`Geometry.h` 310~333；`ArrangedChildren.h` 14~72；`PanelSlot.h` 10~63；`CanvasPanelSlot.h` 170、195；`CanvasPanelSlot.cpp` 31~40、319~328；`CanvasPanel.cpp` 55~69；`Widget.cpp` 417~441、962~983、985~1026、1081~1100、1444~1460、1466~1495；`Widget.h` 103~167；`SlateWrapperTypes.h` 13~17；`UserWidget.cpp` 1190~1217、1366~1378；`UserWidget.h` 279~286；`SObjectWidget.h` 24~54、57~59；`SObjectWidget.cpp` 104~107、114~116、126~150；`WidgetComponent.cpp` 1746~1764、1775~1777；`SlateApplication.h` 1292~1310、1335~1359；`SlateApplication.cpp` 4961~4971、4981~4990、5017~5076；`SlateRHIRenderer.cpp` 1212~1259、1404~1407、1512~1527；`UIComponent.h` 20~53。
 > 官方参考：[Unreal Engine 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
-> 最后更新：2026-08-05（统一源码分析版本基线）。
+> 最后更新：2026-09-15（补深：全部代码块改由脚本按行区间从 5.8.2 checkout 机械抽取的逐字版，替换此前的等价改写与中英混排块；修正 `UPanelSlot::BuildSlot` 为「17 个 Slot 子类各自声明、`UPanelSlot` 基类无此接口」并给出全部真实行号；修正 `SPanel::FSlot` 在 5.8.2 不存在；修正 `PROPERTY_BINDING` 的 `K2_Gate_` 间接层仅存在于 `WITH_EDITOR`；修正 `UCanvasPanelSlot::BuildSlot` 并不负责锚点翻译（由 `SynchronizeProperties` 负责）；新增 3.1.5 / 3.1.6 / 3.3.1 / 3.3.2 四节与第八节「事实边界与未核实点」）。
 
 > 对应知识点：[07-UI与性能优化/01 UMG框架与控件系统](../07-UI与性能优化/01-UMG框架与控件系统.md)
 >
-> 适用版本：UE 5.8（以本机 `C:\Program Files\Epic Games\UE_5.8\Engine\Source` 安装源码为基准，逐行核对；重点目录 `Runtime\UMG`、`Runtime\Slate`、`Runtime\SlateCore`、`Runtime\SlateRHIRenderer`）。
+> 适用版本：UE 5.8.2（以源码 checkout `C:\Users\zhaozhiqi\Documents\GitHub\UnrealEngine\Engine\Source` 为基准逐行核对；重点目录 `Runtime\SlateCore`、`Runtime\Slate`、`Runtime\UMG`、`Runtime\SlateRHIRenderer`）。
 >
-> 撰写前已用 `Test-Path` 验证文中所列每个文件路径存在，并用 `findstr` 验证 `SObjectWidget`、`SWidget`、`FSlateApplication`、`UUserWidget`、`UWidget`、`UWidgetComponent`、`UCanvasPanel`、`FSlateRHIRenderer`、`SVerticalBox` 等类名确实存在于对应头文件（均返回匹配）。
+> 本轮（2026-09-15）补深时已用 ripgrep 在 checkout 的 `Engine/Source` 全树复核文中每个被引路径与符号；凡判为「5.8.2 中不存在」的记号，均在第八节给出检索范围与可复现命令。
 >
 > 文中标注"节选"的代码为裁剪超长函数/注释后保留，未改动任何符号；行号引用以本机 UE 5.8 源码为准。**特别提醒：UE 5.8 中 `SObjectWidget.h` 位于 UMG 模块、`SlateApplication.h` 位于 Slate 模块、`SBoxPanel.h`（SVerticalBox/SHorizontalBox）位于 SlateCore 模块，与老版本教程中的路径不同，下文已按实测修正。**
 
@@ -85,7 +88,9 @@ UE 的 UI 在运行期是"一个 Slate 控件树 + 一层 UObject 包装"：
 
 #### 3.1.1 SWidget：所有 Slate 控件的抽象基类
 
-`SWidget` 定义在 `SlateCore/Public/Widgets/SWidget.h`。类头注释直接给出了"不要直接继承"的设计约束（第 141~167 行节选）：
+（更正（2026-09-15）：原文写「第 141~167 行节选」，实测块首行 `/**` 在第 140 行、末行 `SLATE_DECLARE_WIDGET_API(...)` 在第 167 行，故正确区间为 140~167。）
+
+摘自 `Runtime/SlateCore/Public/Widgets/SWidget.h`（第 140 行起）：
 
 ```cpp
 /**
@@ -126,33 +131,80 @@ class SWidget
 
 #### 3.1.2 SWidget 生命周期：Prepass → Tick → OnPaint → 析构
 
-一个 SWidget 的运行时生命周期由四个阶段构成，接口都声明在 SWidget.h：
+一个 SWidget 的运行时生命周期由四个阶段构成。注意这四段是**分散在头文件不同位置的单点声明**（分别在第 294、303、1771、1780、1858 行），不是一个连续区间，故分块给出。
+
+摘自 `Runtime/SlateCore/Public/Widgets/SWidget.h`（第 296 行起）：
 
 ```cpp
-	/** (第 303 行) Ticks this widget with Geometry.  Override in derived classes, but always call the parent implementation. */
+	/**
+	 * Ticks this widget with Geometry.  Override in derived classes, but always call the parent implementation.
+	 *
+	 * @param  AllottedGeometry The space allotted for this widget
+	 * @param  InCurrentTime  Current absolute real time
+	 * @param  InDeltaTime  Real time passed since last tick
+	 */
 	SLATECORE_API virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime);
+```
 
-	/** (第 1771 行) OnPaint：把本控件绘制进 OutDrawElements，返回达到的最大 LayerId */
+摘自 `Runtime/SlateCore/Public/Widgets/SWidget.h`（第 1757 行起）：
+
+```cpp
+	/**
+	 * The widget should respond by populating the OutDrawElements array with FDrawElements
+	 * that represent it and any of its children. Called by the non-virtual OnPaint to enforce pre/post conditions
+	 * during OnPaint.
+	 *
+	 * @param Args              All the arguments necessary to paint this widget (@todo umg: move all params into this struct)
+	 * @param AllottedGeometry  The FGeometry that describes an area in which the widget should appear.
+	 * @param MyCullingRect     The rectangle representing the bounds currently being used to completely cull widgets.  Unless IsChildWidgetCulled(...) returns true, you should paint the widget.
+	 * @param OutDrawElements   A list of FDrawElements to populate with the output.
+	 * @param LayerId           The Layer onto which this widget should be rendered.
+	 * @param InColorAndOpacity Color and Opacity to be applied to all the descendants of the widget being painted
+	 * @param bParentEnabled	True if the parent of this widget is enabled.
+	 * @return The maximum layer ID attained by this widget or any of its children.
+	 */
 	virtual int32 OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId, const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const = 0;
 
-	/** (第 1780 行) 计算所有子控件的 Geometry 并填入 ArrangedChildren */
+	/**
+	 * Compute the Geometry of all the children and add populate the ArrangedChildren list with their values.
+	 * Each type of Layout panel should arrange children based on desired behavior.
+	 *
+	 * @param AllottedGeometry    The geometry allotted for this widget by its parent.
+	 * @param ArrangedChildren    The array to which to add the WidgetGeometries that represent the arranged children.
+	 */
 	virtual void OnArrangeChildren(const FGeometry& AllottedGeometry, FArrangedChildren& ArrangedChildren) const = 0;
+```
 
-	/** (第 1858 行) Dtor ensures that active timer handles are UnRegistered with the SlateApplication. */
+摘自 `Runtime/SlateCore/Public/Widgets/SWidget.h`（第 1856 行起）：
+
+```cpp
+protected:
+	/** Dtor ensures that active timer handles are UnRegistered with the SlateApplication. */
 	SLATECORE_API virtual ~SWidget();
 ```
 
 四个阶段：
 
 1. **创建/挂载**：`SNew(XXX)` 构造（受控构造），挂到父控件的 Slot 上；根节点挂在 `SWindow` 上。
-2. **Prepass（布局预计算）**：`FSlateApplication` 在绘制前对窗口内控件树做 `SlatePrepass()`，自顶向下递归 `Prepass_Internal` → `Prepass_ChildLoop`，**自底向上缓存每个控件的 DesiredSize**。`SWidget.cpp` 第 674~686 行与 1804~1838 行节选：
+2. **Prepass（布局预计算）**：`FSlateApplication` 在绘制前对窗口内控件树做 `SlatePrepass()`（`FSlateApplication::DrawPrepass`，`SlateApplication.cpp:1379` 起，内部走 `PrepassWindowAndChildren`），自顶向下递归 `Prepass_Internal` → `Prepass_ChildLoop`，**自底向上缓存每个控件的 DesiredSize**。原文写「`SWidget.cpp` 第 674~686 行与 1804~1838 行节选」，实测 `SlatePrepass` 的两个重载在 674~677 行（原文块首行是第 674 行的函数定义、却被截成一截空壳），下面按真实区间给出：
+
+摘自 `Runtime/SlateCore/Public/Widgets/SWidget.h`（第 667 行起）：
 
 ```cpp
-void SWidget::SlatePrepass()
-{
-	SlatePrepass(FSlateApplicationBase::Get().GetApplicationScale());
-}
+	/** DEPRECATED version of SlatePrepass that assumes no scaling beyond AppScale*/
+	//UE_DEPRECATED(4.20, "SlatePrepass requires a layout scale to be accurate.")
+	SLATECORE_API void SlatePrepass();
 
+	/**
+	 * Descends to leaf-most widgets in the hierarchy and gathers desired sizes on the way up.
+	 * i.e. Caches the desired size of all of this widget's children recursively, then caches desired size for itself.
+	 */
+	SLATECORE_API void SlatePrepass(float InLayoutScaleMultiplier);
+```
+
+摘自 `Runtime/SlateCore/Private/Widgets/SWidget.cpp`（第 679 行起）：
+
+```cpp
 void SWidget::SlatePrepass(float InLayoutScaleMultiplier)
 {
 	UE_SLATE_CRASH_REPORTER_PREPASS_SCOPE(*this);
@@ -161,13 +213,44 @@ void SWidget::SlatePrepass(float InLayoutScaleMultiplier)
 	if (!GSlateIsOnFastUpdatePath || bNeedsPrepass)
 	{
 		LLM_SCOPE_BYNAME("UI/Slate/Prepass");
-		// ...（节选：记录资产元数据、广播调试事件）
+#if UE_TRACE_ASSET_METADATA_ENABLED
+		FName AssetName = NAME_None;
+		FName ClassName = NAME_None;
+		FName PackageName = NAME_None;
+		if (UE_TRACE_CHANNELEXPR_IS_ENABLED(AssetMetadataChannel))
+		{
+			TSharedPtr<FReflectionMetaData> AssetMetaData = FReflectionMetaData::GetWidgetOrParentMetaData(this);
+			if (AssetMetaData.IsValid())
+			{
+				if (const UObject* AssetPtr = AssetMetaData->Asset.Get())
+				{
+					AssetName = AssetMetaData->Name;
+					ClassName = AssetMetaData->Class.Get()->GetFName();
+					PackageName = AssetPtr->GetPackage()->GetFName();
+				}
+			}
+		}
+		LLM_SCOPE_DYNAMIC_STAT_OBJECTPATH_FNAME(PackageName, ELLMTagSet::Assets);
+		LLM_SCOPE_DYNAMIC_STAT_OBJECTPATH_FNAME(ClassName, ELLMTagSet::AssetClasses);
+		UE_TRACE_METADATA_SCOPE_ASSET_FNAME(AssetName, ClassName, PackageName);
+#endif
+		if (HasRegisteredSlateAttribute() && IsAttributesUpdatesEnabled() && !GSlateIsOnFastProcessInvalidation)
+		{
+			FSlateAttributeMetaData::UpdateAllAttributes(*this, FSlateAttributeMetaData::EInvalidationPermission::AllowInvalidationIfConstructed);
+		}
+		Prepass_Internal(InLayoutScaleMultiplier);
 	}
 }
+```
 
+摘自 `Runtime/SlateCore/Private/Widgets/SWidget.cpp`（第 1804 行起）：
+
+```cpp
 void SWidget::Prepass_Internal(float InLayoutScaleMultiplier)
 {
-	// ...（节选：WITH_SLATE_DEBUGGING 广播 BeginWidgetPrepass）
+#if WITH_SLATE_DEBUGGING
+	FSlateDebugging::BeginWidgetPrepass.Broadcast(this);
+#endif
 
 	PrepassLayoutScaleMultiplierValue = InLayoutScaleMultiplier;
 	bPrepassLayoutScaleMultiplierSet = true;
@@ -192,8 +275,71 @@ void SWidget::Prepass_Internal(float InLayoutScaleMultiplier)
 		// Cache this widget's desired size.
 		CacheDesiredSize(GetPrepassLayoutScaleMultiplier());
 		bNeedsPrepass = false;
-		// ...（节选：调试广播）
+#if WITH_SLATE_DEBUGGING
+		Debug_UpdateLastPrepassFrame();
+		FSlateDebugging::EndWidgetPrepass.Broadcast(this);
+#endif
 	}
+}
+```
+
+摘自 `Runtime/SlateCore/Private/Widgets/SWidget.cpp`（第 1840 行起）：
+
+```cpp
+void SWidget::Prepass_ChildLoop(float InLayoutScaleMultiplier, FChildren* MyChildren)
+{
+	int32 ChildIndex = 0;
+	SWidget* Self = this;
+	auto ForEachPred = [Self, &ChildIndex, InLayoutScaleMultiplier](SWidget& Child)
+	{
+		const bool bUpdateAttributes = Child.HasRegisteredSlateAttribute() && Child.IsAttributesUpdatesEnabled() && !GSlateIsOnFastProcessInvalidation;
+		if (bUpdateAttributes)
+		{
+			FSlateAttributeMetaData::UpdateOnlyVisibilityAttributes(Child, FSlateAttributeMetaData::EInvalidationPermission::AllowInvalidationIfConstructed);
+		}
+
+		if (Child.GetVisibility() != EVisibility::Collapsed)
+		{
+			if (bUpdateAttributes)
+			{
+#if WITH_SLATE_DEBUGGING
+				EVisibility PreviousVisibility = Self->GetVisibility();
+				int32 PreviousAllChildrenNum = Child.GetAllChildren()->Num();
+#endif
+
+				FSlateAttributeMetaData::UpdateExceptVisibilityAttributes(Child, FSlateAttributeMetaData::EInvalidationPermission::AllowInvalidationIfConstructed);
+
+#if WITH_SLATE_DEBUGGING
+				ensureMsgf(PreviousVisibility == Self->GetVisibility(), TEXT("The visibility of widget '%s' doesn't match the previous visibility after the attribute update."), *FReflectionMetaData::GetWidgetDebugInfo(Self));
+				ensureMsgf(PreviousAllChildrenNum == Child.GetAllChildren()->Num(), TEXT("The number of child of widget '%s' doesn't match the previous count after the attribute update."), *FReflectionMetaData::GetWidgetDebugInfo(Self));
+#endif
+			}
+
+			const float ChildLayoutScaleMultiplier = Self->bHasRelativeLayoutScale
+				? InLayoutScaleMultiplier * Self->GetRelativeLayoutScale(ChildIndex, InLayoutScaleMultiplier)
+				: InLayoutScaleMultiplier;
+
+			// Inherit project-content status by default.  Children can opt out (overwrite) in custom prepass.
+			Child.bIsProjectContent = Self->bIsProjectContent || Self->bIsProjectContentParent;
+
+			// Recur: Descend down the widget tree.
+			Child.Prepass_Internal(ChildLayoutScaleMultiplier);
+		}
+		else
+		{
+			// If the child widget is collapsed, we need to store the new layout scale it will have when
+			// it is finally visible and invalidate it's prepass so that it gets that when its visibility
+			// is finally invalidated.
+			Child.MarkPrepassAsDirty();
+			Child.PrepassLayoutScaleMultiplierValue = Self->bHasRelativeLayoutScale
+				? InLayoutScaleMultiplier * Self->GetRelativeLayoutScale(ChildIndex, InLayoutScaleMultiplier)
+				: InLayoutScaleMultiplier;
+			Child.bPrepassLayoutScaleMultiplierSet = true;
+		}
+		++ChildIndex;
+	};
+
+	MyChildren->ForEachWidget(ForEachPred);
 }
 ```
 
@@ -206,7 +352,9 @@ void SWidget::Prepass_Internal(float InLayoutScaleMultiplier)
 
 #### 3.1.3 布局两接口：OnArrangeChildren / ComputeDesiredSize
 
-布局发生在 `SPanel`（`SlateCore/Public/Widgets/SPanel.h`，第 21~40 行节选）：
+布局发生在 `SPanel`（`Runtime/SlateCore/Public/Widgets/SPanel.h`）。注意 `SPanel` **本身没有任何 Slot 类型**（没有 `SPanel::FSlot`、也没有 `SPanel::TSlot`，见 8.1 的检索证据），子控件容器由各面板自己定义：
+
+摘自 `Runtime/SlateCore/Public/Widgets/SPanel.h`（第 21 行起）：
 
 ```cpp
 /**
@@ -220,15 +368,29 @@ class SPanel
 	: public SWidget
 {
 public:
+
 	/**
 	 * Panels arrange their children in a space described by the AllottedGeometry parameter. The results of the arrangement
 	 * should be returned by appending a FArrangedWidget pair for every child widget. See StackPanel for an example
+	 *
+	 * @param AllottedGeometry    The geometry allotted for this widget by its parent.
+	 * @param ArrangedChildren    The array to which to add the WidgetGeometries that represent the arranged children.
 	 */
 	virtual void OnArrangeChildren( const FGeometry& AllottedGeometry, FArrangedChildren& ArrangedChildren ) const override = 0;
+
+	/**
+	 * A Panel's desired size in the space required to arrange of its children on the screen while respecting all of
+	 * the children's desired sizes and any layout-related options specified by the user. See StackPanel for an example.
+	 *
+	 * @return The desired size.
+	 */
+	virtual FVector2D ComputeDesiredSize(float) const override = 0;
 ```
 
 - `SPanel` 是"面板"基类：子控件存进 **Slot**，Slot 描述子控件相对面板如何摆放；`OnArrangeChildren` 把父给的 `AllottedGeometry` 切分给每个子控件，产出 `FArrangedWidget(控件, Geometry)` 列表——这就是每帧 `SWidget::ArrangeChildren` 的输入，也是**命中测试（HitTest）与绘制裁切**的依据。
-- `SVerticalBox`（垂直盒）在 `SlateCore/Public/Widgets/SBoxPanel.h` 第 321~337 行，继承 `SBoxPanel : SPanel`，其 `FSlot` 提供 `AutoHeight()`（`_SizeParam = FAuto()`）等链式参数，对应 UMG 里 `UVerticalBoxSlot` 的 Size 模式：
+`SVerticalBox`（垂直盒）在 `Runtime/SlateCore/Public/Widgets/SBoxPanel.h` 第 320 行起，继承 `SBoxPanel : SPanel`（`SBoxPanel` 在 `:33`，其插槽模板基类 `SBoxPanel::TSlot<SlotType>` 在 `:43`）。`SVerticalBox::FSlot`（`:325`）提供 `AutoHeight()`（`_SizeParam = FAuto()`）等链式参数，对应 UMG 里 `UVerticalBoxSlot` 的 Size 模式（原文引用「第 321~337 行」实测应为 320~337，块首行是第 320 行的文档注释）：
+
+摘自 `Runtime/SlateCore/Public/Widgets/SBoxPanel.h`（第 320 行起）：
 
 ```cpp
 /** A Vertical Box Panel. See SBoxPanel for more info. */
@@ -240,6 +402,7 @@ public:
 	{
 	public:
 		SLATE_SLOT_BEGIN_ARGS(FSlot, SBoxPanel::TSlot<FSlot>)
+
 			/**
 			 * The widget's DesiredSize will be used as the space required.
 			 */
@@ -252,27 +415,75 @@ public:
 
 #### 3.1.4 FSlateApplication 输入路由（简述）
 
-`FSlateApplication` 是本机 5.8 中位于 `Slate/Public/Framework/Application/SlateApplication.h` 的单例（`static FSlateApplication& Get()`），平台层把原生输入交给它。输入相关入口（第 1292~1359 行节选）：
+`FSlateApplication` 是本机 5.8.2 中位于 `Runtime/Slate/Public/Framework/Application/SlateApplication.h` 的单例（`static FSlateApplication& Get()`），平台层把原生输入交给它。输入相关入口（这些声明分散在第 1292~1359 行之间，中间夹着大段注释与其它声明）：
+
+摘自 `Runtime/Slate/Public/Framework/Application/SlateApplication.h`（第 1292 行起）：
 
 ```cpp
-SLATE_API bool ProcessMouseMoveEvent( const FPointerEvent& MouseEvent, bool bIsSynthetic = false );
-SLATE_API bool ProcessMouseButtonDownEvent(const TSharedPtr< FGenericWindow >& PlatformWindow, const FPointerEvent& InMouseEvent);
-SLATE_API bool ProcessKeyCharEvent( const FCharacterEvent& InCharacterEvent );
-SLATE_API bool ProcessKeyDownEvent( const FKeyEvent& InKeyEvent );
-SLATE_API bool ProcessKeyUpEvent( const FKeyEvent& InKeyEvent );
-SLATE_API bool ProcessAnalogInputEvent(const FAnalogInputEvent& InAnalogInputEvent);
+	SLATE_API bool ProcessMouseMoveEvent( const FPointerEvent& MouseEvent, bool bIsSynthetic = false );
+
+	/**
+	 * Called by the native application in response to a mouse button press. Routs the event to Slate Widgets.
+	 *
+	 * @param  PlatformWindow  The platform window the event originated from, used to set focus at the platform level.
+	 *                         If Invalid the Mouse event will work but there will be no effect on the platform.
+	 * @param  InMouseEvent    Mouse event
+	 * @return  Was this event handled by the Slate application?
+	 */
+	SLATE_API bool ProcessMouseButtonDownEvent(const TSharedPtr< FGenericWindow >& PlatformWindow, const FPointerEvent& InMouseEvent);
+
+	/**
+	 * Called by the native application in response to a mouse button release. Routs the event to Slate Widgets.
+	 *
+	 * @param  InMouseEvent  Mouse event
+	 * @return  Was this event handled by the Slate application?
+	 */
+	SLATE_API bool ProcessMouseButtonUpEvent( const FPointerEvent& MouseEvent );
+// …（节选：省略第 1311~1334 行，共 24 行）
+	SLATE_API bool ProcessKeyCharEvent( const FCharacterEvent& InCharacterEvent );
+
+	/**
+	 * Called when a key is pressed
+	 *
+	 * @param  InKeyEvent  Keyb event
+	 * @return  Was this event handled by the Slate application?
+	 */
+	SLATE_API bool ProcessKeyDownEvent( const FKeyEvent& InKeyEvent );
+
+	/**
+	 * Called when a key is released
+	 *
+	 * @param  InKeyEvent  Key event
+	 * @return  Was this event handled by the Slate application?
+	 */
+	SLATE_API bool ProcessKeyUpEvent( const FKeyEvent& InKeyEvent );
+
+	/**
+	 * Called when a analog input values change
+	 *
+	 * @param  InAnalogInputEvent Analog input event
+	 * @return  Was this event handled by the Slate application?
+	 */
+	SLATE_API bool ProcessAnalogInputEvent(const FAnalogInputEvent& InAnalogInputEvent);
 ```
 
-以键盘为例，`SlateApplication.cpp` 第 4961~5052 行的 `ProcessKeyDownEvent`（节选）展示了"两段式路由"：
+以键盘为例，`ProcessKeyDownEvent` 的真实函数区间是 `Runtime/Slate/Private/Framework/Application/SlateApplication.cpp` 第 4961~5076 行（原文写「第 4961~5052 行」漏掉了尾部的兜底分支），它展示了"两段式路由"。注意源码里的字面顺序：第 5017 行的注释是 `// Bubble the keyboard event`，但它下面第 5024 行才是 `// Tunnel the keyboard event` 与隧道路由实现——**注释与紧随其后的代码错位**，判断阶段请以注释 `Tunnel` / `Bubble` 为准：
+
+摘自 `Runtime/Slate/Private/Framework/Application/SlateApplication.cpp`（第 4961 行起）：
 
 ```cpp
 bool FSlateApplication::ProcessKeyDownEvent( const FKeyEvent& InKeyEvent )
 {
 	SCOPE_CYCLE_COUNTER(STAT_ProcessKeyDown);
-	// ...（节选：调试作用域、输入计数）
-	TSharedRef<FSlateUser> SlateUser = GetOrCreateUser(InKeyEvent);
-	// ...（节选：编辑器预输入监听）
 
+#if WITH_SLATE_DEBUGGING
+	FSlateDebugging::FScopeProcessInputEvent Scope(ESlateDebuggingInputEvent::KeyDown, InKeyEvent);
+#endif
+
+	TScopeCounter<int32> BeginInput(ProcessingInput);
+
+	TSharedRef<FSlateUser> SlateUser = GetOrCreateUser(InKeyEvent);
+// …（节选：省略第 4972~4980 行，共 9 行）
 	// Analog cursor gets first chance at the input
 	if (InputPreProcessors.HandleKeyDownEvent(*this, InKeyEvent))
 	{
@@ -280,38 +491,69 @@ bool FSlateApplication::ProcessKeyDownEvent( const FKeyEvent& InKeyEvent )
 	}
 
 	FReply Reply = FReply::Unhandled();
-	// ...
-	TSharedRef<FWidgetPath> EventPathRef = SlateUser->GetFocusPath();
-	const FWidgetPath& EventPath = EventPathRef.Get();
 
-	// Switch worlds for widgets in the current path
-	FScopedSwitchWorldHack SwitchWorld(EventPath);
+	SetLastUserInteractionTime(this->GetCurrentTime());
 
-	// Tunnel the keyboard event（隧道路由：父 → 子，调用 OnPreviewKeyDown）
-	Reply = FEventRouter::RouteAlongFocusPath(this, FEventRouter::FTunnelPolicy(EventPath), InKeyEvent, [] (const FArrangedWidget& CurrentWidget, const FKeyEvent& Event)
-	{
-		if (CurrentWidget.Widget->IsEnabled())
+// …（节选：省略第 4991~5016 行，共 26 行）
+		// Bubble the keyboard event
+		TSharedRef<FWidgetPath> EventPathRef = SlateUser->GetFocusPath();
+		const FWidgetPath& EventPath = EventPathRef.Get();
+
+		// Switch worlds for widgets in the current path
+		FScopedSwitchWorldHack SwitchWorld(EventPath);
+
+		// Tunnel the keyboard event
+		Reply = FEventRouter::RouteAlongFocusPath(this, FEventRouter::FTunnelPolicy(EventPath), InKeyEvent, [] (const FArrangedWidget& CurrentWidget, const FKeyEvent& Event)
 		{
-			const FReply TempReply = CurrentWidget.Widget->OnPreviewKeyDown(CurrentWidget.Geometry, Event);
-			return TempReply;
-		}
-		return FReply::Unhandled();
-	}, ESlateDebuggingInputEvent::PreviewKeyDown);
-
-	// Send out key down events.（冒泡路由：子 → 父，调用 OnKeyDown）
-	if ( !Reply.IsEventHandled() )
-	{
-		Reply = FEventRouter::RouteAlongFocusPath(this, FEventRouter::FBubblePolicy(EventPath), InKeyEvent, [] (const FArrangedWidget& SomeWidgetGettingEvent, const FKeyEvent& Event)
-		{
-			if (SomeWidgetGettingEvent.Widget->IsEnabled())
+			if (CurrentWidget.Widget->IsEnabled())
 			{
-				const FReply TempReply = SomeWidgetGettingEvent.Widget->OnKeyDown(SomeWidgetGettingEvent.Geometry, Event);
+				const FReply TempReply = CurrentWidget.Widget->OnPreviewKeyDown(CurrentWidget.Geometry, Event);
+#if WITH_SLATE_DEBUGGING
+				FSlateDebugging::BroadcastInputEvent(ESlateDebuggingInputEvent::PreviewKeyDown, &Event, TempReply, CurrentWidget.Widget, Event.GetKey().GetFName());
+#endif
 				return TempReply;
 			}
+			else
+			{
+#if WITH_SLATE_DEBUGGING
+				FSlateDebugging::BroadcastNoReplyInputEvent(ESlateDebuggingInputEvent::PreviewKeyDown, &Event, CurrentWidget.Widget);
+#endif
+			}
 			return FReply::Unhandled();
-		}, ESlateDebuggingInputEvent::KeyDown);
+		}, ESlateDebuggingInputEvent::PreviewKeyDown);
+
+		// Send out key down events.
+		if ( !Reply.IsEventHandled() )
+		{
+			Reply = FEventRouter::RouteAlongFocusPath(this, FEventRouter::FBubblePolicy(EventPath), InKeyEvent, [] (const FArrangedWidget& SomeWidgetGettingEvent, const FKeyEvent& Event)
+			{
+				if (SomeWidgetGettingEvent.Widget->IsEnabled())
+				{
+					const FReply TempReply = SomeWidgetGettingEvent.Widget->OnKeyDown(SomeWidgetGettingEvent.Geometry, Event);
+#if WITH_SLATE_DEBUGGING
+					FSlateDebugging::BroadcastInputEvent(ESlateDebuggingInputEvent::KeyDown, &Event, TempReply, SomeWidgetGettingEvent.Widget, Event.GetKey().GetFName());
+#endif
+					return TempReply;
+				}
+				else
+				{
+#if WITH_SLATE_DEBUGGING
+					FSlateDebugging::BroadcastNoReplyInputEvent(ESlateDebuggingInputEvent::KeyDown, &Event, SomeWidgetGettingEvent.Widget);
+#endif
+				}
+
+				return FReply::Unhandled();
+			}, ESlateDebuggingInputEvent::KeyDown);
+		}
+
+		// If the key event was not processed by any widget...
+		if ( !Reply.IsEventHandled() && UnhandledKeyDownEventHandler.IsBound() )
+		{
+			Reply = UnhandledKeyDownEventHandler.Execute(InKeyEvent);
+		}
 	}
-	// ...
+
+	return Reply.IsEventHandled();
 }
 ```
 
@@ -323,9 +565,324 @@ bool FSlateApplication::ProcessKeyDownEvent( const FKeyEvent& InKeyEvent )
 - 鼠标按键/移动走 `RoutePointerDownEvent`（`FWidgetPath` 由 `LocateWidgetUnderMouse` 命中测试得到），语义相同：Preview（隧道）→ 正常（冒泡）。
 - 对 UMG 而言，`SObjectWidget` 重写了全部 `OnPreviewKeyDown/OnKeyDown/OnMouseButtonDown/...`，把事件转成 `UUserWidget` 的蓝图事件（如 `OnKeyDown` 事件），所以**你在蓝图里写的按键事件，底层就是这条 FEventRouter 路由**。
 
+#### 3.1.5 SWidget::Paint：非虚公开入口 + 私有虚 OnPaint
+
+`Paint` 与 `OnPaint` 是两个不同层次的函数。`Paint` 是**非虚**的公开入口（声明 `Runtime/SlateCore/Public/Widgets/SWidget.h:294`，所在 `public:` 段起于 `:274`；实现 `Runtime/SlateCore/Private/Widgets/SWidget.cpp:1473`），负责统计、裁切、跑 Tick 与 ActiveTimer、把本控件注册进 HitTestGrid、压栈 clip 与 pixel-snapping，最后才调用**声明在 `private:` 段里的虚函数** `OnPaint`（`SWidget.h:1771`，第 1755 行是 `private:`）。
+
+摘自 `Runtime/SlateCore/Private/Widgets/SWidget.cpp`（第 1473 行起）：
+
+```cpp
+int32 SWidget::Paint(const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId, const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const
+{
+	const EWidgetUpdateFlags PreviousUpdateFlag = UpdateFlags;
+
+	// TODO, Maybe we should just make Paint non-const and keep OnPaint const.
+	SWidget* MutableThis = const_cast<SWidget*>(this);
+
+	INC_DWORD_STAT(STAT_SlateNumPaintedWidgets);
+	UE_TRACE_SCOPED_SLATE_WIDGET_PAINT(this);
+
+	// If this widget clips to its bounds, then generate a new clipping rect representing the intersection of the bounding
+	// rectangle of the widget's geometry, and the current clipping rectangle.
+	bool bClipToBounds, bAlwaysClip, bIntersectClipBounds;
+
+	FSlateRect CullingBounds = CalculateCullingAndClippingRules(AllottedGeometry, MyCullingRect, bClipToBounds, bAlwaysClip, bIntersectClipBounds);
+
+	FWidgetStyle ContentWidgetStyle = FWidgetStyle(InWidgetStyle)
+		.BlendOpacity(RenderOpacity);
+// …（节选：省略第 1491~1496 行，共 6 行）
+	{
+		UE_TRACE_SCOPED_SLATE_WIDGET_UPDATE(this);
+		if (HasAnyUpdateFlags(EWidgetUpdateFlags::NeedsActiveTimerUpdate))
+		{
+			SCOPE_CYCLE_COUNTER(STAT_SlateExecuteActiveTimers);
+			MutableThis->ExecuteActiveTimers(Args.GetCurrentTime(), Args.GetDeltaTime());
+		}
+
+		if (HasAnyUpdateFlags(EWidgetUpdateFlags::NeedsTick))
+		{
+			INC_DWORD_STAT(STAT_SlateNumTickedWidgets);
+
+			SCOPE_CYCLE_COUNTER(STAT_SlateTickWidgets);
+			SCOPE_CYCLE_SWIDGET(this);
+			MutableThis->Tick(DesktopSpaceGeometry, Args.GetCurrentTime(), Args.GetDeltaTime());
+		}
+	}
+
+	// the rule our parent has set for us
+	const bool bInheritedHittestability = Args.GetInheritedHittestability();
+	const bool bOutgoingHittestability = bInheritedHittestability && GetVisibility().AreChildrenHitTestVisible();
+```
+
+上面这段里，第 1497~1513 行处理 ActiveTimer 与 Tick，第 1515~1517 行算出"子控件是否可命中"。下面是同一函数的另外两处关键落点（中间第 1518~1538 行是调试裁切与父控件登记，第 1579~1623 行是 clip / pixel-snapping 压栈）：
+
+摘自 `Runtime/SlateCore/Private/Widgets/SWidget.cpp`（第 1539 行起）：
+
+```cpp
+	// @todo This should not do this copy if the clipping state is unset
+	PersistentState.InitialClipState = OutDrawElements.GetClippingState();
+	PersistentState.LayerId = LayerId;
+	PersistentState.bParentEnabled = bParentEnabled;
+	PersistentState.bInheritedHittestability = bInheritedHittestability;
+	PersistentState.bDeferredPainting = Args.GetDeferredPaint();
+	PersistentState.AllottedGeometry = AllottedGeometry;
+	PersistentState.DesktopGeometry = DesktopSpaceGeometry;
+	PersistentState.WidgetStyle = InWidgetStyle;
+	PersistentState.CullingBounds = MyCullingRect;
+	PersistentState.InitialPixelSnappingMethod = OutDrawElements.GetPixelSnappingMethod();
+
+	const int32 IncomingUserIndex = Args.GetHittestGrid().GetUserIndex();
+	ensure(IncomingUserIndex <= std::numeric_limits<int8>::max()); // shorten to save memory
+	PersistentState.IncomingUserIndex = (int8)IncomingUserIndex;
+
+	const int32 IncomingSceneIndex = FSlateApplicationBase::Get().GetRenderer()->GetCurrentSceneIndex();
+	ensure(IncomingSceneIndex <= TNumericLimits<int8>::Max());
+	PersistentState.IncomingSceneIndex = static_cast<int8>(IncomingSceneIndex);
+
+	PersistentState.IncomingFlowDirection = GSlateFlowDirection;
+	PersistentState.SetIsProjectContent(IsProjectContent());
+
+	FPaintArgs UpdatedArgs = Args.WithNewParent(this);
+	UpdatedArgs.SetInheritedHittestability(bOutgoingHittestability);
+
+#if WITH_SLATE_DEBUGGING
+	if (FastPathProxyHandle.IsValid(this) && PersistentState.CachedElementHandle.HasCachedElements())
+	{
+		ensureMsgf(FastPathProxyHandle.GetProxy().Visibility.IsVisible()
+			, TEXT("The widget '%s' is collapsed or not visible. It should not have Cached Element."), *FReflectionMetaData::GetWidgetDebugInfo(this));
+	}
+#endif
+
+	OutDrawElements.PushPaintingWidget(*this, LayerId, PersistentState.CachedElementHandle);
+
+	if (bOutgoingHittestability)
+	{
+		Args.GetHittestGrid().AddWidget(MutableThis, 0, LayerId, FastPathProxyHandle.GetWidgetSortOrder());
+	}
+```
+
+摘自 `Runtime/SlateCore/Private/Widgets/SWidget.cpp`（第 1624 行起）：
+
+```cpp
+	int32 NewLayerId = 0;
+	{
+		LLM_SCOPE_BYNAME("UI/Slate/OnPaint");
+#if UE_TRACE_ASSET_METADATA_ENABLED
+		FName AssetName = NAME_None;
+		FName ClassName = NAME_None;
+		FName PackageName = NAME_None;
+		if (UE_TRACE_CHANNELEXPR_IS_ENABLED(AssetMetadataChannel))
+		{
+			TSharedPtr<FReflectionMetaData> AssetMetaData = FReflectionMetaData::GetWidgetOrParentMetaData(this);
+			if (AssetMetaData.IsValid())
+			{
+				if (const UObject* AssetPtr = AssetMetaData->Asset.Get())
+				{
+					AssetName = AssetMetaData->Name;
+					ClassName = AssetMetaData->Class.Get()->GetFName();
+					PackageName = AssetPtr->GetPackage()->GetFName();
+				}
+			}
+		}
+		LLM_SCOPE_DYNAMIC_STAT_OBJECTPATH_FNAME(PackageName, ELLMTagSet::Assets);
+		LLM_SCOPE_DYNAMIC_STAT_OBJECTPATH_FNAME(ClassName, ELLMTagSet::AssetClasses);
+		UE_TRACE_METADATA_SCOPE_ASSET_FNAME(AssetName, ClassName, PackageName);
+#endif
+		// Paint the geometry of this widget.
+		OutDrawElements.SetIsInProjectContent(IsProjectContent());
+		NewLayerId = OnPaint(UpdatedArgs, AllottedGeometry, CullingBounds, OutDrawElements, LayerId, ContentWidgetStyle, bParentEnabled);
+		OutDrawElements.SetIsInProjectContent(false);
+	}
+
+	// Just repainted
+	MutableThis->RemoveUpdateFlags(EWidgetUpdateFlags::NeedsRepaint);
+```
+
+逐段解构：
+
+- **Tick 不是独立遍历**：`Paint` 内部按 `HasAnyUpdateFlags(EWidgetUpdateFlags::NeedsTick)` 决定是否调用 `MutableThis->Tick(DesktopSpaceGeometry, Args.GetCurrentTime(), Args.GetDeltaTime())`（第 1505~1512 行）。所以 Slate 没有"每帧遍历所有控件 Tick"的步骤——**只有被标记需要 Tick 的控件才会进 Tick，而标记本身由绘制遍历读取**。这也解释了 `UUserWidget` 默认 `DisableNativeTick` 时为什么 SObjectWidget::Tick 里的 `NativeTick` 不会跑。
+- **Tick 的 Geometry 与 Paint 的 Geometry 不同源**：第 1494~1495 行在 `AllottedGeometry` 上追加了 `Args.GetWindowToDesktopTransform()` 得到 `DesktopSpaceGeometry` 并交给 Tick；而第 1650 行交给 `OnPaint` 的是原始 `AllottedGeometry`。写自定义控件的 Tick/Paint 时需要知道这个差别。
+- **命中测试注册发生在绘制里**：第 1575~1578 行 `Args.GetHittestGrid().AddWidget(MutableThis, 0, LayerId, ...)`——LayerId 同时是绘制层次与命中优先级。`bOutgoingHittestability`（第 1517 行）由 `GetVisibility().AreChildrenHitTestVisible()` 决定，并通过第 1563 行 `UpdatedArgs.SetInheritedHittestability(...)` 传给子控件；`SelfHitTestInvisible` 之所以"自己不可点、子控件可点"就是这一行的效果。
+- **`OnPaint` 是私有的**：`SWidget.h:1755` 起是 `private:`，`OnPaint`（`:1771`）与 `OnArrangeChildren`（`:1780`）都在其中。派生类能覆写私有虚函数，但外部只能走 `Paint`——这也是 `SPanel::PaintArrangedChildren` 里递归用 `CurWidget.Widget->Paint(...)`（`SPanel.cpp:33`）而不是 `->OnPaint(...)` 的原因。
+- **绘制元素不落在控件上**：`OnPaint` 只是往 `FSlateWindowElementList` 追加元素并返回"本子树达到的最大 LayerId"（第 1650 行 `NewLayerId = OnPaint(...)`）。该列表定义在 `Runtime/SlateCore/Public/Rendering/DrawElements.h:219`，持有 `FSlateDrawElementMap DrawElements`（`:87`）与 `UncachedDrawElements`（`:520`），并经 `GetBatchData()`（`:392`）/`GetBatchDataHDR()`（`:398`）把结果交给渲染线程——这正是 3.5 中 `Inputs.WindowElementList->GetBatchData()` 的来源。
+
+`FGeometry::ToPaintGeometry` 是"布局坐标 → 绘制坐标"的正规出口（`Runtime/SlateCore/Public/Layout/Geometry.h:315` 起）：`OnPaint` 里画元素时应通过它取 `FPaintGeometry`，而不是自己拼变换矩阵。
+
+摘自 `Runtime/SlateCore/Public/Layout/Geometry.h`（第 310 行起）：
+
+```cpp
+	/**
+	 * Create a paint geometry that represents this geometry.
+	 *
+	 * @return	The new paint geometry.
+	 */
+	FORCEINLINE_DEBUGGABLE FPaintGeometry ToPaintGeometry() const
+	{
+		return FPaintGeometry(GetAccumulatedLayoutTransform(), GetAccumulatedRenderTransform(), FVector2f(Size), bHasRenderTransform);
+	}
+
+	/**
+	 * Create a paint geometry relative to this one with a given local space size and layout transform.
+	 * The paint geometry inherits the widget's render transform.
+	 *
+	 * @param LocalSize			The size of the child geometry in local space.
+	 * @param LayoutTransform	Layout transform of the paint geometry relative to this Geometry.
+	 *
+	 * @return					The new paint geometry derived from this one.
+	 */
+	FORCEINLINE_DEBUGGABLE FPaintGeometry ToPaintGeometry(const UE::Slate::FDeprecateVector2DParameter& InLocalSize, const FSlateLayoutTransform& InLayoutTransform) const
+	{
+		FSlateLayoutTransform NewAccumulatedLayoutTransform = Concatenate(InLayoutTransform, GetAccumulatedLayoutTransform());
+		return FPaintGeometry(NewAccumulatedLayoutTransform, Concatenate(InLayoutTransform, GetAccumulatedRenderTransform()), UE::Slate::CastToVector2f(InLocalSize), bHasRenderTransform);
+	}
+```
+
+注意第 329~333 行那个重载：它把新的布局变换**与已有累积变换 `Concatenate`**（子在前、父在后），并同样拼接累积渲染变换——所以 `ToPaintGeometry` 得到的是"窗口空间"而非"父控件局部空间"的几何体。
+
+#### 3.1.6 ArrangeChildren：布局产出的是 FArrangedChildren，而且发生在 Paint 之内
+
+`SWidget` 上真正的 Arrange 入口是 `ArrangeChildren`（声明 `Runtime/SlateCore/Public/Widgets/SWidget.h:892`，实现 `Runtime/SlateCore/Private/Widgets/SWidget.cpp:1788`）：它先按需刷新子控件的可见性属性，再转调纯虚 `OnArrangeChildren`。
+
+摘自 `Runtime/SlateCore/Private/Widgets/SWidget.cpp`（第 1788 行起）：
+
+```cpp
+void SWidget::ArrangeChildren(const FGeometry& AllottedGeometry, FArrangedChildren& ArrangedChildren, bool bUpdateAttributes) const
+{
+#if WITH_VERY_VERBOSE_SLATE_STATS
+	SCOPED_NAMED_EVENT(SWidget_ArrangeChildren, FColor::Black);
+#endif
+
+	if (bUpdateAttributes)
+	{
+		// Update the Widgets visibility before getting the ArrangeChildren
+		//const-casting for TSlateAttribute has the same behavior as previously with TAttribute. The const was hidden from the user.
+		FSlateAttributeMetaData::UpdateChildrenOnlyVisibilityAttributes(const_cast<SWidget&>(*this), FSlateAttributeMetaData::EInvalidationPermission::DelayInvalidation, false);
+	}
+
+	OnArrangeChildren(AllottedGeometry, ArrangedChildren);
+}
+```
+
+要理解"arrange 到底什么时候发生"，看 `SPanel::OnPaint` 最直接——**`SPanel` 是在绘制阶段才做 Arrange 的**：
+
+摘自 `Runtime/SlateCore/Private/Widgets/SPanel.cpp`（第 10 行起）：
+
+```cpp
+int32 SPanel::OnPaint( const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId, const FWidgetStyle& InWidgetStyle, bool bParentEnabled ) const
+{
+	FArrangedChildren ArrangedChildren(EVisibility::Visible);
+	ArrangeChildren(AllottedGeometry, ArrangedChildren);
+
+	return PaintArrangedChildren(Args, ArrangedChildren, AllottedGeometry, MyCullingRect, OutDrawElements, LayerId, InWidgetStyle, bParentEnabled);
+}
+
+int32 SPanel::PaintArrangedChildren( const FPaintArgs& Args, const FArrangedChildren& ArrangedChildren, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId, const FWidgetStyle& InWidgetStyle, bool bParentEnabled  ) const
+{
+	// Because we paint multiple children, we must track the maximum layer id that they produced in case one of our parents
+	// wants to an overlay for all of its contents.
+	int32 MaxLayerId = LayerId;
+
+	const FPaintArgs NewArgs = Args.WithNewParent(this);
+	const bool bShouldBeEnabled = ShouldBeEnabled(bParentEnabled);
+
+	for (int32 ChildIndex = 0; ChildIndex < ArrangedChildren.Num(); ++ChildIndex)
+	{
+		const FArrangedWidget& CurWidget = ArrangedChildren[ChildIndex];
+
+		if (!IsChildWidgetCulled(MyCullingRect, CurWidget))
+		{
+			const int32 CurWidgetsMaxLayerId = CurWidget.Widget->Paint(NewArgs, CurWidget.Geometry, MyCullingRect, OutDrawElements, LayerId, InWidgetStyle, bShouldBeEnabled);
+			MaxLayerId = FMath::Max(MaxLayerId, CurWidgetsMaxLayerId);
+		}
+		else
+		{
+			//SlateGI - RemoveContent
+		}
+	}
+
+	return MaxLayerId;
+}
+```
+
+摘自 `Runtime/SlateCore/Public/Layout/ArrangedChildren.h`（第 14 行起）：
+
+```cpp
+class FArrangedChildren
+{
+	private:
+
+	EVisibility VisibilityFilter;
+
+	public:
+
+	typedef TArray<FArrangedWidget, TInlineAllocator<4>> FArrangedWidgetArray;
+
+	/**
+	 * Construct a new container for arranged children that only accepts children that match the VisibilityFilter.
+	 * e.g.
+	 *  FArrangedChildren ArrangedChildren( VIS_All ); // Children will be included regardless of visibility
+	 *  FArrangedChildren ArrangedChildren( EVisibility::Visible ); // Only visible children will be included
+	 *  FArrangedChildren ArrangedChildren( EVisibility::Collapsed | EVisibility::Hidden ); // Only hidden and collapsed children will be included.
+	 */
+	FArrangedChildren( EVisibility InVisibilityFilter, bool bInAllow3DWidgets = false )
+	: VisibilityFilter( InVisibilityFilter )
+	, bAllow3DWidgets( bInAllow3DWidgets )
+	{
+	}
+
+	// @todo hittest2.0 : we should get rid of this eventually.
+	static FArrangedChildren Hittest2_FromArray(const TArrayView<FWidgetAndPointer> InWidgets)
+	{
+		FArrangedChildren Temp( EVisibility::All );
+		Temp.Array.Reserve(InWidgets.Num());
+		for (const FWidgetAndPointer& WidgetAndPointer : InWidgets)
+		{
+			Temp.Array.Add(WidgetAndPointer);
+		}
+		return Temp;
+	}
+
+	/** Reverse the order of the arranged children */
+	void Reverse()
+	{
+		int32 LastElementIndex = Array.Num() - 1;
+		for (int32 WidgetIndex = 0; WidgetIndex < Array.Num()/2; ++WidgetIndex )
+		{
+			Array.Swap( WidgetIndex, LastElementIndex - WidgetIndex );
+		}
+	}
+
+	/**
+	 * Add an arranged widget (i.e. widget and its resulting geometry) to the list of Arranged children.
+	 *
+	 * @param VisibilityOverride   The arrange function may override the visibility of the widget for the purposes
+	 *                             of layout or performance (i.e. prevent redundant call to Widget->GetVisibility())
+	 * @param InWidgetGeometry     The arranged widget (i.e. widget and its geometry)
+	 */
+	inline void AddWidget(EVisibility VisibilityOverride, const FArrangedWidget& InWidgetGeometry)
+	{
+		if ( Accepts(VisibilityOverride) )
+		{
+			Array.Add(InWidgetGeometry);
+		}
+	}
+```
+
+逐段解构：
+
+- **没有独立的 Layout pass**：`SPanel::OnPaint` 的前两行就是 `FArrangedChildren ArrangedChildren(EVisibility::Visible); ArrangeChildren(AllottedGeometry, ArrangedChildren);`（第 12~13 行）。也就是说 Slate 的"布局"与"绘制"是同一次递归遍历里的前后两步：`SlatePrepass` 只自底向上算 DesiredSize，真正的几何分配由 `ArrangeChildren` 在绘制前一刻完成。这与许多 UI 框架"layout → paint 两趟"的模型不同，是读 Slate 源码时最容易误判的一点。
+- **`bUpdateAttributes` 默认 false**：`ArrangeChildren(..., bool bUpdateAttributes = false)`（`SWidget.h:892`）。`SPanel::OnPaint` 调用时不传该参数，所以常规绘制路径里**不会**再刷新一次可见性属性（可见性已在 `Prepass_ChildLoop` 里刷过，见 3.1.2）。只有"在常规 Paint/Tick 之外自己调 ArrangeChildren"时才需要显式传 true——注释里写得很直白（`SWidget.h:884~886`）。
+- **`FArrangedChildren` 是一个带可见性过滤器的容器**：`AddWidget` 只在 `Accepts(VisibilityOverride)` 为真时收纳（第 66~72 行）。`SPanel::OnPaint` 用 `EVisibility::Visible` 构造（第 12 行），于是 **Hidden/Collapsed 的子控件根本不会进入 `ArrangedChildren`**，后面的 `IsChildWidgetCulled` 与递归 `Paint` 都轮不到它们。`Collapsed` 与 `Hidden` 的性能差别正是在这里体现：两者都不绘制，但 `Collapsed` 连 prepass 的尺寸缓存都不参与（见 3.1.2 中 `Prepass_ChildLoop` 的 `else` 分支）。
+- **Enabled 沿 Arrange 结果向下传染**：`const bool bShouldBeEnabled = ShouldBeEnabled(bParentEnabled);`（`SPanel.cpp:25`）在递归 `CurWidget.Widget->Paint(NewArgs, CurWidget.Geometry, MyCullingRect, OutDrawElements, LayerId, InWidgetStyle, bShouldBeEnabled)`（第 33 行）时逐层下传——父控件 `IsEnabled=false` 会让整棵可见子树的 `bParentEnabled` 变 false。`FWidgetStyle`/`bParentEnabled` 都不进 `FArrangedWidget`，是**调用参数**而非绘制数据。
+- **`MaxLayerId` 的语义**：`SPanel::PaintArrangedChildren` 用 `FMath::Max` 收敛所有子控件返回的 LayerId（第 22、34 行）并返回——这个返回值会被父控件的 `OnPaint` 继续向上传递，最终决定"父控件要在子控件之上画东西时该用哪个 LayerId"。`SObjectWidget::OnPaint`（3.2.4）把 `SCompoundWidget::OnPaint` 的返回值 `MaxLayer` 作为 `NativePaint` 的起始 LayerId，用的就是同一套约定。
+
 ### 3.2 UMG 与 Slate 的桥接
 
 #### 3.2.1 UUserWidget 声明（UserWidget.h 第 279~284 行节选）
+
+（更正（2026-09-15）：本节标题括注「第 279~284 行」实测应为 279~286 行——块末行是第 286 行的 `UMG_API UUserWidget(const FObjectInitializer& ObjectInitializer);`。标题文本按"既有结构一字不改"保留，正确区间以本处为准。）
+
+摘自 `Runtime/UMG/Public/Blueprint/UserWidget.h`（第 279 行起）：
 
 ```cpp
 UCLASS(Abstract, editinlinenew, BlueprintType, Blueprintable, meta=( DontUseGenericSpawnObject="True", DisableNativeTick) , MinimalAPI)
@@ -338,24 +895,44 @@ public:
 	UMG_API UUserWidget(const FObjectInitializer& ObjectInitializer);
 ```
 
-- `DisableNativeTick`：默认关闭 UUserWidget 的逐帧 Native Tick（需要 Tick 的控件用 `SetTickFrequency`/类元数据开启），这是 5.x 后 UMG 性能优化的关键开关；
+- `DisableNativeTick`：默认关闭 UUserWidget 的逐帧 Native Tick（开关是类元数据 `meta=(DisableNativeTick)` 与 `EWidgetTickFrequency TickFrequency`，后者只有 `Never`/`Auto` 两档，见 5.4），这是 5.x 后 UMG 性能优化的关键开关；
 - `friend class SObjectWidget`：桥接类可以直接访问 UserWidget 内部状态；
 - 生命周期钩子（第 1576~1592 行）：`RebuildWidget()`（构建根 Slate 控件）、`OnWidgetRebuilt()`、`NativeOnInitialized()`、`NativePreConstruct()`、`NativeConstruct()`、`NativeDestruct()`、`NativeTick()`、`NativePaint()`。
 
 #### 3.2.2 TakeWidget：UObject 树 → Slate 树
 
-`UWidget::TakeWidget()`（`Widget.cpp` 第 962~983 行）与 `TakeWidget_Private`（第 985~1026 行，节选）是桥接的核心：
+`UWidget::TakeWidget()`（`Runtime/UMG/Private/Components/Widget.cpp` 第 962~983 行）与 `TakeWidget_Private`（第 985~1100 行）是桥接的核心。原文此处是三段等价改写（含中文注释），本轮替换为源码逐字版：
+
+摘自 `Runtime/UMG/Private/Components/Widget.cpp`（第 962 行起）：
 
 ```cpp
 TSharedRef<SWidget> UWidget::TakeWidget()
 {
 	LLM_SCOPE_BYTAG(UI_UMG);
-	// ...（节选：LLM 统计与资产元数据）
+
+#if WIDGET_INCLUDE_RELFECTION_METADATA
+	UObject* SourceAsset = GetSourceAssetOrClass();
+	UClass* WidgetClass = GetClass();
+	if(SourceAsset && WidgetClass)
+	{
+		LLM_SCOPE_DYNAMIC_STAT_OBJECTPATH(SourceAsset->GetPackage(), ELLMTagSet::Assets);
+		LLM_SCOPE_DYNAMIC_STAT_OBJECTPATH(WidgetClass, ELLMTagSet::AssetClasses);
+		UE_TRACE_METADATA_SCOPE_ASSET(SourceAsset, WidgetClass);
+
+		return TakeWidget_Private([](UUserWidget* Widget, TSharedRef<SWidget> Content) -> TSharedPtr<SObjectWidget> {
+			return SNew(SObjectWidget, Widget)[Content];
+			});
+	}
+#endif
 	return TakeWidget_Private([](UUserWidget* Widget, TSharedRef<SWidget> Content) -> TSharedPtr<SObjectWidget> {
 		return SNew(SObjectWidget, Widget)[Content];
 		});
 }
+```
 
+摘自 `Runtime/UMG/Private/Components/Widget.cpp`（第 985 行起）：
+
+```cpp
 TSharedRef<SWidget> UWidget::TakeWidget_Private(ConstructMethodType ConstructMethod)
 {
 	bool bNewlyCreated = false;
@@ -365,8 +942,13 @@ TSharedRef<SWidget> UWidget::TakeWidget_Private(ConstructMethodType ConstructMet
 	if (!MyWidget.IsValid())
 	{
 		PublicWidget = RebuildWidget();
-		// ...（节选：ensure 不返回 SNullWidget）
+
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+		ensureMsgf(PublicWidget.Get() != &SNullWidget::NullWidget.Get(), TEXT("Don't return SNullWidget from RebuildWidget, because we mutate the state of the return.  Return a SSpacer if you need to return a no-op widget."));
+#endif
+
 		MyWidget = PublicWidget;
+
 		bNewlyCreated = true;
 	}
 	else
@@ -388,13 +970,35 @@ TSharedRef<SWidget> UWidget::TakeWidget_Private(ConstructMethodType ConstructMet
 		else // Otherwise we need to recreate the wrapper widget
 		{
 			SafeGCWidget = ConstructMethod(Cast<UUserWidget>(this), PublicWidget.ToSharedRef());
+
 			MyGCWidget = SafeGCWidget;
 			PublicWidget = SafeGCWidget;
 		}
 	}
-	// ...（节选：编辑器设计态包装、UIComponent 包装）
+// …（节选：省略第 1027~1080 行，共 54 行）
+	if (bNewlyCreated)
+	{
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+		bRoutedSynchronizeProperties = false;
+#endif
+
+#if WIDGET_INCLUDE_RELFECTION_METADATA
+		UObject* SourceAsset = GetSourceAssetOrClass();
+		UClass* WidgetClass = GetClass();
+		// We only need to do this once, when the slate widget is created.
+		PublicWidget->AddMetadata<FReflectionMetaData>(MakeShared<FReflectionMetaData>(GetFName(), WidgetClass, this, SourceAsset));
+#endif
+
+		SynchronizeProperties();
+		VerifySynchronizeProperties();
+		OnWidgetRebuilt();
+	}
+
+	return PublicWidget.ToSharedRef();
 }
 ```
+
+被省略的第 1027~1080 行是两个包装分支：`if (bWrappedByComponent)`（`UIComponent` 包装，见 3.6）与 `#if WITH_EDITOR` 的设计态包装（`RebuildDesignWidget`）。第 1094~1096 行说明**属性同步与生命周期钩子都在这里触发**：`SynchronizeProperties(); VerifySynchronizeProperties(); OnWidgetRebuilt();`。
 
 逐行解释：
 
@@ -405,7 +1009,9 @@ TSharedRef<SWidget> UWidget::TakeWidget_Private(ConstructMethodType ConstructMet
 
 #### 3.2.3 UUserWidget::RebuildWidget 与 AddToViewport
 
-`UserWidget.cpp` 第 1190~1217 行（节选）——UserWidget 的"重建"就是把 WidgetTree 递归翻译成 Slate：
+`Runtime/UMG/Private/UserWidget.cpp` 第 1190~1217 行——UserWidget 的"重建"就是把 WidgetTree 翻译成 Slate（原文此行区间正确，但块内注释被截断成 `...`，本轮替换为逐字版）：
+
+摘自 `Runtime/UMG/Private/UserWidget.cpp`（第 1190 行起）：
 
 ```cpp
 TSharedRef<SWidget> UUserWidget::RebuildWidget()
@@ -413,7 +1019,8 @@ TSharedRef<SWidget> UUserWidget::RebuildWidget()
 	check(!HasAnyFlags(RF_ClassDefaultObject | RF_ArchetypeObject));
 
 	// In the event this widget is replaced in memory by the blueprint compiler update
-	// the widget won't be properly initialized, so we ensure it's initialized ...
+	// the widget won't be properly initialized, so we ensure it's initialized and initialize
+	// it if it hasn't been.
 	if ( !bInitialized )
 	{
 		Initialize();
@@ -437,9 +1044,11 @@ TSharedRef<SWidget> UUserWidget::RebuildWidget()
 }
 ```
 
-`WidgetTree->RootWidget->TakeWidget()` 会沿控件树递归：每个 `UWidget` 的 `TakeWidget` → `RebuildWidget` → `SNew(Sxxx)`，直到叶子；子控件通过各自的 Slot（`UPanelSlot::BuildSlot`）挂进父控件的 Slate Slot。构建完成后 `OnWidgetRebuilt()`（第 1219 行起）里做 `BuildNavigation()` 并调用 `NativePreConstruct`/`NativeConstruct`——**蓝图里的 Construct 事件从这里发出**。
+`WidgetTree->RootWidget->TakeWidget()` 会沿控件树递归：每个 `UWidget` 的 `TakeWidget` → `RebuildWidget` → `SNew(Sxxx)`，直到叶子；子控件由**各 Slot 子类各自实现的 `BuildSlot(...)`** 挂进父控件的 Slate Slot（`UPanelSlot` 基类**没有** `BuildSlot`，见 3.3.2）。构建完成后 `OnWidgetRebuilt()`（`UserWidget.cpp` 第 1219 行起）里做 `BuildNavigation()` 并调用 `NativePreConstruct`/`NativeConstruct`——**蓝图里的 Construct 事件从这里发出**。
 
-上屏入口 `AddToViewport`（第 1366~1378 行）：
+上屏入口在同一文件第 1366~1378 行：
+
+摘自 `Runtime/UMG/Private/UserWidget.cpp`（第 1366 行起）：
 
 ```cpp
 void UUserWidget::AddToViewport(int32 ZOrder)
@@ -461,7 +1070,9 @@ void UUserWidget::AddToViewport(int32 ZOrder)
 
 #### 3.2.4 SObjectWidget：转发 + GC 锚定
 
-`UMG/Public/Slate/SObjectWidget.h` 第 24~59 行（节选）：
+`Runtime/UMG/Public/Slate/SObjectWidget.h` 第 24~59 行（原文块未标注即略去第 55~56 行的 `SetPadding` 声明，本轮补出省略标注）：
+
+摘自 `Runtime/UMG/Public/Slate/SObjectWidget.h`（第 24 行起）：
 
 ```cpp
 /**
@@ -485,6 +1096,7 @@ class SObjectWidget : public SCompoundWidget, public FGCObject
 	UMG_API virtual ~SObjectWidget();
 
 	UMG_API void Construct(const FArguments& InArgs, UUserWidget* InWidgetObject);
+
 	UMG_API void ResetWidget();
 
 	// FGCObject interface
@@ -494,24 +1106,26 @@ class SObjectWidget : public SCompoundWidget, public FGCObject
 
 	UUserWidget* GetWidgetObject() const { return WidgetObject; }
 
+// …（节选：省略第 55~56 行，共 2 行）
 	/** SWidget Tick override.  Note this will not be called if bCanTick is set to false by the UserWidget */
 	UMG_API virtual void Tick( const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime ) override;
 	UMG_API virtual int32 OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId, const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const override;
-	// ...（节选：OnKeyDown/OnMouseButtonDown/OnDragEnter 等全套事件转发重写）
 ```
 
-实现（`SObjectWidget.cpp` 第 104~150 行节选）：
+实现在同一模块的 `Runtime/UMG/Private/Slate/SObjectWidget.cpp` 第 104~150 行：
+
+摘自 `Runtime/UMG/Private/Slate/SObjectWidget.cpp`（第 104 行起）：
 
 ```cpp
 void SObjectWidget::AddReferencedObjects(FReferenceCollector& Collector)
 {
 	Collector.AddStableReference(&WidgetObject);
 }
-
+// …（节选：省略第 108~113 行，共 6 行）
 void SObjectWidget::Tick( const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime )
 {
 	// Note: This tick will not execute unless the UserWidget itself ticks.
-	// ...（节选：命名事件与统计）
+// …（节选：省略第 117~125 行，共 9 行）
 	if ( CanRouteEvent() )
 	{
 		WidgetObject->NativeTick(AllottedGeometry, InDeltaTime);
@@ -520,14 +1134,21 @@ void SObjectWidget::Tick( const FGeometry& AllottedGeometry, const double InCurr
 
 int32 SObjectWidget::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId, const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const
 {
-	// ...（节选：命名事件与统计）
+#if SLATE_VERBOSE_NAMED_EVENTS
+	SCOPED_NAMED_EVENT_FSTRING(DebugPaintEventName, FColor::Silver);
+#endif
+
+#if WITH_VERY_VERBOSE_SLATE_STATS
+	FScopeCycleCounterUObject NativeFunctionScope(WidgetObject);
+#endif
+
 	int32 MaxLayer = SCompoundWidget::OnPaint(Args, AllottedGeometry, MyCullingRect, OutDrawElements, LayerId, InWidgetStyle, bParentEnabled);
 
 	if ( CanRoutePaint() )
 	{
 		return WidgetObject->NativePaint(Args, AllottedGeometry, MyCullingRect, OutDrawElements, MaxLayer, InWidgetStyle, bParentEnabled);
 	}
-	
+
 	return MaxLayer;
 }
 ```
@@ -540,7 +1161,9 @@ int32 SObjectWidget::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGe
 
 #### 3.2.5 UWidgetComponent：3D/屏幕空间挂载 UMG
 
-`WidgetComponent.cpp` 第 1746~1777 行 `InitWidget`（节选）：
+`Runtime/UMG/Private/Components/WidgetComponent.cpp` 第 1746~1777 行 `InitWidget`：
+
+摘自 `Runtime/UMG/Private/Components/WidgetComponent.cpp`（第 1746 行起）：
 
 ```cpp
 void UWidgetComponent::InitWidget()
@@ -561,7 +1184,8 @@ void UWidgetComponent::InitWidget()
 				Widget = CreateWidget(World, WidgetClass);
 				SetTickMode(TickMode);
 			}
-			// ...（节选：编辑器预览设置 DesignerFlags）
+
+// …（节选：省略第 1765~1774 行，共 10 行）
 		}
 	}
 }
@@ -569,8 +1193,8 @@ void UWidgetComponent::InitWidget()
 
 关键点：
 
-- `Space == EWidgetSpace::Screen` 时，组件把 `GetSlateWidget()`（内部走 `TakeWidget`）加入视口 `SGameLayerManager`，与普通 UMG 一致（`WidgetComponent.cpp` 第 131~133 行 `NewScreenLayer->AddComponent(...)`）；
-- `Space == EWidgetSpace::World` 时，组件用 `FWidget3DSceneProxy`（第 320 行，`ISlate3DRenderer& Renderer` 成员）把同一棵 Slate 树离屏渲染到纹理，再作为场景材质贴图显示——因此世界空间 Widget 有独立的渲染开销与 DPI 语义，且输入命中由 `WidgetInteractionComponent` 转发回 Slate。
+- `Space == EWidgetSpace::Screen` 时，组件把 `GetSlateWidget()`（内部走 `TakeWidget`）加入视口 `SGameLayerManager`，与普通 UMG 一致（`WidgetComponent.cpp` 第 129 与 133 行两处 `NewScreenLayer->AddComponent(...)`）；
+- `Space == EWidgetSpace::World` 时，组件用 `FWidget3DSceneProxy`（类声明 `WidgetComponent.cpp:310`、构造函数 `:320`、`ISlate3DRenderer& Renderer;` 成员 `:605`）把同一棵 Slate 树离屏渲染到纹理，再作为场景材质贴图显示——因此世界空间 Widget 有独立的渲染开销与 DPI 语义，且输入命中由 `WidgetInteractionComponent` 转发回 Slate。
 
 ### 3.3 UMG 控件树：Native 控件 ↔ Slate 对应
 
@@ -590,9 +1214,11 @@ void UWidgetComponent::InitWidget()
 | `UImage` | `SImage` | `Image.cpp` |
 | `UTextBlock` | `STextBlock` | `TextBlock.cpp` |
 | 容器基类 `UPanelWidget` | `SPanel` 语义（Slot 集合） | `PanelWidget.h` |
-| 插槽基类 `UPanelSlot` | `SPanel::FSlot` 派生 | `PanelSlot.h`、`CanvasPanelSlot.cpp` |
+| 插槽基类 `UPanelSlot` | **不派生自任何 Slate Slot**：`UPanelSlot : UVisual`，只持 `Parent`/`Content` 与虚 `SynchronizeProperties()`；具体 Slate Slot 由子类自持（如 `UCanvasPanelSlot::Slot` 是 `SConstraintCanvas::FSlot*`，`CanvasPanelSlot.h:195`） | `PanelSlot.h`（10~63 行全文）、`CanvasPanelSlot.h:195` |
 
-`UCanvasPanel::RebuildWidget`（`CanvasPanel.cpp` 第 55~69 行）是典型实现：
+`UCanvasPanel::RebuildWidget`（`Runtime/UMG/Private/Components/CanvasPanel.cpp` 第 55~69 行）是典型实现：它遍历 `Slots` 数组、逐个 `Cast<UCanvasPanelSlot>` 后调用该子类自己的 `BuildSlot`：
+
+摘自 `Runtime/UMG/Private/Components/CanvasPanel.cpp`（第 55 行起）：
 
 ```cpp
 TSharedRef<SWidget> UCanvasPanel::RebuildWidget()
@@ -612,20 +1238,166 @@ TSharedRef<SWidget> UCanvasPanel::RebuildWidget()
 }
 ```
 
-`UCanvasPanelSlot::BuildSlot` 把蓝图侧的锚点（Anchors）、偏移（Offsets）、对齐（Alignment）翻译成 `SConstraintCanvas::FSlot` 的 `Anchors(...)/Offset(...)/AutoSize(...)` 参数——这就是"锚点布局"最终生效的位置。控件树整体形态：`UUserWidget`（SObjectWidget 包装）→ `WidgetTree.RootWidget` 对应的 Slate 面板 → 逐层 Slot 挂载，直到叶子控件。
+注意 `Cast<UCanvasPanelSlot>(PanelSlot)` 这层转换（第 61 行）——因为 `BuildSlot` 不是 `UPanelSlot` 的接口，`UPanelWidget` 层无法统一调用，只能在各面板的 `RebuildWidget` 里按具体子类分派（见 3.3.2）。控件树整体形态：`UUserWidget`（SObjectWidget 包装）→ `WidgetTree.RootWidget` 对应的 Slate 面板 → 逐层 Slot 挂载，直到叶子控件。
+
+#### 3.3.1 UPanelSlot 的真实成员：它只是一个"数据 + 同步"对象
+
+`UPanelSlot` 继承 `UVisual`（不是 `UWidget`），全部内容就是两个 `Instanced` 的 `TObjectPtr` 加一个空的虚同步接口，**不持有、也不声明任何 Slate 类型**：
+
+摘自 `Runtime/UMG/Public/Components/PanelSlot.h`（第 10 行起）：
+
+```cpp
+/** The base class for all Slots in UMG. */
+UCLASS(BlueprintType, MinimalAPI)
+class UPanelSlot : public UVisual
+{
+	GENERATED_UCLASS_BODY()
+
+public:
+
+	UPROPERTY(Instanced)
+	TObjectPtr<class UPanelWidget> Parent;
+
+	UPROPERTY(Instanced)
+	TObjectPtr<class UWidget> Content;
+
+	UFUNCTION(BlueprintCallable, Category = "Layout|Panel Slot")
+	UMG_API UWidget* GetContent() const;
+
+#if WITH_EDITOR
+	UMG_API bool IsDesignTime() const;
+#else
+	inline bool IsDesignTime() const { return false; }
+#endif
+
+	UMG_API virtual void ReleaseSlateResources(bool bReleaseChildren) override;
+
+	/** Applies all properties to the live slot if possible. */
+	virtual void SynchronizeProperties()
+	{
+	}
+
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override
+	{
+		Super::PostEditChangeProperty(PropertyChangedEvent);
+
+		SynchronizeProperties();
+	}
+
+	/**
+	 * Called by the designer to "nudge" a widget in a direction. Returns true if the nudge had any effect, false otherwise.
+	 **/
+	virtual bool NudgeByDesigner(const FVector2D& NudgeDirection, const TOptional<int32>& GridSnapSize) { return false; }
+
+	/**
+	 * Called by the designer when a design-time widget is dragged. Returns true if the drag had any effect, false otherwise.
+	 **/
+	virtual bool DragDropPreviewByDesigner(const FVector2D& LocalCursorPosition, const TOptional<int32>& XGridSnapSize, const TOptional<int32>& YGridSnapSize) { return false; }
+
+	/**
+	 * Called by the designer when a design-time widget needs to have changes to its associated template synchronized.
+	 **/
+	virtual void SynchronizeFromTemplate(const UPanelSlot* const TemplateSlot) {};
+#endif
+};
+```
+
+- `Parent` 指向宿主的 `UPanelWidget`，`Content` 指向被承载的 `UWidget`——Slot 只描述"父子关系 + 布局参数"，布局参数本身（`UCanvasPanelSlot::LayoutData`、`UOverlaySlot::Padding` 等）在各自子类里。
+- `SynchronizeProperties()` 是基类的**空**实现（第 36~38 行），这才是 UMG 布局参数落到 Slate 的通用接口：各子类覆写它，把蓝图侧数据写进自己持有的 Slate Slot。
+- `ReleaseSlateResources` 覆写自 `UVisual`，用来断开对 Slate 对象的持有（例：`CanvasPanelSlot.cpp:24~29` 把 `Slot = nullptr`）。
+- 三个 `WITH_EDITOR` 专用虚函数（`PostEditChangeProperty`、`NudgeByDesigner`、`DragDropPreviewByDesigner`）在游戏构建里**根本不存在**——所以"设计器里拖控件"这条路径在 Shipping 包里没有对应代码。
+
+#### 3.3.2 BuildSlot：17 个 Slot 子类各自声明，`UPanelSlot` 基类没有
+
+`BuildSlot` **不是** `UPanelSlot` 的接口。`Runtime/UMG/Public/Components/PanelSlot.h` 全文只有 63 行，检索零命中；它是每个具体 Slot 子类自己声明的成员函数，签名里的 Slate 类型各不相同——这正是"一个 UMG Slot 对应一个具体 Slate Slot"这一设计的落点。5.8.2 中 17 处声明的真实行号（头文件均在 `Runtime/UMG/Public/Components/`）：
+
+| Slot 子类 | 声明位置 | 签名 |
+| --- | --- | --- |
+| `UCanvasPanelSlot` | `CanvasPanelSlot.h:170` | `void BuildSlot(TSharedRef<SConstraintCanvas> Canvas)` |
+| `UButtonSlot` | `ButtonSlot.h:60` | `void BuildSlot(TSharedRef<SButton> InButton)` |
+| `UBorderSlot` | `BorderSlot.h:64` | `void BuildSlot(TSharedRef<SBorder> InBorder)` |
+| `UGridSlot` | `GridSlot.h:138` | `void BuildSlot(TSharedRef<SGridPanel> GridPanel)` |
+| `UHorizontalBoxSlot` | `HorizontalBoxSlot.h:67` | `void BuildSlot(TSharedRef<SHorizontalBox> HorizontalBox)` |
+| `UOverlaySlot` | `OverlaySlot.h:74` | **`virtual`** `void BuildSlot(TSharedRef<SOverlay> InOverlay)` |
+| `UScrollBoxSlot` | `ScrollBoxSlot.h:72` | `void BuildSlot(TSharedRef<SScrollBox> ScrollBox)` |
+| `USizeBoxSlot` | `SizeBoxSlot.h:66` | `void BuildSlot(TSharedRef<SBox> InSizeBox)` |
+| `UStackBoxSlot` | `StackBoxSlot.h:63` | `void BuildSlot(TSharedRef<SStackBox> InBox)` |
+| `UUniformGridSlot` | `UniformGridSlot.h:81` | `void BuildSlot(TSharedRef<SUniformGridPanel> GridPanel)` |
+| `UVerticalBoxSlot` | `VerticalBoxSlot.h:79` | `void BuildSlot(TSharedRef<SVerticalBox> InVerticalBox)` |
+| `UWidgetSwitcherSlot` | `WidgetSwitcherSlot.h:71` | `void BuildSlot(TSharedRef<SWidgetSwitcher> InWidgetSwitcher)` |
+| `UWrapBoxSlot` | `WrapBoxSlot.h:96` | `void BuildSlot(TSharedRef<SWrapBox> InWrapBox)` |
+| `USafeZoneSlot` | `SafeZoneSlot.h:62` | `void BuildSlot(TSharedRef<SSafeZone> InSafeZone)` |
+| `UScaleBoxSlot` | `ScaleBoxSlot.h:60` | `void BuildSlot(TSharedRef<SScaleBox> InScaleBox)` |
+| `UBackgroundBlurSlot` | `BackgroundBlurSlot.h:63` | `void BuildSlot(TSharedRef<SBackgroundBlur> InBackgroundBlur)` |
+| `UWindowTitleBarAreaSlot` | `WindowTitleBarAreaSlot.h:62` | `void BuildSlot(TSharedRef<SWindowTitleBarArea> WindowTitleBarArea)` |
+
+可复现的检索命令（工作目录 = `Engine/Source`）：
+
+```text
+rg -n --no-heading "BuildSlot" Runtime/UMG/Public/Components          # 命中 17 处，即上表全部
+rg -n --no-heading "BuildSlot" Runtime/UMG/Public/Components/PanelSlot.h   # 零命中（exit=1）
+```
+
+`UCanvasPanelSlot::BuildSlot` 的实现只有 5 行（`Runtime/UMG/Private/Components/CanvasPanelSlot.cpp:31`）：
+
+摘自 `Runtime/UMG/Private/Components/CanvasPanelSlot.cpp`（第 31 行起）：
+
+```cpp
+void UCanvasPanelSlot::BuildSlot(TSharedRef<SConstraintCanvas> Canvas)
+{
+	Canvas->AddSlot()
+		.Expose(Slot)
+		[
+			Content == nullptr ? SNullWidget::NullWidget : Content->TakeWidget()
+		];
+
+	SynchronizeProperties();
+}
+```
+
+它做两件事：`Canvas->AddSlot().Expose(Slot)[...]` 把 `SConstraintCanvas::FSlot*` **指针暴露出来缓存在 `UCanvasPanelSlot::Slot`**（成员声明 `CanvasPanelSlot.h:195`），然后调用 `SynchronizeProperties()` 把蓝图侧参数刷进去：
+
+摘自 `Runtime/UMG/Private/Components/CanvasPanelSlot.cpp`（第 319 行起）：
+
+```cpp
+void UCanvasPanelSlot::SynchronizeProperties()
+{
+PRAGMA_DISABLE_DEPRECATION_WARNINGS
+	SetOffsets(LayoutData.Offsets);
+	SetAnchors(LayoutData.Anchors);
+	SetAlignment(LayoutData.Alignment);
+	SetAutoSize(bAutoSize);
+	SetZOrder(ZOrder);
+PRAGMA_ENABLE_DEPRECATION_WARNINGS
+}
+```
+
+`SetOffsets/SetAnchors/SetAlignment/SetAutoSize/SetZOrder` 是 `UCanvasPanelSlot` 自己的成员，最终改的是 `SConstraintCanvas::FSlot` 的 `SetOffset`（`Runtime/Slate/Public/Widgets/Layout/SConstraintCanvas.h:57`）、`SetAnchors`（`:67`）、`SetAlignment`（`:77`）。**所以"锚点生效"的位置是 `BuildSlot` + `SynchronizeProperties` 两段合起来，而不是 `BuildSlot` 内部**；而且 `SynchronizeProperties()` 在运行时还会被再次调用（设计器改属性后经 `PanelSlot.h:41~46` 的 `PostEditChangeProperty`），布局参数并非"构建时一次性写入"。
 
 ### 3.4 属性绑定与刷新的底层
 
 #### 3.4.1 TAttribute 与绑定宏
 
-UMG 的"属性绑定"最终形态是 Slate 的 `TAttribute<T>`：一个可求值的"属性源"，既可以是常量，也可以是一个函数/委托。`UWidget` 在 `SynchronizeProperties()` 里用宏把 UObject 属性翻译成 TAttribute。先看宏定义（`Widget.h` 第 105~167 行节选 + `SlateWrapperTypes.h` 第 13~14 行）：
+UMG 的"属性绑定"最终形态是 Slate 的 `TAttribute<T>`：一个可求值的"属性源"，既可以是常量，也可以是一个函数/委托。`UWidget` 在 `SynchronizeProperties()` 里用宏把 UObject 属性翻译成 TAttribute。先看 `BIND_UOBJECT_ATTRIBUTE` 的定义（`Runtime/UMG/Public/Components/SlateWrapperTypes.h` 第 13~17 行）：
+
+摘自 `Runtime/UMG/Public/Components/SlateWrapperTypes.h`（第 13 行起）：
 
 ```cpp
-// SlateWrapperTypes.h
 #define BIND_UOBJECT_ATTRIBUTE(Type, Function) \
 	TAttribute<Type>::Create( TAttribute<Type>::FGetter::CreateUObject( this, &ThisClass::Function ) )
 
-// Widget.h
+#define BIND_UOBJECT_DELEGATE(Type, Function) \
+	Type::CreateUObject( this, &ThisClass::Function )
+```
+
+再看 `Runtime/UMG/Public/Components/Widget.h` 第 103~167 行的**完整宏区段**。原文只摘了 `WITH_EDITOR` 分支里的三个宏、并省略了外层条件编译，容易让人误以为 `K2_Gate_` 间接层在所有构建里都存在；这里按源码逐字给出，条件编译结构一目了然：
+
+摘自 `Runtime/UMG/Public/Components/Widget.h`（第 103 行起）：
+
+```cpp
+#if WITH_EDITOR
+
 /**
  * Helper macro for binding to a delegate or using the constant value when constructing the underlying SWidget.
  * These macros create a binding that has a layer of indirection that allows blueprint debugging to work more effectively.
@@ -643,6 +1415,41 @@ UMG 的"属性绑定"最终形态是 Slate 的 `TAttribute<T>`：一个可求值
 		BIND_UOBJECT_ATTRIBUTE(bool, K2_Gate_ ## MemberName)		\
 	:																\
 		TAttribute< bool >(MemberName != 0)
+
+#define PROPERTY_BINDING_IMPLEMENTATION(ReturnType, MemberName)			\
+	ReturnType K2_Cache_ ## MemberName;									\
+	ReturnType K2_Gate_ ## MemberName()									\
+	{																	\
+		if (CanSafelyRouteEvent())										\
+		{																\
+			K2_Cache_ ## MemberName = TAttribute< ReturnType >::Create(MemberName ## Delegate.GetUObject(), MemberName ## Delegate.GetFunctionName()).Get(); \
+		}																\
+																		\
+		return K2_Cache_ ## MemberName;									\
+	}
+
+#else
+
+#define PROPERTY_BINDING(ReturnType, MemberName)				\
+	( MemberName ## Delegate.IsBound() && !IsDesignTime() )		\
+	?															\
+		TAttribute< ReturnType >::Create(MemberName ## Delegate.GetUObject(), MemberName ## Delegate.GetFunctionName()) \
+	:															\
+		TAttribute< ReturnType >(MemberName)
+
+#define BITFIELD_PROPERTY_BINDING(MemberName)					\
+	( MemberName ## Delegate.IsBound() && !IsDesignTime() )		\
+	?															\
+		TAttribute< bool >::Create(MemberName ## Delegate.GetUObject(), MemberName ## Delegate.GetFunctionName()) \
+	:															\
+		TAttribute< bool >(MemberName != 0)
+
+#define PROPERTY_BINDING_IMPLEMENTATION(Type, MemberName)
+
+#endif
+
+#define GAME_SAFE_OPTIONAL_BINDING(ReturnType, MemberName) PROPERTY_BINDING(ReturnType, MemberName)
+#define GAME_SAFE_BINDING_IMPLEMENTATION(ReturnType, MemberName) PROPERTY_BINDING_IMPLEMENTATION(ReturnType, MemberName)
 
 /**
  * Helper macro for binding to a delegate or using the constant value when constructing the underlying SWidget,
@@ -665,12 +1472,17 @@ UMG 的"属性绑定"最终形态是 Slate 的 `TAttribute<T>`：一个可求值
 
 #### 3.4.2 SynchronizeProperties：把绑定灌进 Slate 控件
 
-`Widget.cpp` 第 1444~1484 行 `UWidget::SynchronizeProperties`（节选）：
+`Runtime/UMG/Private/Components/Widget.cpp` 第 1444~1495 行 `UWidget::SynchronizeProperties`（原文块把第 1446~1448 行的 `bRoutedSynchronizeProperties` 与第 1462~1475 行的编辑器分支压成了中文注释，本轮替换为逐字版）：
+
+摘自 `Runtime/UMG/Private/Components/Widget.cpp`（第 1444 行起）：
 
 ```cpp
 void UWidget::SynchronizeProperties()
 {
-	// ...（节选：调试断言）
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+	bRoutedSynchronizeProperties = true;
+#endif
+
 	// Always sync accessible data even if the SWidget doesn't exist
 	SynchronizeAccessibleData();
 
@@ -682,8 +1494,17 @@ void UWidget::SynchronizeProperties()
 	{
 		return;
 	}
-
-	// ...（节选：编辑器设计态分支）
+// …（节选：省略第 1461~1465 行，共 5 行）
+PRAGMA_DISABLE_DEPRECATION_WARNINGS
+#if WITH_EDITOR
+	// Always use an enabled and visible state in the designer.
+	if ( IsDesignTime() )
+	{
+		SafeWidget->SetEnabled(true);
+		SafeWidget->SetVisibility(BIND_UOBJECT_ATTRIBUTE(EVisibility, GetVisibilityInDesigner));
+	}
+	else
+#endif
 	{
 		if ( bOverride_Cursor /*|| CursorDelegate.IsBound()*/ )
 		{
@@ -693,13 +1514,26 @@ void UWidget::SynchronizeProperties()
 		SafeWidget->SetEnabled(BITFIELD_PROPERTY_BINDING( bIsEnabled ));
 		SafeWidget->SetVisibility(OPTIONAL_BINDING_CONVERT(ESlateVisibility, Visibility, EVisibility, ConvertVisibility));
 	}
-	// ...（节选：Clipping/PixelSnapping/FlowDirection/Volatile 等其余属性同步）
-}
+
+#if WITH_EDITOR
+	// In the designer, we need to apply the clip to bounds flag to the real widget, not the designer outline.
+	// because we may be changing a critical default set on the base that not actually set on the outline.
+	// An example of this, would be changing the clipping bounds on a scrollbox.  The outline never clipped to bounds
+	// so unless we tweak the -actual- value on the SScrollBox, the user won't see a difference in how the widget clips.
+	SafeContentWidget->SetClipping(Clipping);
+#else
+	SafeWidget->SetClipping(Clipping);
+#endif
+
 ```
+
+要点（依第 1446~1484 行）：第 1477~1483 行是**运行时**分支，`SetEnabled` 收 `BITFIELD_PROPERTY_BINDING(bIsEnabled)`、`SetVisibility` 收 `OPTIONAL_BINDING_CONVERT(ESlateVisibility, Visibility, EVisibility, ConvertVisibility)`；第 1469~1473 行是 `WITH_EDITOR` 且 `IsDesignTime()` 时的分支，直接 `SetEnabled(true)` + `SetVisibility(BIND_UOBJECT_ATTRIBUTE(EVisibility, GetVisibilityInDesigner))`——**设计器里控件永远可见可用**，这是"编辑器预览与运行时不一致"疑问的源码答案。
 
 要点：`SetVisibility`/`SetEnabled` 接收 `TAttribute`，存入 SWidget 的 `TSlateAttribute`；此后 Slate 层**每帧在需要时求值**（Prepass 求 Visibility、绘制/命中测试求 Enabled），而不是同步到 UObject。这解释了为什么"改绑定的源属性"能自动反映到 UI：**绑定是 Slate 控件持有的一根"属性管道"，UObject 只是管道那头的求值目标**。
 
-直接赋值的路径则完全不同——`UWidget::SetVisibility`（`Widget.cpp` 第 417~441 行）：
+直接赋值的路径则完全不同——`UWidget::SetVisibility` / `SetVisibilityInternal`（`Runtime/UMG/Private/Components/Widget.cpp` 第 417~441 行）：
+
+摘自 `Runtime/UMG/Private/Components/Widget.cpp`（第 417 行起）：
 
 ```cpp
 void UWidget::SetVisibility(ESlateVisibility InVisibility)
@@ -745,38 +1579,77 @@ void UWidget::SetVisibilityInternal(ESlateVisibility InVisibility)
 
 ### 3.5 UMG 渲染管线简述：SlateRHIRenderer
 
-绘制入口在 `FSlateApplication::DrawWindows()`（把窗口树变成 `FSlateDrawBuffer`，内含每个窗口的 `FSlateWindowElementList`），真正提交 GPU 的是 `FSlateRHIRenderer`（`SlateRHIRenderer/Private/SlateRHIRenderer.h`，公开接口见 `Public/Interfaces/ISlateRHIRendererModule.h`）。`SlateRHIRenderer.cpp` 第 1401~1404、1509~1525、1212~1260 行（节选）：
+绘制入口的转发链是 `FSlateApplication::DrawWindows()`（`SlateApplication.cpp:1208`，只是转发给 `PrivateDrawWindows()`）→ `FSlateRHIRenderer::DrawWindows(FSlateDrawBuffer&)`。真正提交 GPU 的是 `FSlateRHIRenderer`（`Runtime/SlateRHIRenderer/Private/SlateRHIRenderer.cpp`，公开接口见 `Public/Interfaces/ISlateRHIRendererModule.h`）。原文引用「第 1401~1404、1509~1525、1212~1260 行」实测应为第 1404~1407、1512~1527、1212~1259 行：
+
+摘自 `Runtime/SlateRHIRenderer/Private/SlateRHIRenderer.cpp`（第 1404 行起）：
 
 ```cpp
 void FSlateRHIRenderer::DrawWindows(FSlateDrawBuffer& WindowDrawBuffer)
 {
 	DrawWindows_Private(WindowDrawBuffer);
 }
+```
 
+摘自 `Runtime/SlateRHIRenderer/Private/SlateRHIRenderer.cpp`（第 1512 行起）：
+
+```cpp
 void FSlateRHIRenderer::DrawWindows_Private(FSlateDrawBuffer& WindowDrawBuffer)
 {
 	checkSlow(IsThreadSafeForSlateRendering());
 	CSV_SCOPED_TIMING_STAT(Slate, DrawWindows_Private);
 
-	// ...（节选：HDR 信息、时间、光标位置等）
+	if (bUpdateHDRDisplayInformation && IsHDRAllowed() && IsInGameThread())
+	{
+		FlushRenderingCommands();
+		RHIHandleDisplayChange();
+		bUpdateHDRDisplayInformation = false;
+	}
+
 	if (DoesThreadOwnSlateRendering())
 	{
 		ResourceManager->UpdateTextureAtlases();
 	}
-	// ...
-	if (bAppCanRender)
-	{
-		WindowsToRender.Reserve(WindowDrawBuffer.GetWindowElementLists().Num());
-		// ...（节选：逐窗口填充 FWindowToRender 并投递渲染线程）
-	}
-}
+```
 
+摘自 `Runtime/SlateRHIRenderer/Private/SlateRHIRenderer.cpp`（第 1212 行起）：
+
+```cpp
 FSlateDrawWindowPassOutputs FSlateRHIRenderer::DrawWindow_RenderThread(FRDGBuilder& GraphBuilder, const FSlateDrawWindowPassInputs& Inputs)
 {
-	// ...（节选：LLM、GPU 索引、RDG 事件作用域）
+	LLM_SCOPE(ELLMTag::SceneRender);
+
+	FSlateViewportInfo& ViewportInfo = *Inputs.ViewportInfo;
+
+	FMaterialRenderProxy::UpdateDeferredCachedUniformExpressions(GraphBuilder.RHICmdList);
+	GetRendererModule().InitializeSystemTextures(GraphBuilder.RHICmdList);
+
+	TOptional<FSlateDrawWindowPassOutputs> Outputs;
+
+	uint32 GPUIndex = ViewportInfo.IsViewportRHI()
+		? RHIGetViewportNextPresentGPUIndex(ViewportInfo.GetViewportRHI())
+		: 0;
+
+	RDG_GPU_MASK_SCOPE(GraphBuilder, FRHIGPUMask::FromIndex(GPUIndex));
+#if WANTS_DRAW_MESH_EVENTS
+	RDG_EVENT_SCOPE_CONDITIONAL_STAT(GraphBuilder,  Inputs.WindowTitle.IsEmpty(), SlateUI, "SlateUI Title = <none>");
+	RDG_EVENT_SCOPE_CONDITIONAL_STAT(GraphBuilder, !Inputs.WindowTitle.IsEmpty(), SlateUI, "SlateUI Title = %s", *Inputs.WindowTitle);
+#else
+	RDG_EVENT_SCOPE_STAT(GraphBuilder, SlateUI, "SlateUI");
+#endif
+	RDG_CSV_STAT_EXCLUSIVE_SCOPE(GraphBuilder, Slate);
+	TRACE_CPUPROFILER_EVENT_SCOPE(Slate::DrawWindow_RenderThread);
+
 	for (TInterval<int32> const& LayerRange : ViewportInfo.Layers.Ranges)
 	{
-		// ...
+		if (ViewportInfo.IsViewportRHI())
+		{
+			// @todo refactor this - remove SetDefaultNativeLayer
+			ViewportInfo.GetViewportRHI()->SetDefaultNativeLayer(LayerRange.Min);
+		}
+
+		FRHITexture* ViewportTextureRHI = nullptr;
+		FRHITexture* OutputTextureRHI = nullptr;
+
 		DrawWindowViewport_RenderThread(
 			  Inputs.Window->GetViewport().Get()
 			, GraphBuilder
@@ -789,15 +1662,12 @@ FSlateDrawWindowPassOutputs FSlateRHIRenderer::DrawWindow_RenderThread(FRDGBuild
 			, LayerRange.Min
 			, LayerRange
 		);
-	}
-	// ...
-}
 ```
 
 管线小结（与业务相关的部分）：
 
 1. **游戏线程**：`FSlateApplication::DrawWindows` → 每窗口元素列表（`OnPaint` 的产物）→ `FSlateRHIRenderer::DrawWindows`；
-2. **渲染线程**：`DrawWindows_RenderThread` 把窗口元素按 Layer 区间分发 → `DrawWindowViewport_RenderThread` 交给 `FSlateRHIRenderingPolicy`（`SlateRHIRenderingPolicy.h` 的 `AddElements`/`DrawElements`）合批：相同纹理/着色器的绘制元素合并成 DrawCall；
+2. **渲染线程**：`DrawWindow_RenderThread`（`SlateRHIRenderer.cpp:1212`）按 `ViewportInfo.Layers.Ranges` 逐 Layer 区间分发 → `DrawWindowViewport_RenderThread`（`:956`）交给 `FSlateRHIRenderingPolicy`（`SlateRHIRenderingPolicy.h` 的 `AddElements`/`DrawElements`）合批：相同纹理/着色器的绘制元素合并成 DrawCall；
 3. **RDG 提交**：UE 5.8 中整个 Slate 窗口绘制走 Render Dependency Graph（`FRDGBuilder`），`GetBatchData()` 即合批结果；
 4. 纹理图集由 `ResourceManager->UpdateTextureAtlases()` 维护（字体、图集纹理），这就是 UI 纹理合并的底层。
 
@@ -816,7 +1686,9 @@ FSlateDrawWindowPassOutputs FSlateRHIRenderer::DrawWindow_RenderThread(FRDGBuild
 | `UGameViewportSubsystem` | `UMG/Public/Blueprint/GameViewportSubsystem.h` | 视口 Widget 挂载/查询（`AddWidget`、`GetWidgetSlot`、`SetWidgetSlot`） |
 | `UWidgetBlueprintGeneratedClass` | `UMG/Public/Blueprint/WidgetBlueprintGeneratedClass.h` | 编译后的 Widget 蓝图生成类（`InitializeWidget` 等） |
 
-`UIComponent.h` 第 20~53 行（节选）：
+`Runtime/UMG/Public/Extensions/UIComponent.h` 第 20~53 行（原文块略去第 41 行 `@param bIsDesignTime` 未标注，本轮补全）：
+
+摘自 `Runtime/UMG/Public/Extensions/UIComponent.h`（第 20 行起）：
 
 ```cpp
 /**
@@ -840,9 +1712,10 @@ public:
 
 	/**
 	 * Called when the owner widget is pre-constructed. Called in both Editor and runtime.
+	 * @param bIsDesignTime True when the Widget is constructed for design time
 	 */
 	UMG_API void PreConstruct(bool bIsDesignTime);
-	
+
 	/**
 	 * Called when the owner widget is constructed.
 	 */
@@ -867,7 +1740,7 @@ flowchart TB
     C --> D{"MyWidget（缓存 SWidget）有效？"}
     D -- "否" --> E["UUserWidget::RebuildWidget()"]
     E --> F["WidgetTree.RootWidget->TakeWidget()（递归）"]
-    F --> G["各 UWidget::RebuildWidget() -> SNew(Sxxx) + Slot.BuildSlot"]
+    G["各 UWidget::RebuildWidget() -> SNew(Sxxx)；再由各 Slot 子类的 BuildSlot 挂载"]
     G --> H["叶子 Slate 控件树构建完成"]
     D -- "是" --> H
     H --> I["包装：SNew(SObjectWidget, UserWidget)[Content]"]
@@ -934,7 +1807,7 @@ flowchart TB
 
 ### 5.4 Tick 成本控制
 
-- `UUserWidget` 默认 `DisableNativeTick`：不需要每帧逻辑的 UI 不要开 Tick；需要时用 `SetDesiredTickFrequency`（`EWidgetTickFrequency`）降频。
+- `UUserWidget` 默认 `DisableNativeTick`（类元数据，`UserWidget.h:279`）：不需要每帧逻辑的 UI 不要开 Tick。5.8.2 **没有** `SetDesiredTickFrequency` 这个运行时降频 API（`Runtime/UMG` 全模块零命中），能改的是 `EWidgetTickFrequency TickFrequency`（`UserWidget.h:1725`，`EditDefaultsOnly + BlueprintReadOnly`），枚举只有 `Never` / `Auto` 两个值（`:117~128`），读取用只读的 `GetDesiredTickFrequency()`（`:299`）——**要降频只能在蓝图类默认值里关掉或走事件驱动，没有"每 N 帧 Tick 一次"的开关**。
 - `UWidgetComponent`（World 空间）会离屏渲染整棵 Slate 树，等于"多一份 UI 渲染开销 + 纹理内存"，尽量少用；Screen 空间则与普通 UMG 一致。
 
 ### 5.5 生命周期与内存
@@ -970,11 +1843,26 @@ flowchart TB
 
 ### Q7：bIsVolatile（ForceVolatile）是什么意思？
 
-SWidget 默认走"快速更新路径/Invalidation"缓存；`ForceVolatile(bIsVolatile)` 强制控件每帧完整重绘（不缓存绘制结果）。用于动画/每帧变化的内容，避免缓存失效检测开销；反之对静态内容不要设 Volatile，以享受 Invalidation 缓存。UMG 中对应 `UWidget::SynchronizeProperties` 里的 `SafeWidget->ForceVolatile(bIsVolatile)`。
+SWidget 默认走"快速更新路径/Invalidation"缓存；`ForceVolatile(bIsVolatile)` 强制控件每帧完整重绘（不缓存绘制结果）。用于动画/每帧变化的内容，避免缓存失效检测开销；反之对静态内容不要设 Volatile，以享受 Invalidation 缓存。UMG 中对应 `UWidget::SynchronizeProperties` 里的 `SafeWidget->ForceVolatile(bIsVolatile)`（`Widget.cpp:1499`）。
 
 ### Q8：蓝图"绑定"与 MVVM 是什么关系？
 
 蓝图绑定（Binding 面板）底层是本文的 `TAttribute` + `UPropertyBinding`（`UMG/Public/Binding/` 下 `UVisibilityBinding`/`UBoolBinding` 等）逐帧求值；MVVM（5.8 位于 `Engine/Plugins/Experimental/SlateModelViewViewModel/Source/SlateMVVM`，UMG 下已无 MVVM 目录）是事件驱动的属性通知（FieldNotify），不逐帧轮询。需要频繁变化的高频 UI 建议 MVVM，低频/简单场景用绑定即可。
+
+### Q9：`UPanelSlot::BuildSlot` 到底在哪个类上？
+
+不在 `UPanelSlot` 上。`UPanelSlot`（`Runtime/UMG/Public/Components/PanelSlot.h`，全文 63 行）只有 `Parent` / `Content` / `GetContent()` / `ReleaseSlateResources()` / 空的 `SynchronizeProperties()`，**没有 `BuildSlot`**（该文件里 rg 检索零命中）。`BuildSlot` 由 17 个具体 Slot 子类各自声明（`UCanvasPanelSlot::BuildSlot` 在 `CanvasPanelSlot.h:170`、`UButtonSlot::BuildSlot` 在 `ButtonSlot.h:60`……完整清单与真实行号见 3.3.2），签名里的 Slate 参数类型各不相同，唯一声明为 `virtual` 的是 `UOverlaySlot::BuildSlot`（`OverlaySlot.h:74`）。因此它**不是多态接口**：`UPanelWidget` 层无法统一调用，各面板的 `RebuildWidget` 必须 `Cast<具体 Slot>` 之后再调（例如 `CanvasPanel.cpp:61~64`）。
+
+### Q10：`SPanel::FSlot` 存在吗？
+
+不存在。5.8.2 的 `SPanel`（`Runtime/SlateCore/Public/Widgets/SPanel.h`，全文 88 行）只有 `OnArrangeChildren` / `ComputeDesiredSize` / `GetChildren` / `Construct()` / `OnPaint` / `PaintArrangedChildren` / `SetVisibility` 这些成员，**没有任何嵌套 Slot 类型**。在 `Engine/Source` 全树检索 `SPanel::FSlot` 与 `SPanel::TSlot` 均为零命中：
+
+```text
+rg -n -F "SPanel::FSlot" Engine/Source    # 零命中（exit=1）
+rg -n -F "SPanel::TSlot" Engine/Source    # 零命中（exit=1）
+```
+
+真实的 Slot 类型由各面板自己定义：`SBoxPanel::TSlot<SlotType>`（`Runtime/SlateCore/Public/Widgets/SBoxPanel.h:43`）及其派生 `SHorizontalBox::FSlot`（`:174`）、`SVerticalBox::FSlot`（`:325`）、`SStackBox::FSlot`（`:478`）；画布是 `SConstraintCanvas::FSlot`（`Runtime/Slate/Public/Widgets/Layout/SConstraintCanvas.h:34`）。本文 3.3 表格此前写作"`UPanelSlot` → `SPanel::FSlot` 派生"，本轮已修正为"`UPanelSlot : UVisual`，不派生自任何 Slate Slot"。
 
 ## 七、关联阅读
 
@@ -986,6 +1874,35 @@ SWidget 默认走"快速更新路径/Invalidation"缓存；`ForceVolatile(bIsVol
 - 渲染线程与 RHI（FSlateRHIRenderer 的上游）：[12-引擎源码分析/10-渲染线程与RHI源码.md](10-渲染线程与RHI源码.md)
 - Tick 与模块系统（FSlateApplication 的 Tick 框架）：[12-引擎源码分析/08-Tick与模块系统源码.md](08-Tick与模块系统源码.md)
 
+## 八、补深说明：事实边界与未核实点
+
+### 8.1 本轮查实并修正的不匹配点
+
+| 原文写法 | 5.8.2 真相（证据路径相对 `Engine/Source/`） |
+| --- | --- |
+| "子控件通过各自的 Slot（`UPanelSlot::BuildSlot`）挂进父控件的 Slate Slot"（3.2.3） | `UPanelSlot`（`UVisual` 派生）**没有** `BuildSlot`：`Runtime/UMG/Public/Components/PanelSlot.h` 全文 63 行、`rg -F "BuildSlot" …/PanelSlot.h` 零命中。`BuildSlot` 由 17 个具体 Slot 子类各自声明（`CanvasPanelSlot.h:170`、`ButtonSlot.h:60`、`BorderSlot.h:64`、`GridSlot.h:138`、`HorizontalBoxSlot.h:67`、`OverlaySlot.h:74`（唯一 `virtual`）、`ScrollBoxSlot.h:72`、`SizeBoxSlot.h:66`、`StackBoxSlot.h:63`、`UniformGridSlot.h:81`、`VerticalBoxSlot.h:79`、`WidgetSwitcherSlot.h:71`、`WrapBoxSlot.h:96`、`SafeZoneSlot.h:62`、`ScaleBoxSlot.h:60`、`BackgroundBlurSlot.h:63`、`WindowTitleBarAreaSlot.h:62`），实现见同名 `.cpp`（如 `Private/Components/CanvasPanelSlot.cpp:31`）。详见 3.3.2 |
+| 3.3 表格"插槽基类 `UPanelSlot` → `SPanel::FSlot` 派生" | `SPanel` **没有任何** `FSlot`/`TSlot` 成员类型（`Runtime/SlateCore/Public/Widgets/SPanel.h` 全文 88 行只有 7 个成员）。`rg -F "SPanel::FSlot" Engine/Source` 与 `rg -F "SPanel::TSlot" Engine/Source` 均零命中。Slot 类型是各面板自己定义的嵌套类（`SBoxPanel.h:43/174/325/478`、`SConstraintCanvas.h:34`）。详见 3.3.1 / Q10 |
+| "`PROPERTY_BINDING` 生成 `K2_Gate_` 门卫函数，配合 `PROPERTY_BINDING_IMPLEMENTATION` 的 `K2_Cache_` 缓存"（3.4.1） | 该间接层**只在 `#if WITH_EDITOR`（`Widget.h:103`）分支存在**；`#else`（`:135`）分支里 `PROPERTY_BINDING` 直接 `TAttribute<ReturnType>::Create(Delegate.GetUObject(), Delegate.GetFunctionName())`，`PROPERTY_BINDING_IMPLEMENTATION` 展开为**空**（`:151`）。所以"每帧缓存求值结果"只是编辑器行为，Shipping 下没有缓存 |
+| "`UCanvasPanelSlot::BuildSlot` 把锚点/偏移/对齐翻译成 `SConstraintCanvas::FSlot` 的 `Anchors(...)/Offset(...)/AutoSize(...)` 链式参数"（3.3） | `BuildSlot` 只做 `AddSlot().Expose(Slot)[Content]` + `SynchronizeProperties()`（`CanvasPanelSlot.cpp:31~40`）；参数实际由 `SynchronizeProperties()`（`:319~328`）经 `SetOffsets/SetAnchors/SetAlignment/SetAutoSize/SetZOrder` → `FSlot::SetOffset/SetAnchors/SetAlignment`（`SConstraintCanvas.h:57/67/77`）写入。`.Anchors(...)` 这类链式参数在 5.8 的 `SConstraintCanvas::FSlot` 上不存在 |
+| "绘制入口在 `FSlateApplication::DrawWindows()`（把窗口树变成 `FSlateDrawBuffer`）"（3.5） | `DrawWindows()`（`SlateApplication.cpp:1208~1212`）只是 `PrivateDrawWindows()` 的转发壳；逐窗口 prepass/绘制与 `FSlateDrawBuffer` 填充在 `PrivateDrawWindows`（`:1437`）与 `DrawWindowAndChildren`（`:1226`） |
+| "渲染线程 `DrawWindows_RenderThread` 把窗口元素按 Layer 区间分发"（3.5 管线小结第 2 条） | 按 `ViewportInfo.Layers.Ranges` 逐 Layer 区间分发的是 `FSlateRHIRenderer::DrawWindow_RenderThread`（`SlateRHIRenderer.cpp:1212~1259`）；`DrawWindows_RenderThread`（`:1457`）是数组级入口 |
+| "`SObjectWidget.h` 第 24~59 行节选"（3.2.4） | 24~59 是连续区间且含第 55 行 `UMG_API void SetPadding(const TAttribute<FMargin>& InMargin);`，原块未标注即略去，现已补省略标注 |
+| "`WidgetComponent.cpp` 第 131~133 行 `NewScreenLayer->AddComponent(...)`"（3.2.5） | `AddComponent` 的真实调用点是第 129 行与第 133 行 |
+| "`FWidget3DSceneProxy`（第 320 行，`ISlate3DRenderer& Renderer` 成员）"（3.2.5） | 类声明在第 310 行、构造函数在第 320 行、`ISlate3DRenderer& Renderer;` 成员在第 605 行 |
+| "第 141~167 行节选"（3.1.1）、"第 674~686 行"（3.1.2）、"第 321~337 行"（3.1.3）、"第 279~284 行"（3.2.1）、"第 4961~5052 行"（3.1.4）、"第 1401~1404、1509~1525、1212~1260 行"（3.5） | 实测分别为 140~167、674~677 与 1799~1938（`Prepass_Internal` 1804~1838、`Prepass_ChildLoop` 1840~1894）、320~337、279~286、4961~5076、1404~1407 / 1512~1527 / 1212~1259 |
+| "用 `SetDesiredTickFrequency`（`EWidgetTickFrequency`）降频"（5.4） | 5.8.2 中**不存在** `SetDesiredTickFrequency`（`Runtime/UMG` 全模块 `rg "SetDesiredTickFrequency"` 零命中），只有只读的 `GetDesiredTickFrequency()`（`UserWidget.h:299`）；`EWidgetTickFrequency` 也只有两个值 `Never` / `Auto`（`UserWidget.h:117~128`），`TickFrequency` 是 `UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)`（`:1725`）——**没有运行时降频 API，只能在蓝图类默认值里选 Never/Auto** |
+| 代码块含中文注释或 `...` 截断（3.1.2、3.1.4、3.2.2、3.2.3、3.2.4、3.2.5、3.4.2、3.5、3.6） | 本轮全部替换为按行区间机械抽取的逐字版；省略处一律显式标注 `// …（节选：省略第 A~B 行，共 K 行）`，`K = B-A+1` |
+
+### 8.2 未核实点（请查阅源文件对应位置）
+
+- **`SInvalidationPanel` 与 fast path 的交互**：请查阅 `Runtime/SlateCore/Public/FastUpdate/SlateInvalidationRoot.h` 与 `Runtime/SlateCore/Public/Widgets/SInvalidationPanel.h`；本文只确认了 `bIsVolatile` 被 `SafeWidget->ForceVolatile(bIsVolatile)` 写入（`Widget.cpp:1499`，`ForceVolatile` 的真实调用点）。
+- **合批判据**：`FSlateRHIRenderingPolicy::AddElements` / `DrawElements` 的合批规则请查阅 `Runtime/SlateRHIRenderer/Private/SlateRHIRenderingPolicy.cpp` 与 `Runtime/SlateCore/Private/Rendering/ElementBatcher.cpp`；本文只到 `GetBatchData()` 这一层。
+- **UMG Viewport 挂载层级**：`UGameViewportSubsystem::AddWidget` 之后如何落到 `SGameLayerManager`/Overlay 的细节请查阅 `Runtime/UMG/Private/Blueprint/GameViewportSubsystem.cpp` 与 `Runtime/Engine/Public/Slate/SGameLayerManager.h`。
+- **`FSlateApplication::PrivateDrawWindows` 的完整实现**（含调试可视化、`FSlateDrawBuffer` 的获取与归还）：请查阅 `Runtime/Slate/Private/Framework/Application/SlateApplication.cpp` 第 1437 行起。
+- **Lyra 示例（`Samples/Games/Lyra`）中的 UMG 实践**：本篇只覆盖引擎源码，未纳入示例工程。
+
+<!-- 本轮补深：所有 cpp 块由 .kb_work/cache/14-splice.ps1 从 UE 5.8.2 checkout 按行区间机械抽取 -->
+
 ---
 
-> 本文所有源码路径与符号均基于本机 UE 5.8（`C:\Program Files\Epic Games\UE_5.8\Engine\Source`）实测验证；代码节选未改动任何符号，行号为该版本源码行号。
+> 本文所有源码路径与符号均基于源码 checkout `C:\Users\zhaozhiqi\Documents\GitHub\UnrealEngine\Engine\Source`（`Build.version`：5.8.2 / CompatibleChangelist 55116800 / 分支 `UE5`）核对；所有代码块由脚本按行区间机械抽取（仅剥行尾空白、保留行首缩进），未改写任何符号；行号为该 checkout 行号，口径见文首「行号口径」。

@@ -1,0 +1,27 @@
+# evidence   : labs/profiling/hitch_and_budget
+# generated  : 2026-09-11T11:35:44+0800
+# host       : MINGW64_NT-10.0-26200 x86_64 (cores=16)
+# target     : x86_64-w64-mingw32
+# compiler   : g++.exe (Rev6, Built by MSYS2 project) 16.1.0
+# command    : g++ -std=c++17 -O2 -o build/hitch_and_budget.exe src/hitch_and_budget.cpp && ./build/hitch_and_budget.exe
+#
+gameplay-perf | hitch detection and tick budget accounting
+compiler=16.1.0 c++17 O2
+--------------------------------------------------------------------------------
+PASS  H1 12 injected hitches detected as exactly 12 events (cascades merged) events=12 injected=12 badFrames=18
+PASS  H2 hitching frames detected with 100% recall               detected=18 injected=18
+PASS  H3 jitter-only series yields zero false positives          events=0 threshold=24.0ms
+PASS  H4 adaptive threshold stays in a sane band on a clean 60 fps series threshold=24.0ms (2.5x median vs 24ms floor)
+PASS  H5 each detected event starts on the first bad frame       firstEvent=120 injected=120
+PASS  B1 over-budget system attributed correctly                 offender=physics (expected physics)
+PASS  B2 degradation escalates one level per 3 consecutive bad ticks, capped at 3 level=3 escalations=3
+PASS  B3 recovery needs 30 consecutive good ticks (no premature un-degrade) afterBad=3 after29Good=3 after30Good=2
+PASS  B4 alternating bad/good ticks cause zero level changes (no flapping) levelChanges=0 level=0
+PASS  B5 sustained good ticks walk the level back to normal one step at a time level=0 recoveries=3
+
+[bench] budget_accounting ticks=200000 systems=4
+[bench] per_tick_ns p50=1.8 p95=1.8 p99=1.8
+[bench] per_system_ns=0.5 sink=830000
+--------------------------------------------------------------------------------
+RESULT pass=10 fail=0
+# exit_code  : 0

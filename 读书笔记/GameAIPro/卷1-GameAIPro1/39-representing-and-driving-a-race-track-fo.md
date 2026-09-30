@@ -661,7 +661,6 @@ $$\delta_{\min}(s) \le \delta(s) \le \delta_{\max}(s)$$
          ▼                                     ▼
  [必须采用数值逼近迭代求解]              [必须采用有限差分近似求导]
  (二分法/牛顿-拉夫逊法步进)               (Finite Difference Scheme)
-```
 
 #### 挑战 A：逆向配准无法直接解析（Registration is Not Direct）
 在分段线性表征中，将车辆世界坐标 $P$ 正交投影到赛道线段 $\overline{AB}$ 仅需一次向量点积（Vector Dot Product）。但在参数化样条曲线 $S(t)$（$t \in [0, 1]$）上，求解垂直投影点对应的时间参数 $t^*$ 满足方程：

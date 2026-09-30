@@ -887,7 +887,6 @@ Level 3: 槽位式智能对象交互 (Smart Object Synchronization)
     v
 Level 4: 动态空间群聚学模型 (Dynamic F-Formations & Turn-Taking)
         └── 完整的无锚点动态组群、自主插话（Interruption）、动态散开与重构
-```
 
 ---
 

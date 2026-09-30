@@ -1,0 +1,29 @@
+# evidence   : tests/match-core/team_balance
+# generated  : 2026-09-11T12:22:23+0800
+# host       : MINGW64_NT-10.0-26200 x86_64 (cores=16)
+# target     : x86_64-w64-mingw32
+# compiler   : g++.exe (Rev6, Built by MSYS2 project) 16.1.0
+# command    : g++ -std=c++17 -O2 -Wall -o build/team_balance.exe src/team_balance.cpp && ./build/team_balance.exe
+#
+== team_balance: 分队平衡证据 ==
+
+PASS  B1 snake + local swaps produce a far tighter split than random assignment
+        avg |mmr diff| snake=36 vs random=419
+PASS  B2 local swap improvement never makes the split worse (monotone descent)
+        worst increase over 300 lobbies = 0.000000
+PASS  B3 partitioning is deterministic for identical input
+        diff=6.000000
+PASS  B4 every team gets at least one tank and one healer when the lobby allows it
+        checked=200 avg diff=26
+PASS  B5 an unfillable role requirement fails explicitly instead of shipping a broken comp
+        note=not enough tanks/healers for both teams (tanks=2, healers=1)
+PASS  B6 relaxing the requirement makes the same lobby feasible again
+        tank A/B=1/1 healer A/B=0/1
+        [balance] avg diff with role constraint=37.8 without=17.6 (cost=20.2)
+PASS  B7 enforcing role constraints costs some balance — the cost is measured, not assumed
+        delta=20.230000
+
+[bench] team split (5v5, with role repair + local swaps) = 2.36 us/lobby
+
+RESULT pass=7 fail=0
+# exit_code  : 0

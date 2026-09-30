@@ -12,7 +12,7 @@ maturity: L3
 > 适用范围：MMO/实时服务器的大世界与副本场景管理。
 > 官方参考：[UE5.8 World Partition 文档](https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition-in-unreal-engine)、[UE5.8 关卡与 World 文档](https://dev.epicgames.com/documentation/en-us/unreal-engine/worlds-and-levels-in-unreal-engine)。
 > 最后更新：2026-08-13（首版）。
-> 知识成熟度：L3（示例伪代码 + 验证入口；未做独立 Benchmark）。
+> 知识成熟度：L2（示例伪代码与静态验证矩阵；可运行 Demo 与独立 Benchmark 未归档，证据状态见第 7 节，补齐后评估升级）。
 
 ## 1. 概述
 
@@ -279,6 +279,7 @@ Map 的只读数据（实体定义、刷怪表）；Scene 实例只持有"已加
 - 迁移性能验收：同进程 P95 < 100ms、跨进程 P95 < 1s；
 - 动态调整验收：Zone 拆分/合并在加载边界执行、实体归属正确；
 - 压测：多实例并发（副本风暴）下实例池上限生效、分配均衡；
+- 证据状态：本文示例为设计层伪代码而非可运行 Demo，验证矩阵属静态设计证据；运行证据待补，故按 L2 计；
 - 升级 L4 计划：Zone 迁移频率与耗时 Benchmark、加载预算压力测试，原始数据入 `evidence/server/`。
 
 ### 7.1 快速决策树

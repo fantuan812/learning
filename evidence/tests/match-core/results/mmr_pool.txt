@@ -1,0 +1,70 @@
+# evidence   : tests/match-core/mmr_pool
+# generated  : 2026-09-11T12:22:23+0800
+# host       : MINGW64_NT-10.0-26200 x86_64 (cores=16)
+# target     : x86_64-w64-mingw32
+# compiler   : g++.exe (Rev6, Built by MSYS2 project) 16.1.0
+# command    : g++ -std=c++17 -O2 -Wall -o build/mmr_pool.exe src/mmr_pool.cpp && ./build/mmr_pool.exe
+#
+== mmr_pool: 匹配池证据 ==
+
+PASS  M1 the acceptable MMR window grows linearly with wait time
+        t=0 -> 50.0, t=10 -> 90.000000
+PASS  M2 the window is capped so that quality cannot degrade without bound
+        t=1000 -> 600.0 (capped at maxWindow)
+PASS  M3 the long-waiting player's window is by now much wider than the base
+        window=450.000000
+PASS  M4 compatibility uses the INTERSECTION of both windows, not the waiter's
+        diff=200, new player's window=50 -> not compatible
+PASS  M5 (control) a waiter-only rule WOULD have matched this unfair pair
+        this is exactly the bug the intersection rule prevents
+PASS  M6 a party is never split: members enter the same match or wait together
+        party matched into one game
+PASS  M7 3v3 fills exactly one match of 6 players
+        matches=1
+PASS  M8 the matchmaker is deterministic: identical input yields identical matches
+        matches=18
+PASS  M9 (control) a different population yields a different result
+PASS  M10 a lone high-MMR player is not force-fed into a low-MMR lobby at t=0
+        no match formed at tick 0 (diff 2000 > base window 50)
+PASS  M11 relaxation alone can NEVER fix an extreme outlier (diff 2000 > cap 600)
+        no match even at the cap — this is why a separate escalation path is required
+PASS  M12 an explicit wait cap must exist, because the window cap cannot cover outliers
+        maxWaitTicks=300 maxWindow=600
+PASS  M13 under a normal population the vast majority matches within the window
+        matched=1220 / 1220
+        [queue] wait_ticks p50=0 p95=0 p99=1 max=36
+PASS  M14 extreme-MMR players are the population that actually suffers long queues
+        extreme matched=20 / 20
+PASS  M15 the matchmaker produces far tighter lobbies than random assignment
+        matchmaker avg spread=15 vs random=333
+PASS  M16 all three implementations form essentially the same number of matches
+        linear=300 bucketed=300 sorted=299 (tol=3)
+PASS  M17 each implementation is deterministic on identical input (replayable)
+        the indexed paths may pick a different but equally valid set than the linear scan
+
+[bench] pool=10000  wait=0 ticks  window=50  [fresh queue, window=50]
+[bench]   linear   : matches=998 tick_cost_us=19896  us_per_player=1.9896
+[bench]   bucketed : matches=999 tick_cost_us=11469  us_per_player=1.1469
+[bench]   sorted   : matches=998 tick_cost_us=5624  us_per_player=0.5624
+[bench]   speedup vs linear: bucketed=1.73x sorted=3.54x
+
+[bench] pool=10000  wait=100 ticks  window=450  [relaxed, window=600 ~= pool MMR span]
+[bench]   linear   : matches=1000 tick_cost_us=13192  us_per_player=1.3192
+[bench]   bucketed : matches=1000 tick_cost_us=8945  us_per_player=0.8945
+[bench]   sorted   : matches=1000 tick_cost_us=10492  us_per_player=1.0492
+[bench]   speedup vs linear: bucketed=1.47x sorted=1.26x
+
+[bench] pool=100000  wait=0 ticks  window=50  [fresh queue, window=50]
+[bench]   linear   : matches=9997 tick_cost_us=635304  us_per_player=6.3530
+[bench]   bucketed : matches=9998 tick_cost_us=179314  us_per_player=1.7931
+[bench]   sorted   : matches=9999 tick_cost_us=129255  us_per_player=1.2925
+[bench]   speedup vs linear: bucketed=3.54x sorted=4.92x
+
+[bench] pool=100000  wait=100 ticks  window=450  [relaxed, window=600 ~= pool MMR span]
+[bench]   linear   : matches=10000 tick_cost_us=568587  us_per_player=5.6859
+[bench]   bucketed : matches=10000 tick_cost_us=790981  us_per_player=7.9098
+[bench]   sorted   : matches=10000 tick_cost_us=2039803  us_per_player=20.3980
+[bench]   speedup vs linear: bucketed=0.72x sorted=0.28x
+
+RESULT pass=17 fail=0
+# exit_code  : 0

@@ -1,7 +1,7 @@
 ---
 type: Reference
-title: "第5章 Structural ArchitectureâCommon Tricks of the Trade"
-description: "Game AI Pro 工业级精读：Structural ArchitectureâCommon Tricks of the Trade。系统解析核心AI机制、设计考量、数学模型与工业级落地方案。"
+title: "第5章 Structural Architecture—Common Tricks of the Trade"
+description: "Game AI Pro 工业级精读：Structural Architecture—Common Tricks of the Trade。系统解析核心AI机制、设计考量、数学模型与工业级落地方案。"
 tags:
   - game-ai
   - game-ai-pro
@@ -15,10 +15,10 @@ maturity: L2
 updated: 2026-09-07
 ---
 
-# 第5章 Structural ArchitectureâCommon Tricks of the Trade
+# 第5章 Structural Architecture—Common Tricks of the Trade
 
 > 来源：*Game AI Pro 1: Collected Wisdom of Game AI Professionals*, Chapter 5.  
-> 原文作者 / 资源：[Structural ArchitectureâCommon Tricks of the Trade](http://www.gameaipro.com/GameAIPro/GameAIPro_Chapter05_Structural_Architecture_Common_Tricks_of_the_Trade.pdf)（全书官方免费开放获取 PDF 视觉多模态端到端重构）。  
+> 原文作者 / 资源：[Structural Architecture—Common Tricks of the Trade](http://www.gameaipro.com/GameAIPro/GameAIPro_Chapter05_Structural_Architecture_Common_Tricks_of_the_Trade.pdf)（全书官方免费开放获取 PDF 视觉多模态端到端重构）。  
 > 核心定位：本章由 Gemini 3.8 Flash 基于 Game AI Pro 权威原版 PDF 视觉多模态精准重构，系统呈现现代商业游戏 AI 决策逻辑、代码实现与工程权衡。  
 > 专栏导航：[卷1-GameAIPro1](README.md) ｜ [专栏首页](../README.md)
 

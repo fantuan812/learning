@@ -842,7 +842,6 @@ void CombatCoordinator::ReleaseRole(CombatRole role, NPCController* requester) {
 │ "Keep him pinned!" (压制) │                     │ 姿态混合 (Standing Aim)   │
 │ 向玩家广播 AI 决策逻辑   │                     │ 全身受击硬直 (Full Hit)   │
 └───────────────────────────┘                     └───────────────────────────┘
-```
 
 1.  **对白作为决策的可视化外显（Dialog as Intention Broadcasting）**：
     AI 做出决策后（例如获得 `Flanker` 或指定搜索区域），系统会触发情境对白（Contextual Shouts），向玩家实时透传战术意图（如“我绕到他后面了！”、“架枪压制他！”）。对白有效消除了玩家对“AI 逻辑作弊”的负面认知，使其感受到具备高度组织协调能力的真实人类对手。

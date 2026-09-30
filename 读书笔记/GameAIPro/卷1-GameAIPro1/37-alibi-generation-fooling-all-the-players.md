@@ -614,3 +614,4 @@ $$\alpha(\mathbf{z}, \mathbf{z}') = \min\left(1, \; \exp\left( \sum_{k} w_k \big
 // 向量与几何基础结构
 struct Vector3 {
     float x{0.0f}, y{0.0f}, z{0.0f};
+```

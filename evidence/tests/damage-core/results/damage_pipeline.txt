@@ -1,0 +1,32 @@
+# evidence   : tests/damage-core/damage_pipeline
+# generated  : 2026-09-11T11:23:47+0800
+# host       : MINGW64_NT-10.0-26200 x86_64 (cores=16)
+# target     : x86_64-w64-mingw32
+# compiler   : g++.exe (Rev6, Built by MSYS2 project) 16.1.0
+# command    : g++ -std=c++17 -O2 -o build/damage_pipeline.exe src/damage_pipeline.cpp && ./build/damage_pipeline.exe
+#
+gameplay-core | damage & attribute settlement test suite
+compiler=16.1.0 c++17 O2
+--------------------------------------------------------------------------------
+PASS  A1 aggregation order: override base, sum adds, then multiply value=120.0000 expected=120.0000
+PASS  A2 add/mul are order independent (10+5)*3                v1=45.0000 v2=45.0000
+PASS  D1 crit multiplies before armor mitigation               toHp=100.0000 expected=100.0000 crit=1
+PASS  D2 armor curve is asymptotic (never reaches 100% reduction) toHp=100.0000 residualAtArmor1e9=0.000000100
+PASS  D3 true damage bypasses armor                            toHp=100.0000 expected=100.0000
+PASS  D4 armor and typed resistance multiply (no additive stacking) toHp=100.0000 expected=100.0000
+PASS  D5 damage-taken modifier applies after mitigation        toHp=125.0000 expected=125.0000
+PASS  D6 shield absorbs before HP and never goes negative      absorbed=30.00 toHp=70.00 shieldLeft=0.00
+PASS  D7 shield larger than the hit absorbs everything and keeps the remainder absorbed=80.00 shieldLeft=420.00
+PASS  D8 overkill reported separately, HP floors at zero, target dies overkill=60.00 hp=0.00 alive=0
+PASS  D9 dead or immune target is blocked without consuming shield deadBlocked=1 immuneBlocked=1 shieldLeft=50.00
+PASS  D10 per-hit cap applies after mitigation, before shields toHp=150.00 expected=150.00
+PASS  D11 zero/negative damage is rejected, no HP change       zeroBlocked=1 negBlocked=1 hp=1000000000.00
+PASS  D12 DOT totals are exact and clamp at remaining duration first=16.00 total=62.00 expected=62.00
+PASS  D13 identical seed replays to identical settlement hash  a=95762bd05ab49684 b=95762bd05ab49684 c=32ca34d3eba1d979
+
+[bench] damage_settlement rounds=500 batch=1000 hits_total=500000
+[bench] per_hit_ns p50=14.2 p95=16.3 p99=16.8 max=28.1 mean=13.0
+[bench] throughput_hits_per_sec=77161685 sink=0
+--------------------------------------------------------------------------------
+RESULT pass=15 fail=0
+# exit_code  : 0

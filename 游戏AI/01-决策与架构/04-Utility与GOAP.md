@@ -75,9 +75,9 @@ maturity: L2
 
 ## 三、原理详解
 
-## 3.1 效用 AI（Utility AI）
+### 3.1 效用 AI（Utility AI）
 
-### 3.1.1 总体流程
+#### 3.1.1 总体流程
 
 ```mermaid
 flowchart LR
@@ -100,7 +100,7 @@ utility(B) = Σ_i ( weight_i × curve_i(input_i) )  ÷ Σ_i weight_i
 - `curve_i`：把原始输入映射到 0~1 的响应曲线；
 - `weight_i`：该因素的权重（可随时间/情境调整）。
 
-### 3.1.2 评分函数与响应曲线
+#### 3.1.2 评分函数与响应曲线
 
 响应曲线是把"原始值"变成"0~1 效用"的关键。常见曲线：
 
@@ -141,7 +141,7 @@ def attack_utility(ctx):
     return (0.5*d + 0.3*h + 0.2*a) / 1.0
 ```
 
-### 3.1.3 决策器（Arbiter）
+#### 3.1.3 决策器（Arbiter）
 
 决策器汇总所有候选行为的效用并选择。常见策略：
 
@@ -166,7 +166,7 @@ def choose_action(candidates, mode="weighted"):
     return candidates[0]
 ```
 
-### 3.1.4 效用 AI 的工程要点
+#### 3.1.4 效用 AI 的工程要点
 
 1. **输入必须归一化**：距离、血量、弹药量纲不同，先各自曲线化到 0~1 再加权；
 2. **权重是调参主战场**：数值策划通过权重表达"这个 AI 的性格"（怂的 AI 血量权重高）；
@@ -175,7 +175,7 @@ def choose_action(candidates, mode="weighted"):
 5. **调试**：把"每个行为的每个因素得分"可视化——效用 AI 的调试 = 分数看板；
 6. **与行为树集成**：行为树中放"效用选择节点"（Utility Selector），叶子是行为子树——这是一个常见的混合形态，但是否适合仍需按项目评估。
 
-### 3.1.5 效用 AI 的优缺点
+#### 3.1.5 效用 AI 的优缺点
 
 **优点**：
 
@@ -190,9 +190,9 @@ def choose_action(candidates, mode="weighted"):
 - 评分函数和曲线多时，调参与调试成本高（"为什么选了这个？"需要分数溯源）；
 - 决策不可解释性比行为树差，QA 难写用例。
 
-## 3.2 GOAP（Goal-Oriented Action Planning）
+### 3.2 GOAP（Goal-Oriented Action Planning）
 
-### 3.2.1 核心思想
+#### 3.2.1 核心思想
 
 GOAP 的发明者 Jeff Orkin（《F.E.A.R.》AI）用一句话概括：**"AI 不需要预先编好行动计划，给它目标和动作，让它自己规划。"**
 
@@ -202,7 +202,7 @@ GOAP 的发明者 Jeff Orkin（《F.E.A.R.》AI）用一句话概括：**"AI 不
 2. **目标（Goal）**：希望世界状态满足的条件，如 `HasWeapon == true && Ammo >= 5`；
 3. **动作（Action）**：带前置条件（Preconditions）与效果（Effects）的原语，如"移动到仓库"（前置 `Alive`，效果 `AtWarehouse=true`）。
 
-### 3.2.2 规划流程
+#### 3.2.2 规划流程
 
 ```mermaid
 flowchart TD
@@ -239,7 +239,7 @@ Action(
 )
 ```
 
-### 3.2.3 A* 规划器（简化实现）
+#### 3.2.3 A* 规划器（简化实现）
 
 ```python
 def plan(start_state, goal, actions, heuristic):
@@ -270,7 +270,7 @@ def plan(start_state, goal, actions, heuristic):
 - **动作成本**：让规划器"择优"（近的仓库优先于远的）；
 - **实时性**：动作数几十、状态键十几个时，单次规划在毫秒级，可接受；失败要降级（换目标或走"应急动作"）。
 
-### 3.2.4 执行与重规划
+#### 3.2.4 执行与重规划
 
 计划是一串动作，但执行时**世界在变**：
 
@@ -285,7 +285,7 @@ def plan(start_state, goal, actions, heuristic):
 3. **动作执行失败回调**：执行失败必须反馈给规划层（失败原因），不能静默；
 4. **目标管理**：GOAP 需要"目标选择器"（可用效用 AI 选目标！）——这是 GOAP 与效用 AI 的黄金组合。
 
-### 3.2.5 GOAP 的优缺点
+#### 3.2.5 GOAP 的优缺点
 
 **优点**：
 
@@ -300,13 +300,13 @@ def plan(start_state, goal, actions, heuristic):
 - 规划开销与状态爆炸风险；
 - 不适合"精细动作编排"（连招、演出），那些仍要行为树/FSM。
 
-### 3.2.6 经典案例
+#### 3.2.6 经典案例
 
 - **《F.E.A.R.》**：敌人 AI 用 GOAP——士兵会根据世界状态（弹药、掩体、队友）动态规划"包抄、压制、撤退"，是 GOAP 的成名作；
 - **《异星工厂》式生产链**：工人目标"生产铁板"，规划出"采矿→冶炼→搬运"链；
 - **生存游戏 NPC**：目标"恢复血量"，规划"找药→回营地→睡觉"。
 
-## 3.3 HTN（层次任务网络）简述
+### 3.3 HTN（层次任务网络）简述
 
 HTN 是 GOAP 的"表亲"：同样面向目标，但用**任务分解**而非状态搜索：
 

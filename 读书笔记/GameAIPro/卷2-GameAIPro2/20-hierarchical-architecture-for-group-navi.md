@@ -959,7 +959,6 @@ private:
     std::vector<FormationSlot> slots_;
     std::vector<std::shared_ptr<NavigationEntity>> members_;
 };
-```
 
 ---
 

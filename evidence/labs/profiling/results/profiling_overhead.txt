@@ -1,0 +1,45 @@
+# evidence   : labs/profiling/profiling_overhead
+# generated  : 2026-09-11T11:35:44+0800
+# host       : MINGW64_NT-10.0-26200 x86_64 (cores=16)
+# target     : x86_64-w64-mingw32
+# compiler   : g++.exe (Rev6, Built by MSYS2 project) 16.1.0
+# command    : g++ -std=c++17 -O2 -o build/profiling_overhead.exe src/profiling_overhead.cpp && ./build/profiling_overhead.exe
+#
+gameplay-perf | instrumentation overhead benchmark
+compiler=16.1.0 c++17 O2
+harness: batch=20000 calls, rounds=200, reported as p50 ns/call
+--------------------------------------------------------------------------------
+  1 bare counter increment           p50=    0.32 ns/call
+  2 atomic relaxed increment         p50=    3.84 ns/call
+  3 scoped steady_clock timer        p50=   50.03 ns/call
+  4 strcmp lookup per call           p50=    5.68 ns/call
+  5 snprintf label per call          p50=  274.67 ns/call
+  6 snprintf + fwrite per call       p50=  308.45 ns/call
+  7 sampled timer (1/100 calls)      p50=    0.96 ns/call
+--------------------------------------------------------------------------------
+PASS  P1 atomic increment is not cheaper than a plain counter    bare=0.32ns atomic=3.84ns
+PASS  P2 scoped timer costs more than a counter (two clock reads) counter=0.32ns timer=50.03ns ratio=158.8x
+PASS  P3 formatting a log line costs far more than timing it     timer=50.03ns format=274.67ns ratio=5.5x
+PASS  P4 buffered file write adds cost on top of formatting      format=274.67ns format+write=308.45ns
+PASS  P5 1/100 sampling is an order of magnitude cheaper than every-call timing every-call=50.03ns sampled=0.96ns ratio=52.1x
+
+[budget] frame_budget_ms=16.6
+[budget] per-system view, calls_per_frame=1000
+[budget] bare counter              0.000 ms/frame    0.00% of budget
+[budget] atomic counter            0.004 ms/frame    0.02% of budget
+[budget] scoped timer              0.050 ms/frame    0.30% of budget
+[budget] snprintf label            0.275 ms/frame    1.65% of budget
+[budget] snprintf + fwrite         0.308 ms/frame    1.86% of budget
+[budget] sampled timer (1/100)     0.001 ms/frame    0.01% of budget
+[budget] hot path view, calls_per_frame=100000
+[budget] bare counter              0.032 ms/frame    0.19% of budget
+[budget] atomic counter            0.384 ms/frame    2.31% of budget
+[budget] scoped timer              5.003 ms/frame   30.14% of budget
+[budget] snprintf label           27.467 ms/frame  165.46% of budget
+[budget] snprintf + fwrite        30.846 ms/frame  185.82% of budget
+[budget] sampled timer (1/100)     0.096 ms/frame    0.58% of budget
+PASS  P6 per-call logging blows the frame budget on a hot path   30.846 ms/frame at 100000 calls vs budget 16.6 ms
+PASS  P7 scoped timing on the same hot path still fits in the budget 5.003 ms/frame vs budget 16.6 ms
+--------------------------------------------------------------------------------
+RESULT pass=7 fail=0
+# exit_code  : 0

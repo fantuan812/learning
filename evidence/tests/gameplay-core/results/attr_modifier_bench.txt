@@ -1,0 +1,17 @@
+# evidence   : tests/gameplay-core/attr_modifier_bench
+# generated  : 2026-09-11T10:29:15+0800
+# host       : MINGW64_NT-10.0-26200 x86_64 (cores=16)
+# target     : x86_64-w64-mingw32
+# compiler   : g++.exe (Rev6, Built by MSYS2 project) 16.1.0
+# command    : g++ -std=c++17 -O2 -o build/attr_modifier_bench.exe src/attr_modifier_bench.cpp && ./build/attr_modifier_bench.exe
+#
+gameplay-core | attribute modifier aggregation benchmark
+compiler=16.1.0 c++17 O2
+config entities=20000 mods_per_entity=16 rounds=200 dirty_percent=10
+samples=400 mismatch=0
+PASS   incremental equals full recompute on 400 samples
+[bench] full_recompute       rounds=200 p50=1756.0us p95=2060.6us p99=2238.3us max=2656.2us entities_per_sec=11389522
+[bench] dirty_incremental    rounds=200 p50=234.9us p95=316.5us p99=422.7us max=518.1us entities_per_sec=85142614
+[bench] p50_speedup=7.47x (dirty=10% of entities)
+RESULT pass=401 fail=0
+# exit_code  : 0

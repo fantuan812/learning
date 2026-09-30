@@ -1,0 +1,60 @@
+# evidence   : tests/match-core/room_fsm
+# generated  : 2026-09-11T12:22:23+0800
+# host       : MINGW64_NT-10.0-26200 x86_64 (cores=16)
+# target     : x86_64-w64-mingw32
+# compiler   : g++.exe (Rev6, Built by MSYS2 project) 16.1.0
+# command    : g++ -std=c++17 -O2 -Wall -o build/room_fsm.exe src/room_fsm.cpp && ./build/room_fsm.exe
+#
+== room_fsm: 房间/对局生命周期证据 ==
+   Queued -> Matched -> Allocating -> Ready -> InProgress -> Settling -> Closed
+
+PASS  R1 a formed room starts in Matched with all members pending confirmation
+        state=Matched
+PASS  R2 all members confirmed -> room is Ready
+        state=Ready
+PASS  R3 exactly ONE allocation is made for the whole room (first confirm triggers it)
+        used=1 allocCount=1
+PASS  R4 the match starts only after Ready
+PASS  R5 the room transition log is exactly the expected path
+        Matched -> Allocating -> Ready -> InProgress
+PASS  R6 repeated confirm from the same player is idempotent (no extra allocation)
+        allocCount=1
+PASS  R7 the room reaches Ready exactly once all are in
+PASS  R8 settling twice returns the same revision and settles exactly once
+        revision=1 settles=1
+PASS  R9 settlement releases every slot exactly once (no leak, no double free)
+        used=0
+PASS  R10 the first confirm holds the slot
+PASS  R11 a pending member can decline
+PASS  R12 declining twice by the same player is rejected (no free re-roll)
+PASS  R13 a decline during allocating releases the slot and rewinds the room
+        state=Matched used=0
+PASS  R14 the declining player is returned to the queue exactly once
+PASS  R15 a member who already declined cannot re-confirm into this room
+PASS  R16 an already-accepted member cannot decline (no late bail-out)
+PASS  R17 missing the confirmation deadline closes the room
+        state=Closed
+PASS  R18 closing a half-confirmed room releases the slot it had taken
+        used=0
+PASS  R19 players who never confirmed are returned to the queue
+        requeued=2
+PASS  R20 a late confirm after the deadline is refused
+PASS  R21 room is Ready and holds one slot
+PASS  R22 dropping a member after Ready rewinds the room and frees the slot
+        state=Matched
+PASS  R23 dropping twice is a no-op
+PASS  R24 with no capacity left the confirm fails instead of over-selling
+PASS  R25 a failed allocation leaves the room and the pool untouched
+        state=Matched used=0
+PASS  R26 a player can join an in-progress room that is not yet full
+PASS  R27 once the room is full, backfill is refused
+PASS  R28 backfilling the same player twice is refused
+PASS  R29 the backfill is recorded in the room log
+        Matched -> Allocating -> Ready -> InProgress -> Backfill(p9)
+PASS  R30 after a churny mixed sequence the pool holds exactly the live rooms
+        used=5 expected=5
+PASS  R31 the pool never exceeded its capacity during the whole sequence
+        used=5/10
+
+RESULT pass=31 fail=0
+# exit_code  : 0

@@ -858,6 +858,5 @@ Vector3 CalculateFinalSteeringVelocity(
     Vector3 safeVelocity = ClampVelocityToNavMeshEdge(agentPos, vCandidate, agentRadius);
     return safeVelocity;
 }
-```
 
 上述体系综合了 Snook [2000] 的网格连续几何性、Mononen [2012] 的分块通道检索能力、de Boor [1978] 与 Farin [1997] 的高阶导数连续性保证，并结合了《Fuse》[IG 13] 的实战避碰经验，构成了当代工业级 3A 游戏导航与局部机动规划的核心架构。

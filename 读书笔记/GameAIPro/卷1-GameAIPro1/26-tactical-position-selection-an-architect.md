@@ -1247,7 +1247,6 @@ while (!empty_heap(pointHeap))
       (O) Green: 0.72       (X) Red: Fail("MinTargetDist")
       
       (B) Blue (Skipped)    (X) Red: Fail("RaycastTerrain")
-```
 
 ### 调试工程经验与设计权衡（Lessons Learned）
 1. **色彩映射梯度（Color Gradients）的陷阱**：开发团队曾尝试通过色彩渐变（如由黄到绿）来表示权重得分的高低，但实战表明：各有效点之间的得分差值往往细微但关键（例如 $0.781$ vs $0.765$），人眼对细微颜色渐变极不敏感，导致辨识度差。最终统一改为**状态离散着色（White/Green/Blue/Red）+ 浮点分值文本标注**方案。

@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-09-08 (paths, bytes, lines, and maturity mechanically recalculated).
+# Generated: 2026-09-24 (mechanical rebuild after control-plane append (audit/log) 2026-09-24).
 version: 4
 
 okf:
@@ -44,33 +44,38 @@ documents:
   ".kb/audit.md":
     kind: doc
     maturity: L2
-    bytes: 39711
-    lines: 333
+    bytes: 59264
+    lines: 430
   ".kb/decisions.md":
     kind: doc
     maturity: L2
-    bytes: 40852
-    lines: 765
+    bytes: 57481
+    lines: 954
   ".kb/plans/2026-09-03-combat-ai.md":
     kind: doc
     maturity: L2
     bytes: 6594
     lines: 111
-  ".kb/plans/README.md":
-    kind: README
-    maturity: L0
-    bytes: 403
-    lines: 13
-  ".kb/plans/current.md":
+  ".kb/plans/2026-09-08-architecture-refactor.md":
     kind: doc
     maturity: L2
     bytes: 8676
     lines: 113
+  ".kb/plans/README.md":
+    kind: README
+    maturity: L0
+    bytes: 563
+    lines: 14
+  ".kb/plans/current.md":
+    kind: doc
+    maturity: L2
+    bytes: 13095
+    lines: 221
   ".kb/review-queue.md":
     kind: doc
     maturity: L2
-    bytes: 21720
-    lines: 463
+    bytes: 32775
+    lines: 598
   "00-计算机与工程基础/01-C++核心/01-C++对象生命周期与RAII.md":
     kind: doc
     maturity: L2
@@ -339,8 +344,8 @@ documents:
   "00-计算机与工程基础/16-容器云与可观测性/02-可观测性SLO与故障演练.md":
     kind: doc
     maturity: L2
-    bytes: 15014
-    lines: 330
+    bytes: 15030
+    lines: 331
   "00-计算机与工程基础/16-容器云与可观测性/README.md":
     kind: README
     maturity: L2
@@ -444,13 +449,13 @@ documents:
   "README.md":
     kind: README
     maturity: L2
-    bytes: 9091
+    bytes: 9229
     lines: 122
   "evidence/README.md":
     kind: README
     maturity: L0
-    bytes: 3472
-    lines: 39
+    bytes: 5043
+    lines: 43
   "evidence/algorithms/aoi/README.md":
     kind: README
     maturity: L0
@@ -481,11 +486,41 @@ documents:
     maturity: L0
     bytes: 3769
     lines: 66
+  "evidence/labs/profiling/README.md":
+    kind: README
+    maturity: L0
+    bytes: 8128
+    lines: 129
   "evidence/server/tick-scheduler/README.md":
     kind: README
     maturity: L0
     bytes: 3419
     lines: 63
+  "evidence/tests/aoi-scale/README.md":
+    kind: README
+    maturity: L0
+    bytes: 11408
+    lines: 156
+  "evidence/tests/damage-core/README.md":
+    kind: README
+    maturity: L0
+    bytes: 7966
+    lines: 113
+  "evidence/tests/entry-core/README.md":
+    kind: README
+    maturity: L0
+    bytes: 11895
+    lines: 152
+  "evidence/tests/gameplay-core/README.md":
+    kind: README
+    maturity: L0
+    bytes: 8493
+    lines: 119
+  "evidence/tests/match-core/README.md":
+    kind: README
+    maturity: L0
+    bytes: 11176
+    lines: 159
   "index.md":
     kind: doc
     maturity: L2
@@ -499,13 +534,13 @@ documents:
   "learning/log.md":
     kind: doc
     maturity: L0
-    bytes: 27273
-    lines: 44
+    bytes: 46464
+    lines: 54
   "log.md":
     kind: doc
     maturity: L2
-    bytes: 1366
-    lines: 13
+    bytes: 4864
+    lines: 39
   "references/OKF-兼容规范.md":
     kind: doc
     maturity: L2
@@ -534,7 +569,7 @@ documents:
   "references/仓库结构.md":
     kind: doc
     maturity: L2
-    bytes: 11250
+    bytes: 11385
     lines: 131
   "references/写作规范.md":
     kind: doc
@@ -544,8 +579,8 @@ documents:
   "references/知识库架构.md":
     kind: doc
     maturity: L2
-    bytes: 8527
-    lines: 107
+    bytes: 8889
+    lines: 108
   "references/知识组织规则.md":
     kind: doc
     maturity: L2
@@ -576,21 +611,31 @@ documents:
     maturity: L0
     bytes: 17290
     lines: 299
+  "工作日志/2026-09-08-周卡活动开发与活动基类解耦.md":
+    kind: doc
+    maturity: L0
+    bytes: 12065
+    lines: 238
   "工作日志/README.md":
     kind: README
     maturity: L0
-    bytes: 1740
-    lines: 26
+    bytes: 2034
+    lines: 27
   "方案/README.md":
     kind: README
     maturity: L2
-    bytes: 2035
-    lines: 41
+    bytes: 2303
+    lines: 42
   "方案/知识体系完善执行方案.md":
     kind: doc
     maturity: L2
-    bytes: 37746
+    bytes: 38059
     lines: 1627
+  "方案/知识体系门禁收敛报告-2026-09-10.md":
+    kind: doc
+    maturity: L2
+    bytes: 14874
+    lines: 196
   "游戏AI/01-决策与架构/01-AI总体架构与感知.md":
     kind: doc
     maturity: L2
@@ -609,7 +654,7 @@ documents:
   "游戏AI/01-决策与架构/04-Utility与GOAP.md":
     kind: doc
     maturity: L2
-    bytes: 28670
+    bytes: 28684
     lines: 567
   "游戏AI/01-决策与架构/05-博弈搜索与对战AI.md":
     kind: doc
@@ -664,8 +709,8 @@ documents:
   "游戏AI/02-移动学习与服务端/07-战斗AI编排与战术协同.md":
     kind: doc
     maturity: L2
-    bytes: 18425
-    lines: 355
+    bytes: 19407
+    lines: 366
   "游戏AI/02-移动学习与服务端/README.md":
     kind: README
     maturity: L2
@@ -684,8 +729,8 @@ documents:
   "游戏AI/03-评测与安全/03-LLM-NPC安全.md":
     kind: doc
     maturity: L2
-    bytes: 19017
-    lines: 347
+    bytes: 19604
+    lines: 351
   "游戏AI/03-评测与安全/README.md":
     kind: README
     maturity: L2
@@ -899,18 +944,18 @@ documents:
   "游戏服务端/06-世界模拟与运行时/03-Entity生命周期与组件模型.md":
     kind: doc
     maturity: L3
-    bytes: 18686
-    lines: 324
+    bytes: 18881
+    lines: 325
   "游戏服务端/06-世界模拟与运行时/04-Scene-Map-Zone与实例管理.md":
     kind: doc
     maturity: L3
-    bytes: 17657
-    lines: 326
+    bytes: 17883
+    lines: 327
   "游戏服务端/06-世界模拟与运行时/05-AOI与InterestManagement.md":
     kind: doc
     maturity: L4
-    bytes: 15385
-    lines: 307
+    bytes: 15812
+    lines: 309
   "游戏服务端/06-世界模拟与运行时/06-SpatialQuery与兴趣点查询.md":
     kind: doc
     maturity: L2
@@ -959,7 +1004,7 @@ documents:
   "游戏服务端/06-世界模拟与运行时/README.md":
     kind: README
     maturity: L0
-    bytes: 7626
+    bytes: 7671
     lines: 92
   "游戏服务端/README.md":
     kind: README
@@ -1004,17 +1049,17 @@ documents:
   "游戏测试与质量/08-存档版本迁移与兼容性测试.md":
     kind: doc
     maturity: L2
-    bytes: 22298
+    bytes: 22318
     lines: 395
   "游戏测试与质量/09-安全合规与反作弊测试.md":
     kind: doc
     maturity: L2
-    bytes: 21000
+    bytes: 21019
     lines: 365
   "游戏测试与质量/10-本地化无障碍与多端体验验收.md":
     kind: doc
     maturity: L2
-    bytes: 23905
+    bytes: 23925
     lines: 415
   "游戏测试与质量/README.md":
     kind: README
@@ -1254,8 +1299,8 @@ documents:
   "游戏知识/04-动画系统/08-动作战斗系统与打击手感.md":
     kind: doc
     maturity: L2
-    bytes: 32046
-    lines: 581
+    bytes: 32276
+    lines: 583
   "游戏知识/04-动画系统/README.md":
     kind: README
     maturity: L2
@@ -1339,7 +1384,7 @@ documents:
   "游戏知识/06-网络同步/07-Iris复制使用与迁移.md":
     kind: doc
     maturity: L2
-    bytes: 15355
+    bytes: 15400
     lines: 327
   "游戏知识/06-网络同步/08-网络调试与性能分析.md":
     kind: doc
@@ -1564,102 +1609,102 @@ documents:
   "游戏知识/12-引擎源码分析/01-UPROPERTY与反射系统源码.md":
     kind: doc
     maturity: L2
-    bytes: 15238
-    lines: 314
+    bytes: 120653
+    lines: 2293
   "游戏知识/12-引擎源码分析/02-UObject与垃圾回收源码.md":
     kind: doc
     maturity: L2
-    bytes: 14061
-    lines: 315
+    bytes: 114704
+    lines: 2102
   "游戏知识/12-引擎源码分析/03-Actor与Component生命周期源码.md":
     kind: doc
     maturity: L2
-    bytes: 17691
-    lines: 352
+    bytes: 109259
+    lines: 2136
   "游戏知识/12-引擎源码分析/04-Gameplay框架与登录流程源码.md":
     kind: doc
     maturity: L2
-    bytes: 13372
-    lines: 322
+    bytes: 103723
+    lines: 2078
   "游戏知识/12-引擎源码分析/05-GAS能力系统源码.md":
     kind: doc
     maturity: L2
-    bytes: 49497
-    lines: 880
+    bytes: 260267
+    lines: 3787
   "游戏知识/12-引擎源码分析/06-委托与事件系统源码.md":
     kind: doc
     maturity: L2
-    bytes: 31553
-    lines: 533
+    bytes: 112072
+    lines: 1580
   "游戏知识/12-引擎源码分析/07-容器与内存管理源码.md":
     kind: doc
     maturity: L2
-    bytes: 32239
-    lines: 595
+    bytes: 107743
+    lines: 1984
   "游戏知识/12-引擎源码分析/08-Tick与模块系统源码.md":
     kind: doc
     maturity: L2
-    bytes: 31346
-    lines: 562
+    bytes: 143071
+    lines: 2564
   "游戏知识/12-引擎源码分析/09-网络复制与RPC源码.md":
     kind: doc
     maturity: L2
-    bytes: 13191
-    lines: 301
+    bytes: 137607
+    lines: 2718
   "游戏知识/12-引擎源码分析/10-渲染线程与RHI源码.md":
     kind: doc
     maturity: L2
-    bytes: 13980
-    lines: 304
+    bytes: 140709
+    lines: 2226
   "游戏知识/12-引擎源码分析/11-动画系统求值源码.md":
     kind: doc
     maturity: L2
-    bytes: 40330
-    lines: 751
+    bytes: 173449
+    lines: 2864
   "游戏知识/12-引擎源码分析/12-行为树与AI源码.md":
     kind: doc
     maturity: L2
-    bytes: 39789
-    lines: 735
+    bytes: 127165
+    lines: 1980
   "游戏知识/12-引擎源码分析/13-资源加载与异步加载源码.md":
     kind: doc
     maturity: L2
-    bytes: 35273
-    lines: 587
+    bytes: 122034
+    lines: 1911
   "游戏知识/12-引擎源码分析/14-UMG与Slate源码.md":
     kind: doc
     maturity: L2
-    bytes: 55534
-    lines: 991
+    bytes: 111389
+    lines: 1908
   "游戏知识/12-引擎源码分析/15-物理系统源码.md":
     kind: doc
     maturity: L2
-    bytes: 55342
-    lines: 1068
+    bytes: 81900
+    lines: 1556
   "游戏知识/12-引擎源码分析/16-音频系统源码.md":
     kind: doc
     maturity: L2
-    bytes: 51174
-    lines: 925
+    bytes: 78432
+    lines: 1314
   "游戏知识/12-引擎源码分析/17-Niagara源码.md":
     kind: doc
     maturity: L2
-    bytes: 60204
-    lines: 1055
+    bytes: 86017
+    lines: 1413
   "游戏知识/12-引擎源码分析/18-RigVM与ControlRig源码.md":
     kind: doc
     maturity: L2
-    bytes: 31558
+    bytes: 32079
     lines: 521
   "游戏知识/12-引擎源码分析/19-高优先级源码覆盖路线图.md":
     kind: doc
     maturity: L2
-    bytes: 45975
-    lines: 268
+    bytes: 61564
+    lines: 381
   "游戏知识/12-引擎源码分析/20-Iris复制源码.md":
     kind: doc
     maturity: L2
-    bytes: 34894
+    bytes: 34909
     lines: 550
   "游戏知识/12-引擎源码分析/21-Mass与StateTree源码.md":
     kind: doc
@@ -1709,8 +1754,8 @@ documents:
   "游戏知识/12-引擎源码分析/30-Lumen与MegaLights源码.md":
     kind: doc
     maturity: L2
-    bytes: 15580
-    lines: 312
+    bytes: 17230
+    lines: 318
   "游戏知识/12-引擎源码分析/31-ProceduralVegetationEditor源码.md":
     kind: doc
     maturity: L2
@@ -1724,17 +1769,17 @@ documents:
   "游戏知识/12-引擎源码分析/33-UNetDriver与连接通道源码.md":
     kind: doc
     maturity: L2
-    bytes: 21168
-    lines: 475
+    bytes: 36105
+    lines: 702
   "游戏知识/12-引擎源码分析/34-ReplicationGraph源码.md":
     kind: doc
     maturity: L2
-    bytes: 16736
-    lines: 377
+    bytes: 30617
+    lines: 495
   "游戏知识/12-引擎源码分析/35-Nanite源码.md":
     kind: doc
     maturity: L2
-    bytes: 38198
+    bytes: 38250
     lines: 522
   "游戏知识/12-引擎源码分析/36-AnimNext与UAF源码.md":
     kind: doc
@@ -1749,8 +1794,8 @@ documents:
   "游戏知识/12-引擎源码分析/38-PCG源码.md":
     kind: doc
     maturity: L2
-    bytes: 17187
-    lines: 379
+    bytes: 28049
+    lines: 487
   "游戏知识/12-引擎源码分析/39-Lyra源码总览与阅读路线.md":
     kind: doc
     maturity: L2
@@ -1764,7 +1809,7 @@ documents:
   "游戏知识/12-引擎源码分析/41-Lyra-Pawn初始化与模块化组件源码.md":
     kind: doc
     maturity: L2
-    bytes: 178280
+    bytes: 178302
     lines: 5368
   "游戏知识/12-引擎源码分析/42-Lyra-输入GAS与武器战斗源码.md":
     kind: doc
@@ -1844,8 +1889,8 @@ documents:
   "游戏知识/12-引擎源码分析/README.md":
     kind: README
     maturity: L2
-    bytes: 35390
-    lines: 274
+    bytes: 42704
+    lines: 329
   "游戏知识/13-世界构建与过场/01-Landscape地形系统.md":
     kind: doc
     maturity: L2
@@ -1959,8 +2004,8 @@ documents:
   "游戏算法/03-工程与实用技巧/03-AOI与视野计算.md":
     kind: doc
     maturity: L2
-    bytes: 20495
-    lines: 340
+    bytes: 20728
+    lines: 341
   "游戏算法/03-工程与实用技巧/04-路径平滑与转向行为.md":
     kind: doc
     maturity: L2
@@ -2041,31 +2086,51 @@ documents:
     maturity: L0
     bytes: 3709
     lines: 64
+  "系统实战/01-角色进入游戏完整链路.md":
+    kind: doc
+    maturity: L4
+    bytes: 30097
+    lines: 438
   "系统实战/02-角色移动完整链路.md":
     kind: doc
     maturity: L3
-    bytes: 22859
-    lines: 376
+    bytes: 23157
+    lines: 379
   "系统实战/03-技能释放完整链路.md":
     kind: doc
     maturity: L3
-    bytes: 22618
-    lines: 313
+    bytes: 23818
+    lines: 326
   "系统实战/04-Buff系统完整链路.md":
     kind: doc
     maturity: L3
-    bytes: 19848
-    lines: 308
+    bytes: 20770
+    lines: 314
+  "系统实战/05-背包道具完整链路.md":
+    kind: doc
+    maturity: L4
+    bytes: 23345
+    lines: 314
   "系统实战/07-假人AI完整链路.md":
     kind: doc
     maturity: L5
     bytes: 22203
     lines: 307
+  "系统实战/10-性能问题定位完整链路.md":
+    kind: doc
+    maturity: L4
+    bytes: 20899
+    lines: 329
+  "系统实战/11-伤害与属性结算完整链路.md":
+    kind: doc
+    maturity: L4
+    bytes: 22137
+    lines: 333
   "系统实战/README.md":
     kind: README
     maturity: L0
-    bytes: 5381
-    lines: 70
+    bytes: 8429
+    lines: 76
   "读书笔记/GameAIPro/README.md":
     kind: README
     maturity: L1
@@ -2091,10 +2156,10 @@ documents:
     maturity: L2
     bytes: 45743
     lines: 799
-  "读书笔记/GameAIPro/卷1-GameAIPro1/05-structural-architectureâcommon-tricks-of.md":
+  "读书笔记/GameAIPro/卷1-GameAIPro1/05-structural-architecture-common-tricks-of.md":
     kind: doc
     maturity: L2
-    bytes: 45873
+    bytes: 45877
     lines: 814
   "读书笔记/GameAIPro/卷1-GameAIPro1/06-the-behavior-tree-starter-kit.md":
     kind: doc
@@ -2164,8 +2229,8 @@ documents:
   "读书笔记/GameAIPro/卷1-GameAIPro1/19-creating-high-order-navigation-meshes-th.md":
     kind: doc
     maturity: L2
-    bytes: 51223
-    lines: 665
+    bytes: 51219
+    lines: 664
   "读书笔记/GameAIPro/卷1-GameAIPro1/20-precomputed-pathfinding-for-large-and-de.md":
     kind: doc
     maturity: L2
@@ -2179,13 +2244,13 @@ documents:
   "读书笔记/GameAIPro/卷1-GameAIPro1/22-collision-avoidance-for-pre-planned-loco.md":
     kind: doc
     maturity: L2
-    bytes: 51666
-    lines: 829
+    bytes: 51662
+    lines: 828
   "读书笔记/GameAIPro/卷1-GameAIPro1/23-crowd-pathfinding-and-steering-using-flo.md":
     kind: doc
     maturity: L2
-    bytes: 49362
-    lines: 633
+    bytes: 49358
+    lines: 632
   "读书笔记/GameAIPro/卷1-GameAIPro1/24-efficient-crowd-simulation-for-mobile-ga.md":
     kind: doc
     maturity: L2
@@ -2199,8 +2264,8 @@ documents:
   "读书笔记/GameAIPro/卷1-GameAIPro1/26-tactical-position-selection-an-architect.md":
     kind: doc
     maturity: L2
-    bytes: 84212
-    lines: 1278
+    bytes: 84208
+    lines: 1277
   "读书笔记/GameAIPro/卷1-GameAIPro1/27-tactical-pathfinding-on-a-navmesh.md":
     kind: doc
     maturity: L2
@@ -2239,8 +2304,8 @@ documents:
   "读书笔记/GameAIPro/卷1-GameAIPro1/35-a-simple-and-practical-social-dynamics-s.md":
     kind: doc
     maturity: L2
-    bytes: 50609
-    lines: 900
+    bytes: 50605
+    lines: 899
   "读书笔记/GameAIPro/卷1-GameAIPro1/36-breathing-life-into-your-background-char.md":
     kind: doc
     maturity: L2
@@ -2249,33 +2314,33 @@ documents:
   "读书笔记/GameAIPro/卷1-GameAIPro1/37-alibi-generation-fooling-all-the-players.md":
     kind: doc
     maturity: L2
-    bytes: 46402
-    lines: 616
+    bytes: 46406
+    lines: 617
   "读书笔记/GameAIPro/卷1-GameAIPro1/38-an-architecture-overview-for-ai-in-racin.md":
     kind: doc
     maturity: L2
-    bytes: 50380
-    lines: 867
+    bytes: 50376
+    lines: 866
   "读书笔记/GameAIPro/卷1-GameAIPro1/39-representing-and-driving-a-race-track-fo.md":
     kind: doc
     maturity: L2
-    bytes: 50816
-    lines: 720
+    bytes: 50812
+    lines: 719
   "读书笔记/GameAIPro/卷1-GameAIPro1/40-racing-vehicle-control-systems-using-pid.md":
     kind: doc
     maturity: L2
-    bytes: 48407
-    lines: 624
+    bytes: 48403
+    lines: 623
   "读书笔记/GameAIPro/卷1-GameAIPro1/41-the-heat-vision-system-for-racing-ai-a-n.md":
     kind: doc
     maturity: L2
-    bytes: 28713
-    lines: 473
+    bytes: 28717
+    lines: 474
   "读书笔记/GameAIPro/卷1-GameAIPro1/42-a-rubber-banding-system-for-gameplay-and.md":
     kind: doc
     maturity: L2
-    bytes: 29838
-    lines: 492
+    bytes: 29842
+    lines: 493
   "读书笔记/GameAIPro/卷1-GameAIPro1/43-an-architecture-for-character-rich-socia.md":
     kind: doc
     maturity: L2
@@ -2289,8 +2354,8 @@ documents:
   "读书笔记/GameAIPro/卷1-GameAIPro1/45-introduction-to-gpgpu-for-ai.md":
     kind: doc
     maturity: L2
-    bytes: 53134
-    lines: 769
+    bytes: 53130
+    lines: 768
   "读书笔记/GameAIPro/卷1-GameAIPro1/46-creating-dynamic-soundscapes-using-an-ar.md":
     kind: doc
     maturity: L2
@@ -2299,8 +2364,8 @@ documents:
   "读书笔记/GameAIPro/卷1-GameAIPro1/47-tips-and-tricks-for-a-robust-third-perso.md":
     kind: doc
     maturity: L2
-    bytes: 46894
-    lines: 615
+    bytes: 46890
+    lines: 614
   "读书笔记/GameAIPro/卷1-GameAIPro1/48-implementing-n-grams-for-player-predicti.md":
     kind: doc
     maturity: L2
@@ -2309,7 +2374,7 @@ documents:
   "读书笔记/GameAIPro/卷1-GameAIPro1/README.md":
     kind: README
     maturity: L1
-    bytes: 7399
+    bytes: 7338
     lines: 76
   "读书笔记/GameAIPro/卷2-GameAIPro2/01-game-ai-appreciation-revisited.md":
     kind: doc
@@ -2369,8 +2434,8 @@ documents:
   "读书笔记/GameAIPro/卷2-GameAIPro2/12-separation-of-concerns-architecture-for-.md":
     kind: doc
     maturity: L2
-    bytes: 61527
-    lines: 1067
+    bytes: 61531
+    lines: 1068
   "读书笔记/GameAIPro/卷2-GameAIPro2/13-optimizing-practical-planning-for-game-a.md":
     kind: doc
     maturity: L2
@@ -2409,13 +2474,13 @@ documents:
   "读书笔记/GameAIPro/卷2-GameAIPro2/20-hierarchical-architecture-for-group-navi.md":
     kind: doc
     maturity: L2
-    bytes: 62375
-    lines: 978
+    bytes: 62371
+    lines: 977
   "读书笔记/GameAIPro/卷2-GameAIPro2/21-dynamic-obstacle-navigation-in-fuse.md":
     kind: doc
     maturity: L2
-    bytes: 53121
-    lines: 863
+    bytes: 53117
+    lines: 862
   "读书笔记/GameAIPro/卷2-GameAIPro2/22-introduction-to-search-for-games.md":
     kind: doc
     maturity: L2
@@ -2429,13 +2494,13 @@ documents:
   "读书笔记/GameAIPro/卷2-GameAIPro2/24-interest-search-a-faster-minimax.md":
     kind: doc
     maturity: L2
-    bytes: 47546
-    lines: 878
+    bytes: 47542
+    lines: 877
   "读书笔记/GameAIPro/卷2-GameAIPro2/25-monte-carlo-tree-search-and-related-algo.md":
     kind: doc
     maturity: L2
-    bytes: 70570
-    lines: 1270
+    bytes: 70574
+    lines: 1271
   "读书笔记/GameAIPro/卷2-GameAIPro2/26-rolling-your-own-finite-domain-constrain.md":
     kind: doc
     maturity: L2
@@ -2444,8 +2509,8 @@ documents:
   "读书笔记/GameAIPro/卷2-GameAIPro2/27-looking-for-trouble-making-npcs-search-r.md":
     kind: doc
     maturity: L2
-    bytes: 32115
-    lines: 557
+    bytes: 32119
+    lines: 558
   "读书笔记/GameAIPro/卷2-GameAIPro2/29-escaping-the-grid-infinite-resolution-in.md":
     kind: doc
     maturity: L2
@@ -2474,8 +2539,8 @@ documents:
   "读书笔记/GameAIPro/卷2-GameAIPro2/34-human-enemy-ai-in-the-last-of-us.md":
     kind: doc
     maturity: L2
-    bytes: 62179
-    lines: 850
+    bytes: 62175
+    lines: 849
   "读书笔记/GameAIPro/卷2-GameAIPro2/35-ellie-buddy-ai-in-the-last-of-us.md":
     kind: doc
     maturity: L2
@@ -2484,8 +2549,8 @@ documents:
   "读书笔记/GameAIPro/卷2-GameAIPro2/36-realizing-npcs-animation-and-behavior-co.md":
     kind: doc
     maturity: L2
-    bytes: 85993
-    lines: 1352
+    bytes: 85989
+    lines: 1351
   "读书笔记/GameAIPro/卷2-GameAIPro2/38-psychologically-plausible-methods-for-ch.md":
     kind: doc
     maturity: L2
@@ -2499,8 +2564,8 @@ documents:
   "读书笔记/GameAIPro/卷2-GameAIPro2/40-procedural-content-generation-an-overvie.md":
     kind: doc
     maturity: L2
-    bytes: 89404
-    lines: 1506
+    bytes: 89408
+    lines: 1507
   "读书笔记/GameAIPro/卷2-GameAIPro2/41-simulation-principles-from-dwarf-fortres.md":
     kind: doc
     maturity: L2
@@ -2519,8 +2584,8 @@ documents:
   "读书笔记/GameAIPro/卷3-GameAIPro3/01-the-illusion-of-intelligence.md":
     kind: doc
     maturity: L2
-    bytes: 36437
-    lines: 600
+    bytes: 36441
+    lines: 601
   "读书笔记/GameAIPro/卷3-GameAIPro3/02-creating-the-past-present-and-future-wit.md":
     kind: doc
     maturity: L2
@@ -2544,13 +2609,13 @@ documents:
   "读书笔记/GameAIPro/卷3-GameAIPro3/06-debugging-ai-with-instant-in-game-scrubb.md":
     kind: doc
     maturity: L2
-    bytes: 44318
-    lines: 664
+    bytes: 44314
+    lines: 663
   "读书笔记/GameAIPro/卷3-GameAIPro3/07-but-it-worked-on-my-machine-how-to-build.md":
     kind: doc
     maturity: L2
-    bytes: 38970
-    lines: 457
+    bytes: 38966
+    lines: 456
   "读书笔记/GameAIPro/卷3-GameAIPro3/08-modular-ai.md":
     kind: doc
     maturity: L2
@@ -2564,8 +2629,8 @@ documents:
   "读书笔记/GameAIPro/卷3-GameAIPro3/10-from-behavior-to-animation-a-reactive-ai.md":
     kind: doc
     maturity: L2
-    bytes: 72124
-    lines: 1313
+    bytes: 72120
+    lines: 1312
   "读书笔记/GameAIPro/卷3-GameAIPro3/11-a-character-decision-making-system-for-f.md":
     kind: doc
     maturity: L2
@@ -2609,18 +2674,18 @@ documents:
   "读书笔记/GameAIPro/卷3-GameAIPro3/19-rvo-and-orca-how-they-really-work.md":
     kind: doc
     maturity: L2
-    bytes: 62319
-    lines: 951
+    bytes: 62315
+    lines: 950
   "读书笔记/GameAIPro/卷3-GameAIPro3/20-optimization-for-smooth-paths.md":
     kind: doc
     maturity: L2
-    bytes: 30697
-    lines: 501
+    bytes: 30701
+    lines: 502
   "读书笔记/GameAIPro/卷3-GameAIPro3/21-3d-flight-navigation-using-sparse-voxel-.md":
     kind: doc
     maturity: L2
-    bytes: 51417
-    lines: 752
+    bytes: 51413
+    lines: 751
   "读书笔记/GameAIPro/卷3-GameAIPro3/22-faster-a-with-goal-bounding.md":
     kind: doc
     maturity: L2
@@ -2634,8 +2699,8 @@ documents:
   "读书笔记/GameAIPro/卷3-GameAIPro3/24-being-where-it-counts-telling-paragon-bo.md":
     kind: doc
     maturity: L2
-    bytes: 51041
-    lines: 872
+    bytes: 51037
+    lines: 871
   "读书笔记/GameAIPro/卷3-GameAIPro3/25-combat-outcome-prediction-for-real-time-.md":
     kind: doc
     maturity: L2
@@ -2644,13 +2709,13 @@ documents:
   "读书笔记/GameAIPro/卷3-GameAIPro3/26-guide-to-effective-auto-generated-spatia.md":
     kind: doc
     maturity: L2
-    bytes: 91575
-    lines: 1631
+    bytes: 91571
+    lines: 1630
   "读书笔记/GameAIPro/卷3-GameAIPro3/27-the-role-of-time-in-spatio-temporal-reas.md":
     kind: doc
     maturity: L2
-    bytes: 51178
-    lines: 803
+    bytes: 51182
+    lines: 804
   "读书笔记/GameAIPro/卷3-GameAIPro3/28-pitfalls-and-solutions-when-using-monte-.md":
     kind: doc
     maturity: L2
@@ -2684,23 +2749,23 @@ documents:
   "读书笔记/GameAIPro/卷3-GameAIPro3/34-1000-npcs-at-60-fps.md":
     kind: doc
     maturity: L2
-    bytes: 22609
-    lines: 316
+    bytes: 22613
+    lines: 317
   "读书笔记/GameAIPro/卷3-GameAIPro3/35-ambient-interactions-improving-believabi.md":
     kind: doc
     maturity: L2
-    bytes: 59701
-    lines: 1028
+    bytes: 59697
+    lines: 1027
   "读书笔记/GameAIPro/卷3-GameAIPro3/36-stochastic-grammars-not-just-for-words.md":
     kind: doc
     maturity: L2
-    bytes: 46153
-    lines: 793
+    bytes: 46157
+    lines: 794
   "读书笔记/GameAIPro/卷3-GameAIPro3/37-simulating-character-knowledge-phenomena.md":
     kind: doc
     maturity: L2
-    bytes: 54097
-    lines: 897
+    bytes: 54101
+    lines: 898
   "读书笔记/GameAIPro/卷3-GameAIPro3/38-procedural-level-and-story-generation-us.md":
     kind: doc
     maturity: L2
@@ -2751,10 +2816,10 @@ documents:
     maturity: L2
     bytes: 61769
     lines: 817
-  "读书笔记/GameAIPro/卷4-OnlineEdition2021/05-taming-spatial-queries-â-tips-for-natura.md":
+  "读书笔记/GameAIPro/卷4-OnlineEdition2021/05-taming-spatial-queries-tips-for-natural.md":
     kind: doc
     maturity: L2
-    bytes: 39751
+    bytes: 39755
     lines: 602
   "读书笔记/GameAIPro/卷4-OnlineEdition2021/06-flooding-the-influence-map-for-chase-in-.md":
     kind: doc
@@ -2769,13 +2834,13 @@ documents:
   "读书笔记/GameAIPro/卷4-OnlineEdition2021/08-cinematic-gameplay-in-watchdogs-2-pose-m.md":
     kind: doc
     maturity: L2
-    bytes: 44143
-    lines: 562
+    bytes: 44147
+    lines: 563
   "读书笔记/GameAIPro/卷4-OnlineEdition2021/09-obstacle-avoidance-for-robots-of-multipl.md":
     kind: doc
     maturity: L2
-    bytes: 49929
-    lines: 804
+    bytes: 49925
+    lines: 803
   "读书笔记/GameAIPro/卷4-OnlineEdition2021/10-ai-driven-autoplay-agents-for-prelaunch-.md":
     kind: doc
     maturity: L2
@@ -2819,13 +2884,13 @@ documents:
   "读书笔记/GameAIPro/卷4-OnlineEdition2021/README.md":
     kind: README
     maturity: L1
-    bytes: 3312
+    bytes: 3208
     lines: 45
   "读书笔记/README.md":
     kind: README
     maturity: L1
-    bytes: 1853
-    lines: 32
+    bytes: 2128
+    lines: 33
   "读书笔记/游戏引擎架构/README.md":
     kind: README
     maturity: L1
@@ -2854,8 +2919,8 @@ documents:
   "读书笔记/游戏引擎架构/卷1-基础与核心引擎系统/05-游戏中的3D数学.md":
     kind: doc
     maturity: L2
-    bytes: 160139
-    lines: 2554
+    bytes: 160135
+    lines: 2553
   "读书笔记/游戏引擎架构/卷1-基础与核心引擎系统/06-引擎支持系统.md":
     kind: doc
     maturity: L2
@@ -2889,8 +2954,8 @@ documents:
   "读书笔记/游戏引擎架构/卷2-图形动作与声音/11-渲染.md":
     kind: doc
     maturity: L2
-    bytes: 420692
-    lines: 5203
+    bytes: 420688
+    lines: 5202
   "读书笔记/游戏引擎架构/卷2-图形动作与声音/12-光照与后处理.md":
     kind: doc
     maturity: L2
@@ -2909,8 +2974,8 @@ documents:
   "读书笔记/游戏引擎架构/卷2-图形动作与声音/15-音频.md":
     kind: doc
     maturity: L2
-    bytes: 269166
-    lines: 3718
+    bytes: 269162
+    lines: 3717
   "读书笔记/游戏引擎架构/卷2-图形动作与声音/16-玩法系统导论.md":
     kind: doc
     maturity: L2
@@ -2924,10 +2989,150 @@ documents:
   "读书笔记/游戏引擎架构/卷2-图形动作与声音/18-还有更多.md":
     kind: doc
     maturity: L2
-    bytes: 19403
-    lines: 262
+    bytes: 19407
+    lines: 263
   "读书笔记/游戏引擎架构/卷2-图形动作与声音/README.md":
     kind: README
     maturity: L1
     bytes: 3845
     lines: 44
+  "读书笔记/游戏编程模式/README.md":
+    kind: README
+    maturity: L1
+    bytes: 8832
+    lines: 102
+  "读书笔记/游戏编程模式/acknowledgements.md":
+    kind: doc
+    maturity: L2
+    bytes: 2728
+    lines: 63
+  "读书笔记/游戏编程模式/architecture-performance-and-games.md":
+    kind: doc
+    maturity: L2
+    bytes: 20281
+    lines: 354
+  "读书笔记/游戏编程模式/behavioral-patterns.md":
+    kind: doc
+    maturity: L2
+    bytes: 1726
+    lines: 44
+  "读书笔记/游戏编程模式/bytecode.md":
+    kind: doc
+    maturity: L2
+    bytes: 44957
+    lines: 1071
+  "读书笔记/游戏编程模式/command.md":
+    kind: doc
+    maturity: L2
+    bytes: 20040
+    lines: 518
+  "读书笔记/游戏编程模式/component.md":
+    kind: doc
+    maturity: L2
+    bytes: 33103
+    lines: 904
+  "读书笔记/游戏编程模式/data-locality.md":
+    kind: doc
+    maturity: L2
+    bytes: 41203
+    lines: 955
+  "读书笔记/游戏编程模式/decoupling-patterns.md":
+    kind: doc
+    maturity: L2
+    bytes: 1765
+    lines: 42
+  "读书笔记/游戏编程模式/design-patterns-revisited.md":
+    kind: doc
+    maturity: L2
+    bytes: 2169
+    lines: 48
+  "读书笔记/游戏编程模式/dirty-flag.md":
+    kind: doc
+    maturity: L2
+    bytes: 26656
+    lines: 584
+  "读书笔记/游戏编程模式/double-buffer.md":
+    kind: doc
+    maturity: L2
+    bytes: 26924
+    lines: 678
+  "读书笔记/游戏编程模式/event-queue.md":
+    kind: doc
+    maturity: L2
+    bytes: 35029
+    lines: 828
+  "读书笔记/游戏编程模式/flyweight.md":
+    kind: doc
+    maturity: L2
+    bytes: 15435
+    lines: 430
+  "读书笔记/游戏编程模式/game-loop.md":
+    kind: doc
+    maturity: L2
+    bytes: 28706
+    lines: 645
+  "读书笔记/游戏编程模式/introduction.md":
+    kind: doc
+    maturity: L2
+    bytes: 13905
+    lines: 238
+  "读书笔记/游戏编程模式/object-pool.md":
+    kind: doc
+    maturity: L2
+    bytes: 24068
+    lines: 639
+  "读书笔记/游戏编程模式/observer.md":
+    kind: doc
+    maturity: L2
+    bytes: 32102
+    lines: 732
+  "读书笔记/游戏编程模式/optimization-patterns.md":
+    kind: doc
+    maturity: L2
+    bytes: 1916
+    lines: 45
+  "读书笔记/游戏编程模式/prototype.md":
+    kind: doc
+    maturity: L2
+    bytes: 25433
+    lines: 630
+  "读书笔记/游戏编程模式/sequencing-patterns.md":
+    kind: doc
+    maturity: L2
+    bytes: 1734
+    lines: 43
+  "读书笔记/游戏编程模式/service-locator.md":
+    kind: doc
+    maturity: L2
+    bytes: 27059
+    lines: 625
+  "读书笔记/游戏编程模式/singleton.md":
+    kind: doc
+    maturity: L2
+    bytes: 28208
+    lines: 672
+  "读书笔记/游戏编程模式/spatial-partition.md":
+    kind: doc
+    maturity: L2
+    bytes: 26423
+    lines: 691
+  "读书笔记/游戏编程模式/state.md":
+    kind: doc
+    maturity: L2
+    bytes: 30082
+    lines: 886
+  "读书笔记/游戏编程模式/subclass-sandbox.md":
+    kind: doc
+    maturity: L2
+    bytes: 22505
+    lines: 564
+  "读书笔记/游戏编程模式/type-object.md":
+    kind: doc
+    maturity: L2
+    bytes: 30505
+    lines: 703
+  "读书笔记/游戏编程模式/update-method.md":
+    kind: doc
+    maturity: L2
+    bytes: 25132
+    lines: 685

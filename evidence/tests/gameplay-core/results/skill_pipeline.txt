@@ -1,0 +1,23 @@
+# evidence   : tests/gameplay-core/skill_pipeline
+# generated  : 2026-09-11T10:29:15+0800
+# host       : MINGW64_NT-10.0-26200 x86_64 (cores=16)
+# target     : x86_64-w64-mingw32
+# compiler   : g++.exe (Rev6, Built by MSYS2 project) 16.1.0
+# command    : g++ -std=c++17 -O2 -o build/skill_pipeline.exe src/skill_pipeline.cpp && ./build/skill_pipeline.exe
+#
+gameplay-core | skill request pipeline test suite
+compiler=16.1.0 c++17 O2
+--------------------------------------------------------------------------------
+PASS  S1 valid request accepted and state mutated          reason=accepted mana=80
+PASS  S2 cooldown gate rejects recast and refunds nothing  reason=cooldown mana=80
+PASS  S3 global cooldown gates a different skill           reason=gcd
+PASS  S4 insufficient mana rejected without side effects   reason=no-mana
+PASS  S5 dead actor and out-of-range target rejected       dead=dead far=out-of-range
+PASS  S6 non-interruptible cast blocks other requests      reason=busy
+PASS  S7 retransmitted requestId is applied exactly once   reason=duplicate mana=80 accepted=1
+PASS  S8 identical input stream replays to identical state h1=908cfbcc0f3aa8f1 h2=908cfbcc0f3aa8f1 h3=be53337654527f00
+PASS  S9 client prediction rolls back to authoritative on reject serverReason=cooldown reconciledMana=100
+PASS  S10 interruptible cast is cancelled by damage        castingUntil=0
+--------------------------------------------------------------------------------
+RESULT pass=10 fail=0
+# exit_code  : 0

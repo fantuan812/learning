@@ -129,7 +129,7 @@ flowchart LR
 ### UE_WITH_IRIS 与配置核对
 
 - `Core/Public/Misc/Build.h` 在未提供定义时把 `UE_WITH_IRIS` 默认设为 `0`，不能只凭这个默认值判断最终构建。
-- UE5.8 的 `Core.Build.cs` 与 `Net/Iris/IrisCore.Build.cs` 会向模块添加 `UE_WITH_IRIS=1`；模块依赖和目标配置仍需实际检查。
+- UE5.8 的 `Core.Build.cs` 与 `Source/Runtime/Net/Iris/IrisCore.Build.cs` 会向模块添加 `UE_WITH_IRIS=1`；模块依赖和目标配置仍需实际检查。
 - `Engine/Config/BaseEngine.ini` 的 `IrisCore` 段包含 `NetObjectPrioritizerDefinitions`、`NetObjectFilterDefinitions` 等默认定义。
 - 运行时还要核对 `FIrisNetDriverConfig.bCanUseIris`、`PreferredReplicationSystem` 与当前 NetDriverDefinition 是否匹配。
 - `-UseIrisReplication=1` 或 `-UseIrisReplication=0` 可在 `UnrealEngine.cpp` 的选择逻辑中强制偏好，但不能绕过不允许使用 Iris 的配置。

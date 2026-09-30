@@ -784,7 +784,6 @@ private:
 };
 
 } // namespace GameAI
-```
 
 ---
 

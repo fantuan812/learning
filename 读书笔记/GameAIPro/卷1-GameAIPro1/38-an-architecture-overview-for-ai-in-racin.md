@@ -853,7 +853,6 @@ $$\lambda = f(\Delta s) = \text{clamp}\left( 1.0 - \tanh\left( \frac{\Delta s - 
                 |
                 v
 [应用到底层车辆物理刚体 (PhysX / Havok / 自研动力学)]
-```
 
 ---
 

@@ -69,7 +69,7 @@ UE5.8 在 `UNetDriver` 中保留了严格的运行时双模判定：
 - `UNetDriver::IsUsingIrisReplication()`：作为全局分支门禁。若返回 `true`，`ServerReplicateActors` 传统遍历完全旁路，转由 `UReplicationSystem` 接管；
 - `UEngineReplicationBridge::ShouldUseIrisReplication(const UObject*)`：允许在项目过渡期实现细粒度控制。
 
-> **重要边界警告**：在开启 Iris 之后，传统的 `ActorChannel.cpp` 将不再创建，依赖 `NetGuidCache` 或底层 `UActorChannel` 劫持的旧插件（如旧版自研录制或第三方网络代理）必须改造。
+> **重要边界警告**：在开启 Iris 之后，传统的 Actor 通道实现（`DataChannel.cpp` 中的 `UActorChannel`）将不再创建，依赖 `NetGuidCache` 或底层 `UActorChannel` 劫持的旧插件（如旧版自研录制或第三方网络代理）必须改造。
 
 ---
 

@@ -1,0 +1,49 @@
+# evidence   : tests/aoi-scale/aoi_scale
+# generated  : 2026-09-11T12:25:51+0800
+# host       : MINGW64_NT-10.0-26200 x86_64 (cores=16)
+# target     : x86_64-w64-mingw32
+# compiler   : g++.exe (Rev6, Built by MSYS2 project) 16.1.0
+# command    : g++ -std=c++17 -O2 -Wall -o build/aoi_scale.exe src/aoi_scale.cpp && ./build/aoi_scale.exe
+#
+== aoi_scale: AOI 与大规模场景证据（可见性/成本/带宽） ==
+
+PASS  A1 grid AOI returns exactly the same interest set as a brute-force radius scan
+        checked 40 entities, mismatches=0
+        [visibility] avg visible: N=1000 -> 10.6, N=10000 -> 107.2, N=100000 -> 1074.1
+PASS  A2 with a fixed map, average visible count grows with density (linear in N)
+        this is exactly why 同屏容量 is a bandwidth problem, not a CPU problem
+        [hotspot] max visible: uniform=280, clustered=5855 (20.9x)
+PASS  A3 a local hotspot multiplies the worst-case interest set, not the average
+        average is a lie in large scenes; the tail is what breaks the frame
+        [hotspot] visible p50=163 p95=4867 p99=5659 max=5855
+PASS  A4 p99 visible count is far above the median in a clustered scene
+        budget must be sized on p99, and AOI LOD/frequency tiers exist for this tail
+        [churn] per-tick per-player: enter=47796.400 leave=47802.150 update=833154.9  bytes=3150.5 B
+        [churn] at 20 Hz that is 61.5 KB/s per player (MTU-batched, IP+UDP included)
+PASS  A5 enter/leave churn is a small fraction of steady-state updates
+        so bandwidth is dominated by steady-state updates, not by enter/leave spikes
+PASS  A6 enter and leave counts stay balanced over time (no interest-set leakage)
+        enter=955928 leave=956043
+        [bandwidth] budget=4.0 KB/s per player -> max visible ~= 15 entities
+PASS  A7 a modest per-player budget implies a surprisingly small visible-entity cap
+        cap=~14 entities; this cap — not the CPU — is what limits 同屏人数
+        [bandwidth] visible=100, 100 players, 20 Hz -> 27.3 KB/s per player, 2.67 MB/s per line
+PASS  A8 a 100-player 20 Hz melee costs megabytes per second per line
+        which is why large fights use LOD tiers: reduce rate for far/low-priority entities
+        [lod] flat=56000 B/s -> tiered=12600 B/s (saving=77.5%)
+PASS  A9 per-distance frequency tiers remove the majority of downstream traffic
+        naive 'everyone at full rate' is not a viable large-scene default
+
+-- benchmark --
+
+[bench] N=1000  grid_aoi(rebuild+query all players) ms p50=0.10 p95=0.11 p99=0.11
+[bench]   brute_force ms p50=0.14  speedup=1.4x
+
+[bench] N=10000  grid_aoi(rebuild+query all players) ms p50=2.57 p95=2.66 p99=2.66
+[bench]   brute_force ms p50=12.78  speedup=5.0x
+
+[bench] N=100000  grid_aoi(rebuild+query all players) ms p50=126.34 p95=128.91 p99=128.91
+[bench]   brute force skipped (P x N too large to be a fair single-tick cost)
+
+RESULT pass=9 fail=0
+# exit_code  : 0

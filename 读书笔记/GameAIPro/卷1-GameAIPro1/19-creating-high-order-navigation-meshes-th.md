@@ -602,7 +602,6 @@ private:
         return currentPoly;
     }
 };
-```
 
 ---
 

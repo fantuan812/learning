@@ -111,6 +111,10 @@ domains:
     description: 短笔记与实验记录。
     status: active
     subdomains: {}
+  读书笔记:
+    description: 外部书籍与专栏的来源精读层（Game AI Pro 各卷、游戏引擎架构两卷）；作为 sources 责任层按书目保留读者上下文，不复制既有领域正文，不参与知识成熟度门禁。
+    status: active
+    subdomains: {}
   evidence:
     description: 实验证据链（src / scripts / results）。
     status: active

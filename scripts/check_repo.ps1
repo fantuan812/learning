@@ -517,8 +517,8 @@ foreach ($file in $mdFiles) {
     if ($file.Name -eq 'README.md') { continue }
     if (Test-MaintenancePath $file.FullName) { continue }
     $relative = Get-RepoRelative $file.FullName
-    # 工作日志/笔记是过程记录与速查笔记，方案/是建设规划，均不参与知识成熟度门禁。
-    if ($relative -like '工作日志\*' -or $relative -like '笔记\*' -or $relative -like '方案\*') { continue }
+    # 工作日志/笔记是过程记录与速查笔记，方案/是建设规划，读书笔记/是外部来源材料层（sources），均不参与知识成熟度门禁。
+    if ($relative -like '工作日志\*' -or $relative -like '笔记\*' -or $relative -like '方案\*' -or $relative -like '读书笔记\*') { continue }
     if (-not $textByFile.ContainsKey($file.FullName)) { continue }
     $qualityText = Get-NonCodeMarkdownText $textByFile[$file.FullName]
     $m = [regex]::Match($qualityText, '知识成熟度\s*[：:]\s*L([0-5])')

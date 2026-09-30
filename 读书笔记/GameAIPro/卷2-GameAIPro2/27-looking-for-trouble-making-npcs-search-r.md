@@ -555,3 +555,4 @@ private:
             if (dist < 20.0f) {
                 Vector3 toSpotDir = toSpot.Normalized();
                 float dot = m_ForwardVector.x * toSpotDir.x + m_Forward
+```

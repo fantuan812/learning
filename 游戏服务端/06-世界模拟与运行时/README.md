@@ -54,7 +54,7 @@ Player 进入 Scene → 加入 AOI Cell → 计算 Interest Set → EnterView/Le
 | [Main Loop / Tick Scheduler](01-ServerMainLoop与TickScheduler.md) | 已落地 | 1 | L4 |
 | [Timer / Timing Wheel](02-Timer时间轮与延迟任务.md) | 已落地 | 1 | L2 |
 | [Entity 生命周期](03-Entity生命周期与组件模型.md) | 已落地 | 1 | L3 |
-| [Scene / Map / Zone](04-Scene-Map-Zone与实例管理.md) | 已落地 | 1 | L3 |
+| [Scene / Map / Zone](04-Scene-Map-Zone与实例管理.md) | 已落地 | 1 | L2 |
 | [AOI 与 Interest Management](05-AOI与InterestManagement.md) | 已落地 | 1 | L4 |
 | [SpatialQuery / 空间索引](06-SpatialQuery与兴趣点查询.md) | 已落地 | 1 | L2 |
 | [Entity Ownership / Authority](07-EntityOwnership与Authority.md) | 已落地 | 1 | L2 |
@@ -73,7 +73,7 @@ Player 进入 Scene → 加入 AOI Cell → 计算 Interest Set → EnterView/Le
 | [01-ServerMainLoop与TickScheduler](01-ServerMainLoop与TickScheduler.md) | 固定步长主循环、accumulator、catch-up/drop、时间预算、UE5.8 对照；含本机模拟 | L4 |
 | [02-Timer时间轮与延迟任务](02-Timer时间轮与延迟任务.md) | Tick/monotonic/business time、时间轮/堆选型、取消/重试、owner queue、过载与恢复 | L2 |
 | [03-Entity生命周期与组件模型](03-Entity生命周期与组件模型.md) | Entity ID/世代、Spawn/Despawn、组件模型、实体池、Ghost/Mirror、悬垂防护 | L3 |
-| [04-Scene-Map-Zone与实例管理](04-Scene-Map-Zone与实例管理.md) | Map/Scene/Zone 三层、玩家归属、实例分配、Zone 迁移、动态加载、线程/进程分布 | L3 |
+| [04-Scene-Map-Zone与实例管理](04-Scene-Map-Zone与实例管理.md) | Map/Scene/Zone 三层、玩家归属、实例分配、Zone 迁移、动态加载、线程/进程分布 | L2（示例为伪代码，运行证据待补） |
 | [05-AOI与InterestManagement](05-AOI与InterestManagement.md) | Move→Cell Change→Interest Diff→Enter/Leave→限流→批量；含本机模拟器（100/1K/10K 实体） | L4 |
 | [06-SpatialQuery与兴趣点查询](06-SpatialQuery与兴趣点查询.md) | Spatial Query、POI、候选集与精确命中；接口、Tick 边界和待验证容量预算 | L2 |
 | [07-EntityOwnership与Authority](07-EntityOwnership与Authority.md) | 单写者、generation、owner/fence、客户端预测、迁移封存、故障接管与审计 | L2 |

@@ -1,0 +1,49 @@
+# evidence   : tests/entry-core/entry_ticket
+# generated  : 2026-09-11T11:53:30+0800
+# host       : MINGW64_NT-10.0-26200 x86_64 (cores=16)
+# target     : x86_64-w64-mingw32
+# compiler   : g++.exe (Rev6, Built by MSYS2 project) 16.1.0
+# command    : g++ -std=c++17 -O2 -Wall -o build/entry_ticket.exe src/entry_ticket.cpp && ./build/entry_ticket.exe
+#
+== entry_ticket: 进入游戏·登录票据证据 ==
+   SHA-256 / HMAC-SHA256 self-check vs RFC 4231 and FIPS 180-4
+
+PASS  T1 SHA-256 over empty input matches FIPS 180-4 vector
+        e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+PASS  T2 SHA-256("abc") matches FIPS 180-4 vector
+        ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+PASS  T3 SHA-256 over a 56-byte message (padding boundary) matches vector
+        248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1
+PASS  T4 streaming SHA-256 is chunk-boundary independent (1000B in 7B chunks)
+        44f8354494a5ba03ba1792a8d3e9c534c47a9181980fde7a3f44b06ef2ae7c7f
+PASS  T5 HMAC-SHA256 matches RFC 4231 Test Case 1 (20-byte 0x0b key)
+        b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7
+PASS  T6 HMAC-SHA256 matches RFC 4231 Test Case 2 ("Jefe")
+        5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843
+PASS  T7 HMAC-SHA256 matches RFC 4231 Test Case 3 (20B key / 50B data)
+        773ea91e36800e46854db8ebd09181a72959098b3ef8c122d9635514ced565fe
+PASS  T8 HMAC-SHA256 hashes a >64-byte key first (RFC 4231 Test Case 6)
+        60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54
+PASS  T9 a freshly issued ticket verifies
+        wire=v1|player=10086|server=ds-7|nonce=9a3f1c|iat=1700000000|exp=...
+PASS  T10 tampering player id in payload breaks verification
+        swapped 10086 -> 10087
+PASS  T11 a ticket signed with another key is rejected
+PASS  T12 ticket is still valid 54s later (inside 60s TTL)
+PASS  T13 ticket is rejected at +81s (TTL 60s, skew 5s)
+        exp=1700000060
+PASS  T14 ticket issued 3s in the future is accepted within clock skew
+PASS  T15 ticket issued 30s in the future is rejected (beyond skew)
+PASS  T16 ticket for ds-7 is refused by ds-8
+PASS  T17 first consumption of the ticket succeeds
+PASS  T18 replaying the same ticket is rejected (one-time use)
+PASS  T19 a re-issued ticket with a new nonce is accepted (normal re-join)
+PASS  T20 a malformed string is rejected as malformed, not as bad signature
+PASS  T21 constant-time compare accepts equal strings
+PASS  T22 constant-time compare rejects a difference in the LAST byte
+        early-return implementations usually pass this one too
+PASS  T23 constant-time compare rejects a difference in the FIRST byte
+PASS  T24 constant-time compare rejects length mismatch
+
+RESULT pass=24 fail=0
+# exit_code  : 0

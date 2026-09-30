@@ -25,6 +25,7 @@ foreach ($entry in $paths) {
     # Quoted names contain unsupported control characters, not ordinary Unicode.
     if ($relative.StartsWith('"') -or [IO.Path]::IsPathRooted($relative)) { throw "Unsafe Git path: $relative" }
     if ($relative -match '(?i)(^|[\\/])\.img-work([\\/]|$)' -or
+        $relative -match '(?i)(^|[\\/])\.workbuddy([\\/]|$)' -or
         $relative -match '(?i)(^|[\\/])references[\\/]UnrealEngine-5\.8-Docs([\\/]|$)') { continue }
     $full = [IO.Path]::GetFullPath((Join-Path $rootPath $relative))
     if (-not $full.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)) { throw "Git path outside root: $relative" }

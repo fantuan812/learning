@@ -1268,3 +1268,4 @@ public:
 
                 // 零和博弈视角符号反转适配
                 float delta = (n.player_id == root_state.current_player) ? outcome : -outcome;
+```

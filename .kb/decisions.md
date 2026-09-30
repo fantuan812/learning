@@ -9,7 +9,7 @@ tags:
 status: stable
 verified: []
 maturity: L2
-updated: 2026-08-20
+updated: 2026-09-11
 ---
 
 # Knowledge Base Decision Log
@@ -763,3 +763,192 @@ scripts/get_kb_markdown.ps1、scripts/test_kb_scope.ps1、scripts/check_repo.ps1
 ### Status
 
 Accepted。范围回归双环境通过，内容规则保持原样；遗留正文与外部导入问题按当前计划分别报告。
+
+## KD-026
+
+### Subject
+
+知识库结构门禁修复与来源层（sources）成熟度豁免：读书笔记不再计入知识成熟度门禁，同时修复围栏、清单与核心正文元数据缺陷（2026-09-10）。
+
+### Options
+
+1. 为 173 篇来源材料逐篇补标 `知识成熟度` 行，使其与 Canonical 正文同口径。
+2. 按 architecture.json 既有的 sources 分层，在 `check_repo.ps1` 中豁免 `读书笔记\*`；同时只修复客观缺陷（未闭合围栏、README 缺链、乱码命名、清单漂移、核心正文元数据/证据缺口）。
+
+### Decision
+
+Option 2，已执行：
+
+- `scripts/check_repo.ps1` 的知识成熟度门禁在既有豁免（`工作日志/`、`笔记/`、`方案/`）之外增加 `读书笔记/`；`.kb/taxonomy.yaml` 与 `references/知识库架构.md` 同步登记该边界。
+- 修复 42 处未闭合代码围栏（27 处为误置开栏，按语义删除；15 处为代码块/ASCII 图表未闭合，按原文语义补闭合），未改动正文文字。
+- 修复 `读书笔记/GameAIPro/卷1`、`卷4` 的第 05 章 README 行（改为本地链接），并把 2 个含乱码 `â` 的来源文件名与对应标题归一为标准名称（`—`/`–`）。
+- 核心正文 11 项：为 `游戏AI/02-07`、`游戏AI/03-03`、`系统实战/02`、`游戏知识/04-08` 补齐知识基线/版本基准/最后更新/来源链接/验证入口；`服务端/06-03` 补证据状态说明（保留 L3，证据为文档内可运行示例）；`服务端/06-04` 因示例为伪代码而下调 L2，并同步 `游戏服务端/06-世界模拟与运行时/README.md`。
+- 机械重建 `.kb/manifest.yaml`（585 篇），并把上一轮计划快照归档为 `.kb/plans/2026-09-08-architecture-refactor.md`。
+
+### Reason
+
+来源材料不是 Canonical 正文，其质量应按来源完整性与可追溯性衡量；对书籍精读逐篇补证据深度标注既缺证据支持，也会制造虚假质量信号。围栏与清单缺陷是客观渲染/维护缺陷，必须修复而不能靠豁免掩盖。核心正文的元数据与证据缺口属于既有欠账，其中 `06-04` 的自述（“示例伪代码”）与 L3 标注自相矛盾，按 DoD 下调 L2 比补一段文字维持 L3 更诚实。
+
+### Confidence
+
+0.93。缺陷判定有文件证据；来源层豁免与既有 architecture.json 分层一致。宿主无法调用 git，PS 门禁未能在本机实跑，验收以等价只读复现记录，未宣称脚本已执行。
+
+### Affected files
+
+`scripts/check_repo.ps1`、`.kb/taxonomy.yaml`、`references/知识库架构.md`、`.kb/manifest.yaml`、`.kb/plans/current.md`、`.kb/plans/2026-09-08-architecture-refactor.md`、`.kb/review-queue.md`、`.kb/audit.md`、`learning/log.md`、`log.md`、42 篇来源材料、2 个来源文件名、`读书笔记/GameAIPro/卷1-GameAIPro1/README.md`、`读书笔记/GameAIPro/卷4-OnlineEdition2021/README.md`、`游戏AI/02-移动学习与服务端/07-战斗AI编排与战术协同.md`、`游戏AI/03-评测与安全/03-LLM-NPC安全.md`、`系统实战/02-角色移动完整链路.md`、`游戏知识/04-动画系统/08-动作战斗系统与打击手感.md`、`游戏服务端/06-世界模拟与运行时/03-Entity生命周期与组件模型.md`、`游戏服务端/06-世界模拟与运行时/04-Scene-Map-Zone与实例管理.md`、`游戏服务端/06-世界模拟与运行时/README.md`。
+
+### Status
+
+Accepted（2026-09-10；已执行并通过等价复现校验；未提交、未推送）。
+
+## KD-027
+
+### Subject
+
+Gameplay 工程师主线强化：新增背包道具完整链路与本机可运行证据，并把 `.workbuddy/` 从知识扫描范围排除（2026-09-11）。
+
+### Options
+
+1. 继续只补 Gameplay 横向知识点，不产出可运行证据，链路停在 L3。
+2. 用本机可用的 MinGW g++ 产出**真实可编译运行**的 Gameplay 核心机制证据（背包事务 / Buff 冲突 / 技能管线 / 属性聚合），据此落地 `系统实战/05-背包道具完整链路` 并把它做到 L4；同时修复工具目录污染扫描范围的问题。
+
+### Decision
+
+Option 2，已执行：
+
+- 新建 `evidence/tests/gameplay-core/`（`src/` 四个 C++17 程序 + `scripts/run_all.sh` 与 `scripts/build_run.ps1` + 未修改的 `results/*.txt` + 统一格式 `README.md`）；4 个程序共 29 条断言全部通过（inventory 7、buff 12、skill 10、属性一致性 400 抽样 mismatch=0），并产出 P50/P95/P99 与吞吐原始数据。
+- 新建 `系统实战/05-背包道具完整链路.md`（L4）：15 步 Gameplay Transaction 链路 + 权威状态与数据所有权 + 失败矩阵 + 验证矩阵 + 本地证据与未验证边界；同步 `系统实战/README`、根 `README`、`references/仓库结构.md`。
+- `系统实战/03-技能释放`、`04-Buff系统` 新增本机证据小节（覆盖逻辑层，维持 L3，明确未验证边界）。
+- 排除工具目录：`.workbuddy/` 加入 `.gitignore`、`architecture.json` 的 `excluded_roots` 与 `get_kb_markdown.ps1` 的排除规则；原因是上一轮写入的 Agent 记忆文件未被忽略，被当成知识正文（缺 README / 成熟度 / type），会污染 manifest 与门禁。
+- 机械重建 `.kb/manifest.yaml`（589 篇）。
+
+### Reason
+
+上一轮的结论是"无可用 C++ 工具链，无法产出 DoD 要求的可运行 Evidence"。本轮复核发现该结论**不成立**：`C:\msys64\mingw64\bin\g++.exe`（MinGW-w64 g++ 16.1.0）在把自身目录加入 PATH 后可正常编译运行；宿主 PowerShell 无法调用原生进程，但 Bash 可以。因此"不可产出证据"的前提被推翻，不应继续以 L2 交付 Gameplay 内容。工具目录污染则是上一轮引入的真实回归，必须从扫描范围根除而不是靠豁免文件类型掩盖。
+
+### Confidence
+
+0.95。断言与基准输出可复现（`scripts/run_all.sh`）；工具链事实已实测。属性基准存在运行间波动（p50 1750–1760 µs、加速比 7.4–7.8x），已在证据 README 与正文中如实标注。
+
+### Affected files
+
+`evidence/tests/gameplay-core/**`、`evidence/README.md`、`系统实战/05-背包道具完整链路.md`、`系统实战/03-技能释放完整链路.md`、`系统实战/04-Buff系统完整链路.md`、`系统实战/README.md`、`README.md`、`references/仓库结构.md`、`.gitignore`、`.kb/architecture.json`、`scripts/get_kb_markdown.ps1`、`.kb/manifest.yaml`、`.kb/plans/current.md`、`.kb/audit.md`、`.kb/review-queue.md`、`learning/log.md`、`log.md`、`方案/知识体系完善执行方案.md`、`方案/知识体系门禁收敛报告-2026-09-10.md`。
+
+### Status
+
+Accepted（2026-09-11；已执行并通过等价复现校验；未提交、未推送）。
+
+## KD-028
+
+### Subject
+
+伤害与属性结算链路落地与证据升级：新增 `系统实战/11-伤害与属性结算完整链路`（L4）与 `evidence/tests/damage-core`（2026-09-11）。
+
+### Options
+
+1. 把伤害结算继续留在 `03-技能释放完整链路` 的"步骤 7 Damage Pipeline"一节里，不单独成篇。
+2. 单独成篇做深：固定乘区顺序与边界语义，配本机可运行的公式/边界断言与结算基准，并从 03 反向链接。
+
+### Decision
+
+Option 2，已执行：
+
+- 新建 `evidence/tests/damage-core/`（`src/damage_pipeline.cpp` + `scripts/run_all.sh` + `scripts/build_run.ps1` + `results/damage_pipeline.txt` + 统一格式 README）；**15 条断言全部通过**（A1–A2 聚合语义、D1–D13 结算语义与边界），并给出单次结算 P50=14.2ns / P95=16.3ns / P99=16.8ns、吞吐 ≈7.72×10⁷ 次/秒，以及同种子重放哈希一致的确定性证据。
+- 新建 `系统实战/11-伤害与属性结算完整链路.md`（L4，332 行）：15 步结算闭环、权威状态与快照规则、五乘区公式、护盾/过量/上限/拦截语义、分步演算表、与策划表的对账方法、反模式、验证矩阵、术语速查。
+- 边界分工写死：03 负责"技能能否触发与执行"，11 负责"结算出什么数字"；03 的关联阅读与 06.4 证据小节互相指向。
+- 同步 `系统实战/README`（规划链路 10→11 条、状态表、文件列表）、根 `README`、`references/仓库结构.md`、`evidence/README.md`、`方案/` W4 状态。
+
+### Reason
+
+伤害结算是四方对数字（策划表 / 客户端表现 / 服务端结果 / 战斗日志）的唯一交汇点，其事故多来自顺序约定而非逻辑错误；这类知识必须在代码里固定顺序、在文档里固定语义、在证据里固定断言。实测结算本身仅约 14 ns/次，说明优化重点在快照、范围查询与日志广播——这一结论只有在有基准的前提下才能给出。
+
+### Confidence
+
+0.94。断言与基准可复现；护甲曲线与乘区顺序属可辩护的工程选择，已声明需按项目策划表重新标定。
+
+### Affected files
+
+`evidence/tests/damage-core/**`、`evidence/README.md`、`系统实战/11-伤害与属性结算完整链路.md`、`系统实战/03-技能释放完整链路.md`、`系统实战/README.md`、`README.md`、`references/仓库结构.md`、`.kb/manifest.yaml`、`.kb/plans/current.md`、`.kb/audit.md`、`.kb/review-queue.md`、`learning/log.md`、`log.md`、`方案/知识体系完善执行方案.md`。
+
+### Status
+
+Accepted（2026-09-11；已执行并通过等价复现校验；未提交、未推送）。
+
+## KD-029
+
+### Subject
+
+性能问题定位链路落地与插桩证据升级：新增 `系统实战/10-性能问题定位完整链路`（L4）与 `evidence/labs/profiling`（2026-09-11）。
+
+### Options
+
+1. 把性能定位留在"笔记/插桩测试"与"perf 性能分析"速查层面，不建纵向链路。
+2. 建纵向链路：量化常见插桩样式开销、给出帧预算换算、固定卡顿检测与降级状态机规则，并用本机证据固化。
+
+### Decision
+
+Option 2，已执行：
+
+- 新建 `evidence/labs/profiling/`（`profiling_overhead` + `hitch_and_budget` + bash/PS 构建脚本 + 原始输出 + 统一格式 README）；**17 条断言全部通过**。
+- 关键数据：裸计数 0.33 ns、原子计数 4.01 ns、作用域计时 50.03 ns、格式化日志 274.25 ns、格式化+缓冲写 309.90 ns、1/100 采样计 0.96 ns；换算到 100 000 次/帧热路径：计时 5.003 ms（30.14% 预算）、格式化日志 27.467 ms（165.46%）、采样 0.096 ms（0.58%）。
+- 卡顿检测规则固定为 `max(2.5 × 中位数, 1.5 帧)` + 迟滞（连续 2 帧低于阈值 60% 才结束），实测 12 次注入卡顿（含级联）判定为 12 个事件、18/18 帧召回、纯抖动 0 误报；**弃用 p99 基准**，因为 p99 会被卡顿污染导致阈值自抬漏检。
+- 降级状态机：连续 3 次超预算逐级 +1（上限 3），连续 30 次达标逐级 −1；交替"超/不超"输入下级别变化 0 次（不抖动）；预算记账开销 1.7 ns/Tick、每系统 0.4 ns。
+- 新建 `系统实战/10-性能问题定位完整链路.md`（**L4**，329 行）：15 步定位闭环、四类性能问题分型、调度权归属、一次定位推演模板、预算与告警配置模板、反模式与验证矩阵。
+- 同步 `系统实战/README`（10 号链路规划→已完成，共 7 条落地）、根 `README`、`references/仓库结构.md`、`evidence/README.md`、`方案/` W4 状态；`05`/`11` 增加指向本篇的度量口径链接。
+
+### Reason
+
+性能定位是 Gameplay 工程师的日常动作，此前仓库只有方法速查（笔记）与工具介绍（横向文档），缺少"症状到结论"的纵向链路；而"热路径别打日志""每实体加计时器"这类经验长期停留在口号层面，缺少量级依据。本机实测把这个量级固定下来（计数 0.33 ns ↔ 日志 309.9 ns，相差约 940 倍），才能让预算讨论变成可计算的决策。
+
+### Confidence
+
+0.95。断言的因果与状态机行为可复现；绝对耗时随编译器与架构变化，已在证据与正文中要求以**比例与量级**而非绝对值外推。
+
+### Affected files
+
+`evidence/labs/profiling/**`、`evidence/README.md`、`系统实战/10-性能问题定位完整链路.md`、`系统实战/05-背包道具完整链路.md`、`系统实战/11-伤害与属性结算完整链路.md`、`系统实战/README.md`、`README.md`、`references/仓库结构.md`、`.kb/manifest.yaml`、`.kb/plans/current.md`、`.kb/audit.md`、`.kb/review-queue.md`、`learning/log.md`、`log.md`、`方案/知识体系完善执行方案.md`。
+
+### Status
+
+Accepted（2026-09-11；已执行并通过等价复现校验；未提交、未推送）。
+
+---
+
+## KD-030
+
+### Subject
+
+角色进入游戏链路落地与可运行证据：新增 `系统实战/01-角色进入游戏完整链路`（L4）与 `evidence/tests/entry-core`（2026-09-11）。
+
+### Options
+
+1. 把进入游戏留给横向文档（鉴权 / DS 会话注册 / Ownership 各自成篇），不建纵向链路。
+2. 建纵向链路：把"启动→票据→幂等→分配→旅行→二次鉴权→Spawn→追赶→就绪→回滚"串成闭环，并把票据密码学、状态机幂等回滚、租约栅栏、JIP 追赶四类机制用本机可运行证据固化。
+
+### Decision
+
+Option 2，已执行：
+
+- 新建 `evidence/tests/entry-core/`（`entry_ticket` / `entry_session` / `ds_allocator` / `jip_resync` + bash/PS 构建脚本 + 原始输出 + 统一格式 README）；**83 条断言全部通过**（24 + 27 + 20 + 12）。
+- `entry_ticket`：自实现 SHA-256 与 HMAC-SHA256，对 **FIPS 180-4 与 RFC 4231 标准向量**逐条校验（空串、`abc`、56 字节填充边界、分段流式输入、>64 字节密钥先哈希、TC1/TC2/TC3/TC6）；票据五步验签（格式→常量时间验签→时间窗→归属→一次性消费）覆盖篡改/换钥/过期/时钟漂移/跨服/重放。
+- `entry_session`：进入状态机（Auth→Allocate→Travel→LoadCharacter→Spawn→Ready）；**双层幂等**（同 requestId 命中幂等表；换 requestId 时按玩家维度复用同一 `ds-1`，负载保持 1）；超时重试、拒绝不重试、Spawn 期失败仍回滚、`no_capacity` 不超卖、Ready 后取消为 no-op。
+- `ds_allocator`：租约 + 宽限期 + **栅栏令牌**；令牌严格递增永不复用、旧令牌提交/续约被拒、玩家回归后旧令牌永久失效、令牌按 DS 作用域（ds-1 令牌不授权 ds-2）；不变量"总负载 == 活跃租约数"在混合序列后仍成立。
+- `jip_resync`：**乱序包必须重排缓冲而非丢弃**（缺口未补齐前不推进版本，补齐后连续落地并收敛到与权威一致的指纹）；日志窗口不足回退全量快照；基准给出增量 vs 全量的取舍——**追赶 = 快照拷贝 + 重放，CPU 上永不比全量便宜**；200 000 实体 / 20 000 增量时带宽省 10 倍、CPU 多付 163.7 µs（约 +8%）。
+- 新建 `系统实战/01-角色进入游戏完整链路.md`（**L4**，15 步闭环 + 失败矩阵 + 反模式 + 检查清单 + 术语速查）。
+- **发现并修复一处真实缺陷**：分配失败时只置 `state = Failed` 而未中断步骤循环，链路带着空 DS 继续走完 Travel/Load/Spawn，产出"状态 Ready 但从未连上服务器"的会话；断言 E18/E19 抓出，修复为失败后立即终止。另一处同类问题是 JIP 乱序包直接丢弃会导致静默状态不一致，改为重排缓冲。
+
+### Reason
+
+进入游戏是唯一一条"玩家还没开始玩、状态已经写进线上系统"的链路，它会同时踩到密码学、幂等、分布式租约与状态同步四类问题，且失败表现极具误导性（卡加载 / 反复连接中 / 世界为空 / 莫名被踢 / 名额耗尽）。此前仓库中这些机制分散在四篇横向文档里，缺少一条把它们按真实时序串起来的链路，也缺少可判定的证据；"验签要常量时间""失败要回滚""乱序要缓冲"这些要求长期停留在口号层面。本机证据把它们变成了可复现的断言与数字。
+
+### Confidence
+
+0.9。断言与不变量可复现；扣分项是本机模型为单线程、密码学实现未经侧信道审计、分配器未接真实平台，均已在证据 README 与正文"局限 / 事实边界"中显式声明。
+
+### Affected files
+
+`evidence/tests/entry-core/**`、`evidence/README.md`、`系统实战/01-角色进入游戏完整链路.md`、`系统实战/README.md`、`README.md`、`references/仓库结构.md`、`.kb/manifest.yaml`、`.kb/plans/current.md`、`.kb/audit.md`、`.kb/review-queue.md`、`learning/log.md`、`log.md`、`方案/知识体系完善执行方案.md`。
+
+### Status
+
+Accepted（2026-09-11；已执行并通过等价复现校验；未提交、未推送）。

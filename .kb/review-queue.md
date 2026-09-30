@@ -9,7 +9,7 @@ tags:
 status: stable
 verified: []
 maturity: L2
-updated: 2026-08-20
+updated: 2026-09-14
 ---
 
 # Needs Review
@@ -19,6 +19,110 @@ updated: 2026-08-20
 低于 0.75 confidence 的结构性操作登记在此，人工确认后才执行。
 
 > 条目中的 Current/Suggested 保留问题发现时的历史快照；只有 Status 为 Pending 的有效条目才可触发后续操作。已执行/已决策条目不可按旧快照重复执行。
+
+## W4-ENTRY-01（角色进入游戏链路与证据）
+
+- **状态**：已完成（2026-09-11），本条目保留用于复核与后续集成测试排期。
+- **产出**：`系统实战/01-角色进入游戏完整链路.md`（L4，15 步闭环）、`evidence/tests/entry-core/`（4 程序 83 断言全通过）。
+- **必读结论**：① 验签比较必须常量时间；② 幂等需"请求级 + 玩家级"两层，否则客户端换 requestId 重试会多占名额；③ 失败必须立即终止链路（本轮真实缺陷：分配失败后仍走完 Travel/Load/Spawn，产出"Ready 但未连上"的会话）；④ 名额在分配成功时即占用，租约 + 宽限期 + 栅栏令牌三件套缺一不可；⑤ JIP 乱序包必须重排缓冲，丢弃会造成静默不一致；⑥ 增量追赶 = 快照拷贝 + 重放，CPU 上永不比全量便宜，只在"世界大、缺口小"时省带宽。
+- **待办（未完成，需环境）**：网关 + DS 双进程集成测试、弱网/丢包/乱序下的进入成功率、同玩家并发进入、千级玩家批量登录压测、与 `08-跨Zone与跨服迁移` 打通后的重入路径。
+- **不可外推边界**：密码学实现未经侧信道审计（生产须用成熟库 + KMS）；状态机与分配器为单线程模型；带宽为 32B/条估算而非线上包体实测。
+
+## W4-PROFILING-01（性能问题定位链路与插桩开销证据）
+
+Current: 性能定位只有方法速查（`笔记/插桩测试`、`笔记/perf性能分析`）与工具介绍（游戏知识 07-03、00-07-03），缺少"症状 → 基线 → 归因 → 补丁 → 复测"的纵向链路；"热路径别打日志"等经验没有量级依据。
+
+Suggested: 建纵向链路 + 量化插桩开销：固定插桩样式开销、帧预算换算、卡顿检测规则与预算降级状态机，并用本机证据固化。
+
+Confidence: 0.95
+
+Reason: 没有量级的性能建议无法参与预算决策；没有固定规则的卡顿检测会出现漏检与误报，报警数量与真实问题数脱钩。
+
+Suggested action: 建证据 + 新建链路正文
+
+Status: 已执行（2026-09-11：`evidence/labs/profiling` 17 条断言全通过；`系统实战/10-性能问题定位完整链路` 落地为 L4；决策见 KD-029）
+
+---
+
+## W4-DAMAGE-01（伤害与属性结算链路与证据）
+
+Current: 伤害结算只作为 `03-技能释放完整链路` 的"步骤 7 Damage Pipeline"一节存在；乘区顺序、护盾/过量/上限/DOT 取整等边界没有独立正文，也没有可运行断言。
+
+Suggested: 单独成篇并配可运行证据：固定乘区顺序与边界语义，给出结算基准与确定性重放证据，03 反向链接。
+
+Confidence: 0.94
+
+Reason: 伤害结算是策划表/客户端/服务端/战斗日志四方对数字的唯一交汇点，事故多来自顺序约定；没有独立正文与断言，就只能在事故后靠日志猜。
+
+Suggested action: 建证据 + 新建链路正文
+
+Status: 已执行（2026-09-11：`evidence/tests/damage-core` 15 条断言全通过；`系统实战/11-伤害与属性结算完整链路` 落地为 L4；决策见 KD-028）
+
+---
+
+## SCOPE-TOOL-DIR-01（工具目录污染知识扫描范围）
+
+Current: `.workbuddy/memory/*.md`（Agent 工作记忆）未被 Git 忽略，被 `get_kb_markdown.ps1` 当成知识正文纳入扫描：目录缺 README、正文缺成熟度、缺 frontmatter `type` 三项同时 FAIL，并写入 `.kb/manifest.yaml`。
+
+Suggested: 把 `.workbuddy/` 加入 `.gitignore`、`architecture.json` 的 `excluded_roots` 与 `get_kb_markdown.ps1` 的排除规则；工具状态一律不进入知识范围。
+
+Confidence: 0.95
+
+Reason: `.workbuddy/` 是 Agent 项目数据与记忆目录，不是知识内容。若改成在成熟度门禁里豁免该路径，只会让同类工具产物继续污染清单与统计，问题被掩盖而非解决。
+
+Suggested action: 从扫描范围排除根目录（而非豁免文件类型）
+
+Status: 已执行（2026-09-11：三处排除已落地，manifest 重建后 589 篇、漂移 0；决策见 KD-027）
+
+---
+
+## W4-GAMEPLAY-01（Gameplay 可运行证据与背包链路）
+
+Current: `系统实战/` 缺背包道具链路；`evidence/tests/` 为空（执行方案 6.1 曾规划 `tests/{skill,buff,reconnect}`）；技能与 Buff 链路因缺少可运行证据停在 L3。
+
+Suggested: 新建 `evidence/tests/gameplay-core/`（背包事务 / Buff 冲突 / 技能管线 / 属性聚合基准），据此落地 `系统实战/05-背包道具完整链路`（L4），并给 03/04 补本机证据小节。
+
+Confidence: 0.9
+
+Reason: Gameplay 工程师最依赖的四类机制（物品写入、Buff 交互、技能请求门禁、属性聚合）此前只有结论没有证据；本机已有可用 MinGW 工具链，可产出真实测试与基准。
+
+Suggested action: 建证据 + 新建链路正文
+
+Status: 已执行（2026-09-11：4 程序 29 条断言全通过并归档原始输出；05 链路落地为 L4；03/04 补证据小节；决策见 KD-027）
+
+---
+
+## SOURCES-GATE-01（来源层成熟度门禁豁免）
+
+Current: `读书笔记/` 173 篇是外部导入的书籍/专栏精读材料，`architecture.json` 已把它们登记在 sources 责任层，但 `check_repo.ps1` 的知识成熟度门禁只豁免 `工作日志/`、`笔记/`、`方案/`，导致 164 篇来源材料缺成熟度行成为 FAIL。
+
+Suggested: 按既有分层在门禁中增加 `读书笔记\*` 豁免；来源材料的内容质量按来源完整性与可追溯性衡量，不按 L0~L5 证据深度标注。结构门禁（围栏闭合、相对链接、README 清单）对来源层继续生效。
+
+Confidence: 0.95
+
+Reason: 架构说明已声明“按来源保留上下文，不建立第二份主题权威正文”“书籍笔记不成为第七个主题域”；对来源摘录补标证据深度既缺证据支持，也会产生虚假质量信号。
+
+Suggested action: 修改门禁豁免范围 + 登记决策
+
+Status: 已执行（2026-09-10：`check_repo.ps1` 增加豁免，`.kb/taxonomy.yaml` 与 `references/知识库架构.md` 同步登记；决策见 KD-026）
+
+---
+
+## STRUCT-01（来源材料未闭合围栏与清单缺链）
+
+Current: 42 篇来源材料存在未闭合代码围栏（集中在 GameAIPro 与游戏引擎架构精读），2 篇来源 README 缺章节链接，2 个来源文件名含乱码 `â`。
+
+Suggested: 按语义修复围栏（误置开栏删除、代码/图表块补闭合），把缺链章节改为本地链接，规范化乱码文件名。
+
+Confidence: 0.9
+
+Reason: 未闭合围栏会使后续整篇渲染为代码块；清单缺链使章节无法从 README 进入；乱码文件名影响检索与引用。
+
+Suggested action: 逐文件修复
+
+Status: 已执行（2026-09-10：围栏 42/42、缺链 2/2、乱码命名 2/2 修复；未改动正文文字，仅 2 个文件重命名）
+
+---
 
 ## OKF-MIGRATION-01（legacy 全量 frontmatter 迁移）
 
@@ -434,6 +538,20 @@ Suggested action: 新建 + 导航/manifest/控制面同步
 
 Status: 已执行（2026-08-18：53 核心生成移动状态、54 网络复制与模块化引擎、55 输入重映射与辅助瞄准、56 ShooterCore 核心玩法与淘汰消息已落地；12 README/19 路线图/39 总览、manifest 和审计记录同步；运行态验证保留为 L3）
 
+## R5-UE-VERIFY-01（12-引擎源码分析核验时发现的既有门禁失败，范围外未修）
+
+Current（2026-09-14 核验记录）: `scripts/check_repo.ps1` 报 3 项 FAIL，经逐条核实**均为本轮之前既存**、且不在本轮 allowlist（`游戏知识/12-引擎源码分析`）：①`evidence/tests/aoi-scale/README.md` 与 ②`evidence/tests/match-core/README.md` 的相对链接断链（两文件 2026-09-11 创建、`git` 未跟踪）；③`游戏知识/06-网络同步/07-Iris复制使用与迁移.md` 正文仍引用旧路径 `ActorChannel.cpp`（该文件在 HEAD 即为当前内容，非本轮改动）。
+
+Suggested: 修复两个 evidence README 的断链目标（或删除失效引用）；将 06-网络同步/Iris 文内的 `ActorChannel.cpp` 改为 5.8 的真实落点（`DataChannel.cpp`）或显式标注为历史名称。
+
+Confidence: 0.9
+
+Reason: 三项会让全库门禁长期 FAIL，掩盖后续真实回归；`ActorChannel.cpp` 旧名与本库 09 篇"旧名已移除"的口径直接冲突，同仓库内不一致会误导读者。
+
+Suggested action: 修复（涉及 `游戏知识/06-网络同步/` 与 `evidence/`，超出本轮 12-引擎源码分析范围，需用户确认后再动）
+
+Status: 已执行（2026-09-24：用户"先解决缺陷"授权下修复——①②两个 evidence README 断链改为指向 `系统实战/README.md` 规划表的纯文本 + 有效链接；③ 07-Iris 文内 `ActorChannel.cpp` 改为 `DataChannel.cpp` 中的 `UActorChannel`。同轮修复工作区回归 4 项（16 frontmatter、15 未闭合围栏与合并围栏行、13/14/15 版本基准）。验收：check_repo FAIL 0、check_okf Changed PASS 136/136、DS 门禁 ActorChannel.cpp 残留 0）
+
 <!-- 模板（有内容时取消注释并填写）：
 ## KB000XXX
 
@@ -461,3 +579,20 @@ Status:
 
 Pending
 -->
+
+## R6-UE-ENRICH-01（引擎源码分析：剩余篇章的代码块保真度与补深候选）
+
+- **状态**：Pending（需用户授权；本轮只完成了 9 篇，其余篇章未动）。
+- **背景**：本轮引入"代码块保真度审计"（抽出代码块 → 按「摘自」声明归因 → 与 checkout 逐行比对 → 未命中行全树兜底）。全库 56 篇口径：1234 个代码块中 150 个自称有出处，3403/3504 行命中（97.1%）；本轮 9 篇的 120 行未命中**全部**能在引擎其它文件中找到（自造代码 0 行），其中 8 处属"引用错文件"，已逐个改正。
+- **本轮已完成**：6 篇补深（01/02/03/04/09/10）+ 3 篇伪源码修正（33/34/38）+ README/19 记录。详见 `.kb/audit.md` 的 R6-UE-ENRICH 段与 19 §2.4。
+- **待授权候选（按证据排序）**：
+  1. **散文体薄篇补深**：`28-UnrealInsights与Trace源码`、`29-GameplayTasks源码`、`31-ProceduralVegetationEditor源码` 等仍以"概述/核心概念/原理 + 附录源码"为主，正文缺少逐段解构（与 01/02/03/04/09/10 补深前同形）。
+  2. **大系统再下钻**：`35-Nanite`、`36-AnimNext与UAF`、`37-Chaos破坏与Field` 的真实源码覆盖可以继续加深（当前以概念 + 关键入口为主）。
+  3. **示意块清点**：本库仍有篇章保留"无出处声明"的示意/用户示例代码块（审计脚本把这些块单列，不判为缺陷）。若用户希望"所有代码块都必须可回溯到真实源码"，需逐篇替换——这是一次范围较大的写作决策，需明确授权。
+  4. **`19` §五/§三 路线图缺口**：5.8 新增/变动系统（如 Iris 深水区、Verse/其他）尚无独立文章，属新增主题而非补深，需按组织规则先确认 Canonical 落点。
+- **不可外推边界**：静态源码阅读，不验证运行态；行号以 5.8 源码 checkout 为准。
+
+## R5-UE-VERIFY-01（承接：门禁残留与两处引用待修）
+
+- **状态**：已执行（2026-09-24：与上方同名条目一并修复；两处断链与 `ActorChannel.cpp` 旧路径均已解决，`check_repo` 全量 FAIL 0）。
+- **内容**：① `evidence/tests/aoi-scale/README.md` 与 `evidence/tests/match-core/README.md` 的断链（前者为未跟踪文件）；② `游戏知识/06-网络同步/07-Iris复制使用与迁移.md` 里 `ActorChannel.cpp` 旧路径。三项在 R5/R6 两轮 `check_repo.ps1` 中均报 FAIL，经核实为**既存**问题，不在两轮 allowlist 内，未修改。

@@ -1235,7 +1235,7 @@ void UGameFeatureAction_AddAbilities::AddActorAbilities(
 ## 附录：核心文件完整源码
 
 > 收录原则：本附录把正文直接分析的 LyraStarterGame 5.8 项目源码文件逐字完整收录（未删改，保留 Epic 版权头），正文中的"节选"负责解释调用链，本附录提供全文，二者配合阅读。引擎层（`Engine/`）文件体量过大且不属于项目教程主体，仍按正文的路径+符号检索方式引用，不在此收录；`.uasset/.umap` 资产也不在收录范围。
-> 覆盖补全（2026-08-17）：附录 `ALyraCharacter.h/.cpp`（682+231 行）与 `GameFeatureAction_AddAbilities.h/.cpp`（425 行）仍全文收录；正文已补入角色回调转发、死亡解绑、移动 Tag、FastSharedReplication，以及 GameFeature 扩展注册、Authority 授予、AttributeSet/AbilitySet 句柄回收的实际 C++ 片段与分析，不再把这两组文件仅作为“自行精读”的路径指引。
+> 覆盖补全（2026-08-17）：附录 `LyraCharacter.h/.cpp`（231+682 行，`ALyraCharacter` 类）与 `GameFeatureAction_AddAbilities.h/.cpp`（425 行）仍全文收录；正文已补入角色回调转发、死亡解绑、移动 Tag、FastSharedReplication，以及 GameFeature 扩展注册、Authority 授予、AttributeSet/AbilitySet 句柄回收的实际 C++ 片段与分析，不再把这两组文件仅作为“自行精读”的路径指引。
 > 版权提示：以下代码来自 Epic Games 的 LyraStarterGame 样例（UE 5.8），随 Unreal Engine EULA 的样例代码条款提供，仅作本地学习收录；对外发布前请自行核对许可条款。
 
 | # | 文件（相对 LyraStarterGame 根） | 行数 |

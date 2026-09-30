@@ -14,3 +14,6 @@ evidence/**/build/
 .py_libs/
 __pycache__/
 *.pyc
+
+# Agent working memory and local tool state: not knowledge content, never scanned as Markdown.
+.workbuddy/

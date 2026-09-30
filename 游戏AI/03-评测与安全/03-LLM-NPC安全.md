@@ -4,7 +4,7 @@ title: "游戏AI LLM NPC 安全"
 status: stable
 verified: []
 maturity: L2
-updated: 2026-09-03
+updated: 2026-09-10
 ---
 
 # 游戏AI LLM NPC 安全
@@ -16,6 +16,10 @@ updated: 2026-09-03
 > 本篇聚焦大语言模型（LLM）接入游戏 NPC 对话与行为决策时的**安全架构与工程防护**：覆盖威胁建模、提示注入攻防、低权限工具网关（Least-Privilege Tool Gateway）、RAG 知识与剧透边界隔离、敏感内容过滤、玩家隐私合规、成本延迟控制、人工审核与确定性逻辑兜底。
 >
 > 核心原则：**永远不要把“模型会自觉遵守系统提示”当作安全防线，安全策略与权限校验必须强制位于模型外部。**
+>
+> 知识基线：LLM NPC 对话与工具调用的安全架构——威胁建模、提示注入防护、最小权限工具网关、RAG 知识边界、内容与隐私合规、确定性逻辑兜底与自动化安全门禁；模型的上下文窗口与安全能力随所选 LLM 版本变化。
+> 参考来源：[OWASP ASVS（应用安全验证标准）](https://owasp.org/www-project-application-security-verification-standard/)；内部门禁口径与指标定义见 [01-AI评测回放](01-AI评测回放.md)。
+> 最后更新：2026-09-10（本轮补充知识基线与来源链接）。
 
 ---
 

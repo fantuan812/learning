@@ -895,3 +895,4 @@ def run_simulation_lifecycle():
 [时间开销分布]
   ├─ 宏观世界生成阶段 (World Gen 1839-1979): 约数分钟 (无认知开销)
   ├─ 开局知识植入 (Knowledge Implantation):
+```

@@ -1504,3 +1504,4 @@ public:
             for (size_t x = 0; x < BUCKET_COUNT; ++x) {
                 float density = static_cast<float>(heatMap[y][x]) / (totalSamples > 0 ? totalSamples : 1);
                 if (density >
+```

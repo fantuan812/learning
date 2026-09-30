@@ -1598,7 +1598,6 @@ public:
                                                                      v
                                                           [Shirakami et al., 2015]
                                                           (FFXV Point-Based Decision Making)
-```
 
 ### 1. Jack, M. (2013). *Tactical position selection: An architecture and query language*
 - **理论贡献**：奠定了现代查询语言（Query Language）的原型规范。首次将数据库 SQL 式的“生成（Generate）- 过滤（Where）- 排序（Order By）- 限制（Limit）”范式迁移到三维空间几何位置选取中。

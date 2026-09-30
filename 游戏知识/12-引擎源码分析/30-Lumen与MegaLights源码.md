@@ -20,7 +20,8 @@ updated: 2026-08-20
 - **版本基准**：UE 5.8.0 / CL 55116800 / 分支 `++UE5+Release-5.8`（本机安装目录 `C:\Program Files\Epic Games\UE_5.8\Engine`）。
 - **源码依据**：
   - `Engine\Source\Runtime\Renderer\Private\Lumen\LumenSceneLighting.cpp`（`RenderLumenSceneLighting` 场景光照求解）
-  - `Engine\Source\Runtime\Renderer\Private\Lumen\LumenScreenProbeGather.cpp`（`LumenScreenProbeGather` 探针追踪与辐射度缓存）
+  - `Engine\Source\Runtime\Renderer\Private\Lumen\LumenSceneData.h`、`LumenSurfaceCache.cpp`（`FLumenSceneData` 类定义与 `AllocateCardAtlases` 表面缓存图集分配；Lumen 目录下没有 `LumenSceneData.cpp`）
+  - `Engine\Source\Runtime\Renderer\Private\Lumen\LumenScreenProbeGather.cpp`（`RenderLumenScreenProbeGather` 探针追踪与辐射度缓存）
   - `Engine\Source\Runtime\Renderer\Private\Lumen\LumenReflections.cpp`、`LumenReflectionTracing.cpp`（反射计算着色器调度）
   - `Engine\Source\Runtime\Renderer\Private\MegaLights\MegaLights.cpp`（`RenderMegaLightsViewContext` 全局总控）
   - `Engine\Source\Runtime\Renderer\Private\MegaLights\MegaLightsSampling.cpp`（`GenerateLightSamplesCS` 多光源采样）
@@ -160,28 +161,32 @@ classDiagram
 
 ### 1. 卡片与虚拟页表分配（AllocateCardAtlases）
 
-摘自 `Engine\Source\Runtime\Renderer\Private\Lumen\LumenSceneData.cpp`：
+摘自 `Engine\Source\Runtime\Renderer\Private\Lumen\LumenSurfaceCache.cpp`（`FLumenSceneData` 类定义在 `LumenSceneData.h`，实现无独立 `LumenSceneData.cpp`）：
 
 ```cpp
-void FLumenSceneData::AllocateCardAtlases(FRDGBuilder& GraphBuilder)
+// 节选：Engine\Source\Runtime\Renderer\Private\Lumen\LumenSurfaceCache.cpp（第 236 行起，逐字）
+void FLumenSceneData::AllocateCardAtlases(FRDGBuilder& GraphBuilder, FLumenSceneFrameTemporaries& FrameTemporaries, const FSceneViewFamily* ViewFamily)
 {
-    // 1. 获取物理图集纹理尺寸（通常为 4096 x 4096）
-    const FIntPoint AtlasSize = GetCardAtlasSize();
+	const FIntPoint PageAtlasSize = GetPhysicalAtlasSize();
 
-    // 2. 在 RDG 中创建或复用常驻的直接光与间接光辐射度图集
-    FRDGTextureDesc DirectLightingAtlasDesc = FRDGTextureDesc::Create2D(
-        AtlasSize,
-        PF_FloatR11G11B10, // 高动态范围紧凑浮点格式
-        FClearValueBinding::Black,
-        TexCreate_ShaderResource | TexCreate_RenderTargetable | TexCreate_UAV
-    );
+	FrameTemporaries.AlbedoAtlas = CreateCardAtlas(GraphBuilder, PageAtlasSize, PhysicalAtlasCompression, ELumenSurfaceCacheLayer::Albedo, TEXT("Lumen.SceneAlbedo"));
+	FrameTemporaries.DepthAtlas = CreateCardAtlas(GraphBuilder, PageAtlasSize, PhysicalAtlasCompression, ELumenSurfaceCacheLayer::Depth, TEXT("Lumen.SceneDepth"));
+	FrameTemporaries.NormalAtlas = CreateCardAtlas(GraphBuilder, PageAtlasSize, PhysicalAtlasCompression, ELumenSurfaceCacheLayer::Normal, TEXT("Lumen.SceneNormal"));
+	FrameTemporaries.EmissiveAtlas = CreateCardAtlas(GraphBuilder, PageAtlasSize, PhysicalAtlasCompression, ELumenSurfaceCacheLayer::Emissive, TEXT("Lumen.SceneEmissive"));
 
-    FrameTemporaries.DirectLightingAtlas = GraphBuilder.CreateTexture(DirectLightingAtlasDesc, TEXT("Lumen.DirectLightingAtlas"));
-
-    // 3. 上传物理页表（Page Table），将 3D 网格表面 UV 映射到 2D 图集像素
-    UploadPageTable(GraphBuilder);
+	FrameTemporaries.DirectLightingAtlas = GraphBuilder.CreateTexture(
+		FRDGTextureDesc::Create2D(
+			PageAtlasSize,
+			Lumen::GetDirectLightingAtlasFormat(),
+			FClearValueBinding::Black,
+			TexCreate_ShaderResource | TexCreate_RenderTargetable | TexCreate_UAV
+		), TEXT("Lumen.SceneDirectLighting"));
+	// …（其后同函数继续分配 FinalLightingAtlas、TileShadowDownsampleFactorAtlas，
+	//    并在 UseStochasticLighting 时分配随机光照历史图集，见该函数第 251~285 行）
 }
 ```
+
+要点：图集不是"一张 4096×4096"，而是**每层表面缓存各自的物理图集**（Albedo/Depth/Normal/Emissive + DirectLighting/FinalLighting），全部挂在与视图相关的 `FLumenSceneFrameTemporaries` 上；尺寸由 `GetPhysicalAtlasSize()` 决定，纹理创建走 RDG，因此随帧图重建自动复用。
 
 - **物理页表（Page Table）**：类似于虚拟内存（Virtual Memory），3D 网格表面被切分成微小的 Mesh Cards，仅有面向视锥可见的卡片才会获得物理图集（Atlas）的分配，不可见表面自动降级为低分辨率或完全不分配，将显存消耗严格约束在预算内。
 
@@ -193,10 +198,11 @@ void FLumenSceneData::AllocateCardAtlases(FRDGBuilder& GraphBuilder)
 
 ### 1. 探针追踪与积分核心机制
 
-源码文件：`Engine\Source\Runtime\Renderer\Private\Lumen\LumenScreenProbeGather.cpp`
+源码文件：`Engine\Source\Runtime\Renderer\Private\Lumen\LumenScreenProbeGather.cpp`（真实入口是 `FDeferredShadingSceneRenderer::RenderLumenScreenProbeGather`，第 2169 行；其内部第 2647 行调用 `TraceScreenProbes`、第 2661 行调用 `FilterScreenProbes`）
 
 ```cpp
-// 源码结构提炼：LumenScreenProbeGather 核心调度序列
+// 源码结构提炼（非逐字）：下列函数签名是讲解用的聚合视图，
+// 真实实现分散在 RenderLumenScreenProbeGather 与 LumenScreenProbeGather 命名空间内的各 AddPass 中。
 void RenderScreenProbeGather(
     FRDGBuilder& GraphBuilder,
     const FViewInfo& View,

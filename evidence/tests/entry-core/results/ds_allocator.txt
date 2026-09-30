@@ -1,0 +1,51 @@
+# evidence   : tests/entry-core/ds_allocator
+# generated  : 2026-09-11T11:53:30+0800
+# host       : MINGW64_NT-10.0-26200 x86_64 (cores=16)
+# target     : x86_64-w64-mingw32
+# compiler   : g++.exe (Rev6, Built by MSYS2 project) 16.1.0
+# command    : g++ -std=c++17 -O2 -Wall -o build/ds_allocator.exe src/ds_allocator.cpp && ./build/ds_allocator.exe
+#
+== ds_allocator: 进入游戏·DS 分配与租约证据 ==
+   lease / fencing token / heartbeat / reap / affinity
+
+PASS  A1 first allocation lands on ds-1 with fencing token 1
+        ds=ds-1 token=1
+PASS  A2 re-allocating the same player reuses the lease (no second slot)
+        status=reused token=1 load=1
+PASS  A3 releasing and re-allocating mints a strictly larger token
+        token=2
+PASS  A4 an expired lease past the grace window is reclaimed
+        reclaimed=1 load=0
+PASS  A5 the freed slot goes to a new player with a larger token
+        ds=ds-1 token=2
+PASS  A6 the zombie owner's commit with the stale token is fenced off
+        stale token=1
+PASS  A7 the zombie owner cannot renew the lease it no longer holds
+PASS  A8 the current owner's commit is accepted
+        token=2
+PASS  A9 the returning player gets a new token and can commit again
+        ds=ds-1 token=3
+PASS  A10 the old token stays dead even after the player is back
+PASS  A11 heartbeat keeps the lease alive across 300s (30s TTL, renewed every 10s)
+        load=1
+PASS  A12 a lease with no heartbeat for > TTL+grace is reclaimed exactly once
+        load=0
+PASS  A13 three DS with capacity 2 hold exactly 6 players
+        load=6
+PASS  A14 the 7th player is refused; capacity is never over-sold
+        load=6
+PASS  A15 invariant: server load always equals the number of active leases
+        load=6 leases=6
+PASS  A16 the load/lease invariant survives a mixed alloc/heartbeat/reap/release sequence
+        load=2 leases=2
+PASS  A17 baseline assignment is ds-1
+        ds-1
+PASS  A18 reconnecting inside the grace window returns to the same DS
+        ds=ds-1 status=reconnected
+PASS  A19 after the grace window the seat is gone; reconnect lands elsewhere
+        ds=ds-2 (ds-1 now held by p2)
+PASS  A20 fencing tokens are PER-DS, so a token from ds-1 never authorises ds-2
+        ds-2 first token=1 (ds-1 was up to token 2)
+
+RESULT pass=20 fail=0
+# exit_code  : 0

@@ -31,7 +31,7 @@ updated: 2026-09-07
 | **第02章** | [Informing Game AI through the Study of Neurology](02-informing-game-ai-through-the-study-of-n.md) | **已重构** |
 | **第03章** | [Advanced Randomness Techniques for Game AI: Gaussian Randomness, Filtered Randomness, and Perlin Noise](03-advanced-randomness-techniques-for-game-.md) | **已重构** |
 | **第04章** | [Behavior Selection Algorithms: An Overview](04-behavior-selection-algorithms-an-overvie.md) | **已重构** |
-| **第05章** | [Structural Architecture—Common Tricks of the Trade](http://www.gameaipro.com/GameAIPro/GameAIPro_Chapter05_Structural_Architecture_Common_Tricks_of_the_Trade.pdf) | *待处理* |
+| **第05章** | [Structural Architecture—Common Tricks of the Trade](05-structural-architecture-common-tricks-of.md) | **已重构** |
 | **第06章** | [The Behavior Tree Starter Kit](06-the-behavior-tree-starter-kit.md) | **已重构** |
 | **第07章** | [Real-World Behavior Trees in Script](07-real-world-behavior-trees-in-script.md) | **已重构** |
 | **第08章** | [Simulating Behavior Trees: A Behavior Tree / Planner Hybrid Approach](08-simulating-behavior-trees-a-behavior-tre.md) | **已重构** |

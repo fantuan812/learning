@@ -1,0 +1,58 @@
+# evidence   : tests/entry-core/jip_resync
+# generated  : 2026-09-11T11:53:30+0800
+# host       : MINGW64_NT-10.0-26200 x86_64 (cores=16)
+# target     : x86_64-w64-mingw32
+# compiler   : g++.exe (Rev6, Built by MSYS2 project) 16.1.0
+# command    : g++ -std=c++17 -O2 -Wall -o build/jip_resync.exe src/jip_resync.cpp && ./build/jip_resync.exe
+#
+== jip_resync: 进入游戏·JIP/重连状态追赶证据 ==
+   snapshot + delta log -> client convergence
+
+PASS  J1 catch-up consumes the gap and lands on the authoritative revision
+        client_rev=8 auth_rev=8
+PASS  J2 the converged client state is byte-identical to the authority (same fingerprint)
+        hash=2149380276523161643
+PASS  J3 replaying the whole delta log is a no-op (revision guard)
+        no state change, hash stable
+PASS  J4 deltas delivered in reverse order are resequenced and converge
+        hash=6642272712824676652 buffered=0
+PASS  J5 out-of-order deltas wait in the resequencing buffer until the hole is filled
+        stalled_then_flushed, buffered=0
+PASS  J6 a snapshot older than the retained delta window requires a full snapshot
+        log_front_rev=9 snapshot_rev=1
+PASS  J7 the full-snapshot fallback converges exactly
+        hash=1609111480311749180
+PASS  J8 a gap fully covered by the window uses the incremental path
+PASS  J9 spawn/despawn inside the gap is replayed with correct final state
+        hash=16545142454843754890
+PASS  J10 an entity that died and respawned in the gap ends up alive with the new hp
+        hp=42.000000
+PASS  J11 an entity despawned in the gap ends up gone on the client
+PASS  J12 incremental updates keep working right after a catch-up
+        hash=6108342936902169815
+
+-- benchmark --
+
+[bench] catch_up entities=2000 gap_deltas=2000
+[bench] catch_up_us      p50=6.510 p95=7.990 p99=11.005 max=49.625
+[bench] full_snapshot_us p50=1.300 p95=1.400 p99=1.500
+[bench] deltas_per_sec=307219662  entities_per_sec=307219662
+[bench] bytes_snapshot=64000 bytes_deltas=64000 bandwidth_saving=1.00x
+[bench] cpu_overhead_of_incremental_us=5.210 (p50 catch_up - p50 snapshot)
+
+[bench] catch_up entities=20000 gap_deltas=20000
+[bench] catch_up_us      p50=117.960 p95=172.680 p99=176.740 max=182.285
+[bench] full_snapshot_us p50=25.200 p95=33.500 p99=35.600
+[bench] deltas_per_sec=169549000  entities_per_sec=169549000
+[bench] bytes_snapshot=640000 bytes_deltas=640000 bandwidth_saving=1.00x
+[bench] cpu_overhead_of_incremental_us=92.760 (p50 catch_up - p50 snapshot)
+
+[bench] catch_up entities=200000 gap_deltas=20000
+[bench] catch_up_us      p50=2104.845 p95=2718.270 p99=2718.270 max=2869.410
+[bench] full_snapshot_us p50=1941.100 p95=2328.500 p99=2357.600
+[bench] deltas_per_sec=9501887  entities_per_sec=95018873
+[bench] bytes_snapshot=6400000 bytes_deltas=640000 bandwidth_saving=10.00x
+[bench] cpu_overhead_of_incremental_us=163.745 (p50 catch_up - p50 snapshot)
+
+RESULT pass=12 fail=0
+# exit_code  : 0

@@ -1,113 +1,221 @@
 ---
 type: Plan
-title: "知识库与 Agent 架构重构"
-description: "统一内容落点、控制面事实源、Agent 执行权限和可重复架构验收。"
+title: "知识库门禁修复与来源层收敛"
+description: "修复全库结构门禁失败，将读书笔记登记为来源层，重建清单并同步控制面。"
+tags:
+  - plan
+  - knowledge-base
+  - okf
 status: stable
 verified: []
 maturity: L2
-updated: 2026-09-08
+updated: 2026-09-11
 ---
 
 # 当前执行计划
 
-> 知识成熟度：L2（以仓库文件审计为依据，运行验收单独记录）。
+> 知识成熟度：L2（依据仓库文件审计与等价复现的门禁规则；宿主运行验收单独记录）。
 
 ## Goal
 
-完成知识库和 Agent 整体架构重构：保留正文路径，消除归类与权限规则冲突，提供可执行的一致性门禁。
+在保持正文路径与知识内容不变的前提下，把全库结构门禁收敛到健康状态：修复可客观判定的缺陷（清单漂移、未闭合围栏、README 缺链、元数据/证据边界缺口），并把 `读书笔记/` 按既有架构登记为 sources 层，使其不再触发知识成熟度门禁。
 
 ## Scope
 
-用户已授权工作树内架构重构。无提交、推送、永久删除授权。主线程担任协调者和共享控制面单一整合者，内容执行与验证分配独立角色。
+用户授权的仓库维护（“完善整个知识体系”）。无提交、推送、永久删除授权。物理改动限于：2 个含乱码的来源文件名规范化、42 处围栏修复、3 篇核心正文的元数据/证据边界补充、1 篇正文的成熟度纠正（L3→L2）、门禁豁免与 taxonomy 登记。
 
 ## Current State
 
-- 仓库：当前 Git 根；分支 main；HEAD ca551a33e9a077138500180c00a6cf2e51df6a67。
-- dirty 基线：README.md、references/仓库结构.md、读书笔记/（含 PDF 与 Markdown）。
-- status、tracked/staged patch、全部 dirty 文件 SHA256 存于仓库外临时目录 kb-architecture-20260907-170249。
-- 原有 dirty 内容保留；2026-09-08 为满足根导航检查，在 README 只新增两个入口并验证移除新增段后与修改前内容一致。执行中发现外部并行改动：读书笔记、.gitignore、翻译脚本及缓存发生变化；保留现场，不恢复旧 hash。恢复基线另存于仓库外 kb-architecture-resume-20260908-100509。
-- 上一轮计划原文保存在 [2026-09-03-combat-ai.md](2026-09-03-combat-ai.md)，其历史验收结论不代表本轮状态。
+- 仓库：Git 根；分支 main；HEAD `a1e3c29`。
+- 本轮开始时工作树干净；上轮计划原文见 [2026-09-08-architecture-refactor.md](2026-09-08-architecture-refactor.md)。
+- 宿主限制：本机 PowerShell 宿主无法调用 `git`，仓库自带 PS 门禁脚本无法直接执行；本轮用等价只读复现逐条核对，结论与 `.kb/plans/current.md`（2026-09-08）记录的快照一致（219 FAIL / 28 WARN）。
 
 ## Findings
 
-1. 根 AGENTS 强制通用内容进入 Knowledge，与已有领域 Canonical 路由冲突。
-2. 多处角色表不同步；角色文件固定模型，缺少明确内容执行/整合/验证配置。
-3. 大量写作细则常驻根 AGENTS，项目 Skill 又重复全套流程，默认上下文过重。
-4. aliases 存在 Inventory 与背包系统、Determinism 与确定性的非终止环。
-5. 物理目录将领域、来源、证据、导航、治理并列，需要明确责任层和机械检查。
-6. 基线 check_repo：429 Markdown，29 FAIL、23 WARN；已有正文元数据/证据缺失与读书笔记成熟度缺失。不得把这些既有失败当成本次引入，也不得仅为全绿自动提高成熟度。
-
-## Proposed Taxonomy Changes
-
-保留六个主题领域与全部正文路径。以架构清单区分 content、practice、sources、evidence、navigation、governance、automation；taxonomy 继续负责领域内部分类。Knowledge 是领域外的通用主题扩展入口，Projects 只收明确项目约束；来源型读书笔记保留原地。
+1. 结构门禁：42 处未闭合代码围栏、2 处来源 README 缺链、2 个含乱码（`â`）的来源文件名。
+2. 成熟度门禁：164 篇来源材料缺成熟度行；架构已把 `读书笔记/` 归入 sources 层，但 `check_repo.ps1` 未按该分层豁免。
+3. 核心正文 11 项：游戏AI `07-战斗AI编排与战术协同`（缺最后更新/外部来源/验证入口）、`03-LLM-NPC安全`（缺知识基线/最后更新/外部来源）、系统实战 `02-角色移动完整链路`（缺最后更新与证据边界）、服务端 `06-03`/`06-04`（标 L3 但缺证据表述；`06-04` 示例为伪代码）、游戏知识 `04-动画系统/08`（缺版本基准/最后更新）。
+4. 控制面：commit `a1e3c29` 新增工作日志后未重建 manifest，`工作日志/README.md` 指标过期且新文件未入索引（`check_architecture.ps1` 唯一 FAIL）。
 
 ## File Operations
 
 | Action | Exact scope | Owner | Confidence |
 | --- | --- | --- | --- |
-| Refactor | AGENTS.md; references/agent协作与发布规则.md; references/知识组织规则.md | Agent 执行者 | 0.95 |
-| Refactor | .agents/README.md; .agents/skills/knowledge-base-organizer/SKILL.md; .codex/config.toml; .codex/agents/*.toml; .codex/README.md | Agent 执行者（现有角色及三个明确新增角色） | 0.95 |
-| Create | .kb/architecture.json; references/知识库架构.md | 单一整合者 | 0.95 |
-| Update | .kb/taxonomy.yaml; .kb/aliases.yaml; .kb/README.md; .kb/decisions.md; .kb/plans/current.md; .kb/plans/README.md | 单一整合者 | 0.95 |
-| Archive | .kb/plans/2026-09-03-combat-ai.md | 单一整合者 | 1.0 |
-| Update | Knowledge/README.md; Projects/README.md; 00_Index/README.md; 00_Index/MOC.md; 00_Index/axes/知识边界与生命周期.md; index.md | 单一整合者 | 0.95 |
-| Create | scripts/check_architecture.ps1; scripts/test_architecture.ps1 | 门禁执行者，完成后由单一整合者接入统一范围 | 0.95 |
-| Fix | scripts/rebuild_manifest.ps1 | 单一整合者（统一文件范围、Git 失败即停止、确定性排序） | 0.99 |
-| Rebuild | .kb/manifest.yaml | 单一整合者，最后机械生成 | 1.0 |
-| Extend | README.md | 单一整合者，仅新增架构与 Agent 导航；保留原有内容及改动 | 0.99 |
-| Refactor | scripts/check_repo.ps1; scripts/check_okf.ps1; scripts/get_kb_markdown.ps1; scripts/test_kb_scope.ps1 | 扫描范围执行者，统一 Git 可见 Markdown 范围；保留所有内容规则 | 0.99 |
+| Fix | 42 篇来源材料未闭合围栏（27 处删除误置开栏、15 处按代码/图表语义补闭合） | 主线程 | 0.9 |
+| Rename | 2 个乱码来源文件名 + 正文标题/描述中的 `â` 归一 | 主线程 | 0.95 |
+| Fix | `读书笔记/GameAIPro/卷1-GameAIPro1/README.md`、`卷4-OnlineEdition2021/README.md` 第 05 章行改为本地链接 | 主线程 | 0.95 |
+| Edit | 游戏AI 02-07、03-03；系统实战 02；游戏知识 04-08；服务端 06-03、06-04 与 06 README | 主线程 | 0.9 |
+| Refactor | `scripts/check_repo.ps1` 成熟度门禁增加 `读书笔记\*` 豁免 | 主线程 | 0.95 |
+| Update | `.kb/taxonomy.yaml`、`references/知识库架构.md` 登记来源层边界 | 主线程 | 0.95 |
+| Rebuild | `.kb/manifest.yaml`（完成后机械重建） | 主线程 | 1.0 |
+| Update | `.kb/decisions.md`、`.kb/review-queue.md`、`.kb/audit.md`、`.kb/plans/*`、`learning/log.md`、`log.md` | 主线程 | 0.95 |
 
-新增范围必须先更新此清单。分析/验证角色只读。共享路径只由其指定写者写入；所有角色禁止更改 Git index/history/remote。
+未列出的路径不改动；正文的路径、H1、正文段落与链接关系保持不变。
 
 ## Merge Plan / Split Plan
 
-仅拆分控制面规则职责，知识正文无合并、拆分、迁移或删除。旧规则中有效约束通过链接保留，历史决策与学习日志不回写。
+无正文合并或拆分。仅收紧 `06-04` 的成熟度标注（与其自述“示例伪代码”一致），并在 3 篇正文补充证据边界声明。
 
 ## Needs Review
 
-- 架构审查确认权威规则无矛盾、来源材料不成为第二份 Canonical。
-- Agent 配置按官方文档及当前宿主能力校验，不宣称当前任务已加载新角色。
-- 新架构脚本在 Windows PowerShell 5.1 与 pwsh 运行并执行负向 fixture 测试。
+- 来源层豁免是否应同时覆盖围栏与清单检查：本轮结论为否（结构缺陷仍必须修复）。
+- `06-04` 降为 L2 与本轮新增证据边界声明的措辞是否符合仓库口径。
+- 宿主无法执行 PS 门禁，最终验收以等价复现结果记录，不宣称脚本已在宿主运行。
 
 ## Risks
 
-用户 dirty 内容不接管。2026-09-08 验收发现新 .codex README 缺根导航，根 README 仅追加两个入口并校验原文完整保留；仓库结构说明仍保持不变。现有正文 FAIL 单独记录；Git 已忽略的缓存与依赖不应作为知识文件扫描，统一文件范围不更改正文门禁。
-
-## Audit Result
-
-两路只读架构审查确认路由冲突、角色冲突和别名环，采用保留正文路径的责任分层方案。主体与扫描范围补充修改均获独立只读审查 PASS_WITH_WARNINGS；最终审查者另实跑完整架构检查，584 个路径与磁盘指标全部吻合。
+- 来源材料为外部导入内容，围栏修复按“删除误置开栏 / 按代码语义补闭合”分类处理，未改动正文文字；如需回退可按 Git diff 逐文件还原。
+- 本轮未提交、未推送；不接管用户其他未提交改动。
 
 ## Execution Progress
 
-- [x] 恢复执行工具，核实仓库与 dirty 基线
-- [x] 执行全库基线检查并保存上一轮计划
-- [x] 完成架构与 Agent 规则重构
-- [x] 接入架构检查、统一扫描范围与 manifest 重建
-- [x] 完成主体独立复核与实际门禁执行
+- [x] 只读审计与失败项分类
+- [x] 来源层豁免登记与门禁调整
+- [x] 结构缺陷修复（围栏、缺链、乱码命名）
+- [x] 核心正文元数据与证据边界补正
+- [x] manifest 重建与控制面同步
+- [ ] 宿主内 PS 门禁实跑（宿主无法调用 git，未完成）
 
 ## Final Validation
 
-2026-09-08 验收快照：
+2026-09-10 等价复现结果（`check_repo` / `check_okf` / `check_architecture` 规则）：
 
-| 检查 | 实际结果 |
+| 检查 | 结果 |
 | --- | --- |
-| 架构检查 | PowerShell 7 与 Windows PowerShell 5.1 均通过；目录/入口/契约有效，35 个别名无环，584 个 manifest 路径与磁盘指标一致 |
-| 架构负向回归 | 两个 PowerShell 环境各 16/16 用例通过，包含越界、重复归属、别名环及清单漂移 |
-| 文件范围回归 | 两个 PowerShell 环境均通过 9 项语义断言；忽略缓存排除，已跟踪且匹配 ignore 的正文仍纳入 |
-| manifest 可重复性 | 同一快照在两个 PowerShell 环境生成的 SHA256 相同；本记录更新后重新生成 |
-| Agent 配置 | 8 个 TOML 角色及项目配置解析通过；角色唯一、必需字段/报告字段齐全，模型继承与 sandbox 默认符合合同 |
-| Skill | 当前简单 frontmatter、名称/描述、UTF8、AGENTS 链接检查通过；官方 quick_validate 缺 PyYAML 未运行，不宣称等价通用 YAML 验证 |
-| OKF | Changed、Audit、Strict 均通过；Strict 为 Scanned 582 / Conformant 582 / Excluded 2 / FAIL 0 |
-| 内容质量 | check_repo 为 584 Markdown / WARN 28 / FAIL 219；无本任务架构文件失败 |
-| Git | HEAD 与任务基线一致，index 空；本任务 diff 单独核对，未提交、未推送 |
-| 文件范围与编码 | 39 个本任务文件全部 UTF8 无 BOM，本任务 allowlist 的 diff --check 退出 0 |
+| 扫描范围 | 586 篇 Markdown（Git 可见且未被忽略） |
+| 断链 / BOM / U+FFFD / 目录缺 README | 0 / 0 / 0 / 0 |
+| 未闭合代码围栏 | 0（修复前 42） |
+| README 清单缺链 | 0（修复前 2） |
+| 成熟度门禁（豁免来源层后） | 缺成熟度 0；L3+/L4+/L5 证据缺口 0 |
+| 领域质量门禁（AI/服务端/算法/00/质量/实战） | 0 |
+| 游戏知识语义门禁 | 0 |
+| manifest 漂移（路径/bytes/lines） | 0；585 条目与磁盘一致 |
+| 成熟度分布（正文） | L2=304、L3=7、L4=6、L5=1 |
 
-内容失败由 11 项原有技术正文问题，以及 208 项外部读书笔记问题构成：读书笔记包含 164 项缺成熟度、42 项代码围栏未闭合、2 项 README 清单缺链接。未改这些正文，也未通过降低规则或自动提高成熟度消除失败。来源内容由并行任务持续导入，以上数量仅代表本次运行快照。
+真实 PS 门禁脚本未能在宿主执行（无法调用 git）；上表为等价只读复现，未把该结果表述为脚本已运行。
 
-原有 check_repo 含中文且为 UTF8 无 BOM；PowerShell 7 可直接执行，Windows PowerShell 5.1 直接 -File 仍有既有编码解析问题。5.1 使用临时 UTF8 BOM 副本、同源 helper 和显式 Root 验证，得到相同的 584/219 结果；不能将此写成源文件直接 -File 通过。
+---
 
-恢复时在仓库外保存了新的 status、diff 和外部文件 hash。README 移除本次新增两个链接后与编辑前原文一致；references/仓库结构.md、.gitignore 和翻译脚本未写入。四个读书笔记 README 在恢复期间被外部任务更新，保留当前内容，不回退旧 hash。全仓 diff --check 仅发现外部 .gitignore 末尾空行，保留其改动。
+# 追加阶段：Gameplay 主线强化（2026-09-11）
 
-构建日志与基线在系统临时目录 kb-architecture-resume-20260908-100509；扫描双环境日志在 kb-scope-check-20260908-101250；5.1 兼容加载日志在 kb-ps51-utf8-20260908-101342。代码、文档和机器清单在仓库内，临时日志不是知识正文。
+## Goal
 
-配置已通过静态检查，但未实测当前宿主加载新角色；不把文件存在视作工具权限或运行时已生效。
+按用户指令"重点强化完善 Gameplay 工程师需要的部分"：把 Gameplay 工程师最依赖但此前"只有结论没有证据"的四类机制做成**可编译运行**的测试与基准，并据此把缺失的背包道具链路补成有证据的纵向链路。
+
+## 前置结论修正
+
+上一阶段记录"本机无可用 C++ 工具链，无法产出 DoD 要求的可运行 Evidence"。本阶段复核后**撤销该结论**：
+
+- `C:\msys64\mingw64\bin\g++.exe` 为 MinGW-w64 g++ 16.1.0，把该目录加入 PATH 后可正常编译运行；
+- 先前失败的真实原因是 MinGW g++ 找不到 `cc1plus`/运行库，且宿主 PowerShell 不能派生原生进程；Bash 可以。
+
+## Scope
+
+| Action | Exact scope | Owner | Confidence |
+| --- | --- | --- | --- |
+| Create | `evidence/tests/gameplay-core/`（src×4、scripts×2、results×4、README） | 主线程 | 0.95 |
+| Create | `系统实战/05-背包道具完整链路.md`（L4） | 主线程 | 0.9 |
+| Edit | `系统实战/03`、`04` 增加本机证据小节；`系统实战/README`、根 `README`、`references/仓库结构.md` 同步 | 主线程 | 0.95 |
+| Fix | `.workbuddy/` 排除出知识扫描范围（`.gitignore` + `architecture.json` + `get_kb_markdown.ps1`） | 主线程 | 0.95 |
+| Rebuild | `.kb/manifest.yaml`（589 篇） | 主线程 | 1.0 |
+| Update | `.kb/decisions.md`(KD-027)、`.kb/audit.md`、`.kb/review-queue.md`、`learning/log.md`、`log.md`、`方案/*` | 主线程 | 0.95 |
+
+## Verification
+
+- 断言：inventory 7/7、buff 12/12、skill 10/10、属性一致性 400 抽样 mismatch=0。
+- 指标：背包 P50=100ns/P95=200ns/P99=200ns、≈9.76e6 ops/s；属性聚合 P50 加速 7.47x（全量 1756.0µs → 增量 234.9µs）。
+- 门禁（等价复现，589 篇）：全部 0，成熟度分布 L2=304 / L3=7 / L4=7 / L5=1。
+- 未验证边界：多线程竞争、持久化、网络复制、DS 容量、UE GAS 运行时集成。
+
+## Remaining
+
+按执行方案 W1/W2/W4 继续：W2 的 SpatialQuery / 动态分线 / 大规模战斗，W4 的 DS 上线完整链路，以及把 W1 基础层 8 篇按"正文 + `evidence/labs/*`"成对交付（工具链已可用，Evidence 不再受阻塞）。
+
+---
+
+# 追加阶段二：伤害与属性结算（2026-09-11）
+
+## Goal
+
+把伤害结算从"技能链路的一个步骤"提升为独立链路并配可运行证据，延续"正文 + 证据"成对交付。
+
+## Scope
+
+| Action | Exact scope | Owner | Confidence |
+| --- | --- | --- | --- |
+| Create | `evidence/tests/damage-core/`（src、scripts×2、results、README） | 主线程 | 0.94 |
+| Create | `系统实战/11-伤害与属性结算完整链路.md`（L4，332 行） | 主线程 | 0.9 |
+| Edit | `系统实战/03` 反向链接与分工声明；`系统实战/README`（10→11 条）、根 `README`、`references/仓库结构.md`、`evidence/README.md`、`方案/*` | 主线程 | 0.95 |
+| Rebuild | `.kb/manifest.yaml`（591 篇） | 主线程 | 1.0 |
+| Update | `.kb/decisions.md`(KD-028)、`.kb/audit.md`、`.kb/review-queue.md`、`learning/log.md`、`log.md` | 主线程 | 0.95 |
+
+## Verification
+
+- 断言：`damage_pipeline` pass=15 fail=0。
+- 指标：单次结算 P50=14.2ns / P95=16.3ns / P99=16.8ns，吞吐 ≈7.72×10⁷ 次/秒；同种子重放哈希一致。
+- 门禁（等价复现，591 篇）：全部 0，成熟度分布 L2=304 / L3=7 / **L4=8** / L5=1。
+- 未验证边界：UE GAS 集成、并发结算、跨服重放、线上容量、项目策划公式标定。
+
+## Remaining
+
+同上一阶段的 Remaining：W2 三篇（SpatialQuery / 动态分线 / 大规模战斗）、W4 的 DS 上线完整链路、W1 基础层 8 篇；以及 `系统实战` 当时还剩的 01 进入游戏 / 06 匹配到对局 / 08 AOI 与大规模场景 / 10 性能问题定位 四条规划链路（其中 10 已在阶段三完成、01 已在阶段四完成）。
+
+---
+
+# 追加阶段三：性能问题定位（2026-09-11）
+
+## Goal
+
+把性能定位从方法速查提升为纵向链路，并量化插桩样式开销，使"热路径别打日志"这类经验变成可计算的预算决策。
+
+## Scope
+
+| Action | Exact scope | Owner | Confidence |
+| --- | --- | --- | --- |
+| Create | `evidence/labs/profiling/`（src×2、scripts×2、results×2、README） | 主线程 | 0.95 |
+| Create | `系统实战/10-性能问题定位完整链路.md`（L4，329 行） | 主线程 | 0.9 |
+| Edit | `系统实战/05`、`11` 增加度量口径链接；`系统实战/README`（10 号转已完成）、根 `README`、`references/仓库结构.md`、`evidence/README.md`、`方案/*` | 主线程 | 0.95 |
+| Rebuild | `.kb/manifest.yaml`（593 篇） | 主线程 | 1.0 |
+| Update | `.kb/decisions.md`(KD-029)、`.kb/audit.md`、`.kb/review-queue.md`、`learning/log.md`、`log.md` | 主线程 | 0.95 |
+
+## Verification
+
+- 断言：`profiling_overhead` 7/7、`hitch_and_budget` 10/10。
+- 指标：0.33 ns 计数 ↔ 309.9 ns 日志（≈940 倍）；热路径 100 000 次/帧下日志占预算 185.82%、计时 30.14%、采样 0.58%；卡顿 12 事件 / 0 误报；降级无抖动；记账 1.7 ns/Tick。
+- 门禁（等价复现，593 篇）：全部 0，成熟度分布 L2=304 / L3=7 / **L4=9** / L5=1。
+- 未验证边界：UE Insights/Trace、Linux perf、GPU 侧、真机与线上分档。
+
+## Remaining
+
+`系统实战` 还剩 06 匹配到对局 / 08 AOI 与大规模场景 两条规划链路；W2 三篇、W4 DS 上线链路、W1 基础层 8 篇待推进。
+
+---
+
+# 追加阶段四：角色进入游戏链路（2026-09-11）
+
+## Goal
+
+把"启动 → 票据 → 幂等 → 分配 → 旅行 → 二次鉴权 → Spawn → 追赶 → 就绪 → 回滚"串成纵向闭环，并用本机可运行证据固化四类机制：票据密码学、状态机幂等与回滚、DS 租约与栅栏令牌、JIP 状态追赶。
+
+## Scope
+
+| Action | Exact scope | Owner | Confidence |
+| --- | --- | --- | --- |
+| Create | `evidence/tests/entry-core/`（src×4、scripts×2、results×4、README） | 主线程 | 0.95 |
+| Create | `系统实战/01-角色进入游戏完整链路.md`（L4） | 主线程 | 0.9 |
+| Edit | `系统实战/README`（01 转已完成，共 8 条落地）、根 `README`、`references/仓库结构.md`、`evidence/README.md`、`方案/知识体系完善执行方案.md`（W3/W4） | 主线程 | 0.95 |
+| Rebuild | `.kb/manifest.yaml` | 主线程 | 1.0 |
+| Update | `.kb/decisions.md`(KD-030)、`.kb/audit.md`、`.kb/review-queue.md`(W4-ENTRY-01)、`learning/log.md`、`log.md` | 主线程 | 0.95 |
+
+## Verification
+
+- 断言：`entry_ticket` 24/24、`entry_session` 27/27、`ds_allocator` 20/20、`jip_resync` 12/12（合计 83）。
+- 密码学：SHA-256 对 FIPS 180-4（空串 / `abc` / 56 字节填充边界）、HMAC-SHA256 对 RFC 4231 TC1/TC2/TC3/TC6 逐字匹配。
+- 基准：JIP 追赶 p50 6.510 / 117.960 / 2104.845 µs（2 000 / 20 000 / 200 000 实体），全量快照 p50 1.300 / 25.200 / 1941.100 µs；带宽节省 1.00× / 1.00× / 10.00×。
+- 门禁（等价复现，596 篇）：全部 0，成熟度分布 L2=304 / L3=7 / **L4=10** / L5=1。
+- 本轮修正：① 状态机失败未中断链路（真实缺陷）；② JIP 乱序包丢弃语义；③ 基准对有序日志多余排序（66.6µs → 6.5µs）。
+- 未验证边界：真实网关/DB/DS 平台、并发与弱网、密码学侧信道。
+
+## Remaining
+
+`系统实战` 还剩 06 匹配到对局 / 08 AOI 与大规模场景 两条规划链路；W2 三篇、W4 DS 上线链路、W1 基础层 8 篇待推进。

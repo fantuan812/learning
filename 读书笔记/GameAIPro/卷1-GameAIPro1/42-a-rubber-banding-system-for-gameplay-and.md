@@ -490,3 +490,4 @@ public:
             if (Veh.CurrentLap > ForemostPlayerLap)
             {
                 Out = FRubberBandingOutput{1.0f, 1.0f, 1.0
+```

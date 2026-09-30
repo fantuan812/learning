@@ -22,6 +22,7 @@ updated: 2026-09-07
 | --- | --- | --- | --- | --- |
 | **《游戏引擎架构》（Game Engine Architecture）** | Jason Gregory | 第4版（全2卷） | **全书完结**（全2卷共18章已基于 Gemini 3.8 Flash 多模态视觉重构完成） | [游戏引擎架构/](游戏引擎架构/README.md) |
 | **《Game AI Pro》工业级游戏AI技术专栏** | Steve Rabin 主编 | 全4卷（全146章完整收录） | **全书完结**（全4卷已基于官网官方 PDF 端到端视觉多模态重构完成） | [GameAIPro/](GameAIPro/README.md) |
+| **《游戏编程模式》（Game Programming Patterns）** | Robert Nystrom (Bob Nystrom) | 官方权威中文版 | **全书完结**（全6大体系共27章完整Markdown复刻，含全部高清图表与C++实现） | [游戏编程模式/](游戏编程模式/README.md) |
 
 ## 专栏体系与多模态视觉重构管线
 

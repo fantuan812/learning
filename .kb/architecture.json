@@ -37,7 +37,7 @@
       "entrypoints": [".agents/README.md", ".codex/README.md", "scripts/check_architecture.ps1", "scripts/check_repo.ps1"]
     }
   ],
-  "excluded_roots": [".git", ".obsidian", ".img-work", ".okf-selftest", ".kb_work", ".py_libs"],
+  "excluded_roots": [".git", ".obsidian", ".img-work", ".okf-selftest", ".kb_work", ".py_libs", ".workbuddy"],
   "contracts": {
     "agent_entry": "AGENTS.md",
     "collaboration": "references/agent协作与发布规则.md",

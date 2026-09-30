@@ -585,7 +585,6 @@ bool IsPathRequestValid(const Vector2& startPos, const Vector2& targetPos)
                                                 │
                                                 ▼
 [阶段 3: 梯度导流提取 (Flow Vector)] ───► 读取相邻积分场差分，写入只读流场
-```
 
 由于**积分场（Integration Field）**的存储结构与其他业务逻辑完全物理隔离，其在计算波前传播时只读取本扇区内部的通行代价图（Cost Field）与边界门户代价。各个扇区分块的积分运算具备极高的局部独立性，系统可以直接将其打包为并行工作任务（Jobs），分派给多核 CPU 的 Worker 线程并发执行，无需加全局互斥锁。
 

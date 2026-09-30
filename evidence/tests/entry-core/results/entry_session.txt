@@ -1,0 +1,65 @@
+# evidence   : tests/entry-core/entry_session
+# generated  : 2026-09-11T11:53:30+0800
+# host       : MINGW64_NT-10.0-26200 x86_64 (cores=16)
+# target     : x86_64-w64-mingw32
+# compiler   : g++.exe (Rev6, Built by MSYS2 project) 16.1.0
+# command    : g++ -std=c++17 -O2 -Wall -o build/entry_session.exe src/entry_session.cpp && ./build/entry_session.exe
+#
+== entry_session: 进入游戏·会话状态机证据 ==
+   auth -> allocate -> travel -> load -> spawn -> ready
+
+PASS  E1 auth -> allocate -> travel -> load -> spawn reaches Ready
+        Idle -> Authenticated -> Allocated(ds-1,new) -> Traveling(ds-1) -> Loaded -> Ready
+PASS  E2 exactly one DS slot is held after a successful entry
+        ds=ds-1 load=1
+PASS  E3 transition log has 6 nodes (Idle + 5 states), no extra writes
+        6 nodes
+PASS  E4 replaying the same requestId returns the same session, not a new one
+        ds=ds-1 load=1
+PASS  E5 idempotent replay does not leak a DS slot
+        load=1
+PASS  E6 re-entering with a NEW requestId reuses the existing DS assignment
+        ds=ds-1 load=1
+PASS  E7 the idempotency table short-circuits the second identical request
+        idempotent hits=1 audit entries=14
+PASS  E8 a flaky travel step retries and still reaches Ready
+        travel attempts=3
+PASS  E9 retries do not accumulate DS slots
+        load=1
+PASS  E10 exhausting retries on travel fails the entry
+        reason=Travel:timeout-after-3
+PASS  E11 a failed entry releases the DS slot (no leak)
+        load=0
+PASS  E12 the session is marked rolled back so the lease is not double-released
+PASS  E13 a rejected credential is not retried (1 attempt only)
+        auth attempts=1
+PASS  E14 a rejected entry never touched the DS pool
+        load=0
+PASS  E15 failure at the Spawn step also rolls back the allocation
+        reason=Spawn:reject load=0
+PASS  E16 rollback is the last transition, so the log shows the cleanup
+        Idle -> Authenticated -> Allocated(ds-1,new) -> Traveling(ds-1) -> Loaded -> Rollback(released)
+PASS  E17 four DS x capacity 2 = 8 concurrent players
+        load=8
+PASS  E18 the 9th player is refused with no_capacity instead of over-selling
+        reason=no_capacity load=8
+PASS  E19 capacity refusal is a business result, not a crash
+        Idle -> Authenticated -> Failed(no_capacity)
+PASS  E20 after a slot frees up the same player can enter on a retry
+        ds=ds-1 load=8
+PASS  E21 cancelling an already-Ready session is a no-op (player is in the match)
+        state=Ready
+PASS  E22 a player with an existing assignment takes the reconnect fast path
+        ds=ds-1 reconnect=true
+PASS  E23 aborting mid-entry rolls back and frees the DS slot
+        reason=cancelled load=0
+PASS  E24 the abort is visible in the transition log
+        Idle -> Authenticated -> Allocated(ds-1,new) -> Traveling(ds-1) -> Rollback(released)
+PASS  E25 an aborted entry never reaches the Spawn step
+        spawn attempts=0
+PASS  E26 the audit log records each step attempt with its outcome
+        timeout entries=1, audit=7
+PASS  E27 one logical entry produces exactly one 'enter' record (no duplicate sessions)
+
+RESULT pass=27 fail=0
+# exit_code  : 0

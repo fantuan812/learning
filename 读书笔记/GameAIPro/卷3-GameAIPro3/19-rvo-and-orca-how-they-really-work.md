@@ -890,7 +890,6 @@ private:
       ├─ 静态拐角 (Cornering)       ├─ Classical RVO                 ├─ 零穿透硬性约束
       ├─ 瓶颈对冲 (Hallway Swap)    ├─ ORCA Relaxation               ├─ 吞吐耗时与到达率
       └─ 高密挤压 (Crowd Squeeze)   └─ Biomechanical Soft-Utility    └─ 动量高频震荡指标
-```
 
 ### 6.1 典型避障场景测试用例库（Scenario Library）
 

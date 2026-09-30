@@ -1,0 +1,24 @@
+# evidence   : tests/gameplay-core/inventory_txn
+# generated  : 2026-09-11T10:29:15+0800
+# host       : MINGW64_NT-10.0-26200 x86_64 (cores=16)
+# target     : x86_64-w64-mingw32
+# compiler   : g++.exe (Rev6, Built by MSYS2 project) 16.1.0
+# command    : g++ -std=c++17 -O2 -o build/inventory_txn.exe src/inventory_txn.cpp && ./build/inventory_txn.exe
+#
+gameplay-core | inventory transaction test suite
+compiler=16.1.0 c++17 O2
+--------------------------------------------------------------------------
+PASS  T1 basic stacking splits into new slot         count=150 stacks=2 used=2
+PASS  T2 tops up existing stack before new slot      slot0=99 slot1=41 total=140
+PASS  T3 capacity exhaustion is atomic (no partial write) ok=0 unchanged=1 reason=capacity-exhausted-rolled-back
+PASS  T4 duplicate requestId is deduplicated         total=10 secondReason=duplicate-request-idempotent
+PASS  T5 invalid item/count/batch rejected without mutation zero=0(invalid-count) neg=0 big=0 badItem=0
+PASS  T6 partial removal frees emptied slot          left=30 used=1
+PASS  T7 removal above owned amount rejected         ok=0 left=10
+
+[bench] inventory_transaction slots=40 ops=400000
+[bench] latency_ns p50=100 p95=200 p99=300 max=152400 mean=108
+[bench] throughput_ops_per_sec=9288307 checksum=8240384
+--------------------------------------------------------------------------
+RESULT pass=7 fail=0
+# exit_code  : 0

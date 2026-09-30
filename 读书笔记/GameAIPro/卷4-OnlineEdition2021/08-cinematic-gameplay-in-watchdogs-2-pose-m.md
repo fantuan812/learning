@@ -560,3 +560,4 @@ $$\text{Ready}(A) = \bigwedge_{e \in \mathcal{I}(A)} \Big( \text{Status}(e.\text
 [SWAT 突击队]     : [ 入侵准备 ] ---> [ 破门突入块 (Room Entrance) ]         |
                                              |                              v
                                       (喊话
+```

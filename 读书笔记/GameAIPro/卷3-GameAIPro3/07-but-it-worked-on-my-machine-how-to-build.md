@@ -419,7 +419,6 @@ class TacticalArbitrationSystem:
   [ 阶段 4: 全局异构渗透测试 ]  ─────────────────────────────────────┘
   (Global Unintended Cascading)
   修改单一原型参数（如扩展视野感知盒 Vision Box），审查全图多原型间隐式耦合。
-```
 
 ### 4.1 渐进式故障注入测试四阶段模型
 
