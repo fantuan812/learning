@@ -79,8 +79,8 @@ documents:
   "00-计算机与工程基础/01-C++核心/01-C++对象生命周期与RAII.md":
     kind: doc
     maturity: L2
-    bytes: 18978
-    lines: 346
+    bytes: 32406
+    lines: 519
   "00-计算机与工程基础/01-C++核心/02-Copy-Move与值语义.md":
     kind: doc
     maturity: L3
@@ -89,8 +89,8 @@ documents:
   "00-计算机与工程基础/01-C++核心/README.md":
     kind: README
     maturity: L2
-    bytes: 3392
-    lines: 57
+    bytes: 3976
+    lines: 61
   "00-计算机与工程基础/02-C++对象模型与内存/01-对象布局、虚函数与内存分配.md":
     kind: doc
     maturity: L2
@@ -384,8 +384,8 @@ documents:
   "00_Index/axes/跨域主题.md":
     kind: doc
     maturity: L2
-    bytes: 11022
-    lines: 98
+    bytes: 11724
+    lines: 104
   "00_Index/domains/README.md":
     kind: README
     maturity: L2
