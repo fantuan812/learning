@@ -384,8 +384,8 @@ documents:
   "00_Index/axes/跨域主题.md":
     kind: doc
     maturity: L2
-    bytes: 11724
-    lines: 104
+    bytes: 12469
+    lines: 110
   "00_Index/domains/README.md":
     kind: README
     maturity: L2
@@ -749,8 +749,8 @@ documents:
   "游戏服务端/01-架构与网络/02-网络通信与协议设计.md":
     kind: doc
     maturity: L2
-    bytes: 32090
-    lines: 585
+    bytes: 40753
+    lines: 663
   "游戏服务端/01-架构与网络/03-帧同步与状态同步.md":
     kind: doc
     maturity: L2
@@ -769,7 +769,7 @@ documents:
   "游戏服务端/01-架构与网络/README.md":
     kind: README
     maturity: L0
-    bytes: 6319
+    bytes: 6457
     lines: 115
   "游戏服务端/02-数据与业务/01-数据库选型与存储设计.md":
     kind: doc
