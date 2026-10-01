@@ -749,8 +749,8 @@ documents:
   "游戏服务端/01-架构与网络/02-网络通信与协议设计.md":
     kind: doc
     maturity: L2
-    bytes: 40753
-    lines: 663
+    bytes: 45845
+    lines: 749
   "游戏服务端/01-架构与网络/03-帧同步与状态同步.md":
     kind: doc
     maturity: L2
