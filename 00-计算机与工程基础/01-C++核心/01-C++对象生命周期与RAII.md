@@ -92,7 +92,7 @@ struct Derived : Base {
 
 推论（工程上最常踩的坑）：
 
-- 构造函数里**成员初始化列表顺序必须与声明顺序一致**，否则有未初始化读风险（`-Wreorder` 类警告的由来）。
+- 构造函数里**成员初始化列表应与声明顺序一致**；实际顺序始终由声明决定，误以为列表能重排依赖会有未初始化读风险（`-Wreorder` 类警告的由来）。
 - 析构函数里**不能调用虚函数期望派生态**：析构时派生部分已销毁，虚调用落到当前类的实现。
 - 基类析构不是 `virtual` 时，通过基类指针 `delete` 派生对象是未定义行为（UE `UObject` 的析构被 GC 统一管理，与此不同，见 3.6）。
 
@@ -123,6 +123,8 @@ RAII的主要收益与前提：
 - **正常作用域退出与栈展开统一释放**：`return`、异常展开、`break`/`continue`、离开作用域的 `goto` 会析构已构造对象；手写 `close()` 在每个提前返回点都要补一遍，漏一处就是泄漏。
 - **释放顺序确定**：逆序析构保证"后获取的先释放"，天然满足锁、嵌套缓冲区的释放顺序要求。
 - **异常安全的基础**：栈展开会完整析构已构造的局部对象，由已完成构造的RAII成员持有的资源可被回收；若构造函数取得裸资源后再抛异常，该对象自身析构不会运行，必须让成员守卫先接管。
+
+RAII依赖正常作用域退出/栈展开；进程崩溃、强制终止、abort/_Exit等路径不会因此自动释放所有局部资源。`noexcept`违规终止也不能作为可恢复异常路径测试。
 
 ### 3.4 异常安全三档保证
 
@@ -191,6 +193,7 @@ class SessionGuard {
 public:
     SessionGuard(Server& server, uint64 id)
         : s_(server.AcquireSession(id)) {          // 获取：登记会话、启动心跳
+        if (!s_) throw std::runtime_error("session acquisition failed");
     }
     ~SessionGuard() noexcept {
         if (s_) s_->server.ReleaseSessionNoThrow(s_->id); // 仅不抛的本地释放合同
@@ -209,6 +212,39 @@ public:
 - **心跳/定时器**：注销只能按具体API合同阻止未来派发，已排队/执行中的回调可能仍存在。先撤销逻辑写回资格，再取消并等待安全完成或让共享任务状态独立存活，不能注销后立刻假定裸this安全。
 - **数据库事务**：`Begin → 操作 → Commit/Rollback` 用 guard 表达"析构时未 Commit 则 Rollback"，天然覆盖所有提前返回路径（见 4.4）。
 - **登出顺序**：停止接收新操作、撤销写回资格、完成业务保存/重试协议、收敛后台任务，再释放资源；落库与广播应由显式可报告失败的流程负责，析构顺序本身不证明这些操作成功。上述Session/Server是接口示意，Acquire失败与ReleaseSessionNoThrow合同须由真实实现定义。
+
+### 3.8 活着、线程安全、结果仍适用，是三份合同
+
+| 问题 | 能提供的机制 | 不能据此推出 |
+| --- | --- | --- |
+| 对象是否仍活着 | RAII拥有者、shared_ptr强引用、weak_ptr::lock成功 | 对象字段可无锁并发读写 |
+| 读写是否同步 | mutex、正确原子协议、线程归属 | 本次异步结果还对应当前目标/会话 |
+| 结果是否仍适用 | RequestId/Generation/Revision与关闭状态检查 | 工作线程已退出或资源已可回收 |
+
+不要先`if (!weak.expired())`再使用另一路裸指针：检查和使用之间对象可能结束。应将一次[weak_ptr::lock](https://eel.is/c%2B%2Bdraft/util.smartptr.weak.obs)的结果保存在局部strong handle并判空；它保证持有期间的共享对象生命期，不自动保护成员，也不禁止会话在逻辑上关闭。
+
+异步捕获的选择要显式：
+
+- 捕获裸`this`/引用：任务可能比调用栈或对象活得久，必须由外部完成屏障证明安全。
+- 捕获独立数据快照：工作只读值；拥有者销毁不会使该快照悬垂，但快照可能过期。
+- 捕获shared_ptr：延长被捕获状态寿命，可能把最终析构推到工作线程。带线程亲和资源的对象不能因此随便跨线程销毁，还要防对象→任务→对象的强引用环。
+- 捕获weak_ptr：执行时尝试获得临时所有权；失败则放弃。成功后仍检查业务代次和关闭状态。UE的TWeakObjectPtr不能直接等同这一套引用计数合同。
+
+共享引用计数的同步也不保证“最后一个strong handle在哪个线程释放”。析构若访问世界、UI或线程绑定资源，应显式把收尾安排到正确线程，同时避免该线程join一个还在等待它执行收尾的任务。
+
+### 3.9 取消请求不等于完成确认
+
+`Cancel/StopRequested`表示不再需要结果或请求停止；`Stopped/Joined/Completed`才可能建立安全回收所需的事实，具体以API合同为准。一个取消标志不会中断所有阻塞IO，不会自动移除已排队回调，也不会让捕获的引用突然安全。
+
+```text
+停止接收新任务 → 撤销旧结果接纳资格 → 请求协作停止/唤醒等待
+→ 等待已定义的完成屏障，或转移到独立任务状态继续存活
+→ 在正确线程释放资源
+```
+
+`std::thread`对象析构时若仍joinable，会按[标准合同](https://eel.is/c%2B%2Bdraft/thread.thread.destr)终止程序；线程函数自然返回也不会自动把句柄变为非joinable。RAII join守卫可以防忘记汇合，却不保证等待时间上界。不能从工作线程join自身，不能持有工作线程退出所需的锁去join，也不能在GameThread等一个依赖GameThread continuation的任务。
+
+C++20的jthread/stop_token可简化部分样板，仍是协作停止，不强杀工作；本页可运行例子只用C++11。队列的结果接纳字段已在[AI预算主文](../../游戏服务端/06-世界模拟与运行时/11-AI与寻路时间预算.md)定义，这里只负责所有权与停止确认，避免复制第二份协议。实际线程池drain/cancel语义继续看[线程同步与锁](../04-C++并发与内存模型/02-线程同步与锁.md)。
 
 ## 4. 示例
 
@@ -302,6 +338,90 @@ void grant_item(Db& db, uint64 player, uint64 item) {
 
 这是调用结构示意，不是分布式事务或数据库提交成功的证明。若Commit已在服务端生效但响应丢失，客户端异常并不等于未提交；RollbackNoThrow也不能撤销已提交业务。需查询/幂等与数据库合同，不能仅凭RAII宣称所有外部副作用获得强异常保证。
 
+### 4.5 停止确认与独立状态（C++11，可编译运行）
+
+下面是**生命周期同步实验**，不是线程池或生产任务系统。拥有者在创建它的控制线程使用/销毁，工作线程只捕获独立state。测试用条件变量确认启动，不靠sleep猜时序。
+
+```cpp
+#include <cassert>
+#include <condition_variable>
+#include <memory>
+#include <mutex>
+#include <thread>
+#include <iostream>
+
+struct TaskState {
+    std::mutex mutex;
+    std::condition_variable changed;
+    bool started=false, stop=false, exited=false;
+};
+class JoiningTask {
+    std::shared_ptr<TaskState> state_;
+    std::thread worker_;
+public:
+    JoiningTask() : state_(std::make_shared<TaskState>()) {
+        const std::shared_ptr<TaskState> state=state_;
+        worker_=std::thread([state] { // C++11按值捕获；没有裸this
+            std::unique_lock<std::mutex> lock(state->mutex);
+            state->started=true;
+            state->changed.notify_all();
+            state->changed.wait(lock,[state] { return state->stop; });
+            state->exited=true; // 实际工作还要处理异常/IO/资源释放合同
+        });
+    }
+    void waitStarted() {
+        std::unique_lock<std::mutex> lock(state_->mutex);
+        state_->changed.wait(lock,[this] { return state_->started; });
+        // 此谓词只在同步成员调用期间使用，不排队到异步任务。
+    }
+    void requestStop() {
+        {
+            std::lock_guard<std::mutex> lock(state_->mutex);
+            state_->stop=true;
+        }
+        state_->changed.notify_all();
+    }
+    std::shared_ptr<TaskState> observe() const { return state_; }
+    ~JoiningTask() noexcept {
+        requestStop();
+        if (worker_.joinable()) worker_.join(); // 不持有state mutex，禁止自join
+    }
+    JoiningTask(const JoiningTask&)=delete;
+    JoiningTask& operator=(const JoiningTask&)=delete;
+    JoiningTask(JoiningTask&&)=delete;
+    JoiningTask& operator=(JoiningTask&&)=delete;
+};
+int main() {
+    std::shared_ptr<TaskState> observer;
+    std::weak_ptr<TaskState> weak;
+    {
+        JoiningTask task;
+        observer=task.observe(); weak=observer;
+        task.waitStarted();
+        {
+            std::lock_guard<std::mutex> lock(observer->mutex);
+            assert(observer->started);
+            assert(!observer->exited); // 还没请求stop，工作线程正在等待
+        }
+        task.requestStop(); // 只提出请求；此处不声称已经退出
+    } // 析构请求停止并join；以下读取发生在完成屏障之后
+    assert(observer->exited);
+    assert(!weak.expired()); // 独立状态仍由测试观察者持有
+    observer.reset();
+    assert(weak.expired()); // 无隐藏强引用环或遗留线程状态
+    std::cout << "PASS: 5 joining-ownership assertions\n";
+}
+```
+
+```bash
+g++ -std=c++11 -pthread -Wall -Wextra -Werror -pedantic joining_ownership.cpp -o joining_ownership
+./joining_ownership
+g++ -std=c++11 -pthread -Wall -Wextra -Werror -pedantic -fsanitize=undefined -fno-sanitize-recover=all joining_ownership.cpp -o joining_ownership_ubsan
+./joining_ownership_ubsan
+```
+
+前提：拥有者成员函数/析构不被多线程并发调用，也不会在工作线程销毁；测试中的mutex/cv/join正常工作。代码没有捕获并传播工作异常，没有一般IO取消，没有超时join。系统同步调用若抛出且逃出线程函数或noexcept析构会终止，生产实现应另定故障政策。`exited`在join后读取安全，不代表任意线程可随时无锁读取该字段；UBSan通过也不是数据竞争不存在的证明，ThreadSanitizer/目标调度压力验证另做。
+
 ## 5. 最佳实践
 
 1. **资源一律 RAII**：锁、文件、套接字、句柄、GPU 资源、数据库连接；禁止裸 `new`/`delete` 配对出现在业务代码。
@@ -341,13 +461,13 @@ void grant_item(Db& db, uint64 player, uint64 item) {
 语义类似（观察不拥有），机制不同：前者靠 GC 的 `IsValid()` 判断对象是否已被回收，后者靠控制块强/弱计数。
 
 **Q6：局部静态对象的析构顺序和全局对象有关吗？**
-局部静态在首次执行时构造、按构造逆序析构，且与全局静态析构顺序交错；跨编译单元初始化顺序本身未定义，避免依赖。
+局部静态在首次执行时构造、按构造逆序析构，且与全局静态析构顺序交错；跨翻译单元动态初始化顺序有复杂的排序/延迟规则，不应依赖未经证明的相对先后；这不等于所有初始化都触发未定义行为。
 
 **Q7：为什么基类析构要 `virtual`？**
 在本篇C++11普通delete场景，通过基类指针删除派生对象而基类析构非虚是未定义行为，不只是“少调用派生析构”。按[C.35](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Rc-dtor-virtual)，允许经基类销毁时使用public virtual析构；禁止这种销毁时可用protected non-virtual析构。不是所有允许派生的类都必须虚析构。
 
 **Q8：局部静态对象初始化线程安全吗？**
-C++11 起"magic statics"保证局部静态的首次初始化是线程安全的（编译器生成 guard）。跨编译单元初始化顺序仍未定义，所以不要把依赖初始化顺序的全局对象写成普通全局。
+C++11 起"magic statics"保证局部静态的首次初始化是线程安全的（编译器生成 guard）。这只保护首次初始化，不保护初始化后的成员访问；跨翻译单元动态初始化依赖仍需单独设计。
 
 **Q9：UE 的 `TSharedPtr` 与 `std::shared_ptr` 线程安全一样吗？**
 不应一概而论。UE [ESPMode](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Core/ESPMode?lang=en-US)区分NotThreadSafe与ThreadSafe，跨线程共享须选合适模式；不要假定所有TSharedPtr的计数都是线程安全的。标准shared_ptr不同句柄可并发管理同一控制块，但同一句柄的冲突读写仍需同步/对应标准版本的原子接口。两者都不自动保护所指对象字段，也不授予业务写回资格。UObject的弱引用/GC另有合同。
@@ -369,6 +489,22 @@ cl /nologo /utf-8 /std:c++17 /EHsc scope_guard.cpp /Fe:scope_guard.exe
 .\scope_guard.exe   # 预期输出 PASS: 3 scope-guard assertions
 ```
 
+### 7.1 本次实验与下一层验证
+
+- 2026-10-01：原ScopeGuard节选在GCC14.2 C++17编译报缺少utility；替换例以C++11通过正常释放/dismiss/异常展开3条断言。
+- 4.5以真实std::thread/condition_variable验证启动、停止后join、状态所有权与最终释放5条断言；没有依赖sleep或执行线程不受控的detach。
+- 两例严格警告编译与UBSan通过；仅支持列出的路径。没有完成UE编译、生产数据库提交失败注入、通用线程池取消或TSan验证。
+
+| 后续故障场景 | 要证明的合同 |
+| --- | --- |
+| 构造中途失败 | 只有已构造成员自动清理；裸资源先有守卫 |
+| 任务排队后会话关闭 | 存活状态与业务写回资格分开，旧回调不得提交 |
+| 工作线程正在等待UI/GameThread | 关闭流程不在同一线程同步等待这个依赖 |
+| 最后强引用在后台释放 | 线程亲和资源不会在错误线程析构 |
+| 数据库提交响应丢失 | 显式unknown结果与幂等查询，不由析构假定回滚成功 |
+
+保持maturity L2和verified空列表；这些实验不把整个生命周期/并发知识域提升为已验证。
+
 ## 8. 关联阅读
 
 - [02-Copy-Move与值语义](02-Copy-Move与值语义.md)：特殊成员函数、移动语义与容器扩容（含本机实验）。
@@ -376,3 +512,8 @@ cl /nologo /utf-8 /std:c++17 /EHsc scope_guard.cpp /Fe:scope_guard.exe
 - [游戏知识/01-引擎基础](../../游戏知识/01-引擎基础/README.md)：UObject/反射/World 生命周期。
 - [游戏知识/12-引擎源码分析](../../游戏知识/12-引擎源码分析/README.md)：UObject/GC 源码深度。
 - [游戏服务端/01-架构与网络](../../游戏服务端/01-架构与网络/README.md)：服务端连接/会话生命周期的 RAII 实践。
+
+- [Smart Pointers in Unreal Engine](https://dev.epicgames.com/documentation/en-us/unreal-engine/smart-pointers-in-unreal-engine)：可选线程安全模式与普通对象所有权
+- [C++异常规格](https://eel.is/c%2B%2Bdraft/except.spec)：析构异常规格的推导与非抛出承诺
+- [AI与寻路时间预算](../../游戏服务端/06-世界模拟与运行时/11-AI与寻路时间预算.md)：取消之后的代次、deadline与结果接纳
+- [UE多线程回写边界](../../游戏知识/01-引擎基础/11-多线程与任务系统.md)：引擎线程亲和与回调生命周期
