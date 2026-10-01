@@ -4,7 +4,7 @@ title: "01 引擎基础"
 status: stable
 verified: []
 maturity: L2
-updated: 2026-08-20
+updated: 2026-10-01
 ---
 
 # 01 引擎基础
@@ -35,7 +35,7 @@ updated: 2026-08-20
 | [02-Actor与Component生命周期.md](02-Actor与Component生命周期.md) | Concept | L2 | Actor 生成注册、BeginPlay 延迟触发条件、Component 挂接与变换更新、Tick 组依赖与优雅销毁流程 |
 | [03-Gameplay框架与游戏模式.md](03-Gameplay框架与游戏模式.md) | Concept | L2 | GameMode/GameState/PlayerController/PlayerState 职责边界、玩家登录握手、Possess 流程与状态机 |
 | [04-引擎启动流程与模块架构.md](04-引擎启动流程与模块架构.md) | Concept | L2 | 引擎 PreInit→Init→LoadMap 完整启动时序、LoadingPhase 加载阶段、模块接口与自定义插件工程实践 |
-| [05-场景组件与变换体系.md](05-场景组件与变换体系.md) | Concept | L2 | USceneComponent 层次变换树、AttachToComponent 规则、Socket 骨骼挂点、脏变换更新与批量计算 |
+| [05-场景组件与变换体系.md](05-场景组件与变换体系.md) | Concept | L2 | 组件空间合同、FTransform 组合与非均匀缩放边界、Socket、Sweep/Teleport 与物理驱动切换 |
 | [06-定时器与引擎Ticker.md](06-定时器与引擎Ticker.md) | Concept | L2 | FTimerManager 最小堆管理、循环与单次定时器、时间膨胀（TimeDilation）影响与 FTSTicker 跨帧调度 |
 | [07-World关卡与Subsystem体系.md](07-World关卡与Subsystem体系.md) | Concept | L2 | UWorld 运行时组成、Engine/Editor/GameInstance/World/LocalPlayer 五大生命周期 Subsystem 架构设计 |
 | [08-关卡流送LevelStreaming.md](08-关卡流送LevelStreaming.md) | Concept | L2 | 传统 LevelStreaming 方案、Persistent 关卡与子关卡、流送体积（StreamingVolume）、异步加载与卸载 |
@@ -84,3 +84,7 @@ flowchart TD
 - **横向协同（玩法与网络）**：
   - 玩法能力扩展：[03-游戏玩法编程](../03-游戏玩法编程/README.md)
   - 多人复制机制：[06-网络同步](../06-网络同步/README.md)
+
+## 6. 从空间概念到可验证结果
+
+[05 场景组件与变换体系](05-场景组件与变换体系.md)新增空间/单位/采样时刻合同、非均匀缩放的独立 C++11 反例和物理切换验收。先证明点、方向、法线各自如何变换，再比对 UE 的实际表示与调用合同；数学模型通过不代表 Chaos 或动画运行已经验证。向后连接[骨骼与资产基础](../04-动画系统/07-动画资产与骨骼基础.md)、[IK 重定向](../04-动画系统/06-动画重定向与IKRetargeter.md)和[碰撞检测](../09-物理系统/02-碰撞检测与物理材质.md)。
