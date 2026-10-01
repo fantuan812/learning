@@ -509,8 +509,8 @@ documents:
   "evidence/tests/entry-core/README.md":
     kind: README
     maturity: L0
-    bytes: 11895
-    lines: 152
+    bytes: 13258
+    lines: 161
   "evidence/tests/gameplay-core/README.md":
     kind: README
     maturity: L0
@@ -2089,8 +2089,8 @@ documents:
   "系统实战/01-角色进入游戏完整链路.md":
     kind: doc
     maturity: L4
-    bytes: 30097
-    lines: 438
+    bytes: 34305
+    lines: 463
   "系统实战/02-角色移动完整链路.md":
     kind: doc
     maturity: L3
