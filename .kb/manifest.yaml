@@ -984,7 +984,7 @@ documents:
   "游戏服务端/06-世界模拟与运行时/11-AI与寻路时间预算.md":
     kind: doc
     maturity: L4
-    bytes: 32256
+    bytes: 32515
     lines: 486
   "游戏服务端/06-世界模拟与运行时/12-世界时间确定性与GameClock.md":
     kind: doc
