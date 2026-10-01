@@ -79,8 +79,8 @@ documents:
   "00-计算机与工程基础/01-C++核心/01-C++对象生命周期与RAII.md":
     kind: doc
     maturity: L2
-    bytes: 18978
-    lines: 346
+    bytes: 23358
+    lines: 378
   "00-计算机与工程基础/01-C++核心/02-Copy-Move与值语义.md":
     kind: doc
     maturity: L3

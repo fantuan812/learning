@@ -4,15 +4,25 @@ title: "01-C++对象生命周期与RAII"
 status: stable
 verified: []
 maturity: L2
+updated: 2026-10-01
+sources:
+  - resource: https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
+    title: C++ Core Guidelines C.35 and resource management
+  - resource: https://eel.is/c%2B%2Bdraft/class.dtor
+    title: C++ destructor rules
+  - resource: https://eel.is/c%2B%2Bdraft/thread.thread.destr
+    title: std::thread destructor contract
+  - resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/smart-pointers-in-unreal-engine
+    title: Unreal Smart Pointer Library
 ---
 # 01-C++对象生命周期与RAII
 > 验证与基准：按文中命令执行最小实验，记录结果与边界。
 
-> 知识基线：C++11~C++20 标准语义（storage duration、构造/析构、异常安全、所有权）；编译器基准 MSVC 2022（v14.44）/ x64；UE 对照以本机 UE 5.8 源码为准。
-> 版本基准：C++11 引入移动语义与 `unique_ptr/shared_ptr/weak_ptr`；C++17 起析构函数默认 `noexcept` 语义沿用 C++11 规则（析构默认不抛）。
+> 知识基线：C++11~C++20 标准语义（storage duration、构造/析构、异常安全、所有权）；编译器基准 MSVC 2022（v14.44）/ x64；UE对照保留5.8阅读背景；2026-10-01增量核对官方文档，未访问原本机引擎安装。
+> 版本基准：C++11 引入移动语义与 `unique_ptr/shared_ptr/weak_ptr`；示例采用C++11；析构未显式写异常规格时依据子对象析构等规则推导，不能无条件概括为所有析构都不抛。
 > 适用范围：所有 C++ 开发（客户端 UE / 服务端 / 工具链）；UE 部分仅适用于 UE5.8 当前版本，4.27 及早期 UE5 仅作差异说明。
 > 官方参考：[cppreference - Storage duration](https://en.cppreference.com/w/cpp/language/storage_duration)、[cppreference - RAII](https://en.cppreference.com/w/cpp/language/raii)、[cppreference - Exceptions](https://en.cppreference.com/w/cpp/language/exceptions)。
-> 最后更新：2026-08-12（首版）。
+> 最后更新：2026-10-01（释放责任、智能指针线程安全与取消/完成边界）。
 > 知识成熟度：L2（标准/官方资料验证；示例可编译运行，未做独立 Benchmark）。
 
 ## 1. 概述
@@ -22,7 +32,7 @@ maturity: L2
 本文回答四个问题：
 
 1. C++ 对象有哪几种存储期（storage duration），各自何时构造/析构？
-2. RAII 为什么是 C++ 资源管理的唯一正解？
+2. RAII 如何把资源释放责任绑定到对象，哪些业务成功条件仍须显式表达？
 3. 异常安全的三档保证是什么，和 RAII 什么关系？
 4. UE 的 `UObject` 生命周期为什么和普通 C++ 对象不一样，边界在哪里？
 
@@ -32,14 +42,14 @@ maturity: L2
 
 | 术语 | 中文 | 一句话定义 |
 | --- | --- | --- |
-| Storage duration | 存储期 | 对象生命周期的四种来源：自动（栈）、静态、线程、动态（堆） |
-| Lifetime | 生命周期 | 从构造完成到析构开始的区间；引用/指针只在生命周期内有效 |
+| Storage duration | 存储期 | 存储占用的持续时间；自动/静态/线程/动态，不等于对象生命周期 |
+| Lifetime | 生命周期 | 对象可按其类型正常使用的阶段；与存储复用、构造/析构中的特殊规则分开 |
 | RAII | 资源获取即初始化 | 资源在构造函数获取、在析构函数释放，与对象作用域绑定 |
 | Unwinding | 栈展开 | 异常抛出时按逆序析构已构造的局部对象 |
 | Exception safety | 异常安全 | 函数在抛异常时对状态的三档保证：基本/强/不抛 |
 | Ownership | 所有权 | 谁负责释放资源；单一所有权避免双重释放与泄漏 |
 | `unique_ptr` | 独占智能指针 | 独占所有权，移动语义转移，析构即释放 |
-| `shared_ptr` | 共享智能指针 | 引用计数共享所有权，`weak_ptr` 观察不拥有 |
+| `shared_ptr` | 共享智能指针 | 引用计数共享所有权，`weak_ptr` 观察而不增加强引用计数 |
 | Dangling | 悬垂 | 引用/指针指向已结束生命周期的对象，解引用为 UB |
 
 ## 3. 原理详解
@@ -48,7 +58,7 @@ maturity: L2
 
 ```cpp
 int g = 0;              // 静态存储期：程序启动前构造，进程结束析构
-thread_local int t = 0; // 线程存储期：线程创建时构造，线程退出析构
+thread_local int t = 0; // 线程存储期；动态初始化时机有延迟规则，不保证创建线程即构造所有对象
 
 void f() {
     int a = 0;          // 自动存储期：进入作用域构造，离开作用域逆序析构
@@ -61,9 +71,9 @@ void f() {
 关键规则：
 
 - **自动对象**按声明逆序析构；成员按声明顺序构造、逆序析构；基类先于派生类构造、逆序析构。
-- **静态/线程对象**的析构顺序与构造顺序相反；跨翻译单元的初始化顺序未定义（用局部静态或单例规避）。
+- **静态/线程对象**遵循各自初始化/终止规则；不要把跨翻译单元动态初始化顺序当业务保证。局部静态可延迟建立依赖，但不是消灭所有析构顺序、递归初始化或线程访问问题的万能单例。
 - **动态对象**的生命周期完全由代码控制——这正是泄漏与悬垂的来源，因此必须用 RAII 包装。
-- 引用和指针本身不拥有对象；对象生命周期结束时，指向它的任何引用/指针立即失效（悬垂）。
+- 裸指针/引用本身不表达释放责任；生命周期结束后不能继续按活对象解引用。存储仍存在、指针数值仍非空，都不能证明对象仍可用。
 
 ### 3.2 构造与析构的完整顺序
 
@@ -108,11 +118,11 @@ void read_config() {
 }                                // 栈展开/正常返回都会执行析构
 ```
 
-为什么这是唯一正解：
+RAII的主要收益与前提：
 
-- **所有退出路径统一释放**：`return`、异常、`break`/`continue`、提前 `goto`，析构都会执行；手写 `close()` 在每个提前返回点都要补一遍，漏一处就是泄漏。
+- **正常作用域退出与栈展开统一释放**：`return`、异常展开、`break`/`continue`、离开作用域的 `goto` 会析构已构造对象；手写 `close()` 在每个提前返回点都要补一遍，漏一处就是泄漏。
 - **释放顺序确定**：逆序析构保证"后获取的先释放"，天然满足锁、嵌套缓冲区的释放顺序要求。
-- **异常安全的基础**：栈展开会完整析构已构造的局部对象，资源不会因异常泄漏。
+- **异常安全的基础**：栈展开会完整析构已构造的局部对象，由已完成构造的RAII成员持有的资源可被回收；若构造函数取得裸资源后再抛异常，该对象自身析构不会运行，必须让成员守卫先接管。
 
 ### 3.4 异常安全三档保证
 
@@ -120,13 +130,13 @@ void read_config() {
 | --- | --- | --- |
 | 基本保证 | 抛异常后对象处于有效但未指定的状态，不泄漏资源 | 最低要求，绝大多数业务代码 |
 | 强保证 | 操作要么完全成功，要么状态不变（commit-or-rollback） | 数据库事务、背包变更、状态机回滚 |
-| 不抛保证 | 函数绝不抛异常（`noexcept`） | 析构、移动构造（为容器扩容服务）、热路径 |
+| 不抛保证 | 承诺异常不逃逸；`noexcept`违规会终止，不是自动恢复 | 析构、移动构造（为容器扩容服务）、热路径 |
 
 RAII 与三档保证的关系：
 
 - 用 RAII 持有临时资源（新容器、新句柄），操作失败时只需"提交或整体丢弃"，天然得到强保证的雏形。
-- 析构函数**默认不抛**（C++11 起析构隐式 `noexcept`）：析构抛异常且正处于栈展开时直接 `std::terminate`。规则：**析构函数永远不要抛出异常**，释放失败也要吞掉并记录。
-- 移动构造标记 `noexcept` 是容器扩容的前提（见 02-Copy-Move与值语义）；移动抛异常时 `vector` 只能回退到复制或放弃强保证。
+- 析构未显式写异常规格时按子对象等规则推导，可能是potentially-throwing。设计释放接口时应让异常不逃逸；`noexcept`函数中逃逸异常、或异常展开期间析构又让异常逃逸，都可能触发终止。需要调用方处理的flush/commit/close失败应提供显式操作，析构仅作不抛的兜底，不能把吞错当业务成功。
+- `noexcept`移动有利于vector重分配维持异常保证，但不是能扩容的必要条件；可能使用复制，或在仅可抛移动类型上有更弱保证。只在实际满足合同时标注，不能为了“走移动”强行加noexcept。
 
 ### 3.5 所有权：谁负责释放
 
@@ -134,21 +144,21 @@ RAII 与三档保证的关系：
 | --- | --- | --- |
 | `std::unique_ptr<T>` | 独占 | 工厂返回、容器元素、pimpl |
 | `std::shared_ptr<T>` | 共享（引用计数） | 多个系统共享同一对象且生命周期不确定 |
-| `std::weak_ptr<T>` | 观察（不计数） | 缓存、观察者，打破 `shared_ptr` 环 |
+| `std::weak_ptr<T>` | 观察（不增加强计数） | 缓存、观察者，打破 `shared_ptr` 环 |
 | 裸指针/引用 | 无所有权 | 参数传递、非拥有观察（须保证生命周期） |
 
 规则：
 
 - 默认用 `unique_ptr`；确需共享才用 `shared_ptr`；`shared_ptr` 循环引用（A↔B 互持）会导致双方永不释放，用 `weak_ptr` 破环。
 - 不要把同一个裸指针同时交给两个独立所有者，否则双重释放。
-- `shared_ptr` 的控制块本身是堆分配：每次拷贝原子递增计数，热路径上比 `unique_ptr` 贵（详见 W1-05 allocator 与容器篇的扩展）。
+- `shared_ptr`共享控制块；`make_shared`可合并对象与控制块分配。共享计数维护有成本，但标准的线程安全合同不等于规定每次都用某条原子指令，更不保证业务对象安全；热路径成本应实测。
 
 ### 3.6 UE 对照：UObject 生命周期与 C++ 生命周期不同
 
-UE 的 `UObject` 生命周期由**垃圾回收（GC）**管理，不是普通的 C++ 生命周期：
+UE的UObject仍是C++对象，但创建/销毁时机由引擎对象系统与GC编排，不能把普通delete所有权习惯直接套用：
 
 ```cpp
-UObject* obj = NewObject<UMyActor>(this);   // 由 GC 管理，禁止 delete
+UObject* obj = NewObject<UMyData>(this); // UMyData为UObject派生数据类；Actor用SpawnActor
 // obj 由 GC 在可达性分析后销毁；被引用（AddToRoot / 强引用 / 被根对象持有）则存活
 ```
 
@@ -167,7 +177,7 @@ UObject* obj = NewObject<UMyActor>(this);   // 由 GC 管理，禁止 delete
 - `UObject` **禁止栈上构造、禁止 `delete`**：引擎统一内存管理，`delete` 会导致双重释放或 GC 后悬垂。
 - 跨帧持有 `UObject*` 必须考虑 GC：用 `TWeakObjectPtr` 观察、`UPROPERTY()` 强引用或 `AddToRoot`（谨慎，防泄漏）。
 - `TSharedPtr`/`TUniquePtr` 用于非 UObject（如普通 C++ 对象、插件内部类）；`TWeakObjectPtr` 才是 UObject 的"弱引用"。
-- 值类型（`USTRUCT`、`int32`、`FVector`）走普通 C++ 生命周期，与 GC 无关。
+- 值类型本身走C++生命周期；USTRUCT内若含引擎对象引用，其可达性追踪仍取决于反射/持有路径，不能概括为所有USTRUCT都与GC无关。
 
 > 关联：UObject 与 GC 的完整源码分析见 [游戏知识/01-引擎基础](../../游戏知识/01-引擎基础/README.md) 与 [12-引擎源码分析](../../游戏知识/12-引擎源码分析/README.md)（UObject/GC 专题）；本层只讲与 C++ 生命周期的对接边界。
 
@@ -182,54 +192,73 @@ public:
     SessionGuard(Server& server, uint64 id)
         : s_(server.AcquireSession(id)) {          // 获取：登记会话、启动心跳
     }
-    ~SessionGuard() {
-        s_->server.ReleaseSession(s_->id);          // 释放：停止心跳、落库、广播下线
+    ~SessionGuard() noexcept {
+        if (s_) s_->server.ReleaseSessionNoThrow(s_->id); // 仅不抛的本地释放合同
     }
     Session& operator*() const { return *s_; }
     SessionGuard(const SessionGuard&) = delete;
+    SessionGuard& operator=(const SessionGuard&) = delete;
+    SessionGuard(SessionGuard&&) = delete;
+    SessionGuard& operator=(SessionGuard&&) = delete;
 };
 ```
 
 工程要点：
 
 - **连接对象**：套接字 fd、加密上下文、读缓冲、写缓冲全部随会话对象构造/析构，断线、超时、玩家登出走同一条析构路径。
-- **心跳/定时器**：随会话创建注册、随会话析构注销；否则登出后定时器仍回调悬垂会话（服务端典型崩溃源）。
+- **心跳/定时器**：注销只能按具体API合同阻止未来派发，已排队/执行中的回调可能仍存在。先撤销逻辑写回资格，再取消并等待安全完成或让共享任务状态独立存活，不能注销后立刻假定裸this安全。
 - **数据库事务**：`Begin → 操作 → Commit/Rollback` 用 guard 表达"析构时未 Commit 则 Rollback"，天然覆盖所有提前返回路径（见 4.4）。
-- **登出顺序**：先停输入（网络层），再停逻辑（会话对象），最后释放存储（落库）——顺序本身就是一组 RAII 对象的析构顺序。
+- **登出顺序**：停止接收新操作、撤销写回资格、完成业务保存/重试协议、收敛后台任务，再释放资源；落库与广播应由显式可报告失败的流程负责，析构顺序本身不证明这些操作成功。上述Session/Server是接口示意，Acquire失败与ReleaseSessionNoThrow合同须由真实实现定义。
 
 ## 4. 示例
 
-### 4.1 最小 ScopeGuard（RAII 通用工具，可编译运行）
+### 4.1 最小 ScopeGuard（C++11，可编译运行）
+
+这个教学守卫要求清理函数与其对象析构不抛，显式禁用复制/赋值/移动；没有实现工厂或复杂转移语义。先由安全资源包装接管获取失败路径，不能假设构造本守卫之前发生的失败也已被保护。
 
 ```cpp
-#include <cstdio>
+#include <cassert>
+#include <stdexcept>
+#include <type_traits>
+#include <utility>
+#include <iostream>
+
 template <typename F>
 class ScopeGuard {
     F fn_;
-    bool active_ = true;
+    bool active_;
 public:
-    explicit ScopeGuard(F fn) : fn_(std::move(fn)) {}
-    ~ScopeGuard() { if (active_) fn_(); }
-    void dismiss() { active_ = false; }   // 提交成功时取消回滚
-    ScopeGuard(const ScopeGuard&) = delete;
-    ScopeGuard& operator=(const ScopeGuard&) = delete;
-};
-
-void commit_or_rollback(bool ok) {
-    ScopeGuard rollback([] { std::puts("rollback: release resource"); });
-    if (ok) {
-        rollback.dismiss();
-        std::puts("commit");
+    explicit ScopeGuard(F fn) noexcept(std::is_nothrow_move_constructible<F>::value)
+        : fn_(std::move(fn)), active_(true) {
+        static_assert(noexcept(std::declval<F&>()()), "cleanup must be noexcept");
+        static_assert(std::is_nothrow_destructible<F>::value,
+                      "cleanup object destruction must not throw");
     }
-}
-
+    ~ScopeGuard() noexcept { if (active_) fn_(); }
+    void dismiss() noexcept { active_=false; }
+    ScopeGuard(const ScopeGuard&)=delete;
+    ScopeGuard& operator=(const ScopeGuard&)=delete;
+    ScopeGuard(ScopeGuard&&)=delete;
+    ScopeGuard& operator=(ScopeGuard&&)=delete;
+};
 int main() {
-    commit_or_rollback(true);   // 输出 commit
-    commit_or_rollback(false);  // 输出 rollback: release resource
+    int releases=0;
+    auto cleanup=[&releases]() noexcept { ++releases; };
+    typedef ScopeGuard<decltype(cleanup)> Guard; // C++11，无CTAD
+    static_assert(!std::is_copy_constructible<Guard>::value, "no copy");
+    static_assert(!std::is_copy_assignable<Guard>::value, "no assignment");
+    { Guard guard(cleanup); }
+    assert(releases==1);
+    { Guard guard(cleanup); guard.dismiss(); }
+    assert(releases==1);
+    try { Guard guard(cleanup); throw std::runtime_error("injected"); }
+    catch (const std::runtime_error&) {}
+    assert(releases==2);
+    std::cout << "PASS: 3 scope-guard assertions\n";
 }
 ```
 
-运行：`cl /nologo /utf-8 /std:c++17 /EHsc scope_guard.cpp`（节选示意，可直接编译）。
+运行：`g++ -std=c++11 -Wall -Wextra -Werror -pedantic scope_guard.cpp -o scope_guard && ./scope_guard`。C++17才有的类模板实参推导（CTAD）不用于本例；C++11写明`ScopeGuard<decltype(cleanup)>`。捕获引用必须比guard活得久；noexcept合同违规会终止，不是错误恢复机制。
 
 ### 4.2 锁的 RAII
 
@@ -255,25 +284,28 @@ class TransactionGuard {
     bool committed_ = false;
 public:
     explicit TransactionGuard(Db& db) : db_(db) { db_.Begin(); }
-    ~TransactionGuard() { if (!committed_) db_.Rollback(); }   // 任何未提交路径自动回滚
+    ~TransactionGuard() noexcept {
+        if (!committed_) db_.RollbackNoThrow(); // 真实数据库适配层必须提供不抛兜底
+    }
     void commit() { db_.Commit(); committed_ = true; }
     TransactionGuard(const TransactionGuard&) = delete;
+    TransactionGuard& operator=(const TransactionGuard&) = delete;
 };
 
 void grant_item(Db& db, uint64 player, uint64 item) {
     TransactionGuard tx(db);
-    db_.Execute("INSERT ...");      // 中途抛异常 → 析构回滚
-    db_.Execute("UPDATE ...");
+    db.Execute("INSERT ...");      // 中途抛异常 → 析构回滚
+    db.Execute("UPDATE ...");
     tx.commit();                    // 全部成功 → 提交
 }
 ```
 
-这就是"强异常保证"的工程形态：要么全部生效，要么像没发生过。
+这是调用结构示意，不是分布式事务或数据库提交成功的证明。若Commit已在服务端生效但响应丢失，客户端异常并不等于未提交；RollbackNoThrow也不能撤销已提交业务。需查询/幂等与数据库合同，不能仅凭RAII宣称所有外部副作用获得强异常保证。
 
 ## 5. 最佳实践
 
 1. **资源一律 RAII**：锁、文件、套接字、句柄、GPU 资源、数据库连接；禁止裸 `new`/`delete` 配对出现在业务代码。
-2. **析构函数 `noexcept`（默认即可），永不抛异常**；释放失败记录日志而非抛出。
+2. **释放兜底不让异常逃逸**；不要假设默认规格永远noexcept。重要失败用显式close/commit返回给调用方，析构记录失败不能冒充提交成功。
 3. **成员按声明顺序初始化**；构造函数里不要调用可被重写的虚函数。
 4. **默认 `unique_ptr`**，确需共享才 `shared_ptr`，用 `weak_ptr` 打破环。
 5. **裸指针只做非拥有观察**，并保证被观察对象生命周期更长（参数、短期局部）。
@@ -294,7 +326,7 @@ void grant_item(Db& db, uint64 player, uint64 item) {
 ## 6. FAQ
 
 **Q1：析构函数能抛异常吗？**
-不能安全地抛。析构默认 `noexcept`，抛出会导致 `std::terminate`（栈展开期间抛出直接终止）。释放失败请记录并吞掉。
+语言允许特定析构为noexcept(false)，但资源守卫应避免让异常逃逸；默认规格依赖子对象等规则。noexcept中逃逸或异常展开期间又逃逸异常会终止。需要报告的释放/提交失败用显式操作处理，不能统一吞错后视为成功。
 
 **Q2：为什么 `shared_ptr` 循环引用会泄漏？**
 两个 `shared_ptr` 互持时引用计数永远 ≥1，控制块永不归零。用 `weak_ptr` 观察一侧即可破环。
@@ -303,7 +335,7 @@ void grant_item(Db& db, uint64 player, uint64 item) {
 不能（拷贝构造被删除），只能移动；这保证单一所有权。需要多个持有者时换 `shared_ptr`。
 
 **Q4：UE 的 `UObject` 为什么不能 `delete`？**
-因为引擎的 GC 与反射系统统一管理 UObject 分配与回收，`delete` 会造成双重释放或 GC 悬垂。销毁请用 `MarkAsGarbage`/`ConditionalBeginDestroy` 语义或让引用归零。
+因为引擎的 GC 与反射系统统一管理 UObject 分配与回收，`delete` 会造成双重释放或 GC 悬垂。销毁依对象类别采用引擎公开生命周期接口（如Actor的Destroy），并管理GC可达引用；不要把MarkAsGarbage/ConditionalBeginDestroy当所有玩法对象的通用销毁入口。
 
 **Q5：`TWeakObjectPtr` 和 `std::weak_ptr` 一样吗？**
 语义类似（观察不拥有），机制不同：前者靠 GC 的 `IsValid()` 判断对象是否已被回收，后者靠控制块强/弱计数。
@@ -312,20 +344,20 @@ void grant_item(Db& db, uint64 player, uint64 item) {
 局部静态在首次执行时构造、按构造逆序析构，且与全局静态析构顺序交错；跨编译单元初始化顺序本身未定义，避免依赖。
 
 **Q7：为什么基类析构要 `virtual`？**
-通过基类指针 `delete` 派生对象时，若基类析构非虚，派生部分不会被析构（UB/资源泄漏）。有派生意图的类都应声明虚析构。
+在本篇C++11普通delete场景，通过基类指针删除派生对象而基类析构非虚是未定义行为，不只是“少调用派生析构”。按[C.35](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Rc-dtor-virtual)，允许经基类销毁时使用public virtual析构；禁止这种销毁时可用protected non-virtual析构。不是所有允许派生的类都必须虚析构。
 
 **Q8：局部静态对象初始化线程安全吗？**
 C++11 起"magic statics"保证局部静态的首次初始化是线程安全的（编译器生成 guard）。跨编译单元初始化顺序仍未定义，所以不要把依赖初始化顺序的全局对象写成普通全局。
 
 **Q9：UE 的 `TSharedPtr` 与 `std::shared_ptr` 线程安全一样吗？**
-引用计数的增减都是原子操作，这点相同；但"同一个智能指针对象被多个线程同时读/写"两者都不安全。区别在生命周期管理：UObject 用 `TWeakObjectPtr` 观察 GC 对象，`std::weak_ptr` 观察引用计数对象，机制不同。
+不应一概而论。UE [ESPMode](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Core/ESPMode?lang=en-US)区分NotThreadSafe与ThreadSafe，跨线程共享须选合适模式；不要假定所有TSharedPtr的计数都是线程安全的。标准shared_ptr不同句柄可并发管理同一控制块，但同一句柄的冲突读写仍需同步/对应标准版本的原子接口。两者都不自动保护所指对象字段，也不授予业务写回资格。UObject的弱引用/GC另有合同。
 
 **Q10：为什么析构函数里不能调用虚函数期待派生态？**
 析构从派生类向基类逐层执行，进入基类析构时派生部分已销毁；此时虚调用解析到当前类实现，通常无法访问派生成员。需要清理逻辑应在派生类析构里先做。
 
 ## 7. 验证与基准
 
-- 标准语义：以上存储期/构造顺序/异常安全规则以 [cppreference - Storage duration](https://en.cppreference.com/w/cpp/language/storage_duration) 与 [cppreference - RAII](https://en.cppreference.com/w/cpp/language/raii) 为验证基准；构造/析构顺序可编译 4.1 示例用打印观察。
+- 标准语义以[C++工作草案析构规则](https://eel.is/c%2B%2Bdraft/class.dtor)与[异常规格](https://eel.is/c%2B%2Bdraft/except.spec)核对；4.1测试正常退出、dismiss、异常展开三条清理路径。现代草案会继续演进，本例只使用C++11已有机制。
 - 异常安全保证的工程定义见 [cppreference - Exceptions](https://en.cppreference.com/w/cpp/language/exceptions)。
 - UE 部分以本机 UE 5.8 源码与 [UE 5.8 官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine)（UObject/GC 页面）为准；本层仅建立 C++ 侧边界，深度分析见 12-引擎源码分析。
 - 后续升级 L3/L4 计划：为 ScopeGuard 增加异常注入测试（强保证验证），为锁 RAII 增加锁竞争 Benchmark（关联 W1-06）。
@@ -334,7 +366,7 @@ C++11 起"magic statics"保证局部静态的首次初始化是线程安全的�
 
 ```powershell
 cl /nologo /utf-8 /std:c++17 /EHsc scope_guard.cpp /Fe:scope_guard.exe
-.\scope_guard.exe   # 预期输出依次为 commit 与 rollback: release resource
+.\scope_guard.exe   # 预期输出 PASS: 3 scope-guard assertions
 ```
 
 ## 8. 关联阅读
