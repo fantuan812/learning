@@ -384,8 +384,8 @@ documents:
   "00_Index/axes/跨域主题.md":
     kind: doc
     maturity: L2
-    bytes: 10162
-    lines: 92
+    bytes: 11022
+    lines: 98
   "00_Index/domains/README.md":
     kind: README
     maturity: L2
@@ -984,8 +984,8 @@ documents:
   "游戏服务端/06-世界模拟与运行时/11-AI与寻路时间预算.md":
     kind: doc
     maturity: L4
-    bytes: 21537
-    lines: 334
+    bytes: 32256
+    lines: 486
   "游戏服务端/06-世界模拟与运行时/12-世界时间确定性与GameClock.md":
     kind: doc
     maturity: L2
@@ -1004,8 +1004,8 @@ documents:
   "游戏服务端/06-世界模拟与运行时/README.md":
     kind: README
     maturity: L0
-    bytes: 7671
-    lines: 92
+    bytes: 8204
+    lines: 96
   "游戏服务端/README.md":
     kind: README
     maturity: L0
