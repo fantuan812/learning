@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-09-30 (paths, bytes, lines, and maturity mechanically recalculated; Python equivalent).
+# Generated: 2026-10-01 (paths, bytes, lines, and maturity mechanically recalculated; Python equivalent).
 version: 4
 
 okf:
@@ -384,8 +384,8 @@ documents:
   "00_Index/axes/跨域主题.md":
     kind: doc
     maturity: L2
-    bytes: 9373
-    lines: 86
+    bytes: 10162
+    lines: 92
   "00_Index/domains/README.md":
     kind: README
     maturity: L2
@@ -1094,8 +1094,8 @@ documents:
   "游戏知识/01-引擎基础/05-场景组件与变换体系.md":
     kind: doc
     maturity: L2
-    bytes: 25682
-    lines: 390
+    bytes: 40471
+    lines: 564
   "游戏知识/01-引擎基础/06-定时器与引擎Ticker.md":
     kind: doc
     maturity: L2
@@ -1129,8 +1129,8 @@ documents:
   "游戏知识/01-引擎基础/README.md":
     kind: README
     maturity: L2
-    bytes: 7548
-    lines: 86
+    bytes: 8155
+    lines: 90
   "游戏知识/02-渲染与图形/01-渲染管线概览.md":
     kind: doc
     maturity: L2
