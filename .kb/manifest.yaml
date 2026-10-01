@@ -514,8 +514,8 @@ documents:
   "evidence/tests/gameplay-core/README.md":
     kind: README
     maturity: L0
-    bytes: 12872
-    lines: 165
+    bytes: 17619
+    lines: 210
   "evidence/tests/match-core/README.md":
     kind: README
     maturity: L0
@@ -859,13 +859,13 @@ documents:
   "游戏服务端/04-平台与可靠性/02-限流熔断背压与过载保护.md":
     kind: doc
     maturity: L2
-    bytes: 20513
-    lines: 310
+    bytes: 23308
+    lines: 327
   "游戏服务端/04-平台与可靠性/03-幂等重试与消息语义.md":
     kind: doc
     maturity: L2
-    bytes: 18672
-    lines: 310
+    bytes: 26725
+    lines: 340
   "游戏服务端/04-平台与可靠性/04-分布式事务与最终一致性.md":
     kind: doc
     maturity: L2
@@ -894,7 +894,7 @@ documents:
   "游戏服务端/04-平台与可靠性/README.md":
     kind: README
     maturity: L0
-    bytes: 2908
+    bytes: 2937
     lines: 37
   "游戏服务端/05-UE Dedicated Server平台化/01-UE Dedicated Server实例生命周期与平台化.md":
     kind: doc

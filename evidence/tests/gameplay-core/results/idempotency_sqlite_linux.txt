@@ -1,0 +1,57 @@
+# evidence: gameplay-core/idempotency_sqlite (local model only)
+# generated: 2026-10-01T08:52:16Z
+# host: Linux x86_64
+# source_sha256: cad173b8d91fe6b5a94603a55206d8b1aada0930f2c2d3307bc2d0277671895f
+# command: python3 src/idempotency_sqlite.py
+python=3.12.14 sqlite=3.53.1 optimize=0
+test_01_first_commit_and_same_key_replay (__main__.IdempotencyTests.test_01_first_commit_and_same_key_replay) ... ok
+test_02_same_key_changed_payload_is_conflict (__main__.IdempotencyTests.test_02_same_key_changed_payload_is_conflict) ... ok
+test_03_authenticated_account_scope_isolated (__main__.IdempotencyTests.test_03_authenticated_account_scope_isolated) ... ok
+test_04_tenant_scope_isolated (__main__.IdempotencyTests.test_04_tenant_scope_isolated) ... ok
+test_05_new_intent_is_a_new_purchase (__main__.IdempotencyTests.test_05_new_intent_is_a_new_purchase) ... ok
+test_06_rejection_snapshot_does_not_change_after_topup (__main__.IdempotencyTests.test_06_rejection_snapshot_does_not_change_after_topup) ... ok
+test_07_failure_after_debit_rolls_back_everything (__main__.IdempotencyTests.test_07_failure_after_debit_rolls_back_everything) ... ok
+test_08_process_exit_before_commit_leaves_no_effect (__main__.IdempotencyTests.test_08_process_exit_before_commit_leaves_no_effect) ... ok
+test_09_process_exit_after_commit_replays_saved_result (__main__.IdempotencyTests.test_09_process_exit_after_commit_replays_saved_result) ... ok
+test_10_inflight_writer_is_busy_not_permission_to_duplicate (__main__.IdempotencyTests.test_10_inflight_writer_is_busy_not_permission_to_duplicate) ... ok
+test_11_eight_concurrent_connections_commit_one_effect (__main__.IdempotencyTests.test_11_eight_concurrent_connections_commit_one_effect) ... ok
+test_12_negative_control_split_commit_duplicates (__main__.IdempotencyTests.test_12_negative_control_split_commit_duplicates) ... ok
+test_13_negative_control_pruning_all_memory_allows_old_key (__main__.IdempotencyTests.test_13_negative_control_pruning_all_memory_allows_old_key) ... ok
+test_14_stale_epoch_rejected_and_current_epoch_only_once (__main__.IdempotencyTests.test_14_stale_epoch_rejected_and_current_epoch_only_once) ... ok
+test_15_fencing_phase_and_effect_roll_back_together (__main__.IdempotencyTests.test_15_fencing_phase_and_effect_roll_back_together) ... ok
+test_16_invalid_request_does_not_create_record (__main__.IdempotencyTests.test_16_invalid_request_does_not_create_record) ... ok
+test_17_operation_scope_isolated (__main__.IdempotencyTests.test_17_operation_scope_isolated) ... ok
+test_18_committed_processing_is_not_reexecuted (__main__.IdempotencyTests.test_18_committed_processing_is_not_reexecuted) ... ok
+test_19_missing_required_key_cannot_bypass_gate (__main__.IdempotencyTests.test_19_missing_required_key_cannot_bypass_gate) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.184s
+
+OK
+# command: python3 -O src/idempotency_sqlite.py
+python=3.12.14 sqlite=3.53.1 optimize=1
+test_01_first_commit_and_same_key_replay (__main__.IdempotencyTests.test_01_first_commit_and_same_key_replay) ... ok
+test_02_same_key_changed_payload_is_conflict (__main__.IdempotencyTests.test_02_same_key_changed_payload_is_conflict) ... ok
+test_03_authenticated_account_scope_isolated (__main__.IdempotencyTests.test_03_authenticated_account_scope_isolated) ... ok
+test_04_tenant_scope_isolated (__main__.IdempotencyTests.test_04_tenant_scope_isolated) ... ok
+test_05_new_intent_is_a_new_purchase (__main__.IdempotencyTests.test_05_new_intent_is_a_new_purchase) ... ok
+test_06_rejection_snapshot_does_not_change_after_topup (__main__.IdempotencyTests.test_06_rejection_snapshot_does_not_change_after_topup) ... ok
+test_07_failure_after_debit_rolls_back_everything (__main__.IdempotencyTests.test_07_failure_after_debit_rolls_back_everything) ... ok
+test_08_process_exit_before_commit_leaves_no_effect (__main__.IdempotencyTests.test_08_process_exit_before_commit_leaves_no_effect) ... ok
+test_09_process_exit_after_commit_replays_saved_result (__main__.IdempotencyTests.test_09_process_exit_after_commit_replays_saved_result) ... ok
+test_10_inflight_writer_is_busy_not_permission_to_duplicate (__main__.IdempotencyTests.test_10_inflight_writer_is_busy_not_permission_to_duplicate) ... ok
+test_11_eight_concurrent_connections_commit_one_effect (__main__.IdempotencyTests.test_11_eight_concurrent_connections_commit_one_effect) ... ok
+test_12_negative_control_split_commit_duplicates (__main__.IdempotencyTests.test_12_negative_control_split_commit_duplicates) ... ok
+test_13_negative_control_pruning_all_memory_allows_old_key (__main__.IdempotencyTests.test_13_negative_control_pruning_all_memory_allows_old_key) ... ok
+test_14_stale_epoch_rejected_and_current_epoch_only_once (__main__.IdempotencyTests.test_14_stale_epoch_rejected_and_current_epoch_only_once) ... ok
+test_15_fencing_phase_and_effect_roll_back_together (__main__.IdempotencyTests.test_15_fencing_phase_and_effect_roll_back_together) ... ok
+test_16_invalid_request_does_not_create_record (__main__.IdempotencyTests.test_16_invalid_request_does_not_create_record) ... ok
+test_17_operation_scope_isolated (__main__.IdempotencyTests.test_17_operation_scope_isolated) ... ok
+test_18_committed_processing_is_not_reexecuted (__main__.IdempotencyTests.test_18_committed_processing_is_not_reexecuted) ... ok
+test_19_missing_required_key_cannot_bypass_gate (__main__.IdempotencyTests.test_19_missing_required_key_cannot_bypass_gate) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.504s
+
+OK
+# exit_code: 0 (both runs)
