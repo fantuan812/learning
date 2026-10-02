@@ -1,0 +1,54 @@
+# evidence: protobuf-evolution (two schemas; one Python runtime)
+# generated: 2026-10-02T03:18:07Z
+# host: Linux x86_64
+# compiler: libprotoc 36.0
+# python: 3.12.14
+# protobuf: 7.36.0
+# backend: python
+# sha256 src/old.proto 9c4bce3464ea5566053e6b3bb3361aa64e1eb007fdfa3ba3e217cb4427b7d763
+# sha256 src/new.proto 2cde1c129b4ceae2028959b0e890a3ece07d25fda552d459ba4fbe940f4a0c24
+# sha256 src/generated/old_pb2.py 5aee469592cb3ff6df7d2692c9e28b55a566175d25074f43463d090829c76fba
+# sha256 src/generated/new_pb2.py bf8873a7d3530f7bd56cdd2ca6e26989aa5aefbecb9bebf0cfcde0bfb2af0ec6
+# sha256 tests/test_evolution.py abd5b9133a72154db7b0f340070e5299c9f8e1af983b8c9c80a50cd03e1d35a1
+# sha256 scripts/run_all.sh b34e7b5374f58003b122350f0f767614cdf48a05d0276103de442a4c77c68db9
+# sha256 data/toolchain.json 584b7cadeb7cced7e2b9c73f76559d233ba41404685570fd28a242b95e11d161
+# generation: fresh protoc output matches checked-in generated code byte-for-byte
+# command: python3 -s tests/test_evolution.py
+test_01_zero_and_absence (__main__.EvolutionTests.test_01_zero_and_absence) ... ok
+test_02_clear_and_patch_semantics (__main__.EvolutionTests.test_02_clear_and_patch_semantics) ... ok
+test_03_merge_default_value (__main__.EvolutionTests.test_03_merge_default_value) ... ok
+test_04_old_writer_new_reader (__main__.EvolutionTests.test_04_old_writer_new_reader) ... ok
+test_05_explicit_zero_lost_in_implicit_relay (__main__.EvolutionTests.test_05_explicit_zero_lost_in_implicit_relay) ... ok
+test_06_binary_unknown_preserved_while_known_field_changes (__main__.EvolutionTests.test_06_binary_unknown_preserved_while_known_field_changes) ... ok
+test_07_copy_preserves_rebuild_and_discard_lose_unknown (__main__.EvolutionTests.test_07_copy_preserves_rebuild_and_discard_lose_unknown) ... ok
+test_08_old_message_json_roundtrip_loses_unknown (__main__.EvolutionTests.test_08_old_message_json_roundtrip_loses_unknown) ... ok
+test_09_new_json_rejected_or_ignored_by_old_reader (__main__.EvolutionTests.test_09_new_json_rejected_or_ignored_by_old_reader) ... ok
+test_10_json_zero_preserved_but_null_is_absent (__main__.EvolutionTests.test_10_json_zero_preserved_but_null_is_absent) ... ok
+test_11_unknown_survival_does_not_protect_known_presence (__main__.EvolutionTests.test_11_unknown_survival_does_not_protect_known_presence) ... ok
+test_12_parse_success_is_not_business_capability (__main__.EvolutionTests.test_12_parse_success_is_not_business_capability) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.001s
+
+OK
+OBSERVATIONS={"01_zero_and_absence": {"absent_has_x": false, "explicit_has_x": true, "explicit_hex": "0800", "implicit_hex": ""}, "03_merge_default": {"explicit_target_x": 0, "implicit_target_x": 9}, "04_old_writer": {"new_sprint": false, "zero_has_x": false}, "05_implicit_relay": {"business_target_x": 99, "has_x": false, "received_x": 0, "relayed_hex": "1007", "sent_hex": "08001007"}, "06_binary_relay": {"new_reader_sprint": true, "relayed_hex": "080910081801", "sent_hex": "080910071801", "sequence": 8}, "07_unknown_handling": {"copy": true, "discard": false, "rebuild": false}, "08_old_json_relay": {"json": {"x": 9}, "new_reader_sprint": false}, "09_new_json_old_reader": {"default": "ParseError", "ignore_unknown_fields_sprint": false}, "10_json_presence": {"null_has_x": false, "zero_has_x": true, "zero_json": {"x": 0}}, "11_mixed_relay": {"known_x_presence_preserved": false, "relayed_hex": "1801", "sent_hex": "08001801", "unknown_sprint_preserved": true}, "12_business_capability_model": {"admission_allowed": false, "new_distance": 2, "old_distance": 1}}
+# command: python3 -s -O tests/test_evolution.py
+test_01_zero_and_absence (__main__.EvolutionTests.test_01_zero_and_absence) ... ok
+test_02_clear_and_patch_semantics (__main__.EvolutionTests.test_02_clear_and_patch_semantics) ... ok
+test_03_merge_default_value (__main__.EvolutionTests.test_03_merge_default_value) ... ok
+test_04_old_writer_new_reader (__main__.EvolutionTests.test_04_old_writer_new_reader) ... ok
+test_05_explicit_zero_lost_in_implicit_relay (__main__.EvolutionTests.test_05_explicit_zero_lost_in_implicit_relay) ... ok
+test_06_binary_unknown_preserved_while_known_field_changes (__main__.EvolutionTests.test_06_binary_unknown_preserved_while_known_field_changes) ... ok
+test_07_copy_preserves_rebuild_and_discard_lose_unknown (__main__.EvolutionTests.test_07_copy_preserves_rebuild_and_discard_lose_unknown) ... ok
+test_08_old_message_json_roundtrip_loses_unknown (__main__.EvolutionTests.test_08_old_message_json_roundtrip_loses_unknown) ... ok
+test_09_new_json_rejected_or_ignored_by_old_reader (__main__.EvolutionTests.test_09_new_json_rejected_or_ignored_by_old_reader) ... ok
+test_10_json_zero_preserved_but_null_is_absent (__main__.EvolutionTests.test_10_json_zero_preserved_but_null_is_absent) ... ok
+test_11_unknown_survival_does_not_protect_known_presence (__main__.EvolutionTests.test_11_unknown_survival_does_not_protect_known_presence) ... ok
+test_12_parse_success_is_not_business_capability (__main__.EvolutionTests.test_12_parse_success_is_not_business_capability) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.002s
+
+OK
+OBSERVATIONS={"01_zero_and_absence": {"absent_has_x": false, "explicit_has_x": true, "explicit_hex": "0800", "implicit_hex": ""}, "03_merge_default": {"explicit_target_x": 0, "implicit_target_x": 9}, "04_old_writer": {"new_sprint": false, "zero_has_x": false}, "05_implicit_relay": {"business_target_x": 99, "has_x": false, "received_x": 0, "relayed_hex": "1007", "sent_hex": "08001007"}, "06_binary_relay": {"new_reader_sprint": true, "relayed_hex": "080910081801", "sent_hex": "080910071801", "sequence": 8}, "07_unknown_handling": {"copy": true, "discard": false, "rebuild": false}, "08_old_json_relay": {"json": {"x": 9}, "new_reader_sprint": false}, "09_new_json_old_reader": {"default": "ParseError", "ignore_unknown_fields_sprint": false}, "10_json_presence": {"null_has_x": false, "zero_has_x": true, "zero_json": {"x": 0}}, "11_mixed_relay": {"known_x_presence_preserved": false, "relayed_hex": "1801", "sent_hex": "08001801", "unknown_sprint_preserved": true}, "12_business_capability_model": {"admission_allowed": false, "new_distance": 2, "old_distance": 1}}
+# exit_code: 0 (both runs)

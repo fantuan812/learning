@@ -1,0 +1,10 @@
+syntax = "proto3";
+package learning.evolution.new;
+
+// Teaching schema v2: keep wire tags/types; add presence and a capability.
+// Different package names let both descriptors coexist in one test process.
+message MovePatch {
+  optional int32 x = 1;
+  uint32 sequence = 2;
+  bool sprint = 3;
+}
