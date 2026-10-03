@@ -3,41 +3,111 @@
   "layers": [
     {
       "id": "content",
-      "roots": ["00-计算机与工程基础", "游戏知识", "游戏服务端", "游戏算法", "游戏AI", "游戏测试与质量", "Knowledge"],
-      "entrypoints": ["00_Index/domains/README.md", "Knowledge/README.md"]
+      "roots": [
+        "00-计算机与工程基础",
+        "游戏知识",
+        "游戏服务端",
+        "游戏算法",
+        "游戏AI",
+        "游戏测试与质量",
+        "Knowledge"
+      ],
+      "entrypoints": [
+        "00_Index/domains/README.md",
+        "Knowledge/README.md"
+      ]
     },
     {
       "id": "practice",
-      "roots": ["系统实战", "Projects"],
-      "entrypoints": ["系统实战/README.md", "Projects/README.md"]
+      "roots": [
+        "系统实战",
+        "Projects"
+      ],
+      "entrypoints": [
+        "系统实战/README.md",
+        "Projects/README.md"
+      ]
     },
     {
       "id": "sources",
-      "roots": ["读书笔记", "笔记", "工作日志", "Inbox", "Archive"],
-      "entrypoints": ["读书笔记/README.md", "笔记/README.md", "工作日志/README.md", "Inbox/README.md", "Archive/README.md"]
+      "roots": [
+        "读书笔记",
+        "笔记",
+        "工作日志",
+        "Inbox",
+        "Archive"
+      ],
+      "entrypoints": [
+        "读书笔记/README.md",
+        "笔记/README.md",
+        "工作日志/README.md",
+        "Inbox/README.md",
+        "Archive/README.md"
+      ]
     },
     {
       "id": "evidence",
-      "roots": ["evidence"],
-      "entrypoints": ["evidence/README.md"]
+      "roots": [
+        "evidence"
+      ],
+      "entrypoints": [
+        "evidence/README.md"
+      ]
     },
     {
       "id": "navigation",
-      "roots": ["00_Index"],
-      "entrypoints": ["index.md", "README.md", "00_Index/MOC.md"]
+      "roots": [
+        "00_Index",
+        "知识"
+      ],
+      "entrypoints": [
+        "index.md",
+        "README.md",
+        "00_Index/MOC.md",
+        "知识/README.md"
+      ]
     },
     {
       "id": "governance",
-      "roots": [".kb", "references", "learning", "方案"],
-      "entrypoints": [".kb/README.md", "references/知识库架构.md", "learning/lessons.md", "方案/README.md"]
+      "roots": [
+        ".kb",
+        "references",
+        "learning",
+        "方案"
+      ],
+      "entrypoints": [
+        ".kb/README.md",
+        "references/知识库架构.md",
+        "learning/lessons.md",
+        "方案/README.md"
+      ]
     },
     {
       "id": "automation",
-      "roots": [".agents", ".codex", "scripts"],
-      "entrypoints": [".agents/README.md", ".codex/README.md", "scripts/check_architecture.ps1", "scripts/check_repo.ps1"]
+      "roots": [
+        ".agents",
+        ".codex",
+        "scripts",
+        ".github"
+      ],
+      "entrypoints": [
+        ".agents/README.md",
+        ".codex/README.md",
+        "scripts/check_architecture.ps1",
+        "scripts/check_repo.ps1",
+        "scripts/README.md"
+      ]
     }
   ],
-  "excluded_roots": [".git", ".obsidian", ".img-work", ".okf-selftest", ".kb_work", ".py_libs", ".workbuddy"],
+  "excluded_roots": [
+    ".git",
+    ".obsidian",
+    ".img-work",
+    ".okf-selftest",
+    ".kb_work",
+    ".py_libs",
+    ".workbuddy"
+  ],
   "contracts": {
     "agent_entry": "AGENTS.md",
     "collaboration": "references/agent协作与发布规则.md",
@@ -48,6 +118,7 @@
     "metadata": ".kb/okf-profile.yaml",
     "inventory": ".kb/manifest.yaml",
     "decisions": ".kb/decisions.md",
-    "active_plan": ".kb/plans/current.md"
+    "active_plan": ".kb/plans/current.md",
+    "knowledge_map": ".kb/knowledge-map.json"
   }
 }

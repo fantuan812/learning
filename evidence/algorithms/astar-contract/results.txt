@@ -1,0 +1,121 @@
+A* contract validation; correctness tests, not performance measurements
+2026-10-03T18:55:26.547604+00:00
+HEAD baseline: ea63344a974ff41efaa7a0368dd56cac43a68fef
+
+$ python3 --version
+Python 3.12.14
+exit_code=0; expected_exit_code=0
+
+$ g++ --version
+g++ (Debian 14.2.0-19) 14.2.0
+Copyright (C) 2024 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+exit_code=0; expected_exit_code=0
+
+$ python3 -B evidence/algorithms/astar-contract/astar_contract.py
+stale: cost=22 pops=5 stale=1 A_expansions=1 without_filter=2
+reopen: disabled=5 enabled=4 A_expansions=2
+goal: on_discovery=10 on_valid_pop=2
+ties: fifo_cost=2 larger_g_cost=2 fifo_expansions=3 larger_g_expansions=2
+exit_code=0; expected_exit_code=0
+
+$ python3 -B evidence/algorithms/astar-contract/test_astar_contract.py
+test_10_python_article_boundaries_and_all_small_grids (__main__.ArticleTests.test_10_python_article_boundaries_and_all_small_grids) ... ok
+test_11_cpp_article_boundaries_and_all_small_grids (__main__.ArticleTests.test_11_cpp_article_boundaries_and_all_small_grids) ... ok
+test_13_python_octile_regression_matches_bellman_ford (__main__.ArticleTests.test_13_python_octile_regression_matches_bellman_ford) ... heuristic_regression[python]: cost=5.82842712474619 oracle=5.82842712474619 mutant=None
+ok
+test_14_cpp_octile_regression_matches_bellman_ford (__main__.ArticleTests.test_14_cpp_octile_regression_matches_bellman_ford) ... heuristic_regression[cpp]: cost=5.82842712474619 oracle=5.82842712474619 mutant=None
+ok
+test_01_stale_pops_are_not_expansions (__main__.ContractTests.test_01_stale_pops_are_not_expansions) ... ok
+test_02_mutating_a_key_does_not_repair_heap (__main__.ContractTests.test_02_mutating_a_key_does_not_repair_heap) ... ok
+test_03_admissible_inconsistent_requires_reopen (__main__.ContractTests.test_03_admissible_inconsistent_requires_reopen) ... ok
+test_04_goal_discovery_is_too_early (__main__.ContractTests.test_04_goal_discovery_is_too_early) ... ok
+test_05_equal_priorities_do_not_compare_node_objects (__main__.ContractTests.test_05_equal_priorities_do_not_compare_node_objects) ... ok
+test_06_equal_f_policy_changes_work_not_cost (__main__.ContractTests.test_06_equal_f_policy_changes_work_not_cost) ... ok
+test_07_strict_relaxation_stops_zero_cost_cycle (__main__.ContractTests.test_07_strict_relaxation_stops_zero_cost_cycle) ... ok
+test_08_graph_boundaries (__main__.ContractTests.test_08_graph_boundaries) ... ok
+test_09_fixed_seed_graphs_match_independent_oracle (__main__.ContractTests.test_09_fixed_seed_graphs_match_independent_oracle) ... ok
+test_12_cpp_old_failure_and_snapshot_fix (__main__.ContractTests.test_12_cpp_old_failure_and_snapshot_fix) ... mutable_queue: old_cost=5 optimal=3 fixed_cost=3
+ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 1.998s
+
+OK
+PASS: 14 tests; 200 graph cases; 11520 small-grid + 1 heuristic-regression queries per language; C++11 -Werror
+exit_code=0; expected_exit_code=0
+
+$ python3 -B evidence/algorithms/astar-contract/test_astar_contract.py --mutant python-manhattan
+test_10_python_article_boundaries_and_all_small_grids (__main__.ArticleTests.test_10_python_article_boundaries_and_all_small_grids) ... ok
+test_11_cpp_article_boundaries_and_all_small_grids (__main__.ArticleTests.test_11_cpp_article_boundaries_and_all_small_grids) ... ok
+test_13_python_octile_regression_matches_bellman_ford (__main__.ArticleTests.test_13_python_octile_regression_matches_bellman_ford) ... heuristic_regression[python]: cost=6.414213562373095 oracle=5.82842712474619 mutant=python-manhattan
+FAIL
+test_14_cpp_octile_regression_matches_bellman_ford (__main__.ArticleTests.test_14_cpp_octile_regression_matches_bellman_ford) ... heuristic_regression[cpp]: cost=5.82842712474619 oracle=5.82842712474619 mutant=python-manhattan
+ok
+test_01_stale_pops_are_not_expansions (__main__.ContractTests.test_01_stale_pops_are_not_expansions) ... ok
+test_02_mutating_a_key_does_not_repair_heap (__main__.ContractTests.test_02_mutating_a_key_does_not_repair_heap) ... ok
+test_03_admissible_inconsistent_requires_reopen (__main__.ContractTests.test_03_admissible_inconsistent_requires_reopen) ... ok
+test_04_goal_discovery_is_too_early (__main__.ContractTests.test_04_goal_discovery_is_too_early) ... ok
+test_05_equal_priorities_do_not_compare_node_objects (__main__.ContractTests.test_05_equal_priorities_do_not_compare_node_objects) ... ok
+test_06_equal_f_policy_changes_work_not_cost (__main__.ContractTests.test_06_equal_f_policy_changes_work_not_cost) ... ok
+test_07_strict_relaxation_stops_zero_cost_cycle (__main__.ContractTests.test_07_strict_relaxation_stops_zero_cost_cycle) ... ok
+test_08_graph_boundaries (__main__.ContractTests.test_08_graph_boundaries) ... ok
+test_09_fixed_seed_graphs_match_independent_oracle (__main__.ContractTests.test_09_fixed_seed_graphs_match_independent_oracle) ... ok
+test_12_cpp_old_failure_and_snapshot_fix (__main__.ContractTests.test_12_cpp_old_failure_and_snapshot_fix) ... mutable_queue: old_cost=5 optimal=3 fixed_cost=3
+ok
+
+======================================================================
+FAIL: test_13_python_octile_regression_matches_bellman_ford (__main__.ArticleTests.test_13_python_octile_regression_matches_bellman_ford)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/234c8048d85d/learning-restructure/evidence/algorithms/astar-contract/test_astar_contract.py", line 291, in test_13_python_octile_regression_matches_bellman_ford
+    self.assertAlmostEqual(cost, oracle, msg="8-way heuristic regression: Python")
+AssertionError: 6.414213562373095 != 5.82842712474619 within 7 places (0.5857864376269051 difference) : 8-way heuristic regression: Python
+
+----------------------------------------------------------------------
+Ran 14 tests in 1.792s
+
+FAILED (failures=1)
+exit_code=1; expected_exit_code=1
+
+$ python3 -B evidence/algorithms/astar-contract/test_astar_contract.py --mutant cpp-manhattan
+test_10_python_article_boundaries_and_all_small_grids (__main__.ArticleTests.test_10_python_article_boundaries_and_all_small_grids) ... ok
+test_11_cpp_article_boundaries_and_all_small_grids (__main__.ArticleTests.test_11_cpp_article_boundaries_and_all_small_grids) ... ok
+test_13_python_octile_regression_matches_bellman_ford (__main__.ArticleTests.test_13_python_octile_regression_matches_bellman_ford) ... heuristic_regression[python]: cost=5.82842712474619 oracle=5.82842712474619 mutant=cpp-manhattan
+ok
+test_14_cpp_octile_regression_matches_bellman_ford (__main__.ArticleTests.test_14_cpp_octile_regression_matches_bellman_ford) ... heuristic_regression[cpp]: cost=6.414213562373095 oracle=5.82842712474619 mutant=cpp-manhattan
+FAIL
+test_01_stale_pops_are_not_expansions (__main__.ContractTests.test_01_stale_pops_are_not_expansions) ... ok
+test_02_mutating_a_key_does_not_repair_heap (__main__.ContractTests.test_02_mutating_a_key_does_not_repair_heap) ... ok
+test_03_admissible_inconsistent_requires_reopen (__main__.ContractTests.test_03_admissible_inconsistent_requires_reopen) ... ok
+test_04_goal_discovery_is_too_early (__main__.ContractTests.test_04_goal_discovery_is_too_early) ... ok
+test_05_equal_priorities_do_not_compare_node_objects (__main__.ContractTests.test_05_equal_priorities_do_not_compare_node_objects) ... ok
+test_06_equal_f_policy_changes_work_not_cost (__main__.ContractTests.test_06_equal_f_policy_changes_work_not_cost) ... ok
+test_07_strict_relaxation_stops_zero_cost_cycle (__main__.ContractTests.test_07_strict_relaxation_stops_zero_cost_cycle) ... ok
+test_08_graph_boundaries (__main__.ContractTests.test_08_graph_boundaries) ... ok
+test_09_fixed_seed_graphs_match_independent_oracle (__main__.ContractTests.test_09_fixed_seed_graphs_match_independent_oracle) ... ok
+test_12_cpp_old_failure_and_snapshot_fix (__main__.ContractTests.test_12_cpp_old_failure_and_snapshot_fix) ... mutable_queue: old_cost=5 optimal=3 fixed_cost=3
+ok
+
+======================================================================
+FAIL: test_14_cpp_octile_regression_matches_bellman_ford (__main__.ArticleTests.test_14_cpp_octile_regression_matches_bellman_ford)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/234c8048d85d/learning-restructure/evidence/algorithms/astar-contract/test_astar_contract.py", line 297, in test_14_cpp_octile_regression_matches_bellman_ford
+    self.assertAlmostEqual(cost, case[4], msg="8-way heuristic regression: C++")
+AssertionError: 6.414213562373095 != 5.82842712474619 within 7 places (0.5857864376269051 difference) : 8-way heuristic regression: C++
+
+----------------------------------------------------------------------
+Ran 14 tests in 1.721s
+
+FAILED (failures=1)
+exit_code=1; expected_exit_code=1
+
+Source hashes unchanged across normal run and both in-memory mutant runs: True
+Protected article/implementation hashes unchanged from previous validation: True
+SHA-256 of tested source bytes:
+d1a6ae5c49d2004c6426776a0dbd4e3ed6e49c9ac0bd491fef04261bf61689f7  游戏算法/01-寻路与图论/02-A星算法与优化.md
+586199d9626d0ddf62b1b36fc0c79e951c0878deeb50e0831c8432680c773328  evidence/algorithms/astar-contract/astar_contract.py
+603110e322cf3b189fa6d9be7ed251e53105dc9c58afe7ead8ec4831ba9ec6f9  evidence/algorithms/astar-contract/test_astar_contract.py
+49d95ecf43671e4f68d8895294cb39640c8dfae98765385916d5188cfc4223d5  evidence/algorithms/astar-contract/mutable_queue_regression.cpp

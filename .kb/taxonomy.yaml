@@ -1,4 +1,5 @@
-# Knowledge Base Taxonomy
+# Legacy Physical Taxonomy (migration compatibility)
+# Active semantic classification: .kb/knowledge-map.json; old paths remain until verified migration.
 # domains 保留兼容的领域/辅助目录登记；顶层责任层唯一清单为 architecture.json。
 # 新增主题以现有领域为先；来源集合不是主题主分类。
 # 状态取值：draft（草案）/ active（已确认）/ archived（已归档）

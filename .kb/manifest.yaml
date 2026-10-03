@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-03 (epoll contracts; paths, bytes, lines, and maturity mechanically recalculated).
+# Generated: 2026-10-03 (paths, bytes, lines, and maturity mechanically recalculated).
 version: 4
 
 okf:
@@ -39,8 +39,8 @@ documents:
   ".kb/README.md":
     kind: README
     maturity: L2
-    bytes: 1761
-    lines: 35
+    bytes: 1913
+    lines: 36
   ".kb/audit.md":
     kind: doc
     maturity: L2
@@ -49,8 +49,8 @@ documents:
   ".kb/decisions.md":
     kind: doc
     maturity: L2
-    bytes: 57481
-    lines: 954
+    bytes: 58245
+    lines: 963
   ".kb/plans/2026-09-03-combat-ai.md":
     kind: doc
     maturity: L2
@@ -68,9 +68,9 @@ documents:
     lines: 14
   ".kb/plans/current.md":
     kind: doc
-    maturity: L2
-    bytes: 13095
-    lines: 221
+    maturity: L0
+    bytes: 2550
+    lines: 32
   ".kb/review-queue.md":
     kind: doc
     maturity: L2
@@ -363,14 +363,19 @@ documents:
     lines: 96
   "00_Index/MOC.md":
     kind: doc
-    maturity: L2
-    bytes: 2816
-    lines: 71
+    maturity: L0
+    bytes: 990
+    lines: 24
   "00_Index/README.md":
     kind: README
-    maturity: L2
-    bytes: 1247
-    lines: 28
+    maturity: L0
+    bytes: 666
+    lines: 24
+  "00_Index/UE专题.md":
+    kind: doc
+    maturity: L0
+    bytes: 22565
+    lines: 205
   "00_Index/axes/README.md":
     kind: README
     maturity: L2
@@ -421,11 +426,26 @@ documents:
     maturity: L2
     bytes: 20174
     lines: 159
+  "00_Index/学习路线.md":
+    kind: doc
+    maturity: L0
+    bytes: 3136
+    lines: 53
+  "00_Index/实验与案例.md":
+    kind: doc
+    maturity: L0
+    bytes: 3048
+    lines: 47
+  "00_Index/跨域关系.md":
+    kind: doc
+    maturity: L0
+    bytes: 6598
+    lines: 76
   "AGENTS.md":
     kind: doc
     maturity: L2
-    bytes: 5165
-    lines: 83
+    bytes: 5404
+    lines: 84
   "Archive/README.md":
     kind: README
     maturity: L0
@@ -448,19 +468,24 @@ documents:
     lines: 24
   "README.md":
     kind: README
-    maturity: L2
-    bytes: 9629
-    lines: 122
+    maturity: L0
+    bytes: 3090
+    lines: 50
   "evidence/README.md":
     kind: README
     maturity: L0
-    bytes: 5764
-    lines: 45
+    bytes: 6007
+    lines: 49
   "evidence/algorithms/aoi/README.md":
     kind: README
     maturity: L0
     bytes: 3868
     lines: 71
+  "evidence/algorithms/astar-contract/README.md":
+    kind: README
+    maturity: L2
+    bytes: 9011
+    lines: 117
   "evidence/algorithms/astar/README.md":
     kind: README
     maturity: L0
@@ -569,8 +594,8 @@ documents:
   "references/templates/OKF-知识条目.md":
     kind: doc
     maturity: L0
-    bytes: 413
-    lines: 27
+    bytes: 370
+    lines: 24
   "references/templates/README.md":
     kind: README
     maturity: L2
@@ -588,14 +613,19 @@ documents:
     lines: 149
   "references/知识库架构.md":
     kind: doc
-    maturity: L2
-    bytes: 8889
-    lines: 108
+    maturity: L0
+    bytes: 3657
+    lines: 49
   "references/知识组织规则.md":
     kind: doc
     maturity: L2
     bytes: 8670
     lines: 413
+  "scripts/README.md":
+    kind: README
+    maturity: L0
+    bytes: 2261
+    lines: 39
   "工作日志/2026-08-03-假人AI-A星优化与耗时测试.md":
     kind: doc
     maturity: L0
@@ -958,7 +988,7 @@ documents:
     lines: 360
   "游戏服务端/06-世界模拟与运行时/04-Scene-Map-Zone与实例管理.md":
     kind: doc
-    maturity: L3
+    maturity: L2
     bytes: 17883
     lines: 327
   "游戏服务端/06-世界模拟与运行时/05-AOI与InterestManagement.md":
@@ -1939,7 +1969,7 @@ documents:
   "游戏知识/README.md":
     kind: README
     maturity: L2
-    bytes: 13506
+    bytes: 13526
     lines: 147
   "游戏算法/01-寻路与图论/01-图论基础与搜索算法.md":
     kind: doc
@@ -1949,8 +1979,8 @@ documents:
   "游戏算法/01-寻路与图论/02-A星算法与优化.md":
     kind: doc
     maturity: L2
-    bytes: 31988
-    lines: 578
+    bytes: 40509
+    lines: 603
   "游戏算法/01-寻路与图论/03-流场与群体寻路.md":
     kind: doc
     maturity: L2
@@ -2076,6 +2106,51 @@ documents:
     maturity: L2
     bytes: 15341
     lines: 159
+  "知识/01-编程与计算机基础/README.md":
+    kind: README
+    maturity: L0
+    bytes: 7738
+    lines: 88
+  "知识/02-数学与游戏算法/README.md":
+    kind: README
+    maturity: L0
+    bytes: 9384
+    lines: 96
+  "知识/03-引擎架构与资源系统/README.md":
+    kind: README
+    maturity: L0
+    bytes: 5830
+    lines: 71
+  "知识/04-图形动画与物理仿真/README.md":
+    kind: README
+    maturity: L0
+    bytes: 8971
+    lines: 99
+  "知识/05-Gameplay与交互系统/README.md":
+    kind: README
+    maturity: L0
+    bytes: 7576
+    lines: 93
+  "知识/06-游戏AI/README.md":
+    kind: README
+    maturity: L0
+    bytes: 20096
+    lines: 166
+  "知识/07-网络与游戏服务端/README.md":
+    kind: README
+    maturity: L0
+    bytes: 8553
+    lines: 98
+  "知识/08-工程实践与质量/README.md":
+    kind: README
+    maturity: L0
+    bytes: 8208
+    lines: 95
+  "知识/README.md":
+    kind: README
+    maturity: L0
+    bytes: 2875
+    lines: 41
   "笔记/A星算法优化.md":
     kind: doc
     maturity: L0
@@ -2169,7 +2244,7 @@ documents:
   "读书笔记/GameAIPro/卷1-GameAIPro1/05-structural-architecture-common-tricks-of.md":
     kind: doc
     maturity: L2
-    bytes: 45877
+    bytes: 45869
     lines: 814
   "读书笔记/GameAIPro/卷1-GameAIPro1/06-the-behavior-tree-starter-kit.md":
     kind: doc
@@ -2829,7 +2904,7 @@ documents:
   "读书笔记/GameAIPro/卷4-OnlineEdition2021/05-taming-spatial-queries-tips-for-natural.md":
     kind: doc
     maturity: L2
-    bytes: 39755
+    bytes: 39747
     lines: 602
   "读书笔记/GameAIPro/卷4-OnlineEdition2021/06-flooding-the-influence-map-for-chase-in-.md":
     kind: doc

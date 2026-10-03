@@ -102,7 +102,7 @@ updated: 2026-08-20
 1. **地基**：[01-引擎基础](01-引擎基础/README.md)（UObject 反射、Actor/Component 生命周期、Gameplay 框架）
 2. **玩法驱动**：[03-游戏玩法编程](03-游戏玩法编程/README.md)（Enhanced Input、GAS、GameplayTag、CMC 移动预测）
 3. **表现落地**：[04-动画系统](04-动画系统/README.md) ＋ [07-UI与性能优化](07-UI与性能优化/README.md)（动画状态机、MVVM、CommonUI）
-4. **工业实战**：[12-引擎源码分析（Lyra 系列）](12-引擎源码分析/README.md#lyra-系列)（Experience 装配、Modular Pawn、技能武器战斗）
+4. **工业实战**：[12-引擎源码分析（Lyra 系列）](12-引擎源码分析/README.md#lyra-58-项目源码系列39-56)（Experience 装配、Modular Pawn、技能武器战斗）
 
 ### 路线 2：引擎底层与系统架构师深度钻研
 1. **底座原理**：[00-计算机与工程基础](../00-计算机与工程基础/README.md)（C++ 对象模型、并发内存序、OS 虚拟内存）

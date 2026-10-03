@@ -3,7 +3,7 @@ type: Architecture
 title: "04-Scene-Map-Zone与实例管理"
 status: stable
 verified: []
-maturity: L3
+maturity: L2
 ---
 # 04-Scene-Map-Zone与实例管理
 

@@ -1,0 +1,108 @@
+name: Knowledge integrity
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUTF8: '1'
+
+jobs:
+  validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: scripts/requirements-knowledge.txt
+      - name: Install pinned YAML and CommonMark parsers
+        run: |
+          python -m pip install --disable-pip-version-check -r scripts/requirements-knowledge.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Python graph, YAML, and CommonMark regressions
+        run: |
+          python -B scripts/test_knowledge_validation.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: A-star contract experiment (Linux)
+        if: ${{ !cancelled() && runner.os == 'Linux' }}
+        run: |
+          python -B evidence/algorithms/astar-contract/test_astar_contract.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Full graph, coverage, YAML, and Markdown validation
+        if: ${{ !cancelled() }}
+        run: |
+          python -B scripts/validate_knowledge.py --json-report "$env:RUNNER_TEMP/knowledge-validation.json"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Generated-view regression fixtures
+        if: ${{ !cancelled() }}
+        run: |
+          python -B scripts/test_render_knowledge_views.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Generated views are current
+        if: ${{ !cancelled() }}
+        run: |
+          python -B scripts/render_knowledge_views.py --check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Existing PowerShell gates and all four regression suites
+        if: ${{ !cancelled() }}
+        run: |
+          # Each checker runs in a separate pwsh process: its exit statement
+          # must not prevent the other existing gates from being exercised.
+          $failed = [Collections.Generic.List[string]]::new()
+          $checks = @(
+            @{ File = 'scripts/check_okf.ps1'; Args = @('-Root', $PWD.Path, '-Mode', 'Changed') },
+            @{ File = 'scripts/check_okf.ps1'; Args = @('-Root', $PWD.Path, '-Mode', 'Audit') },
+            @{ File = 'scripts/check_okf.ps1'; Args = @('-Root', $PWD.Path, '-Mode', 'Strict') },
+            @{ File = 'scripts/check_repo.ps1'; Args = @('-Root', $PWD.Path) },
+            @{ File = 'scripts/check_architecture.ps1'; Args = @('-Root', $PWD.Path) },
+            @{ File = 'scripts/test_architecture.ps1'; Args = @() },
+            @{ File = 'scripts/test_kb_scope.ps1'; Args = @() },
+            @{ File = 'scripts/test_okf_changed.ps1'; Args = @() },
+            @{ File = 'scripts/test_repo_paths.ps1'; Args = @() }
+          )
+          foreach ($check in $checks) {
+            $arguments = @('-NoProfile', '-File', $check.File) + $check.Args
+            & pwsh @arguments
+            if ($LASTEXITCODE -ne 0) { $failed.Add($check.File + ' ' + ($check.Args -join ' ')) }
+          }
+          if ($failed.Count) {
+            $failed | ForEach-Object { Write-Output "FAILED: $_" }
+            exit 1
+          }
+      - name: Commit-range whitespace check
+        if: ${{ !cancelled() }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if ($env:BASE_SHA -and $env:BASE_SHA -notmatch '^0+$') {
+            git rev-parse --verify --end-of-options "${env:BASE_SHA}^{commit}"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            git diff --check "${env:BASE_SHA}..HEAD"
+          } else {
+            # First push/manual run: include root commit content, not an empty
+            # working-tree comparison that always passes after checkout.
+            git diff-tree --check --root -r HEAD
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Retain complete validation diagnostics
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: knowledge-validation-${{ matrix.os }}
+          path: ${{ runner.temp }}/knowledge-validation.json
+          if-no-files-found: warn

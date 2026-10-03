@@ -43,3 +43,7 @@ maturity: L0
 
 - 本目录属于维护基础设施，不参与知识成熟度门禁，但每个实验 README 必须满足上述统一格式。
 - 新增证据后同步更新本表、[仓库结构](../references/仓库结构.md) 与根 [README](../README.md)。
+
+## A* 队列与重开合同
+
+[A*正确性反例与正文双语言验收](algorithms/astar-contract/README.md)：可变堆键旧错/新对、stale、reopen、目标出队与同键合同；直接抽取正文示例验证，不是性能基准。

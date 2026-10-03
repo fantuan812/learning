@@ -1,0 +1,2 @@
+# Keep Markdown byte-based manifest identical on Linux and Windows.
+*.md text eol=lf

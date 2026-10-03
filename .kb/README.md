@@ -14,12 +14,13 @@ updated: 2026-08-20
 
 # .kb —— Knowledge Base Control Plane
 
-控制平面状态文件，不是知识正文。结构决策前先读 taxonomy / aliases / decisions。
+机器清单与维护契约，不是知识正文。当前八域分类与稳定身份以 knowledge-map 为准，旧目录清单在迁移期间保留。
 
 当前整体设计见 [知识库架构](../references/知识库架构.md)；根目录责任由 architecture.json 管理，领域语义由 taxonomy 管理，二者不重复维护。
 
 | 文件 | 用途 |
 | --- | --- |
+| [knowledge-map.json](knowledge-map.json) | 八域、稳定文档身份、唯一概念主责与关系 |
 | [architecture.json](architecture.json) | 顶层责任层、入口与契约文件的机器清单 |
 | [manifest.yaml](manifest.yaml) | 文档索引（不含正文） |
 | [taxonomy.yaml](taxonomy.yaml) | 分类体系（active，按仓库实际目录维护） |
