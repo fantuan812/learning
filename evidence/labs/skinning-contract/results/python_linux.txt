@@ -1,0 +1,63 @@
+Skinning contract numeric model
+UTC: 2026-10-02T08:52:21Z
+Python 3.12.14
+Platform: Linux x86_64
+Backend: stdlib Python floats; no Unreal/glTF runtime
+
+Input SHA-256
+0a826d95523d621d0f9744ba55bd86a8e1cad39ec3f42b8c308a2e56adc0e62d  src/skinning.py
+60215c99982363b305080130c88e27aec8170b617cb5b481cbb80120832e71ba  tests/test_skinning.py
+0d169fe2ed9ff019955df65d35fdd7d6728a55ce8635f4d6bca1a35e51e00a0e  data/cases.json
+2de427accff11387b6c73d416812ac8da6be193898c01494de5c237c6d06d95b  scripts/run_all.sh
+
+Command: python3 -B tests/test_skinning.py
+Fixture: child_only=(-1,1,0), blend=(-0.5,1.5,0)
+Fixture: world=(9.5,1.5,0), wrong_double_transform=(19.5,1.5,0)
+Fixture: prune (0.9,0,1)->(1,0,0); opposing rotations collapse (1,0,0)->(0,0,0)
+test_bad_hierarchy_and_palette_lengths_rejected (__main__.SkinningContractTests.test_bad_hierarchy_and_palette_lengths_rejected) ... ok
+test_bind_pose_is_identity (__main__.SkinningContractTests.test_bind_pose_is_identity) ... ok
+test_child_rotates_around_bind_joint_pivot (__main__.SkinningContractTests.test_child_rotates_around_bind_joint_pivot) ... ok
+test_common_world_rigid_transform_leaves_mesh_local_result (__main__.SkinningContractTests.test_common_world_rigid_transform_leaves_mesh_local_result) ... ok
+test_invalid_indices_lengths_and_points_rejected (__main__.SkinningContractTests.test_invalid_indices_lengths_and_points_rejected) ... ok
+test_invalid_weights_rejected_without_implicit_repair (__main__.SkinningContractTests.test_invalid_weights_rejected_without_implicit_repair) ... ok
+test_mesh_world_cancelled_exactly_once (__main__.SkinningContractTests.test_mesh_world_cancelled_exactly_once) ... ok
+test_more_than_four_influences_is_valid_math (__main__.SkinningContractTests.test_more_than_four_influences_is_valid_math) ... ok
+test_nonidentity_bind_mesh_requires_mesh_to_joint_ibm (__main__.SkinningContractTests.test_nonidentity_bind_mesh_requires_mesh_to_joint_ibm) ... ok
+test_opposing_rotations_collapse_even_with_valid_weights (__main__.SkinningContractTests.test_opposing_rotations_collapse_even_with_valid_weights) ... ok
+test_palette_reorder_requires_index_remap (__main__.SkinningContractTests.test_palette_reorder_requires_index_remap) ... ok
+test_parent_composition_is_not_child_local (__main__.SkinningContractTests.test_parent_composition_is_not_child_local) ... ok
+test_reversed_product_and_missing_inverse_bind_are_wrong (__main__.SkinningContractTests.test_reversed_product_and_missing_inverse_bind_are_wrong) ... ok
+test_singular_and_nonfinite_matrices_rejected (__main__.SkinningContractTests.test_singular_and_nonfinite_matrices_rejected) ... ok
+test_truncation_renormalization_does_not_preserve_shape (__main__.SkinningContractTests.test_truncation_renormalization_does_not_preserve_shape) ... ok
+test_weighted_two_joint_fixture (__main__.SkinningContractTests.test_weighted_two_joint_fixture) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 0.005s
+
+OK
+
+Command: python3 -B -O tests/test_skinning.py
+Fixture: child_only=(-1,1,0), blend=(-0.5,1.5,0)
+Fixture: world=(9.5,1.5,0), wrong_double_transform=(19.5,1.5,0)
+Fixture: prune (0.9,0,1)->(1,0,0); opposing rotations collapse (1,0,0)->(0,0,0)
+test_bad_hierarchy_and_palette_lengths_rejected (__main__.SkinningContractTests.test_bad_hierarchy_and_palette_lengths_rejected) ... ok
+test_bind_pose_is_identity (__main__.SkinningContractTests.test_bind_pose_is_identity) ... ok
+test_child_rotates_around_bind_joint_pivot (__main__.SkinningContractTests.test_child_rotates_around_bind_joint_pivot) ... ok
+test_common_world_rigid_transform_leaves_mesh_local_result (__main__.SkinningContractTests.test_common_world_rigid_transform_leaves_mesh_local_result) ... ok
+test_invalid_indices_lengths_and_points_rejected (__main__.SkinningContractTests.test_invalid_indices_lengths_and_points_rejected) ... ok
+test_invalid_weights_rejected_without_implicit_repair (__main__.SkinningContractTests.test_invalid_weights_rejected_without_implicit_repair) ... ok
+test_mesh_world_cancelled_exactly_once (__main__.SkinningContractTests.test_mesh_world_cancelled_exactly_once) ... ok
+test_more_than_four_influences_is_valid_math (__main__.SkinningContractTests.test_more_than_four_influences_is_valid_math) ... ok
+test_nonidentity_bind_mesh_requires_mesh_to_joint_ibm (__main__.SkinningContractTests.test_nonidentity_bind_mesh_requires_mesh_to_joint_ibm) ... ok
+test_opposing_rotations_collapse_even_with_valid_weights (__main__.SkinningContractTests.test_opposing_rotations_collapse_even_with_valid_weights) ... ok
+test_palette_reorder_requires_index_remap (__main__.SkinningContractTests.test_palette_reorder_requires_index_remap) ... ok
+test_parent_composition_is_not_child_local (__main__.SkinningContractTests.test_parent_composition_is_not_child_local) ... ok
+test_reversed_product_and_missing_inverse_bind_are_wrong (__main__.SkinningContractTests.test_reversed_product_and_missing_inverse_bind_are_wrong) ... ok
+test_singular_and_nonfinite_matrices_rejected (__main__.SkinningContractTests.test_singular_and_nonfinite_matrices_rejected) ... ok
+test_truncation_renormalization_does_not_preserve_shape (__main__.SkinningContractTests.test_truncation_renormalization_does_not_preserve_shape) ... ok
+test_weighted_two_joint_fixture (__main__.SkinningContractTests.test_weighted_two_joint_fixture) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 0.005s
+
+OK

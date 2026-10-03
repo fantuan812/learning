@@ -1,0 +1,10 @@
+{
+  "convention": "column vectors; matrices stored as rows; homogeneous positions",
+  "vertex": [0, 2, 0, 1],
+  "joint_pivot": [0, 1, 0, 1],
+  "weights": [0.5, 0.5],
+  "expected_child_only": [-1, 1, 0, 1],
+  "expected_blend": [-0.5, 1.5, 0, 1],
+  "expected_translated_world": [9.5, 1.5, 0, 1],
+  "expected_double_transform": [19.5, 1.5, 0, 1]
+}

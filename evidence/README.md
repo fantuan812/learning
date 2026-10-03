@@ -25,6 +25,7 @@ maturity: L0
 | [tests/damage-core](tests/damage-core/README.md) | 伤害与属性结算：修正器聚合顺序、五乘区、护甲曲线、真伤、护盾、过量、死亡/免疫拦截、单次上限、DOT 取整、确定性重放 + 结算基准 | 已执行（MinGW g++ 16.1.0） | [11-伤害与属性结算完整链路](../系统实战/11-伤害与属性结算完整链路.md) |
 | labs/epoll-reactor | epoll LT/ET + Reactor 最小实现 | 代码已建，待 Linux 执行 | [01-Socket-Epoll与Reactor](../00-计算机与工程基础/07-Linux系统编程/01-Socket-Epoll与Reactor.md) |
 | [labs/profiling](labs/profiling/README.md) | 性能定位：6 种插桩样式开销（0.33ns 计数 → 310ns 日志）+ 帧预算换算、卡顿检测（中位数阈值+迟滞）、Tick 预算降级状态机 | 已执行（MinGW g++ 16.1.0） | [10-性能问题定位完整链路](../系统实战/10-性能问题定位完整链路.md) |
+| [labs/skinning-contract](labs/skinning-contract/README.md) | 蒙皮空间/inverse bind/palette/权重裁剪数值反例 | 已执行（Python 3.12/Linux，16 项；非 UE 运行） | [07-动画资产与骨骼基础](../游戏知识/04-动画系统/07-动画资产与骨骼基础.md) |
 | labs/page-fault | Page Fault / mmap 实验 | 规划（需 Linux） | W1-10 |
 | labs/cache-benchmark | Cache stride / branch / SIMD Benchmark | 规划 | W1-12 |
 | [algorithms/astar](algorithms/astar/README.md) | A* 二叉堆 vs 线性扫描 + 路径缓存（补齐工作日志缺失项） | 已执行（MSVC 2022） | [07-假人AI完整链路](../系统实战/07-假人AI完整链路.md) |
