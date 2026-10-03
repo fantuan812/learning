@@ -297,7 +297,8 @@ if ($scopedPaths.Contains($rootReadme)) {
 $gameKnowledgeRoot = Join-Path $rootPath '游戏知识'
 $sourceAnalysisRoot = Join-Path $gameKnowledgeRoot '12-引擎源码分析'
 $ueInstallRoot = 'C:\Program Files\Epic Games\UE_5.8'
-$ueEngineRoot = Join-Path $ueInstallRoot 'Engine'
+# Foreign evidence paths are labels on hosts without that drive; do not ask a PowerShell provider to resolve them.
+$ueEngineRoot = [IO.Path]::Combine($ueInstallRoot, 'Engine')
 $absoluteEvidencePattern = '(?i)(?<![#A-Za-z0-9])C:\\+Program Files\\+Epic Games\\+UE_5\.8\\+Engine(?:\\+[A-Za-z0-9_+.\-]+)*'
 $relativeEvidencePattern = '(?i)(?<![#A-Za-z0-9_./-])Engine/(?:Source|Plugins)(?:/[A-Za-z0-9_+.\-]+)*(?:/)?'
 $qualityVersionMissing = 0

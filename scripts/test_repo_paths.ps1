@@ -17,6 +17,13 @@ foreach ($name in @('Get-RepoRelative', 'Test-MaintenancePath', 'Test-PathUnder'
     . ([scriptblock]::Create($definition[0].Extent.Text))
 }
 function Require([bool]$Condition, [string]$Message) { if (-not $Condition) { throw $Message } }
+# Exercise the actual evidence-root assignment with a drive that cannot exist.
+# Join-Path can throw on a missing provider drive even though evidence is optional.
+$evidenceAssignment = @($ast.FindAll({ param($node) $node -is [Management.Automation.Language.AssignmentStatementAst] -and $node.Left.Extent.Text -eq '$ueEngineRoot' }, $true))
+Require ($evidenceAssignment.Count -eq 1) 'Expected one engine evidence root assignment'
+$ueInstallRoot = ('MissingEvidence' + [guid]::NewGuid().ToString('N') + ':\UE')
+. ([scriptblock]::Create($evidenceAssignment[0].Extent.Text))
+Require ($ueEngineRoot -ceq [IO.Path]::Combine($ueInstallRoot, 'Engine')) 'Foreign evidence path must be joined lexically without a provider lookup'
 $topic = Join-Path $rootPath 'topic'
 Require (Test-PathUnder $topic $topic) 'Same path must be under itself'
 Require (Test-PathUnder (Join-Path $topic 'child.md') $topic) 'Child must be in scope'
