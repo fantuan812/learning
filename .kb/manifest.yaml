@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-03 (skinning-contract integrated after protobuf; paths, bytes, lines, and maturity mechanically recalculated).
+# Generated: 2026-10-03 (epoll contracts; paths, bytes, lines, and maturity mechanically recalculated).
 version: 4
 
 okf:
@@ -189,8 +189,8 @@ documents:
   "00-计算机与工程基础/07-Linux系统编程/01-Socket-Epoll与Reactor.md":
     kind: doc
     maturity: L3
-    bytes: 21732
-    lines: 314
+    bytes: 24941
+    lines: 319
   "00-计算机与工程基础/07-Linux系统编程/03-io_uring与异步I-O.md":
     kind: doc
     maturity: L2
@@ -204,7 +204,7 @@ documents:
   "00-计算机与工程基础/07-Linux系统编程/README.md":
     kind: README
     maturity: L2
-    bytes: 4141
+    bytes: 4250
     lines: 62
   "00-计算机与工程基础/08-计算机体系结构与性能/01-处理器存储层次与性能工程.md":
     kind: doc
@@ -449,12 +449,12 @@ documents:
   "README.md":
     kind: README
     maturity: L2
-    bytes: 9497
+    bytes: 9629
     lines: 122
   "evidence/README.md":
     kind: README
     maturity: L0
-    bytes: 5679
+    bytes: 5764
     lines: 45
   "evidence/algorithms/aoi/README.md":
     kind: README
@@ -479,8 +479,8 @@ documents:
   "evidence/labs/epoll-reactor/README.md":
     kind: README
     maturity: L0
-    bytes: 2818
-    lines: 67
+    bytes: 7722
+    lines: 103
   "evidence/labs/false-sharing/README.md":
     kind: README
     maturity: L0
@@ -544,8 +544,8 @@ documents:
   "learning/log.md":
     kind: doc
     maturity: L0
-    bytes: 48950
-    lines: 57
+    bytes: 49620
+    lines: 59
   "log.md":
     kind: doc
     maturity: L2
@@ -579,7 +579,7 @@ documents:
   "references/仓库结构.md":
     kind: doc
     maturity: L2
-    bytes: 11670
+    bytes: 11735
     lines: 133
   "references/写作规范.md":
     kind: doc

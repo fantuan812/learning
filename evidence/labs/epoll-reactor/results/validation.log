@@ -1,0 +1,98 @@
+epoll-reactor correctness validation
++ date -u +UTC\ %Y-%m-%dT%H:%M:%SZ
+UTC 2026-10-03T08:48:46Z
++ uname -a
+Linux 3d2ca203551b 6.18.44 #1 SMP Sat Sep 26 20:02:31 UTC 2026 x86_64 GNU/Linux
++ g++ --version
+g++ (Debian 14.2.0-19) 14.2.0
+Copyright (C) 2024 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
++ python3 --version
+Python 3.12.14
++ bash --version
+GNU bash, version 5.2.37(1)-release (x86_64-pc-linux-gnu)
+Copyright (C) 2022 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+
+This is free software; you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
++ timeout --version
+timeout (GNU coreutils) 9.7
+Packaged by Debian (9.7-3)
+Copyright (C) 2025 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+Written by Pádraig Brady.
++ sha256sum /workspace/scratch/234c8048d85d/learning-network-next/evidence/labs/epoll-reactor/src/echo_server_epoll.cpp /workspace/scratch/234c8048d85d/learning-network-next/evidence/labs/epoll-reactor/src/reactor_io.hpp /workspace/scratch/234c8048d85d/learning-network-next/evidence/labs/epoll-reactor/tests/epoll_contract_test.cpp /workspace/scratch/234c8048d85d/learning-network-next/evidence/labs/epoll-reactor/tests/tcp_integration_test.py /workspace/scratch/234c8048d85d/learning-network-next/evidence/labs/epoll-reactor/scripts/build_run.sh
+f5a241a960f08f7cb296d80ca1962d76a20a53c3901f393d011e3bde89482a7d  /workspace/scratch/234c8048d85d/learning-network-next/evidence/labs/epoll-reactor/src/echo_server_epoll.cpp
+e858cc42ca168f6517d48b77658fea0209c4c168e41911f0726bc8232f0064cb  /workspace/scratch/234c8048d85d/learning-network-next/evidence/labs/epoll-reactor/src/reactor_io.hpp
+2ea49da266999229b7057a18d0a912a3228f4ca5063a10080793ccc23dfbdee3  /workspace/scratch/234c8048d85d/learning-network-next/evidence/labs/epoll-reactor/tests/epoll_contract_test.cpp
+78946e66ff84ebc36352ab35b4cb547a6ee0b69c7bf3aa0d90fdab4412791c1c  /workspace/scratch/234c8048d85d/learning-network-next/evidence/labs/epoll-reactor/tests/tcp_integration_test.py
+147ff4ed1e666bd8a970712217a553ca195da5a06995dea26040dea415364834  /workspace/scratch/234c8048d85d/learning-network-next/evidence/labs/epoll-reactor/scripts/build_run.sh
+NOTE: readiness counts and elapsed time are not performance evidence.
++ timeout 30 g++ -O2 -g -std=c++17 -Wall -Wextra -Wpedantic -Werror /workspace/scratch/234c8048d85d/learning-network-next/evidence/labs/epoll-reactor/src/echo_server_epoll.cpp -o /tmp/epoll-reactor.mBbHFyY0/echo_server_epoll
++ timeout 30 g++ -O2 -g -std=c++17 -Wall -Wextra -Wpedantic -Werror /workspace/scratch/234c8048d85d/learning-network-next/evidence/labs/epoll-reactor/tests/epoll_contract_test.cpp -o /tmp/epoll-reactor.mBbHFyY0/epoll_contract_test
++ timeout --kill-after=3s 25s /tmp/epoll-reactor.mBbHFyY0/epoll_contract_test
+PASS mechanism lt_remaining_repeats
+PASS mechanism et_unread_stalls_without_data_loss
+PASS mechanism lt_preexisting_data_at_add
+PASS mechanism et_preexisting_data_at_add
+DETAIL write_resume bytes=524605 partial=64 eagain=66
+PASS mechanism partial_write_eagain_epollout_lossless
+PASS mechanism bounded_queue_rejects_overflow
+PASS mechanism msg_nosignal_on_peer_close
+SUMMARY mechanism passed=7 failed=0
++ timeout --kill-after=3s 120s python3 -u /workspace/scratch/234c8048d85d/learning-network-next/evidence/labs/epoll-reactor/tests/tcp_integration_test.py /tmp/epoll-reactor.mBbHFyY0/echo_server_epoll --port 0
+CLI args=[] exit=2 output='usage: /tmp/epoll-reactor.mBbHFyY0/echo_server_epoll <port:0..65535> <lt|et>'
+PASS integration invalid_cli_1
+CLI args=['abc', 'lt'] exit=2 output='invalid port or mode'
+PASS integration invalid_cli_2
+CLI args=['-1', 'lt'] exit=2 output='invalid port or mode'
+PASS integration invalid_cli_3
+CLI args=['65536', 'et'] exit=2 output='invalid port or mode'
+PASS integration invalid_cli_4
+CLI args=['0', 'bad'] exit=2 output='invalid port or mode'
+PASS integration invalid_cli_5
+CLI args=['0', 'lt', 'extra'] exit=2 output='usage: /tmp/epoll-reactor.mBbHFyY0/echo_server_epoll <port:0..65535> <lt|et>'
+PASS integration invalid_cli_6
+PASS integration lt_binary_multichunk
+PASS integration lt_empty_half_close
+PASS integration lt_half_close_pending_output
+PASS integration lt_slow_reader_pause_resume_other_peer
+PASS integration lt_reset_disconnect_then_survive
+PASS integration lt_concurrent_echo
+--- server lt raw output ---
+READY address=127.0.0.1 port=44263 mode=lt queue_limit=262144 max_connections=64
+PAUSE id=3 pending=262144
+PAUSE id=4 pending=262144
+PAUSE id=4 pending=262144
+peer-error id=6: Connection reset by peer
+peer-error id=7: Connection reset by peer
+STATS accepted=18 closed=18 read_pauses=3 partial_writes=98 write_eagain=105 max_pending=262144
+--- server lt exit=0 ---
+PASS integration lt_shutdown_and_bounded_stats
+PASS integration et_binary_multichunk
+PASS integration et_empty_half_close
+PASS integration et_half_close_pending_output
+PASS integration et_slow_reader_pause_resume_other_peer
+PASS integration et_reset_disconnect_then_survive
+PASS integration et_concurrent_echo
+--- server et raw output ---
+READY address=127.0.0.1 port=33419 mode=et queue_limit=262144 max_connections=64
+PAUSE id=3 pending=262144
+PAUSE id=4 pending=262144
+PAUSE id=4 pending=262144
+PAUSE id=4 pending=262144
+peer-error id=7: Connection reset by peer
+recv id=9: Connection reset by peer
+recv id=10: Connection reset by peer
+recv id=11: Connection reset by peer
+STATS accepted=18 closed=18 read_pauses=4 partial_writes=115 write_eagain=125 max_pending=262144
+--- server et exit=0 ---
+PASS integration et_shutdown_and_bounded_stats
+SUMMARY integration passed=20 failed=0
+PASS complete: 7 mechanism cases + 20 integration cases = 27 cases
