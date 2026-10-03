@@ -1,0 +1,3988 @@
+{
+  "version": 1,
+  "coverage_roots": [
+    "00-计算机与工程基础",
+    "游戏知识",
+    "游戏服务端",
+    "游戏算法",
+    "游戏AI",
+    "游戏测试与质量",
+    "系统实战",
+    "笔记",
+    "工作日志",
+    "读书笔记"
+  ],
+  "domains": [
+    {
+      "id": "systems",
+      "title": "编程与计算机基础",
+      "entrypoint": "知识/01-编程与计算机基础/README.md"
+    },
+    {
+      "id": "algorithms",
+      "title": "数学与游戏算法",
+      "entrypoint": "知识/02-数学与游戏算法/README.md"
+    },
+    {
+      "id": "engine",
+      "title": "引擎架构与资源系统",
+      "entrypoint": "知识/03-引擎架构与资源系统/README.md"
+    },
+    {
+      "id": "simulation",
+      "title": "图形动画与物理仿真",
+      "entrypoint": "知识/04-图形动画与物理仿真/README.md"
+    },
+    {
+      "id": "gameplay",
+      "title": "Gameplay与交互系统",
+      "entrypoint": "知识/05-Gameplay与交互系统/README.md"
+    },
+    {
+      "id": "ai",
+      "title": "游戏AI",
+      "entrypoint": "知识/06-游戏AI/README.md"
+    },
+    {
+      "id": "online",
+      "title": "网络与游戏服务端",
+      "entrypoint": "知识/07-网络与游戏服务端/README.md"
+    },
+    {
+      "id": "engineering",
+      "title": "工程实践与质量",
+      "entrypoint": "知识/08-工程实践与质量/README.md"
+    }
+  ],
+  "documents": [
+    {
+      "id": "kb-d69205a7e6f8",
+      "path": "00-计算机与工程基础/01-C++核心/01-C++对象生命周期与RAII.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-3609eb46b791",
+      "path": "00-计算机与工程基础/01-C++核心/02-Copy-Move与值语义.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-3a6fbe2c74a9",
+      "path": "00-计算机与工程基础/02-C++对象模型与内存/01-对象布局、虚函数与内存分配.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-691db49afadc",
+      "path": "00-计算机与工程基础/02-C++对象模型与内存/02-STL容器与Allocator.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-a8ddd89e82c3",
+      "path": "00-计算机与工程基础/03-现代C++与泛型/01-Concepts、Ranges与泛型设计.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-75ba4957307f",
+      "path": "00-计算机与工程基础/03-现代C++与泛型/02-异常、类型系统与标准库实现.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-79484ac343bf",
+      "path": "00-计算机与工程基础/04-C++并发与内存模型/02-Atomic与C++内存模型.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-de8c15ee1031",
+      "path": "00-计算机与工程基础/04-C++并发与内存模型/02-线程同步与锁.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-b0b1ebccbab7",
+      "path": "00-计算机与工程基础/04-C++并发与内存模型/03-LockFree与FalseSharing.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-40f84d187127",
+      "path": "00-计算机与工程基础/04-C++并发与内存模型/04-线程池、任务调度与协程调度.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-47e8aafb62d8",
+      "path": "00-计算机与工程基础/04-C++并发与内存模型/05-进程间通信与跨进程同步.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-580fff7e59bc",
+      "path": "00-计算机与工程基础/05-数据结构与复杂度/01-数据结构复杂度与容器选型.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-049bfe1d9a15",
+      "path": "00-计算机与工程基础/06-操作系统/01-进程线程虚拟内存与系统调用.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-efc011d095f7",
+      "path": "00-计算机与工程基础/06-操作系统/02-虚拟内存、PageFault与mmap.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-b5f72bef3a98",
+      "path": "00-计算机与工程基础/06-操作系统/03-文件系统与存储栈.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-9ae808dbbf8f",
+      "path": "00-计算机与工程基础/06-操作系统/04-权限安全与隔离.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-dddfb4877f96",
+      "path": "00-计算机与工程基础/07-Linux系统编程/01-Socket-Epoll与Reactor.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-c5c9280ecd93",
+      "path": "00-计算机与工程基础/07-Linux系统编程/03-io_uring与异步I-O.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-e9b6c7f3abad",
+      "path": "00-计算机与工程基础/07-Linux系统编程/03-性能工具：插桩与perf采样.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-c902a4328924",
+      "path": "00-计算机与工程基础/08-计算机体系结构与性能/01-处理器存储层次与性能工程.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-d3c457bbfad5",
+      "path": "00-计算机与工程基础/08-计算机体系结构与性能/03-ISA汇编与调用约定.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-fc7331d6602d",
+      "path": "00-计算机与工程基础/08-计算机体系结构与性能/04-编译器优化与GPU异构.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-cb4724fce8bb",
+      "path": "00-计算机与工程基础/08-计算机体系结构与性能/05-虚拟化与硬件辅助隔离.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-367fe03f073f",
+      "path": "00-计算机与工程基础/09-计算机网络基础/01-网络分层协议与工程实践.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-d0f57d102421",
+      "path": "00-计算机与工程基础/09-计算机网络基础/02-QUIC与HTTP演进.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-37a3beaaba62",
+      "path": "00-计算机与工程基础/09-计算机网络基础/03-IPv6NAT服务发现与负载均衡.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-570fe36966c6",
+      "path": "00-计算机与工程基础/10-编译链接与ABI/01-编译链接与ABI全流程.md",
+      "domain": "systems",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-ef24ce50e01c",
+      "path": "00-计算机与工程基础/11-工程调试与性能分析/01-调试与性能分析方法论.md",
+      "domain": "engineering",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-d8845a29d02f",
+      "path": "00-计算机与工程基础/12-数据库与分布式系统/01-存储引擎与事务.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-22db22edfb2b",
+      "path": "00-计算机与工程基础/12-数据库与分布式系统/02-分布式系统基础.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-033d0734fbbc",
+      "path": "00-计算机与工程基础/12-数据库与分布式系统/03-缓存与消息队列.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-e1b8c642d16f",
+      "path": "00-计算机与工程基础/13-数学与算法基础/02-概率线性代数与数值计算.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-2100de93be71",
+      "path": "00-计算机与工程基础/13-数学与算法基础/数学与算法基础总览.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-ad8254398f00",
+      "path": "00-计算机与工程基础/14-安全与密码基础/02-TLS认证授权与反作弊.md",
+      "domain": "engineering",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-468a96939eea",
+      "path": "00-计算机与工程基础/14-安全与密码基础/安全与密码基础总览.md",
+      "domain": "engineering",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-88a3150102a9",
+      "path": "00-计算机与工程基础/15-软件工程与构建/测试静态分析Fuzz与持续交付.md",
+      "domain": "engineering",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-4065596d7e0b",
+      "path": "00-计算机与工程基础/15-软件工程与构建/版本控制依赖与构建工程.md",
+      "domain": "engineering",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-86b0a20ae42e",
+      "path": "00-计算机与工程基础/15-软件工程与构建/软件工程与构建基础.md",
+      "domain": "engineering",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-cff1a306ce7a",
+      "path": "00-计算机与工程基础/16-容器云与可观测性/02-可观测性SLO与故障演练.md",
+      "domain": "engineering",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-4cab1468fea9",
+      "path": "00-计算机与工程基础/16-容器云与可观测性/容器云与可观测性基础.md",
+      "domain": "engineering",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-8d4647fe90b3",
+      "path": "evidence/algorithms/aoi/README.md",
+      "domain": "algorithms",
+      "kind": "experiment"
+    },
+    {
+      "id": "kb-209eb4eb34c4",
+      "path": "evidence/algorithms/astar-contract/README.md",
+      "domain": "algorithms",
+      "kind": "experiment"
+    },
+    {
+      "id": "kb-ba2316216828",
+      "path": "evidence/algorithms/astar/README.md",
+      "domain": "algorithms",
+      "kind": "experiment"
+    },
+    {
+      "id": "kb-0c3040751f80",
+      "path": "evidence/labs/atomic-memory-order/README.md",
+      "domain": "systems",
+      "kind": "experiment"
+    },
+    {
+      "id": "kb-051264d29969",
+      "path": "evidence/labs/cpp-move/README.md",
+      "domain": "systems",
+      "kind": "experiment"
+    },
+    {
+      "id": "kb-35aef27b92bc",
+      "path": "evidence/labs/epoll-reactor/README.md",
+      "domain": "systems",
+      "kind": "experiment"
+    },
+    {
+      "id": "kb-d6e4900f41fc",
+      "path": "evidence/labs/false-sharing/README.md",
+      "domain": "systems",
+      "kind": "experiment"
+    },
+    {
+      "id": "kb-42798aa488b6",
+      "path": "evidence/labs/profiling/README.md",
+      "domain": "engineering",
+      "kind": "experiment"
+    },
+    {
+      "id": "kb-f632f53eb5b5",
+      "path": "evidence/labs/protobuf-evolution/README.md",
+      "domain": "online",
+      "kind": "experiment"
+    },
+    {
+      "id": "kb-7624efa6edaf",
+      "path": "evidence/labs/skinning-contract/README.md",
+      "domain": "simulation",
+      "kind": "experiment"
+    },
+    {
+      "id": "kb-91b171754238",
+      "path": "evidence/server/tick-scheduler/README.md",
+      "domain": "online",
+      "kind": "experiment"
+    },
+    {
+      "id": "kb-dc6f37d24bb8",
+      "path": "evidence/tests/aoi-scale/README.md",
+      "domain": "algorithms",
+      "kind": "experiment"
+    },
+    {
+      "id": "kb-47ef8d22932a",
+      "path": "evidence/tests/damage-core/README.md",
+      "domain": "gameplay",
+      "kind": "experiment"
+    },
+    {
+      "id": "kb-abe278c6ec4c",
+      "path": "evidence/tests/entry-core/README.md",
+      "domain": "online",
+      "kind": "experiment"
+    },
+    {
+      "id": "kb-3c5789024544",
+      "path": "evidence/tests/gameplay-core/README.md",
+      "domain": "gameplay",
+      "kind": "experiment"
+    },
+    {
+      "id": "kb-bb64ed6713c1",
+      "path": "evidence/tests/match-core/README.md",
+      "domain": "systems",
+      "kind": "experiment"
+    },
+    {
+      "id": "kb-92918c534bc0",
+      "path": "工作日志/2026-08-03-假人AI-A星优化与耗时测试.md",
+      "domain": "ai",
+      "kind": "journal"
+    },
+    {
+      "id": "kb-034a68d623e7",
+      "path": "工作日志/2026-08-05-假人寻路路径缓存方案.md",
+      "domain": "online",
+      "kind": "journal"
+    },
+    {
+      "id": "kb-e4347227d9af",
+      "path": "工作日志/2026-08-14-时装三品质进阶与升级系统.md",
+      "domain": "gameplay",
+      "kind": "journal"
+    },
+    {
+      "id": "kb-259f62beb352",
+      "path": "工作日志/2026-08-18-服务器代码规则.md",
+      "domain": "gameplay",
+      "kind": "journal"
+    },
+    {
+      "id": "kb-45a0309ea021",
+      "path": "工作日志/2026-08-26-套装绑定技能开发与技能系统解耦.md",
+      "domain": "gameplay",
+      "kind": "journal"
+    },
+    {
+      "id": "kb-03563480ea4a",
+      "path": "工作日志/2026-09-08-周卡活动开发与活动基类解耦.md",
+      "domain": "gameplay",
+      "kind": "journal"
+    },
+    {
+      "id": "kb-a5018eea4b6d",
+      "path": "游戏AI/01-决策与架构/01-AI总体架构与感知.md",
+      "domain": "ai",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-54bdd18a5c9a",
+      "path": "游戏AI/01-决策与架构/02-状态机与层次状态机.md",
+      "domain": "ai",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-ea3e7e3113fc",
+      "path": "游戏AI/01-决策与架构/03-行为树通用原理.md",
+      "domain": "ai",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-b3438b806671",
+      "path": "游戏AI/01-决策与架构/04-Utility与GOAP.md",
+      "domain": "ai",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-02be08c6fa24",
+      "path": "游戏AI/01-决策与架构/05-博弈搜索与对战AI.md",
+      "domain": "ai",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-233b72eaabfd",
+      "path": "游戏AI/01-决策与架构/06-模糊逻辑与连续决策.md",
+      "domain": "ai",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-090100fbf079",
+      "path": "游戏AI/01-决策与架构/07-NPC人格对话与社交AI.md",
+      "domain": "ai",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-f7ec186f631c",
+      "path": "游戏AI/02-移动学习与服务端/01-移动与群组行为.md",
+      "domain": "ai",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-1c90e4410cd8",
+      "path": "游戏AI/02-移动学习与服务端/02-战斗与Boss设计.md",
+      "domain": "ai",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-f4a0d98d48b7",
+      "path": "游戏AI/02-移动学习与服务端/03-学习型AI.md",
+      "domain": "ai",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-9f5ef9b4082e",
+      "path": "游戏AI/02-移动学习与服务端/04-服务端AI与性能.md",
+      "domain": "ai",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-149b3a2e2443",
+      "path": "游戏AI/02-移动学习与服务端/05-玩家建模与自适应难度.md",
+      "domain": "ai",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-77ce07e5c1d6",
+      "path": "游戏AI/02-移动学习与服务端/06-多智能体协作与强化学习.md",
+      "domain": "ai",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-4cd9248819ba",
+      "path": "游戏AI/02-移动学习与服务端/07-战斗AI编排与战术协同.md",
+      "domain": "ai",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-167299c813f5",
+      "path": "游戏AI/03-评测与安全/01-AI评测回放.md",
+      "domain": "ai",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-78382fc9e802",
+      "path": "游戏AI/03-评测与安全/02-自动测试玩家与AI回归基准.md",
+      "domain": "ai",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-795d57bb1caa",
+      "path": "游戏AI/03-评测与安全/03-LLM-NPC安全.md",
+      "domain": "ai",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-8a1ac488cee8",
+      "path": "游戏服务端/01-架构与网络/01-服务器架构模式.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-0f42ab20b3a3",
+      "path": "游戏服务端/01-架构与网络/02-网络通信与协议设计.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-63214c460840",
+      "path": "游戏服务端/01-架构与网络/03-帧同步与状态同步.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-3f321ed12519",
+      "path": "游戏服务端/01-架构与网络/04-消息系统与事件驱动.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-32fb9bab13ab",
+      "path": "游戏服务端/01-架构与网络/05-并发与高性能.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-75c3f82084cc",
+      "path": "游戏服务端/02-数据与业务/01-数据库选型与存储设计.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-309e981cc889",
+      "path": "游戏服务端/02-数据与业务/02-缓存与排行榜系统.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-4d7b2bf9d2f6",
+      "path": "游戏服务端/02-数据与业务/03-分布式与高可用.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-012a8c8ff9d2",
+      "path": "游戏服务端/02-数据与业务/04-安全与反作弊.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-be96a9a69943",
+      "path": "游戏服务端/02-数据与业务/05-部署运维与监控.md",
+      "domain": "engineering",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-ba788c3015ab",
+      "path": "游戏服务端/03-业务系统设计/01-背包与道具系统.md",
+      "domain": "gameplay",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-f5bf26766901",
+      "path": "游戏服务端/03-业务系统设计/02-任务与成就系统.md",
+      "domain": "gameplay",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-6dc74816ac04",
+      "path": "游戏服务端/03-业务系统设计/03-商城与经济系统.md",
+      "domain": "gameplay",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-d8c426e3cb49",
+      "path": "游戏服务端/03-业务系统设计/04-匹配与房间系统.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-4a3cf260840f",
+      "path": "游戏服务端/03-业务系统设计/05-聊天与社交系统.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-feb05bf81955",
+      "path": "游戏服务端/03-业务系统设计/06-战斗结算与验证.md",
+      "domain": "gameplay",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-c0379e43fc67",
+      "path": "游戏服务端/03-业务系统设计/07-活动与运营系统.md",
+      "domain": "gameplay",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-54e305f4e0c2",
+      "path": "游戏服务端/03-业务系统设计/08-技能与战斗框架.md",
+      "domain": "gameplay",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-070cd5b59bd4",
+      "path": "游戏服务端/04-平台与可靠性/00-平台可靠性总览与迁移说明.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-d044f04e70b9",
+      "path": "游戏服务端/04-平台与可靠性/01-身份认证与权限模型.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-88567caf9c20",
+      "path": "游戏服务端/04-平台与可靠性/02-限流熔断背压与过载保护.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-94ac144c2bea",
+      "path": "游戏服务端/04-平台与可靠性/03-幂等重试与消息语义.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-3f52c5b65ffd",
+      "path": "游戏服务端/04-平台与可靠性/04-分布式事务与最终一致性.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-c43cf71e6120",
+      "path": "游戏服务端/04-平台与可靠性/05-服务发现配置中心与治理.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-097b6360b196",
+      "path": "游戏服务端/04-平台与可靠性/06-SLI-SLO与可观测性.md",
+      "domain": "engineering",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-7eeae83ead12",
+      "path": "游戏服务端/04-平台与可靠性/07-故障恢复容灾与多活.md",
+      "domain": "engineering",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-1a8d8263d7f1",
+      "path": "游戏服务端/04-平台与可靠性/08-灰度发布回滚与事故复盘.md",
+      "domain": "engineering",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-f737bd11e584",
+      "path": "游戏服务端/05-UE Dedicated Server平台化/01-UE Dedicated Server实例生命周期与平台化.md",
+      "domain": "online",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-268eebf7a4ac",
+      "path": "游戏服务端/05-UE Dedicated Server平台化/02-Linux DS部署与容器实战.md",
+      "domain": "engineering",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-b44985774857",
+      "path": "游戏服务端/05-UE Dedicated Server平台化/03-DS会话注册与重连实现.md",
+      "domain": "online",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-86eea3c39373",
+      "path": "游戏服务端/05-UE Dedicated Server平台化/04-DS日志崩溃与可观测性实战.md",
+      "domain": "engineering",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-00434811fc7a",
+      "path": "游戏服务端/05-UE Dedicated Server平台化/05-DS自动扩缩容与容量规划.md",
+      "domain": "online",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-10112ab3ba6b",
+      "path": "游戏服务端/05-UE Dedicated Server平台化/06-DS多区部署与容灾.md",
+      "domain": "online",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-b26383d9adf2",
+      "path": "游戏服务端/06-世界模拟与运行时/01-ServerMainLoop与TickScheduler.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-9ff64e936455",
+      "path": "游戏服务端/06-世界模拟与运行时/02-Timer时间轮与延迟任务.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-e6bec32265b7",
+      "path": "游戏服务端/06-世界模拟与运行时/03-Entity生命周期与组件模型.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-4dc8c0b55b10",
+      "path": "游戏服务端/06-世界模拟与运行时/04-Scene-Map-Zone与实例管理.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-e3f8890b6281",
+      "path": "游戏服务端/06-世界模拟与运行时/05-AOI与InterestManagement.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-77ea87a5bcbe",
+      "path": "游戏服务端/06-世界模拟与运行时/06-SpatialQuery与兴趣点查询.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-e76a0c7ba37d",
+      "path": "游戏服务端/06-世界模拟与运行时/07-EntityOwnership与Authority.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-638864998ce4",
+      "path": "游戏服务端/06-世界模拟与运行时/08-跨Zone与跨服迁移.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-de7cc2c47a0b",
+      "path": "游戏服务端/06-世界模拟与运行时/09-动态分线与负载均衡.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-8e0173d90d84",
+      "path": "游戏服务端/06-世界模拟与运行时/10-大规模战斗与降级.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-4671046111ac",
+      "path": "游戏服务端/06-世界模拟与运行时/11-AI与寻路时间预算.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-3b8786900536",
+      "path": "游戏服务端/06-世界模拟与运行时/12-世界时间确定性与GameClock.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-767849925106",
+      "path": "游戏服务端/06-世界模拟与运行时/13-世界Snapshot与故障恢复.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-84e851771c8e",
+      "path": "游戏服务端/06-世界模拟与运行时/14-运行时背压与过载保护.md",
+      "domain": "online",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-772b934bb720",
+      "path": "游戏测试与质量/01-测试金字塔与测试策略.md",
+      "domain": "engineering",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-ed48c5991947",
+      "path": "游戏测试与质量/02-客户端自动化测试.md",
+      "domain": "engineering",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-23e11d1ee726",
+      "path": "游戏测试与质量/03-服务端测试与机器人压测.md",
+      "domain": "engineering",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-a0213493a2a2",
+      "path": "游戏测试与质量/04-性能兼容与网络异常测试.md",
+      "domain": "engineering",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-fbd5b2d7ed02",
+      "path": "游戏测试与质量/05-CI质量门禁与缺陷管理.md",
+      "domain": "engineering",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-184c682f4f85",
+      "path": "游戏测试与质量/06-UE Dedicated Server联机验收与Gauntlet.md",
+      "domain": "engineering",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-b7ebf507831d",
+      "path": "游戏测试与质量/07-UE DS机器人压测与容量评估.md",
+      "domain": "engineering",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-8c93f7e75859",
+      "path": "游戏测试与质量/08-存档版本迁移与兼容性测试.md",
+      "domain": "engineering",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-d0770dcc65d1",
+      "path": "游戏测试与质量/09-安全合规与反作弊测试.md",
+      "domain": "engineering",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-210ecf7f6e6a",
+      "path": "游戏测试与质量/10-本地化无障碍与多端体验验收.md",
+      "domain": "gameplay",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-fbddb01686b1",
+      "path": "游戏知识/00-全栈运行闭环.md",
+      "domain": "engine",
+      "kind": "roadmap",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-fc7d34315801",
+      "path": "游戏知识/01-引擎基础/01-UObject与反射系统.md",
+      "domain": "engine",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-ddfebdf574ef",
+      "path": "游戏知识/01-引擎基础/02-Actor与Component生命周期.md",
+      "domain": "engine",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-28b31c4a1bda",
+      "path": "游戏知识/01-引擎基础/03-Gameplay框架与游戏模式.md",
+      "domain": "engine",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-b4b1cc8a9791",
+      "path": "游戏知识/01-引擎基础/04-引擎启动流程与模块架构.md",
+      "domain": "engine",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-d132ea9c10f2",
+      "path": "游戏知识/01-引擎基础/05-场景组件与变换体系.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-059c8c8327b9",
+      "path": "游戏知识/01-引擎基础/06-定时器与引擎Ticker.md",
+      "domain": "engine",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-62f6aae6522e",
+      "path": "游戏知识/01-引擎基础/07-World关卡与Subsystem体系.md",
+      "domain": "engine",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-3343a0cc8fb7",
+      "path": "游戏知识/01-引擎基础/08-关卡流送LevelStreaming.md",
+      "domain": "engine",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-36ce828463b5",
+      "path": "游戏知识/01-引擎基础/09-WorldPartition大世界.md",
+      "domain": "engine",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-a8caf94beaa6",
+      "path": "游戏知识/01-引擎基础/10-FName与FString底层.md",
+      "domain": "engine",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-814121c131f6",
+      "path": "游戏知识/01-引擎基础/11-多线程与任务系统.md",
+      "domain": "engine",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-ef3684c3a201",
+      "path": "游戏知识/02-渲染与图形/01-渲染管线概览.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-88f5a5bd1d52",
+      "path": "游戏知识/02-渲染与图形/02-材质系统详解.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-24dfcfc82433",
+      "path": "游戏知识/02-渲染与图形/03-光照与阴影系统.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-6efc19dac9ff",
+      "path": "游戏知识/02-渲染与图形/04-Nanite与Lumen.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-2812477bc7d8",
+      "path": "游戏知识/02-渲染与图形/05-后处理与画面特效.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-93d2585361d2",
+      "path": "游戏知识/02-渲染与图形/06-Groom毛发系统.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-0f271f91791b",
+      "path": "游戏知识/02-渲染与图形/07-虚拟纹理与材质混合.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-effcda154fc7",
+      "path": "游戏知识/02-渲染与图形/08-体积渲染与云.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-3618e990ac46",
+      "path": "游戏知识/02-渲染与图形/09-光线追踪与路径追踪.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-f69ae22f93c2",
+      "path": "游戏知识/02-渲染与图形/10-移动端渲染专项.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-88270c1adfa1",
+      "path": "游戏知识/02-渲染与图形/11-RenderTarget与SceneCapture实战.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-1c12c4f50fa2",
+      "path": "游戏知识/03-游戏玩法编程/01-GameplayAbilitySystem能力系统.md",
+      "domain": "gameplay",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-c0aed360d31a",
+      "path": "游戏知识/03-游戏玩法编程/02-EnhancedInput增强输入.md",
+      "domain": "gameplay",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-cafb05e57667",
+      "path": "游戏知识/03-游戏玩法编程/03-GameplayTag与数据资产.md",
+      "domain": "gameplay",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-78b96e391705",
+      "path": "游戏知识/03-游戏玩法编程/04-委托事件与对象通信.md",
+      "domain": "engine",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-370e4ce5d9f2",
+      "path": "游戏知识/03-游戏玩法编程/05-蓝图与C++协作.md",
+      "domain": "gameplay",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-91499abc8368",
+      "path": "游戏知识/03-游戏玩法编程/06-角色移动系统UCharacterMovement.md",
+      "domain": "gameplay",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-b8a3ee248c4e",
+      "path": "游戏知识/03-游戏玩法编程/07-相机系统与视口.md",
+      "domain": "gameplay",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-b63a4a5f1267",
+      "path": "游戏知识/03-游戏玩法编程/08-ModularGameplay模块化玩法.md",
+      "domain": "gameplay",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-0fe7125c8d88",
+      "path": "游戏知识/03-游戏玩法编程/09-GameplayTask任务框架.md",
+      "domain": "gameplay",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-9d66baeff955",
+      "path": "游戏知识/03-游戏玩法编程/10-输入设备抽象与手柄触控.md",
+      "domain": "gameplay",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-2de1dfe5b929",
+      "path": "游戏知识/03-游戏玩法编程/11-常用移动与辅助组件.md",
+      "domain": "gameplay",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-387656998c42",
+      "path": "游戏知识/03-游戏玩法编程/12-SaveGame存档系统与序列化.md",
+      "domain": "gameplay",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-b28410aa2dab",
+      "path": "游戏知识/03-游戏玩法编程/13-背包与装备系统.md",
+      "domain": "gameplay",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-d7d22c977401",
+      "path": "游戏知识/04-动画系统/01-动画蓝图与状态机.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-294ec00dc8cb",
+      "path": "游戏知识/04-动画系统/02-动画蒙太奇与混合空间.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-b290fc897241",
+      "path": "游戏知识/04-动画系统/03-IK与程序化动画.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-89a0361a34fd",
+      "path": "游戏知识/04-动画系统/04-动画性能与预算分配.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-045344746c02",
+      "path": "游戏知识/04-动画系统/05-AnimNext动画框架.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-5a4435fcf91f",
+      "path": "游戏知识/04-动画系统/06-动画重定向与IKRetargeter.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-6564b9b0a427",
+      "path": "游戏知识/04-动画系统/07-动画资产与骨骼基础.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-9533e6ef041b",
+      "path": "游戏知识/04-动画系统/08-动作战斗系统与打击手感.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-7269a2cdadca",
+      "path": "游戏知识/05-AI系统/01-行为树详解.md",
+      "domain": "ai",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-f4cbdc2ed44d",
+      "path": "游戏知识/05-AI系统/02-感知系统与EQS.md",
+      "domain": "ai",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-b5a88f5fef1c",
+      "path": "游戏知识/05-AI系统/03-NavMesh寻路.md",
+      "domain": "ai",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-1aa3760f8df0",
+      "path": "游戏知识/05-AI系统/04-Mass实体框架与群集模拟.md",
+      "domain": "ai",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-501c7b251dc3",
+      "path": "游戏知识/05-AI系统/05-StateTree状态树.md",
+      "domain": "ai",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-5de225f36448",
+      "path": "游戏知识/05-AI系统/06-ZoneGraph与SmartObjects.md",
+      "domain": "ai",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-f7341b77c9d2",
+      "path": "游戏知识/05-AI系统/07-GameplayTasks-StateTree-GAS-AI协同.md",
+      "domain": "ai",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-6578876f5970",
+      "path": "游戏知识/05-AI系统/08-AI调试与性能分析.md",
+      "domain": "ai",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-4184dba1baa0",
+      "path": "游戏知识/06-网络同步/01-网络架构与复制基础.md",
+      "domain": "online",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-8fcef53c8775",
+      "path": "游戏知识/06-网络同步/02-RPC与属性同步.md",
+      "domain": "online",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-f48b338e725e",
+      "path": "游戏知识/06-网络同步/03-客户端预测与延迟补偿.md",
+      "domain": "online",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-e46fff2dc515",
+      "path": "游戏知识/06-网络同步/04-多人游戏框架与玩家状态.md",
+      "domain": "online",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-55568c39c8c2",
+      "path": "游戏知识/06-网络同步/05-ReplicationGraph兴趣管理.md",
+      "domain": "online",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-715236095af9",
+      "path": "游戏知识/06-网络同步/06-在线子系统与会话匹配.md",
+      "domain": "online",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-4038f54cba1c",
+      "path": "游戏知识/06-网络同步/07-Iris复制使用与迁移.md",
+      "domain": "online",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-012dbb1ac01c",
+      "path": "游戏知识/06-网络同步/08-网络调试与性能分析.md",
+      "domain": "online",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-4fdbe53017bd",
+      "path": "游戏知识/06-网络同步/09-网络回放与DemoNetDriver.md",
+      "domain": "online",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-73b3bdb23c63",
+      "path": "游戏知识/07-UI与性能优化/01-UMG框架与控件系统.md",
+      "domain": "gameplay",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-f121a7bbe0cf",
+      "path": "游戏知识/07-UI与性能优化/02-UI数据绑定与MVVM.md",
+      "domain": "gameplay",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-6bcb17baf23c",
+      "path": "游戏知识/07-UI与性能优化/03-性能分析工具与Profiling.md",
+      "domain": "engineering",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-db4d4dc0b8ac",
+      "path": "游戏知识/07-UI与性能优化/04-渲染与加载性能优化.md",
+      "domain": "engineering",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-0018a52a2aa8",
+      "path": "游戏知识/07-UI与性能优化/05-GameplayDebugger与运行时调试.md",
+      "domain": "engineering",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-a6982173bd20",
+      "path": "游戏知识/07-UI与性能优化/06-UI状态与可观测性闭环.md",
+      "domain": "gameplay",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-ff59cf8d89b4",
+      "path": "游戏知识/07-UI与性能优化/07-CommonUI输入路由与焦点管理.md",
+      "domain": "gameplay",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-86a2761dfef5",
+      "path": "游戏知识/07-UI与性能优化/08-Slate自定义控件与样式系统.md",
+      "domain": "gameplay",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-42979741e27a",
+      "path": "游戏知识/08-工具链与打包发布/01-UBT构建系统与编译配置.md",
+      "domain": "engineering",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-5c0c98fa82cb",
+      "path": "游戏知识/08-工具链与打包发布/02-UAT与自动化打包.md",
+      "domain": "engineering",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-2592f72cf01e",
+      "path": "游戏知识/08-工具链与打包发布/03-插件开发与编辑器扩展.md",
+      "domain": "engineering",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-604afe8bdc0c",
+      "path": "游戏知识/08-工具链与打包发布/04-资源管理与热更新.md",
+      "domain": "engineering",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-f3703177c952",
+      "path": "游戏知识/08-工具链与打包发布/05-GameFeatures特性插件.md",
+      "domain": "engineering",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-d9fe5586c75b",
+      "path": "游戏知识/08-工具链与打包发布/06-Interchange与DataValidation.md",
+      "domain": "engineering",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-aab19815e73e",
+      "path": "游戏知识/08-工具链与打包发布/07-Shader编译管线与PSO.md",
+      "domain": "engineering",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-746869156d30",
+      "path": "游戏知识/08-工具链与打包发布/08-全栈质量门禁与灰度回滚.md",
+      "domain": "engineering",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-a7b476d2e2b5",
+      "path": "游戏知识/08-工具链与打包发布/09-UE Dedicated Server构建烘焙与运行.md",
+      "domain": "engineering",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-afba00c6b15a",
+      "path": "游戏知识/08-工具链与打包发布/10-UE Dedicated Server运行参数与性能调优.md",
+      "domain": "engineering",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-d4aa4d19c6c7",
+      "path": "游戏知识/08-工具链与打包发布/11-DS内容裁剪与服务器资源预算.md",
+      "domain": "engineering",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-2270e4ee096a",
+      "path": "游戏知识/08-工具链与打包发布/12-版本控制与资产协作.md",
+      "domain": "engineering",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-1a1124372521",
+      "path": "游戏知识/08-工具链与打包发布/13-本地化发布工作流.md",
+      "domain": "engineering",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-63bc42651c13",
+      "path": "游戏知识/08-工具链与打包发布/14-Python编辑器脚本与资产自动化.md",
+      "domain": "engineering",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-6d6ffd0e8254",
+      "path": "游戏知识/09-物理系统/01-Chaos物理引擎概览.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-7d11ba6b04fc",
+      "path": "游戏知识/09-物理系统/02-碰撞检测与物理材质.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-437c26afbdec",
+      "path": "游戏知识/09-物理系统/03-物理约束与关节.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-349bb8a4a134",
+      "path": "游戏知识/09-物理系统/04-布娃娃与物理动画.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-de4380851a4b",
+      "path": "游戏知识/09-物理系统/05-Chaos破坏系统与Field.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-74bde69e53a4",
+      "path": "游戏知识/09-物理系统/06-Chaos车辆系统.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-537a2763e1ba",
+      "path": "游戏知识/10-音频系统/01-音频基础与播放.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-3e5ebc24740d",
+      "path": "游戏知识/10-音频系统/02-衰减与3D空间音效.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-4e46478d5d89",
+      "path": "游戏知识/10-音频系统/03-MetaSound与程序化音频.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-8fd85dc806f7",
+      "path": "游戏知识/10-音频系统/04-Quartz音频时钟与节奏同步.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-7e8550943b6e",
+      "path": "游戏知识/11-VFX与Niagara/01-Niagara粒子系统基础.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-f672b9ee658a",
+      "path": "游戏知识/11-VFX与Niagara/02-Niagara高级技巧.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-b85e2225a7eb",
+      "path": "游戏知识/11-VFX与Niagara/03-VFX性能优化.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-38825d02e6c2",
+      "path": "游戏知识/11-VFX与Niagara/04-Niagara流体模拟.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-4ffbf73ad75e",
+      "path": "游戏知识/12-引擎源码分析/01-UPROPERTY与反射系统源码.md",
+      "domain": "engine",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-064374f7d650",
+      "path": "游戏知识/12-引擎源码分析/02-UObject与垃圾回收源码.md",
+      "domain": "engine",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-c4ff67f6850d",
+      "path": "游戏知识/12-引擎源码分析/03-Actor与Component生命周期源码.md",
+      "domain": "engine",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-f4e49f90c7f5",
+      "path": "游戏知识/12-引擎源码分析/04-Gameplay框架与登录流程源码.md",
+      "domain": "online",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-9d4eb800692a",
+      "path": "游戏知识/12-引擎源码分析/05-GAS能力系统源码.md",
+      "domain": "gameplay",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-cda2ce0120c0",
+      "path": "游戏知识/12-引擎源码分析/06-委托与事件系统源码.md",
+      "domain": "engine",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-68f8228015f0",
+      "path": "游戏知识/12-引擎源码分析/07-容器与内存管理源码.md",
+      "domain": "engine",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-e1b1c8304c8e",
+      "path": "游戏知识/12-引擎源码分析/08-Tick与模块系统源码.md",
+      "domain": "engine",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-50682f32b174",
+      "path": "游戏知识/12-引擎源码分析/09-网络复制与RPC源码.md",
+      "domain": "online",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-7b9ca86e4b4f",
+      "path": "游戏知识/12-引擎源码分析/10-渲染线程与RHI源码.md",
+      "domain": "simulation",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-4a6e67066380",
+      "path": "游戏知识/12-引擎源码分析/11-动画系统求值源码.md",
+      "domain": "simulation",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-80c219e4920b",
+      "path": "游戏知识/12-引擎源码分析/12-行为树与AI源码.md",
+      "domain": "ai",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-e5d26b4acef1",
+      "path": "游戏知识/12-引擎源码分析/13-资源加载与异步加载源码.md",
+      "domain": "engine",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-cf34704f8e94",
+      "path": "游戏知识/12-引擎源码分析/14-UMG与Slate源码.md",
+      "domain": "gameplay",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-55c4fce13ea1",
+      "path": "游戏知识/12-引擎源码分析/15-物理系统源码.md",
+      "domain": "simulation",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-afbddf00b9ab",
+      "path": "游戏知识/12-引擎源码分析/16-音频系统源码.md",
+      "domain": "simulation",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-f292423b8f81",
+      "path": "游戏知识/12-引擎源码分析/17-Niagara源码.md",
+      "domain": "simulation",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-161cd9453647",
+      "path": "游戏知识/12-引擎源码分析/18-RigVM与ControlRig源码.md",
+      "domain": "simulation",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-8d79a8b13c88",
+      "path": "游戏知识/12-引擎源码分析/19-高优先级源码覆盖路线图.md",
+      "domain": "engine",
+      "kind": "roadmap",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-127dc843ea49",
+      "path": "游戏知识/12-引擎源码分析/20-Iris复制源码.md",
+      "domain": "online",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-d87373fe6660",
+      "path": "游戏知识/12-引擎源码分析/21-Mass与StateTree源码.md",
+      "domain": "ai",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-08f50ccb0796",
+      "path": "游戏知识/12-引擎源码分析/22-WorldPartition与WorldStreaming源码.md",
+      "domain": "engine",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-e055533de04c",
+      "path": "游戏知识/12-引擎源码分析/23-Landscape与Foliage源码.md",
+      "domain": "simulation",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-1d5183d92473",
+      "path": "游戏知识/12-引擎源码分析/24-Sequencer与MovieRenderGraph源码.md",
+      "domain": "simulation",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-d326bee09482",
+      "path": "游戏知识/12-引擎源码分析/25-EnhancedInput与GameplayTags源码.md",
+      "domain": "gameplay",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-30b6e28f5f9a",
+      "path": "游戏知识/12-引擎源码分析/26-CommonUI源码.md",
+      "domain": "gameplay",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-a241260ed851",
+      "path": "游戏知识/12-引擎源码分析/27-UMGMVVM源码.md",
+      "domain": "gameplay",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-e4a5edcf22c8",
+      "path": "游戏知识/12-引擎源码分析/28-UnrealInsights与Trace源码.md",
+      "domain": "engineering",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-9906795d6b41",
+      "path": "游戏知识/12-引擎源码分析/29-GameplayTasks源码.md",
+      "domain": "gameplay",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-153e377b64b7",
+      "path": "游戏知识/12-引擎源码分析/30-Lumen与MegaLights源码.md",
+      "domain": "simulation",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-0934fec008bb",
+      "path": "游戏知识/12-引擎源码分析/31-ProceduralVegetationEditor源码.md",
+      "domain": "simulation",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-ff5391bb3400",
+      "path": "游戏知识/12-引擎源码分析/32-UE Dedicated Server启动与监听源码.md",
+      "domain": "online",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-2e5231220cd2",
+      "path": "游戏知识/12-引擎源码分析/33-UNetDriver与连接通道源码.md",
+      "domain": "online",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-98d5e781bb34",
+      "path": "游戏知识/12-引擎源码分析/34-ReplicationGraph源码.md",
+      "domain": "online",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-5bf27c8405cf",
+      "path": "游戏知识/12-引擎源码分析/35-Nanite源码.md",
+      "domain": "simulation",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-2d559eb8d673",
+      "path": "游戏知识/12-引擎源码分析/36-AnimNext与UAF源码.md",
+      "domain": "simulation",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-50c06ac3d8c7",
+      "path": "游戏知识/12-引擎源码分析/37-Chaos破坏与Field源码.md",
+      "domain": "simulation",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-2c162dfa5e40",
+      "path": "游戏知识/12-引擎源码分析/38-PCG源码.md",
+      "domain": "engine",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-8877ee663cfd",
+      "path": "游戏知识/12-引擎源码分析/39-Lyra源码总览与阅读路线.md",
+      "domain": "gameplay",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-cf75b533deab",
+      "path": "游戏知识/12-引擎源码分析/40-Lyra-Experience与GameFeature源码.md",
+      "domain": "engine",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-a59f91e2f5bf",
+      "path": "游戏知识/12-引擎源码分析/41-Lyra-Pawn初始化与模块化组件源码.md",
+      "domain": "engine",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-7890be064b5d",
+      "path": "游戏知识/12-引擎源码分析/42-Lyra-输入GAS与武器战斗源码.md",
+      "domain": "gameplay",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-bb2a6adf808f",
+      "path": "游戏知识/12-引擎源码分析/43-Lyra-背包装备消息与UI源码.md",
+      "domain": "gameplay",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-15fa48b05c96",
+      "path": "游戏知识/12-引擎源码分析/44-Lyra-前端会话网络与扩展源码.md",
+      "domain": "online",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-248084194ab6",
+      "path": "游戏知识/12-引擎源码分析/45-Lyra-相机音频与游戏阶段源码.md",
+      "domain": "gameplay",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-3c8fc7a5ff9a",
+      "path": "游戏知识/12-引擎源码分析/46-Lyra-AI机器人与队伍源码.md",
+      "domain": "ai",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-3946875a945b",
+      "path": "游戏知识/12-引擎源码分析/47-Lyra-调试工具与扩展源码.md",
+      "domain": "engineering",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-2f5c78b78ad9",
+      "path": "游戏知识/12-引擎源码分析/48-Lyra扩展插件源码.md",
+      "domain": "engine",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-112e46eadd64",
+      "path": "游戏知识/12-引擎源码分析/49-Lyra-UI控件与表现源码.md",
+      "domain": "gameplay",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-8893c49fd796",
+      "path": "游戏知识/12-引擎源码分析/50-Lyra-设置系统与GameSettings源码.md",
+      "domain": "gameplay",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-3fac0249801e",
+      "path": "游戏知识/12-引擎源码分析/51-Lyra-GAS扩展与能力费用源码.md",
+      "domain": "gameplay",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-f26c731b5e91",
+      "path": "游戏知识/12-引擎源码分析/52-Lyra-交互系统源码.md",
+      "domain": "gameplay",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-a678920eae72",
+      "path": "游戏知识/12-引擎源码分析/53-Lyra核心生成移动与状态源码.md",
+      "domain": "gameplay",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-8ad1ea261318",
+      "path": "游戏知识/12-引擎源码分析/54-Lyra网络复制与引擎模块化特性源码.md",
+      "domain": "online",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-945fbc091fae",
+      "path": "游戏知识/12-引擎源码分析/55-Lyra输入重映射与辅助瞄准源码.md",
+      "domain": "gameplay",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-f17a354cbdba",
+      "path": "游戏知识/12-引擎源码分析/56-Lyra-ShooterCore核心玩法与淘汰消息源码.md",
+      "domain": "gameplay",
+      "kind": "source-analysis",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-d7039c9ec9a7",
+      "path": "游戏知识/13-世界构建与过场/01-Landscape地形系统.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-a00c14c1fc57",
+      "path": "游戏知识/13-世界构建与过场/02-植被Foliage与实例化渲染.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-4d117ba8cd9c",
+      "path": "游戏知识/13-世界构建与过场/03-过场与影视Sequencer.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-b32903b4947d",
+      "path": "游戏知识/13-世界构建与过场/04-PCG程序化内容生成.md",
+      "domain": "engine",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-34ef1cd3c39d",
+      "path": "游戏知识/13-世界构建与过场/05-大世界植被与渲染协同.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-58889f0536c9",
+      "path": "游戏知识/13-世界构建与过场/06-虚拟制片与ICVFX.md",
+      "domain": "simulation",
+      "kind": "concept",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-e1d914b8ba68",
+      "path": "游戏算法/01-寻路与图论/01-图论基础与搜索算法.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-fa8388bb4143",
+      "path": "游戏算法/01-寻路与图论/02-A星算法与优化.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-cf320addb77e",
+      "path": "游戏算法/01-寻路与图论/03-流场与群体寻路.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-ac10c8af34b0",
+      "path": "游戏算法/01-寻路与图论/04-空间分区与索引.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-6d1dffde793e",
+      "path": "游戏算法/02-数学与碰撞/01-向量与矩阵基础.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-969a7e23e2b6",
+      "path": "游戏算法/02-数学与碰撞/02-四元数与旋转.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-4d4ab297e2fa",
+      "path": "游戏算法/02-数学与碰撞/03-插值与曲线.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-e26a4f4ce886",
+      "path": "游戏算法/02-数学与碰撞/04-碰撞检测.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-c0c1691490e9",
+      "path": "游戏算法/02-数学与碰撞/05-数值积分与运动学模拟.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-5ddfd0c71fee",
+      "path": "游戏算法/02-数学与碰撞/06-弹道与射击算法.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-6832a90fbe71",
+      "path": "游戏算法/03-工程与实用技巧/01-随机数与洗牌算法.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-2e2fbc0b8cc4",
+      "path": "游戏算法/03-工程与实用技巧/02-程序化生成.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-afcc4d7f8b70",
+      "path": "游戏算法/03-工程与实用技巧/03-AOI与视野计算.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-5bd0993bf0cc",
+      "path": "游戏算法/03-工程与实用技巧/04-路径平滑与转向行为.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-ef20eb7e08fc",
+      "path": "游戏算法/03-工程与实用技巧/05-位运算与性能优化技巧.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-a99cc10ff5cd",
+      "path": "游戏算法/03-工程与实用技巧/06-数据压缩与序列化.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-b96580bea9a4",
+      "path": "游戏算法/03-工程与实用技巧/07-概率分布与采样工程.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-7b7a4a6b02b6",
+      "path": "游戏算法/04-确定性与基准工程/01-确定性与基准工程总览.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-bbabe253e3fd",
+      "path": "游戏算法/04-确定性与基准工程/02-动态寻路LPA与DStarLite.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-93fe1e562fe0",
+      "path": "游戏算法/04-确定性与基准工程/03-NavMesh工程Recast与Detour.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-05e7913b4360",
+      "path": "游戏算法/04-确定性与基准工程/04-RVO与数值鲁棒.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-5e83069b63cf",
+      "path": "游戏算法/04-确定性与基准工程/05-联机确定性与基准工程.md",
+      "domain": "algorithms",
+      "kind": "concept"
+    },
+    {
+      "id": "kb-825bb3b391dc",
+      "path": "笔记/A星算法优化.md",
+      "domain": "algorithms",
+      "kind": "reference"
+    },
+    {
+      "id": "kb-f70dce7d4101",
+      "path": "笔记/perf性能分析.md",
+      "domain": "engineering",
+      "kind": "reference"
+    },
+    {
+      "id": "kb-1fc080c7d1e0",
+      "path": "笔记/插桩测试.md",
+      "domain": "engineering",
+      "kind": "reference"
+    },
+    {
+      "id": "kb-db425ceabdb8",
+      "path": "系统实战/01-角色进入游戏完整链路.md",
+      "domain": "online",
+      "kind": "case-study"
+    },
+    {
+      "id": "kb-d61c606ee84b",
+      "path": "系统实战/02-角色移动完整链路.md",
+      "domain": "online",
+      "kind": "case-study"
+    },
+    {
+      "id": "kb-dd78d6eb6f8d",
+      "path": "系统实战/03-技能释放完整链路.md",
+      "domain": "gameplay",
+      "kind": "case-study"
+    },
+    {
+      "id": "kb-d5ed89f4a4d9",
+      "path": "系统实战/04-Buff系统完整链路.md",
+      "domain": "gameplay",
+      "kind": "case-study"
+    },
+    {
+      "id": "kb-ec28864a9a57",
+      "path": "系统实战/05-背包道具完整链路.md",
+      "domain": "gameplay",
+      "kind": "case-study"
+    },
+    {
+      "id": "kb-37d3faf72ec2",
+      "path": "系统实战/07-假人AI完整链路.md",
+      "domain": "ai",
+      "kind": "case-study"
+    },
+    {
+      "id": "kb-bfaa231ef4e8",
+      "path": "系统实战/10-性能问题定位完整链路.md",
+      "domain": "engineering",
+      "kind": "case-study"
+    },
+    {
+      "id": "kb-5c0e018d700f",
+      "path": "系统实战/11-伤害与属性结算完整链路.md",
+      "domain": "gameplay",
+      "kind": "case-study"
+    },
+    {
+      "id": "kb-29314693dd20",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/01-what-is-game-ai.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-9dc8002cb735",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/02-informing-game-ai-through-the-study-of-n.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-9d1aa9962b87",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/03-advanced-randomness-techniques-for-game-.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-dedac4445328",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/04-behavior-selection-algorithms-an-overvie.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-013abb3212d6",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/05-structural-architecture-common-tricks-of.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-cfc33342d533",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/06-the-behavior-tree-starter-kit.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-1146fffe1cfe",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/07-real-world-behavior-trees-in-script.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-974e55dd1084",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/08-simulating-behavior-trees-a-behavior-tre.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-a254d3b7137a",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/09-an-introduction-to-utility-theory.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-c90bbb38d904",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/10-building-utility-decisions-into-your-exi.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-38f3ac7ee584",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/11-reactivity-and-deliberation-in-decision-.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-384c7efe9d98",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/12-exploring-htn-planners-through-example.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-a3dfc3c80edf",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/13-hierarchical-plan-space-planning-for-mul.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-cd4da42f6d16",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/14-phenomenal-ai-level-of-detail-control-wi.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-88467a610b6c",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/15-runtime-compiled-c-for-rapid-ai-developm.md",
+      "domain": "engineering",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-324afce1de43",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/16-plumbing-the-forbidden-depths-scripting-.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-e303d1cd5dfd",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/17-pathfinding-architecture-optimizations.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-6e6e222349cf",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/18-choosing-a-search-space-representation.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-e34dcf85a3e9",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/19-creating-high-order-navigation-meshes-th.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-1bcb3ab8ff4a",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/20-precomputed-pathfinding-for-large-and-de.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-b26fe31fe3e2",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/21-techniques-for-formation-movement-using-.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-96e45ad9a9bc",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/22-collision-avoidance-for-pre-planned-loco.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-7bca9249c5fe",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/23-crowd-pathfinding-and-steering-using-flo.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-bbfbc11a262f",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/24-efficient-crowd-simulation-for-mobile-ga.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-98f643a98930",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/25-animation-driven-locomotion-with-locomot.md",
+      "domain": "simulation",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-5f311fb5b559",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/26-tactical-position-selection-an-architect.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-c7bdc7021013",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/27-tactical-pathfinding-on-a-navmesh.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-6beef680496e",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/28-beyond-the-kung-fu-circle-a-flexible-sys.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-88270ae9eff2",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/29-hierarchical-ai-for-multiplayer-bots-in-.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-d1bcfa0b14e2",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/30-using-neural-networks-to-control-agent-t.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-72452ab33135",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/32-how-to-catch-a-ninja-npc-awareness-in-a-.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-71c53858fcf6",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/33-asking-the-environment-smart-questions.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-6327a7eee44e",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/34-a-simple-and-robust-knowledge-representa.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-843fe4831cfb",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/35-a-simple-and-practical-social-dynamics-s.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-1a5578c05cb5",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/36-breathing-life-into-your-background-char.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-9c6580148b5f",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/37-alibi-generation-fooling-all-the-players.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-937905283d04",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/38-an-architecture-overview-for-ai-in-racin.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-d4cbc8332a20",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/39-representing-and-driving-a-race-track-fo.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-d8a648e91d5f",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/40-racing-vehicle-control-systems-using-pid.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-ec2e950761fa",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/41-the-heat-vision-system-for-racing-ai-a-n.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-246910f501ac",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/42-a-rubber-banding-system-for-gameplay-and.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-80b07438211f",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/43-an-architecture-for-character-rich-socia.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-6808498dee54",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/44-a-control-based-architecture-for-animal-.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-25860a6f6266",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/45-introduction-to-gpgpu-for-ai.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-cc7ddc8aaf6c",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/46-creating-dynamic-soundscapes-using-an-ar.md",
+      "domain": "simulation",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-577148b4e086",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/47-tips-and-tricks-for-a-robust-third-perso.md",
+      "domain": "gameplay",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-d489c2d0e232",
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/48-implementing-n-grams-for-player-predicti.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-fd0f65d3bdad",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/01-game-ai-appreciation-revisited.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-fc575823239d",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/02-combat-dialogue-in-fear-the-illusion-of-.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-de9bab6078aa",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/03-dual-utility-reasoning.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-c290e689d133",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/04-vision-zones-and-object-identification-c.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-919aee043713",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/05-agent-reaction-time-how-fast-should-an-a.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-c7563a9a5bff",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/06-preventing-animation-twinning-using-a-si.md",
+      "domain": "simulation",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-e761d4b44166",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/07-possibility-maps-for-opportunistic-ai-an.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-8463892180b5",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/08-production-rules-implementation-in-1849.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-9a5e6c044db7",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/09-production-systems-new-techniques-in-aaa.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-c1998f0d24cd",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/10-building-a-risk-free-environment-to-enha.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-4289bdfc192c",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/11-smart-zones-to-create-the-ambience-of-li.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-ec0d51b3d8cb",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/12-separation-of-concerns-architecture-for-.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-84ba0b861b46",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/13-optimizing-practical-planning-for-game-a.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-eb3063f3de2f",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/14-jps-an-extreme-a-speed-optimization-for-.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-574578df1b59",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/15-subgoal-graphs-for-fast-optimal-pathfind.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-4eb48c9ba9ae",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/16-theta-for-any-angle-pathfinding.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-4f76aae07542",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/17-techniques-for-robust-efficient-crowds.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-355231f1b870",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/18-context-steering-behavior-driven-steerin.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-f3e848d12111",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/19-guide-to-anticipatory-collision-avoidanc.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-048743f0eaa4",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/20-hierarchical-architecture-for-group-navi.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-af384e74b05a",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/21-dynamic-obstacle-navigation-in-fuse.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-c6d319b87c4f",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/22-introduction-to-search-for-games.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-c2bb60625068",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/23-personality-reinforced-search-for-mobile.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-433fdcebf9b1",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/24-interest-search-a-faster-minimax.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-2bda3dd5eaae",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/25-monte-carlo-tree-search-and-related-algo.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-79b54f9408a4",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/26-rolling-your-own-finite-domain-constrain.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-9ffe8d8cd1e1",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/27-looking-for-trouble-making-npcs-search-r.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-5a69e2f046aa",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/29-escaping-the-grid-infinite-resolution-in.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-d475a839877b",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/30-modular-tactical-influence-maps.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-3dac7c83794b",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/31-spatial-reasoning-for-strategic-decision.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-23e87a31b6be",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/32-extending-the-spatial-coverage-of-a-voxe.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-85b63dc2a102",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/33-infected-ai-in-the-last-of-us.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-49617eb7a69e",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/34-human-enemy-ai-in-the-last-of-us.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-fb434b3a68af",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/35-ellie-buddy-ai-in-the-last-of-us.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-9e02f451bd9e",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/36-realizing-npcs-animation-and-behavior-co.md",
+      "domain": "simulation",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-5c91a866f65a",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/38-psychologically-plausible-methods-for-ch.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-f91726b925eb",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/39-analytics-based-ai-techniques-for-a-bett.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-c17501f7bc6e",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/40-procedural-content-generation-an-overvie.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-69d1d2f59ee7",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/41-simulation-principles-from-dwarf-fortres.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-3a570d0b8e88",
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/42-techniques-for-ai-driven-experience-mana.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-5c6b3340f5bf",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/01-the-illusion-of-intelligence.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-aff20e8d8d26",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/02-creating-the-past-present-and-future-wit.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-07984690138a",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/03-logging-visualization-in-final-fantasy-x.md",
+      "domain": "engineering",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-563af180e676",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/04-what-you-see-is-not-what-you-get-player-.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-f0455e46c5fe",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/05-six-factory-system-tricks-for-extensibil.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-dcc45bcc4264",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/06-debugging-ai-with-instant-in-game-scrubb.md",
+      "domain": "engineering",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-c3f1c5b556b3",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/07-but-it-worked-on-my-machine-how-to-build.md",
+      "domain": "engineering",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-243d620c0e0c",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/08-modular-ai.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-829f1da08c25",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/09-overcoming-pitfalls-in-behavior-tree-des.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-e2690a7ac74d",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/10-from-behavior-to-animation-a-reactive-ai.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-1b7c9792cc18",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/11-a-character-decision-making-system-for-f.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-75ca5f18fbb9",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/12-a-reusable-light-weight-finite-state-mac.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-646197366d02",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/13-choosing-effective-utility-based-conside.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-af1afcf201c0",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/14-combining-scripted-behavior-with-game-tr.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-ab5ef095928d",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/15-steering-against-complex-vehicles-in-ass.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-d914c41d8336",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/16-predictive-animation-control-using-simul.md",
+      "domain": "simulation",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-668c85a28a1e",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/17-fast-cars-big-city-the-ai-of-driver-san-.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-8003fa9eeb9b",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/18-a-unified-theory-of-locomotion.md",
+      "domain": "simulation",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-de020424d0ef",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/19-rvo-and-orca-how-they-really-work.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-fcae20401e2a",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/20-optimization-for-smooth-paths.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-e6c4429c7a52",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/21-3d-flight-navigation-using-sparse-voxel-.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-7af9b1fad171",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/22-faster-a-with-goal-bounding.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-0c37c151fb96",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/23-faster-dijkstra-search-on-uniform-cost-g.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-fc5921d55bc5",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/24-being-where-it-counts-telling-paragon-bo.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-c3333ca471d4",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/25-combat-outcome-prediction-for-real-time-.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-547ebb2dbaf6",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/26-guide-to-effective-auto-generated-spatia.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-f264799fbd22",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/27-the-role-of-time-in-spatio-temporal-reas.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-683837a1aa1b",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/28-pitfalls-and-solutions-when-using-monte-.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-c3a6730be8c3",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/29-petri-nets-and-ai-arbitration.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-022ab4534631",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/30-hierarchical-portfolio-search-in-prismat.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-4fdc6cce4c3a",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/31-behavior-decision-system-dragon-age-inqu.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-59e9f6b95ca9",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/32-paragon-bots-a-bag-of-tricks.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-175ca237f458",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/33-using-your-combat-ai-accuracy-to-balance.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-50375ce0f678",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/34-1000-npcs-at-60-fps.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-b62e8eae7a56",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/35-ambient-interactions-improving-believabi.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-475b5273ce90",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/36-stochastic-grammars-not-just-for-words.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-0e04e909b795",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/37-simulating-character-knowledge-phenomena.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-b334130e172b",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/38-procedural-level-and-story-generation-us.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-5c2d24fb76e2",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/39-recommendation-systems-in-games.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-82070bd62e9a",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/40-vintage-random-number-generators.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-e360c379af4c",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/41-leveraging-plausibility-orderings-to-ach.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-0e2bdf895102",
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/42-building-custom-static-checkers-using-de.md",
+      "domain": "engineering",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-6567e1c83b84",
+      "path": "读书笔记/GameAIPro/卷4-OnlineEdition2021/01-automated-ai-testing-simple-tests-will-s.md",
+      "domain": "engineering",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-87ec4c454b38",
+      "path": "读书笔记/GameAIPro/卷4-OnlineEdition2021/02-efficient-event-based-simulations.md",
+      "domain": "engine",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-07415a9594d7",
+      "path": "读书笔记/GameAIPro/卷4-OnlineEdition2021/03-gearing-the-tactics-genre-simultaneous-a.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-0fe223ee2c9c",
+      "path": "读书笔记/GameAIPro/卷4-OnlineEdition2021/04-knowledge-is-power-an-overview-of-ai-kno.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-96a06c2a0089",
+      "path": "读书笔记/GameAIPro/卷4-OnlineEdition2021/05-taming-spatial-queries-tips-for-natural.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-6dff9b984d5f",
+      "path": "读书笔记/GameAIPro/卷4-OnlineEdition2021/06-flooding-the-influence-map-for-chase-in-.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-4b3d52ac1a32",
+      "path": "读书笔记/GameAIPro/卷4-OnlineEdition2021/07-managing-pacing-in-procedural-levels-in-.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-009a3e5111d9",
+      "path": "读书笔记/GameAIPro/卷4-OnlineEdition2021/08-cinematic-gameplay-in-watchdogs-2-pose-m.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-15d6025f07e2",
+      "path": "读书笔记/GameAIPro/卷4-OnlineEdition2021/09-obstacle-avoidance-for-robots-of-multipl.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-6360d9fccf96",
+      "path": "读书笔记/GameAIPro/卷4-OnlineEdition2021/10-ai-driven-autoplay-agents-for-prelaunch-.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-e2155b0220e0",
+      "path": "读书笔记/GameAIPro/卷4-OnlineEdition2021/11-you-had-me-at-aaaahhh-on-the-importance-.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-e20f38af7cd9",
+      "path": "读书笔记/GameAIPro/卷4-OnlineEdition2021/12-squad-coordination-in-days-gone.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-a68772f75759",
+      "path": "读书笔记/GameAIPro/卷4-OnlineEdition2021/13-template-tricks-for-data-driven-behavior.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-99a833e56397",
+      "path": "读书笔记/GameAIPro/卷4-OnlineEdition2021/14-planning-movement-on-player-modifiable-m.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-d2bcdfcda915",
+      "path": "读书笔记/GameAIPro/卷4-OnlineEdition2021/15-should-stl-containers-be-used-in-game-en.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-aa7f4c54a483",
+      "path": "读书笔记/GameAIPro/卷4-OnlineEdition2021/16-open-world-enemy-ai-in-mafia-iii.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-069a594f7216",
+      "path": "读书笔记/GameAIPro/卷4-OnlineEdition2021/17-game-balancing-using-genetic-algorithms-.md",
+      "domain": "ai",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-24a75140da0c",
+      "path": "读书笔记/游戏引擎架构/卷1-基础与核心引擎系统/01-导论.md",
+      "domain": "engine",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-2d79f918c1ca",
+      "path": "读书笔记/游戏引擎架构/卷1-基础与核心引擎系统/02-专业工具.md",
+      "domain": "engineering",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-1c3ba57ea965",
+      "path": "读书笔记/游戏引擎架构/卷1-基础与核心引擎系统/03-游戏软件工程基础.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-18443e906feb",
+      "path": "读书笔记/游戏引擎架构/卷1-基础与核心引擎系统/04-并行与并发编程.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-f314d84290d6",
+      "path": "读书笔记/游戏引擎架构/卷1-基础与核心引擎系统/05-游戏中的3D数学.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-fe5a71853da5",
+      "path": "读书笔记/游戏引擎架构/卷1-基础与核心引擎系统/06-引擎支持系统.md",
+      "domain": "engine",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-06675c154627",
+      "path": "读书笔记/游戏引擎架构/卷1-基础与核心引擎系统/07-资源与文件系统.md",
+      "domain": "engine",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-37ff38c8fc84",
+      "path": "读书笔记/游戏引擎架构/卷1-基础与核心引擎系统/08-游戏循环与实时模拟.md",
+      "domain": "engine",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-e6e718469c36",
+      "path": "读书笔记/游戏引擎架构/卷1-基础与核心引擎系统/09-人机交互设备.md",
+      "domain": "gameplay",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-ff6ef40a295f",
+      "path": "读书笔记/游戏引擎架构/卷1-基础与核心引擎系统/10-调试与开发工具.md",
+      "domain": "engineering",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-c10dc8e847d4",
+      "path": "读书笔记/游戏引擎架构/卷2-图形动作与声音/11-渲染.md",
+      "domain": "simulation",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-00b3d279b9cb",
+      "path": "读书笔记/游戏引擎架构/卷2-图形动作与声音/12-光照与后处理.md",
+      "domain": "simulation",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-f43a2dc2cf42",
+      "path": "读书笔记/游戏引擎架构/卷2-图形动作与声音/13-动画系统.md",
+      "domain": "simulation",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-ebd3908ca148",
+      "path": "读书笔记/游戏引擎架构/卷2-图形动作与声音/14-碰撞与刚体动力学.md",
+      "domain": "simulation",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-d0200dcf90eb",
+      "path": "读书笔记/游戏引擎架构/卷2-图形动作与声音/15-音频.md",
+      "domain": "simulation",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-4f4b7e2eeef7",
+      "path": "读书笔记/游戏引擎架构/卷2-图形动作与声音/16-玩法系统导论.md",
+      "domain": "engine",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-1a628cd9ab5a",
+      "path": "读书笔记/游戏引擎架构/卷2-图形动作与声音/17-运行时玩法系统.md",
+      "domain": "engine",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-d9b8b2d08fc5",
+      "path": "读书笔记/游戏引擎架构/卷2-图形动作与声音/18-还有更多.md",
+      "domain": "simulation",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-2a81536dbac9",
+      "path": "读书笔记/游戏编程模式/acknowledgements.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-d694d3ec309f",
+      "path": "读书笔记/游戏编程模式/architecture-performance-and-games.md",
+      "domain": "engineering",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-424a06e7d954",
+      "path": "读书笔记/游戏编程模式/behavioral-patterns.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-b4ff88e32a0b",
+      "path": "读书笔记/游戏编程模式/bytecode.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-834f6c53e805",
+      "path": "读书笔记/游戏编程模式/command.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-72a902d444ff",
+      "path": "读书笔记/游戏编程模式/component.md",
+      "domain": "engine",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-4d56651ef126",
+      "path": "读书笔记/游戏编程模式/data-locality.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-eb05ba4d120b",
+      "path": "读书笔记/游戏编程模式/decoupling-patterns.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-39065e85bb7a",
+      "path": "读书笔记/游戏编程模式/design-patterns-revisited.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-085823df1697",
+      "path": "读书笔记/游戏编程模式/dirty-flag.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-14a1ee3ede66",
+      "path": "读书笔记/游戏编程模式/double-buffer.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-695161056bd6",
+      "path": "读书笔记/游戏编程模式/event-queue.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-ec7ce4a9fd34",
+      "path": "读书笔记/游戏编程模式/flyweight.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-f443833ad95f",
+      "path": "读书笔记/游戏编程模式/game-loop.md",
+      "domain": "engine",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-8f8f5de0eb5b",
+      "path": "读书笔记/游戏编程模式/introduction.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-24ae54373429",
+      "path": "读书笔记/游戏编程模式/object-pool.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-c1c188cbafb2",
+      "path": "读书笔记/游戏编程模式/observer.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-3c5638080653",
+      "path": "读书笔记/游戏编程模式/optimization-patterns.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-a45b99a913f7",
+      "path": "读书笔记/游戏编程模式/prototype.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-e9ddbf73ec81",
+      "path": "读书笔记/游戏编程模式/sequencing-patterns.md",
+      "domain": "engine",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-3d7881a799bc",
+      "path": "读书笔记/游戏编程模式/service-locator.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-f66178dcf71e",
+      "path": "读书笔记/游戏编程模式/singleton.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-5c00818751a3",
+      "path": "读书笔记/游戏编程模式/spatial-partition.md",
+      "domain": "algorithms",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-3f5bc9d9e5ec",
+      "path": "读书笔记/游戏编程模式/state.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-3f675cf3deb9",
+      "path": "读书笔记/游戏编程模式/subclass-sandbox.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-440e0cf5bff4",
+      "path": "读书笔记/游戏编程模式/type-object.md",
+      "domain": "systems",
+      "kind": "reading-note"
+    },
+    {
+      "id": "kb-f733d691e383",
+      "path": "读书笔记/游戏编程模式/update-method.md",
+      "domain": "engine",
+      "kind": "reading-note"
+    }
+  ],
+  "concepts": [
+    {
+      "id": "ownership",
+      "title": "对象所有权与异步取消",
+      "primary": "kb-d69205a7e6f8",
+      "related": [
+        "kb-de8c15ee1031",
+        "kb-4671046111ac",
+        "kb-814121c131f6"
+      ]
+    },
+    {
+      "id": "pathfinding",
+      "title": "A*与路径搜索",
+      "primary": "kb-fa8388bb4143",
+      "related": [
+        "kb-93fe1e562fe0",
+        "kb-4671046111ac",
+        "kb-37d3faf72ec2",
+        "kb-209eb4eb34c4"
+      ]
+    },
+    {
+      "id": "navmesh",
+      "title": "NavMesh算法与工程",
+      "primary": "kb-93fe1e562fe0",
+      "related": [
+        "kb-b5a88f5fef1c",
+        "kb-f7ec186f631c",
+        "kb-80c219e4920b"
+      ]
+    },
+    {
+      "id": "behavior-tree",
+      "title": "行为树",
+      "primary": "kb-ea3e7e3113fc",
+      "related": [
+        "kb-7269a2cdadca",
+        "kb-80c219e4920b"
+      ]
+    },
+    {
+      "id": "ability",
+      "title": "GAS能力与技能生命周期",
+      "primary": "kb-1c12c4f50fa2",
+      "related": [
+        "kb-54e305f4e0c2",
+        "kb-dd78d6eb6f8d",
+        "kb-9d4eb800692a"
+      ]
+    },
+    {
+      "id": "inventory",
+      "title": "背包与道具规则",
+      "primary": "kb-ba788c3015ab",
+      "related": [
+        "kb-b28410aa2dab",
+        "kb-ec28864a9a57",
+        "kb-bb2a6adf808f"
+      ]
+    },
+    {
+      "id": "sync",
+      "title": "网络同步与权威",
+      "primary": "kb-63214c460840",
+      "related": [
+        "kb-4184dba1baa0",
+        "kb-8fcef53c8775",
+        "kb-50682f32b174"
+      ]
+    },
+    {
+      "id": "transforms",
+      "title": "空间与变换",
+      "primary": "kb-d132ea9c10f2",
+      "related": [
+        "kb-6564b9b0a427",
+        "kb-5a4435fcf91f",
+        "kb-7d11ba6b04fc"
+      ]
+    },
+    {
+      "id": "protocol",
+      "title": "序列化与消息所有权",
+      "primary": "kb-0f42ab20b3a3",
+      "related": [
+        "kb-3f321ed12519",
+        "kb-94ac144c2bea",
+        "kb-f632f53eb5b5"
+      ]
+    },
+    {
+      "id": "savegame",
+      "title": "本地存档与迁移",
+      "primary": "kb-387656998c42",
+      "related": [
+        "kb-75c3f82084cc",
+        "kb-767849925106",
+        "kb-8c93f7e75859"
+      ]
+    },
+    {
+      "id": "profiling",
+      "title": "性能诊断闭环",
+      "primary": "kb-bfaa231ef4e8",
+      "related": [
+        "kb-6bcb17baf23c",
+        "kb-e9b6c7f3abad",
+        "kb-42798aa488b6"
+      ]
+    },
+    {
+      "id": "ds",
+      "title": "Dedicated Server生命周期",
+      "primary": "kb-f737bd11e584",
+      "related": [
+        "kb-a7b476d2e2b5",
+        "kb-184c682f4f85",
+        "kb-b7ebf507831d"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "from": "kb-d69205a7e6f8",
+      "to": "kb-de8c15ee1031",
+      "type": "related"
+    },
+    {
+      "from": "kb-d69205a7e6f8",
+      "to": "kb-4671046111ac",
+      "type": "related"
+    },
+    {
+      "from": "kb-d69205a7e6f8",
+      "to": "kb-814121c131f6",
+      "type": "related"
+    },
+    {
+      "from": "kb-fa8388bb4143",
+      "to": "kb-93fe1e562fe0",
+      "type": "related"
+    },
+    {
+      "from": "kb-fa8388bb4143",
+      "to": "kb-4671046111ac",
+      "type": "related"
+    },
+    {
+      "from": "kb-fa8388bb4143",
+      "to": "kb-37d3faf72ec2",
+      "type": "applied_in"
+    },
+    {
+      "from": "kb-93fe1e562fe0",
+      "to": "kb-b5a88f5fef1c",
+      "type": "related"
+    },
+    {
+      "from": "kb-93fe1e562fe0",
+      "to": "kb-f7ec186f631c",
+      "type": "related"
+    },
+    {
+      "from": "kb-93fe1e562fe0",
+      "to": "kb-80c219e4920b",
+      "type": "implemented_by"
+    },
+    {
+      "from": "kb-ea3e7e3113fc",
+      "to": "kb-7269a2cdadca",
+      "type": "related"
+    },
+    {
+      "from": "kb-ea3e7e3113fc",
+      "to": "kb-80c219e4920b",
+      "type": "implemented_by"
+    },
+    {
+      "from": "kb-1c12c4f50fa2",
+      "to": "kb-54e305f4e0c2",
+      "type": "related"
+    },
+    {
+      "from": "kb-1c12c4f50fa2",
+      "to": "kb-dd78d6eb6f8d",
+      "type": "applied_in"
+    },
+    {
+      "from": "kb-1c12c4f50fa2",
+      "to": "kb-9d4eb800692a",
+      "type": "implemented_by"
+    },
+    {
+      "from": "kb-ba788c3015ab",
+      "to": "kb-b28410aa2dab",
+      "type": "related"
+    },
+    {
+      "from": "kb-ba788c3015ab",
+      "to": "kb-ec28864a9a57",
+      "type": "applied_in"
+    },
+    {
+      "from": "kb-ba788c3015ab",
+      "to": "kb-bb2a6adf808f",
+      "type": "implemented_by"
+    },
+    {
+      "from": "kb-63214c460840",
+      "to": "kb-4184dba1baa0",
+      "type": "related"
+    },
+    {
+      "from": "kb-63214c460840",
+      "to": "kb-8fcef53c8775",
+      "type": "related"
+    },
+    {
+      "from": "kb-63214c460840",
+      "to": "kb-50682f32b174",
+      "type": "implemented_by"
+    },
+    {
+      "from": "kb-d132ea9c10f2",
+      "to": "kb-6564b9b0a427",
+      "type": "related"
+    },
+    {
+      "from": "kb-d132ea9c10f2",
+      "to": "kb-5a4435fcf91f",
+      "type": "related"
+    },
+    {
+      "from": "kb-d132ea9c10f2",
+      "to": "kb-7d11ba6b04fc",
+      "type": "related"
+    },
+    {
+      "from": "kb-0f42ab20b3a3",
+      "to": "kb-3f321ed12519",
+      "type": "related"
+    },
+    {
+      "from": "kb-0f42ab20b3a3",
+      "to": "kb-94ac144c2bea",
+      "type": "related"
+    },
+    {
+      "from": "kb-0f42ab20b3a3",
+      "to": "kb-f632f53eb5b5",
+      "type": "verified_by"
+    },
+    {
+      "from": "kb-387656998c42",
+      "to": "kb-75c3f82084cc",
+      "type": "related"
+    },
+    {
+      "from": "kb-387656998c42",
+      "to": "kb-767849925106",
+      "type": "related"
+    },
+    {
+      "from": "kb-387656998c42",
+      "to": "kb-8c93f7e75859",
+      "type": "related"
+    },
+    {
+      "from": "kb-bfaa231ef4e8",
+      "to": "kb-6bcb17baf23c",
+      "type": "related"
+    },
+    {
+      "from": "kb-bfaa231ef4e8",
+      "to": "kb-e9b6c7f3abad",
+      "type": "related"
+    },
+    {
+      "from": "kb-bfaa231ef4e8",
+      "to": "kb-42798aa488b6",
+      "type": "verified_by"
+    },
+    {
+      "from": "kb-f737bd11e584",
+      "to": "kb-a7b476d2e2b5",
+      "type": "related"
+    },
+    {
+      "from": "kb-f737bd11e584",
+      "to": "kb-184c682f4f85",
+      "type": "related"
+    },
+    {
+      "from": "kb-f737bd11e584",
+      "to": "kb-b7ebf507831d",
+      "type": "related"
+    },
+    {
+      "from": "kb-d132ea9c10f2",
+      "to": "kb-6564b9b0a427",
+      "type": "prerequisite"
+    },
+    {
+      "from": "kb-d69205a7e6f8",
+      "to": "kb-de8c15ee1031",
+      "type": "prerequisite"
+    },
+    {
+      "from": "kb-fa8388bb4143",
+      "to": "kb-209eb4eb34c4",
+      "type": "verified_by"
+    }
+  ]
+}

@@ -1,15 +1,12 @@
 ---
 type: Concept
 title: "{{title}}"
-description: ""
 tags: []
 status: draft
 verified: []
 maturity: L0
 updated: "{{date:YYYY-MM-DD}}"
 sources: []
-resource: ""
-canonical: ""
 ---
 
 # {{title}}

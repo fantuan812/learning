@@ -1,0 +1,150 @@
+#!/usr/bin/env python3
+"""Render deterministic domain/concept navigation from the sole identity graph."""
+import argparse
+import json
+import os
+import re
+import stat
+import unicodedata
+from pathlib import Path, PurePosixPath
+
+LABELS = {
+    'concept': '概念与机制', 'source-analysis': '源码解析', 'case-study': '端到端案例',
+    'reference': '速查参考', 'reading-note': '书籍阅读关联', 'journal': '工作日志关联',
+    'experiment': '可复现实验', 'roadmap': '主题路线',
+}
+
+
+FIXED_VIEWS = {'00_Index/跨域关系.md', '00_Index/UE专题.md'}
+
+
+def safe_path(root, value, output=False):
+    """Reject all escapes/reparse parents before reading or writing."""
+    if not isinstance(value, str) or not value or '\\' in value:
+        raise ValueError('path must be a nonempty POSIX relative string')
+    parts = PurePosixPath(value).parts
+    if value.startswith('/') or any(part in ('', '..', '.') for part in value.split('/')) or ':' in value:
+        raise ValueError('path outside repository')
+    if output and value not in FIXED_VIEWS:
+        if len(parts) != 3 or parts[0] != '知识' or parts[2] != 'README.md':
+            raise ValueError('output is not an approved knowledge view')
+    target = root / value
+    for part in [target, *target.parents]:
+        if part == root:
+            break
+        if part.exists() or part.is_symlink():
+            info = part.lstat()
+            if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
+                raise ValueError('symlink/reparse point in knowledge view path')
+    if not target.resolve().is_relative_to(root.resolve()):
+        raise ValueError('path outside repository')
+    if not output and (not target.is_file() or target.suffix != '.md'):
+        raise ValueError('source must be an existing Markdown file')
+    return target
+
+
+def preflight(root, graph):
+    paths = [domain['entrypoint'] for domain in graph['domains']]
+    folded_paths = [unicodedata.normalize('NFC', path).casefold() for path in paths]
+    if len(paths) != len(set(folded_paths)):
+        raise ValueError('duplicate domain output')
+    for path in paths:
+        if path in FIXED_VIEWS:
+            raise ValueError('domain output cannot replace another view')
+        safe_path(root, path, output=True)
+    for path in FIXED_VIEWS:
+        safe_path(root, path, output=True)
+    for node in graph['documents']:
+        safe_path(root, node['path'])
+
+
+def title(root, path):
+    text = safe_path(root, path).read_text(encoding='utf-8')
+    match = re.search(r'^title:\s*["\']?(.*?)["\']?\s*$', text, re.M)
+    label = match[1] if match else Path(path).stem
+    return ''.join(c for c in label if not ('\x7f' <= c <= '\x9f')).replace('|', '\\|').replace('[', '\\[').replace(']', '\\]')
+
+
+def link(root, source, target, label=None):
+    relative = os.path.relpath(target, os.path.dirname(source) or '.').replace(os.sep, '/')
+    return f'[{label or title(root, target)}](<{relative}>)'
+
+
+def page(title_, body):
+    return (f'---\ntype: Index\ntitle: "{title_}"\nstatus: stable\nverified: []\n'
+            'maturity: L0\nupdated: 2026-10-03\n---\n\n'
+            f'# {title_}\n\n> 知识成熟度：L0（导航条目，不代表主题内容已实测）\n\n{body.rstrip()}\n')
+
+
+def render(root, graph):
+    preflight(root, graph)
+    result = {}
+    nodes = graph['documents']
+    by_id = {node['id']: node for node in nodes}
+    for domain in graph['domains']:
+        path = domain['entrypoint']
+        body = ('本页按知识职责导航，每份正文只登记一个主域。概念、实现、案例和来源分别列出；'
+                '阅读材料的关联不等于已验证其全部结论。\n\n'
+                '正文迁移沿用稳定身份，不复制另一份权威正文。书籍与工作日志原文、日期、附件完整保留。\n\n')
+        for kind, label in LABELS.items():
+            selected = sorted((n for n in nodes if n['domain'] == domain['id'] and n['kind'] == kind), key=lambda n: n['path'])
+            if not selected:
+                continue
+            body += f'## {label}\n\n'
+            body += ''.join('- ' + link(root, path, n['path']) + '\n' for n in selected) + '\n'
+        body += ('## 边界与扩展\n\n一个主题按主要问题确定主责，其他领域引用它。运行在服务端的玩法规则仍属于 Gameplay；'
+                 'UE 源码分析按具体机制归类。新概念先找已有主文，再决定扩充或新建。\n\n'
+                 + link(root, path, '知识/README.md', '八域总览') + ' · '
+                 + link(root, path, '00_Index/跨域关系.md', '主责与关系') + '\n')
+        result[path] = page(domain['title'], body)
+    path = '00_Index/跨域关系.md'
+    body = '每个概念登记唯一主责正文，补充文章通过实现、案例、证据或相关主题关联。以下入口由身份图统一登记；页面不复制正文。\n\n'
+    for concept in graph['concepts']:
+        body += '## ' + concept['title'] + '\n\n- 主责：' + link(root, path, by_id[concept['primary']]['path'])
+        body += '\n- 关联：' + '、'.join(link(root, path, by_id[i]['path']) for i in concept['related']) + '\n\n'
+    body += '[八域总览](../知识/README.md) · [原跨域详解](axes/跨域主题.md)\n'
+    result[path] = page('跨域概念的主责与关系', body)
+    path = '00_Index/UE专题.md'
+    body = ('UE是技术栈，源码解析是内容类型，官方文档是来源。本视图按知识职责分组，'
+            '由身份图的技术栈标签生成；物理搬迁不改变条目身份。\n\n')
+    for domain in graph['domains']:
+        selected = sorted((n for n in nodes if n['domain'] == domain['id'] and 'unreal-engine' in n.get('technologies', [])), key=lambda n: n['path'])
+        if not selected:
+            continue
+        body += '## ' + domain['title'] + '\n\n'
+        body += ''.join('- ' + link(root, path, n['path']) + ('（源码解析）' if n['kind'] == 'source-analysis' else '') + '\n' for n in selected) + '\n'
+    body += ('## 官方文档与版本\n\n'
+             '[UE官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine)用于查最新API和版本差异；'
+             'Markdown整理保留准确来源与版本，原创解释、引用和示例应可区分。历史版本声明不等于本次运行过对应引擎。\n\n'
+             '[八域总览](../知识/README.md) · [源码原始总索引](../游戏知识/12-引擎源码分析/README.md)\n')
+    result[path] = page('UE专题、官方来源与源码总览', body)
+    return result
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--root', type=Path, default=Path(__file__).resolve().parents[1])
+    parser.add_argument('--check', action='store_true', help='Do not write; fail if any generated view drifts')
+    args = parser.parse_args()
+    root = args.root.resolve()
+    graph = json.loads((root / '.kb/knowledge-map.json').read_text(encoding='utf-8'))
+    outputs = render(root, graph)
+    drift = []
+    for name, content in outputs.items():
+        target = safe_path(root, name, output=True)
+        if args.check:
+            if not target.is_file() or target.read_bytes() != content.encode('utf-8'):
+                drift.append(name)
+        else:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(content, encoding='utf-8', newline='\n')
+    if drift:
+        print('FAIL: generated navigation differs from knowledge map:')
+        print('\n'.join(drift))
+        return 1
+    print(f'PASS: {len(outputs)} generated knowledge views' + (' match graph' if args.check else ' written'))
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

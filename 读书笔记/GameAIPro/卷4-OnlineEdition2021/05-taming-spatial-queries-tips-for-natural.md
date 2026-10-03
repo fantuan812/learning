@@ -1,7 +1,7 @@
 ---
 type: Reference
-title: "第5章 Taming Spatial Queries – Tips for Natural Position Selection"
-description: "Game AI Pro 工业级精读：Taming Spatial Queries – Tips for Natural Position Selection。系统解析核心AI机制、设计考量、数学模型与工业级落地方案。"
+title: "第5章 Taming Spatial Queries – Tips for Natural Position Selection"
+description: "Game AI Pro 工业级精读：Taming Spatial Queries – Tips for Natural Position Selection。系统解析核心AI机制、设计考量、数学模型与工业级落地方案。"
 tags:
   - game-ai
   - game-ai-pro

@@ -1,7 +1,7 @@
 ---
 type: Reference
-title: "第5章 Structural Architecture—Common Tricks of the Trade"
-description: "Game AI Pro 工业级精读：Structural Architecture—Common Tricks of the Trade。系统解析核心AI机制、设计考量、数学模型与工业级落地方案。"
+title: "第5章 Structural Architecture—Common Tricks of the Trade"
+description: "Game AI Pro 工业级精读：Structural Architecture—Common Tricks of the Trade。系统解析核心AI机制、设计考量、数学模型与工业级落地方案。"
 tags:
   - game-ai
   - game-ai-pro
