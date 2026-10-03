@@ -6,11 +6,11 @@ import contextlib
 import io
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import migrate_knowledge as migration
 
@@ -66,7 +66,15 @@ class MigrationTests(unittest.TestCase):
         return result, json.loads(self.report_path.read_text())
 
     def snapshot(self):
-        return {str(p.relative_to(self.root)): p.read_bytes() for p in self.root.rglob("*") if p.is_file() and ".git" not in p.relative_to(self.root).parts}
+        return {p.relative_to(self.root).as_posix(): p.read_bytes() for p in self.root.rglob("*") if p.is_file() and ".git" not in p.relative_to(self.root).parts}
+
+    def test_snapshot_keys_are_git_style_for_windows_paths(self):
+        file = Mock()
+        file.relative_to.return_value = PureWindowsPath("old/topic.md")
+        file.is_file.return_value = True
+        file.read_bytes.return_value = b"original bytes"
+        with patch.object(Path, "rglob", return_value=[file]):
+            self.assertEqual(self.snapshot(), {"old/topic.md": b"original bytes"})
 
     def assert_rejected(self, fragment, apply=True):
         before = self.snapshot()
@@ -399,13 +407,19 @@ An arbitrary old/topic.md string remains unchanged.
         self.assertEqual(source.read_bytes(), b"new")
         self.assertEqual(target.read_bytes(), b"retained")
 
-    def test_backup_filesystem_mismatch_blocks_before_repo_writes(self):
+    def assert_backup_filesystem_mismatch_blocks_before_repo_writes(self):
         report, snapshots, outputs, baseline = self.prepare()
         before = self.snapshot()
         real = Path.stat
+        # Match the production path contract, including Windows short-name or
+        # lexical aliases, before patching stat. Never resolve inside the mock.
+        report_parent = self.report_path.resolve().parent
+        hits = 0
         def wrong_device(path, *args, **kwargs):
+            nonlocal hits
             result = real(path, *args, **kwargs)
-            if path == self.report_path.parent:
+            if path == report_parent:
+                hits += 1
                 fields = list(result)
                 fields[2] += 1
                 return os.stat_result(fields)
@@ -413,7 +427,17 @@ An arbitrary old/topic.md string remains unchanged.
         with patch.object(Path, "stat", wrong_device):
             with self.assertRaisesRegex(migration.Invalid, "repository filesystem"):
                 migration.apply_plan(self.root, self.plan_path, ".kb/knowledge-map.json", report, snapshots, outputs, baseline, report_path=self.report_path)
+        self.assertGreater(hits, 0, "filesystem mismatch mock never reached the report directory")
         self.assertEqual(self.snapshot(), before)
+
+    def test_backup_filesystem_mismatch_blocks_before_repo_writes(self):
+        self.assert_backup_filesystem_mismatch_blocks_before_repo_writes()
+
+    def test_backup_filesystem_mock_matches_resolved_report_parent(self):
+        (self.home / "alias").mkdir()
+        self.report_path = self.home / "alias" / ".." / "report.json"
+        self.assertNotEqual(self.report_path.parent, self.report_path.resolve().parent)
+        self.assert_backup_filesystem_mismatch_blocks_before_repo_writes()
 
     def test_report_must_be_outside_repository(self):
         with contextlib.redirect_stderr(io.StringIO()):
