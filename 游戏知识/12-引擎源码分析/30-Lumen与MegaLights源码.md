@@ -315,4 +315,4 @@ static void RenderMegaLightsViewContext(
 - [02-渲染与图形/04-Nanite与Lumen](../02-渲染与图形/04-Nanite与Lumen.md)：Lumen 与 Nanite 概念与使用层参数速查；
 - [10-渲染线程与RHI源码](10-渲染线程与RHI源码.md)：RDG 依赖图编译与平台 RHI 硬件提交底层实现；
 - [35-Nanite源码](35-Nanite源码.md)：Nanite 软硬件光栅化与 Visibility Buffer 构造；
-- [00-08 计算机体系结构与性能/04-编译器优化与GPU异构](../../00-计算机与工程基础/08-计算机体系结构与性能/04-编译器优化与GPU异构.md)：现代 GPU 光线追踪硬件加速核心与 SIMD 计算着色器底座机理。
+- [00-08 计算机体系结构与性能/04-编译器优化与GPU异构](../../知识/01-编程与计算机基础/硬件体系结构与性能/04-编译器优化与GPU异构.md)：现代 GPU 光线追踪硬件加速核心与 SIMD 计算着色器底座机理。

@@ -484,4 +484,4 @@ int UPCGSettings::GetSeed(const IPCGGraphExecutionSource* InExecutionSource) con
 - [13-世界构建与过场/04-PCG程序化内容生成](../13-世界构建与过场/04-PCG程序化内容生成.md)：PCG 图节点使用层实战与地表生态设计；
 - [22-WorldPartition与WorldStreaming源码](22-WorldPartition与WorldStreaming源码.md)：世界分区、StreamingCell 与流送源底层实现；
 - [23-Landscape与Foliage源码](23-Landscape与Foliage源码.md)：地形高度场采样与 HISM 实例合批渲染源码；
-- [00-05 数据结构与复杂度/01-数据结构复杂度与容器选型](../../00-计算机与工程基础/05-数据结构与复杂度/01-数据结构复杂度与容器选型.md)：海量点云内存布局与连续遍历缓存局部性机理。
+- [00-05 数据结构与复杂度/01-数据结构复杂度与容器选型](../../知识/02-数学与游戏算法/数据结构与编码/01-数据结构复杂度与容器选型.md)：海量点云内存布局与连续遍历缓存局部性机理。

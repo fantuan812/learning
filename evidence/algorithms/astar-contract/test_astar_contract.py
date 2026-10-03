@@ -7,11 +7,13 @@ Build products live in TemporaryDirectory. Article snippets are tested directly.
 import argparse
 import heapq
 import itertools
+import json
 import math
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import random
 import re
 import shutil
+import stat
 import subprocess
 import tempfile
 import unittest
@@ -22,7 +24,26 @@ from astar_contract import (astar, assert_heuristic, bellman_ford,
                             INCONSISTENT_GRAPH, INCONSISTENT_H, DISCOVERY_GRAPH)
 
 ROOT = Path(__file__).resolve().parents[3]
-ARTICLE = ROOT / "游戏算法/01-寻路与图论/02-A星算法与优化.md"
+# Resolve the exact authoritative article by stable identity after physical moves.
+ARTICLE_ID = "kb-fa8388bb4143"
+GRAPH = json.loads((ROOT / ".kb/knowledge-map.json").read_text(encoding="utf-8"))
+ARTICLES = [item for item in GRAPH["documents"] if item.get("id") == ARTICLE_ID]
+if len(ARTICLES) != 1:
+    raise RuntimeError("A* article identity must resolve exactly once")
+ARTICLE_PATH = ARTICLES[0]["path"]
+if (not isinstance(ARTICLE_PATH, str) or "\\" in ARTICLE_PATH or ":" in ARTICLE_PATH
+        or PurePosixPath(ARTICLE_PATH).is_absolute()
+        or any(part in ("", ".", "..") for part in ARTICLE_PATH.split("/"))):
+    raise RuntimeError("A* article path must remain repository-relative")
+ARTICLE = ROOT / ARTICLE_PATH
+for ancestor in [ARTICLE, *ARTICLE.parents]:
+    if ancestor == ROOT:
+        break
+    metadata = ancestor.lstat()
+    if stat.S_ISLNK(metadata.st_mode) or getattr(metadata, "st_file_attributes", 0) & 0x400:
+        raise RuntimeError("A* article cannot follow a symlink/reparse point")
+if not ARTICLE.resolve().is_relative_to(ROOT.resolve()):
+    raise RuntimeError("A* article path escapes repository")
 TEXT = ARTICLE.read_text(encoding="utf-8")
 MUTANT = None  # Optional CLI injection changes extracted strings, never source files.
 HEURISTIC_GRID = [[1,1,1,1,1], [1,1,0,1,1], [1,1,1,0,1],

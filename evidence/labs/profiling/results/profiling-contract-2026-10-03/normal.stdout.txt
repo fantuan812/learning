@@ -1,0 +1,53 @@
+gameplay-perf | instrumentation overhead benchmark
+compiler=14.2.0 c++17 (optimization flags are recorded by the runner)
+harness: batch=20000 calls, rounds=200, reported as p50 ns/call
+contract: exit code covers functionality; P1-P7 are machine/build/sample-local observations
+--------------------------------------------------------------------------------
+  1 bare counter increment           p50=    0.29 ns/call
+FUNCTIONAL PASS F01 bare counter counts            expected_per_counter=500000 counters=8
+  2 atomic relaxed increment         p50=    2.02 ns/call
+FUNCTIONAL PASS F02 atomic count                   actual=4000000 expected=4000000
+  3 scoped steady_clock timer        p50=   48.50 ns/call
+  4 strcmp lookup per call           p50=   11.64 ns/call
+FUNCTIONAL PASS F03 lookup mapping and counts      all names, missing name, and eight counter totals
+  5 snprintf label per call          p50=  174.86 ns/call
+FUNCTIONAL PASS F04 formatting succeeds            errors=0 calls=4000000
+FUNCTIONAL PASS F05 file opens                     path=build/profiling_overhead_tmp.log
+FUNCTIONAL PASS F06 buffering configured           requested_buffer_bytes=1048576 (implementation may choose actual size)
+  6 snprintf + fwrite per call       p50=  203.59 ns/call
+FUNCTIONAL PASS F07 file formatting succeeds       errors=0
+FUNCTIONAL PASS F08 complete writes and byte count actual=165334000 expected=165334000 short_writes=0
+FUNCTIONAL PASS F09 file flush succeeds            fflush and stream error indicator checked
+FUNCTIONAL PASS F10 flushed file size              actual=165334000 expected=165334000
+FUNCTIONAL PASS F11 file close succeeds            fclose return value checked
+FUNCTIONAL PASS F12 temporary file removed         path=build/profiling_overhead_tmp.log
+  7 sampled timer (1/100 calls)      p50=    1.11 ns/call
+FUNCTIONAL PASS F13 all measurement samples valid  seven styles, every batch duration finite and positive; p50 is upper median
+--------------------------------------------------------------------------------
+[observations] Original thresholds retained; UNSUPPORTED is a failed legacy hypothesis, not a functional failure
+OBSERVATION P1 SUPPORTED   atomic / bare; numerator=2.018550 denominator=0.294450 ratio=6.855323 threshold=>=0.500000
+OBSERVATION P2 SUPPORTED   scoped / bare; numerator=48.502650 denominator=0.294450 ratio=164.722873 threshold=>1.000000
+OBSERVATION P3 UNSUPPORTED format / scoped; numerator=174.860300 denominator=48.502650 ratio=3.605170 threshold=>5.000000
+OBSERVATION P4 SUPPORTED   format+write / format; numerator=203.586650 denominator=174.860300 ratio=1.164282 threshold=>1.000000
+OBSERVATION P5 SUPPORTED   scoped / sampled; numerator=48.502650 denominator=1.105700 ratio=43.866012 threshold=>10.000000
+
+[budget] illustrative frame_budget_ms=16.6; no frame workload measured
+[budget] calls_per_frame=1000
+[budget] bare counter              0.000 ms/frame    0.00% of budget
+[budget] atomic counter            0.002 ms/frame    0.01% of budget
+[budget] scoped timer              0.049 ms/frame    0.29% of budget
+[budget] snprintf label            0.175 ms/frame    1.05% of budget
+[budget] snprintf + fwrite         0.204 ms/frame    1.23% of budget
+[budget] sampled timer (1/100)     0.001 ms/frame    0.01% of budget
+[budget] calls_per_frame=100000
+[budget] bare counter              0.029 ms/frame    0.18% of budget
+[budget] atomic counter            0.202 ms/frame    1.22% of budget
+[budget] scoped timer              4.850 ms/frame   29.22% of budget
+[budget] snprintf label           17.486 ms/frame  105.34% of budget
+[budget] snprintf + fwrite        20.359 ms/frame  122.64% of budget
+[budget] sampled timer (1/100)     0.111 ms/frame    0.67% of budget
+OBSERVATION P6 SUPPORTED   log_ms / budget_ms at 100000 calls/frame; numerator=20.358665 denominator=16.600000 ratio=1.226426 threshold=>1.000000
+OBSERVATION P7 SUPPORTED   timer_ms / budget_ms at 100000 calls/frame; numerator=4.850265 denominator=16.600000 ratio=0.292185 threshold=<1.000000
+--------------------------------------------------------------------------------
+OBSERVATION_RESULT supported=6 unsupported=1 unavailable=0
+FUNCTIONAL_RESULT pass=13 fail=0

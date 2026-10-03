@@ -300,4 +300,4 @@ void TriggerDynamicPCGGeneration(AActor* TargetActor, UPCGGraph* InGraph)
 - [05-大世界植被与渲染协同](05-大世界植被与渲染协同.md)：World Partition 与 PCG、HLOD 工业化全流程闭环；
 - [12-38 PCG源码](../../游戏知识/12-引擎源码分析/38-PCG源码.md)：UPCGGraph 与执行调度器底层源码深度剖析；
 - [01-引擎基础/09-WorldPartition大世界](../01-引擎基础/09-WorldPartition大世界.md)：开放世界分块与动态流送加载基础；
-- [游戏算法/03-工程与实用技巧/02-程序化生成](../../游戏算法/03-工程与实用技巧/02-程序化生成.md)：柏林噪声、泊松圆盘采样（Poisson Disk）通用算法数学原理。
+- [游戏算法/03-工程与实用技巧/02-程序化生成](../../知识/02-数学与游戏算法/随机采样与程序化生成/02-程序化生成.md)：柏林噪声、泊松圆盘采样（Poisson Disk）通用算法数学原理。

@@ -29,20 +29,20 @@ updated: 2026-08-20
 
 | 专题文件（Canonical 路径） | 知识类型 | 成熟度 | 核心工程关注点与落地场景 |
 | :--- | :---: | :---: | :--- |
-| [01-UBT构建系统与编译配置.md](01-UBT构建系统与编译配置.md) | Concept | L2 | UBT 编译管线：Target.cs / Build.cs 依赖拓扑、Debug/Development/Shipping 编译配置、预编译头 PCH 与增量编译加速 |
-| [02-UAT与自动化打包.md](02-UAT与自动化打包.md) | Concept | L2 | UAT 架构与 BuildCookRun 命令、Cook 资源转换、Stage 暂存、Package 打包与 Archive 归档四阶段流水线 |
-| [03-插件开发与编辑器扩展.md](03-插件开发与编辑器扩展.md) | Concept | L2 | .uplugin 插件组织、Runtime/Editor 模块划分、Toolbar/Menu 扩展、EditorUtilityWidget 与 Slate 定制工具 |
-| [04-资源管理与热更新.md](04-资源管理与热更新.md) | Concept | L2 | PrimaryAssetLabel 资源分包、Pak/IoStore Chunk 划分、差量补丁（Patch）生成、版本清单 Manifest 与热更下载 |
-| [05-GameFeatures特性插件.md](05-GameFeatures特性插件.md) | Concept | L2 | GameFeatures 模块化玩法插件：Action 装配器、插件加载/激活状态机、DLC 动态交付与独立资产隔离 |
-| [06-Interchange与DataValidation.md](06-Interchange与DataValidation.md) | Concept | L2 | Interchange 自定义资产导入管线、UEditorValidator 资产合规校验、CI 门禁拦截不合规命名与超规纹理 |
-| [07-Shader编译管线与PSO.md](07-Shader编译管线与PSO.md) | Concept | L2 | ShaderCompileWorker、DDC 共享衍生数据缓存、PSO 运行时记录（PSO Cache）与提前预编译防止掉帧 |
-| [08-全栈质量门禁与灰度回滚.md](08-全栈质量门禁与灰度回滚.md) | Concept | L2 | CI/CD 自动化构建矩阵、自动化单元/回归测试门禁、Crash/Trace 诊断分析、灰度发布与自动化回滚策略 |
-| [09-UE Dedicated Server构建烘焙与运行.md](<09-UE Dedicated Server构建烘焙与运行.md>) | Concept | L2 | Server.Target.cs 编写、Linux 跨平台编译环境配置、无客户端资产烘焙（Cook Server）、双端冒烟测试 |
-| [10-UE Dedicated Server运行参数与性能调优.md](<10-UE Dedicated Server运行参数与性能调优.md>) | Concept | L2 | NetServerMaxTickRate 锁帧率、服务器无渲染休眠策略、网络参数调优、连接超时判定与 DDoS 防护 |
-| [11-DS内容裁剪与服务器资源预算.md](11-DS内容裁剪与服务器资源预算.md) | Concept | L2 | 服务器端动画与音频剥离、材质贴图与碰撞体精简、内存配额监控与 Linux 进程开销极限压降 |
-| [12-版本控制与资产协作.md](12-版本控制与资产协作.md) | Concept | L2 | 二进制资产（uasset）协作难题、Perforce 独占排他锁工作流、Git LFS 大文件治理与多分支合并策略 |
-| [13-本地化发布工作流.md](13-本地化发布工作流.md) | Concept | L2 | Localization Dashboard 文本提取、多语言 PO 导入导出、音频语音本地化与文化特定资产替换 |
-| [14-Python编辑器脚本与资产自动化.md](14-Python编辑器脚本与资产自动化.md) | Concept | L2 | unreal.EditorSubsystem 族、Python 自动化重命名与贴图格式转换、批量关卡烘焙与无头（Headless）CLI 执行 |
+| [01-UBT构建系统与编译配置.md](../../知识/08-工程实践与质量/构建编译与制品/01-UBT构建系统与编译配置.md) | Concept | L2 | UBT 编译管线：Target.cs / Build.cs 依赖拓扑、Debug/Development/Shipping 编译配置、预编译头 PCH 与增量编译加速 |
+| [02-UAT与自动化打包.md](../../知识/08-工程实践与质量/构建编译与制品/02-UAT与自动化打包.md) | Concept | L2 | UAT 架构与 BuildCookRun 命令、Cook 资源转换、Stage 暂存、Package 打包与 Archive 归档四阶段流水线 |
+| [03-插件开发与编辑器扩展.md](../../知识/08-工程实践与质量/编辑器工具与资产自动化/03-插件开发与编辑器扩展.md) | Concept | L2 | .uplugin 插件组织、Runtime/Editor 模块划分、Toolbar/Menu 扩展、EditorUtilityWidget 与 Slate 定制工具 |
+| [04-资源管理与热更新.md](../../知识/08-工程实践与质量/持续交付与发布治理/04-资源管理与热更新.md) | Concept | L2 | PrimaryAssetLabel 资源分包、Pak/IoStore Chunk 划分、差量补丁（Patch）生成、版本清单 Manifest 与热更下载 |
+| [05-GameFeatures特性插件.md](../../知识/03-引擎架构与资源系统/插件装配与初始化/05-GameFeatures特性插件.md) | Concept | L2 | GameFeatures 模块化玩法插件：Action 装配器、插件加载/激活状态机、DLC 动态交付与独立资产隔离 |
+| [06-Interchange与DataValidation.md](../../知识/08-工程实践与质量/编辑器工具与资产自动化/06-Interchange与DataValidation.md) | Concept | L2 | Interchange 自定义资产导入管线、UEditorValidator 资产合规校验、CI 门禁拦截不合规命名与超规纹理 |
+| [07-Shader编译管线与PSO.md](../../知识/08-工程实践与质量/构建编译与制品/07-Shader编译管线与PSO.md) | Concept | L2 | ShaderCompileWorker、DDC 共享衍生数据缓存、PSO 运行时记录（PSO Cache）与提前预编译防止掉帧 |
+| [08-全栈质量门禁与灰度回滚.md](../../知识/08-工程实践与质量/持续交付与发布治理/08-全栈质量门禁与灰度回滚.md) | Concept | L2 | CI/CD 自动化构建矩阵、自动化单元/回归测试门禁、Crash/Trace 诊断分析、灰度发布与自动化回滚策略 |
+| [09-UE Dedicated Server构建烘焙与运行.md](<../../知识/08-工程实践与质量/构建编译与制品/09-UE%20Dedicated%20Server构建烘焙与运行.md>) | Concept | L2 | Server.Target.cs 编写、Linux 跨平台编译环境配置、无客户端资产烘焙（Cook Server）、双端冒烟测试 |
+| [10-UE Dedicated Server运行参数与性能调优.md](<../../知识/08-工程实践与质量/调试与性能分析/10-UE%20Dedicated%20Server运行参数与性能调优.md>) | Concept | L2 | NetServerMaxTickRate 锁帧率、服务器无渲染休眠策略、网络参数调优、连接超时判定与 DDoS 防护 |
+| [11-DS内容裁剪与服务器资源预算.md](../../知识/08-工程实践与质量/构建编译与制品/11-DS内容裁剪与服务器资源预算.md) | Concept | L2 | 服务器端动画与音频剥离、材质贴图与碰撞体精简、内存配额监控与 Linux 进程开销极限压降 |
+| [12-版本控制与资产协作.md](../../知识/08-工程实践与质量/工程设计与协作/12-版本控制与资产协作.md) | Concept | L2 | 二进制资产（uasset）协作难题、Perforce 独占排他锁工作流、Git LFS 大文件治理与多分支合并策略 |
+| [13-本地化发布工作流.md](../../知识/08-工程实践与质量/持续交付与发布治理/13-本地化发布工作流.md) | Concept | L2 | Localization Dashboard 文本提取、多语言 PO 导入导出、音频语音本地化与文化特定资产替换 |
+| [14-Python编辑器脚本与资产自动化.md](../../知识/08-工程实践与质量/编辑器工具与资产自动化/14-Python编辑器脚本与资产自动化.md) | Concept | L2 | unreal.EditorSubsystem 族、Python 自动化重命名与贴图格式转换、批量关卡烘焙与无头（Headless）CLI 执行 |
 
 ---
 

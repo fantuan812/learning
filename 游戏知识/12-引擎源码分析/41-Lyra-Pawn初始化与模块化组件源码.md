@@ -1222,7 +1222,7 @@ void UGameFeatureAction_AddAbilities::AddActorAbilities(
 - [08-ModularGameplay模块化玩法](../03-游戏玩法编程/08-ModularGameplay模块化玩法.md)：概念层实践。
 - [45-Lyra-相机音频与游戏阶段源码](45-Lyra-相机音频与游戏阶段源码.md)：Hero 绑定摄像机模式的模式栈实现。
 - [46-Lyra-AI机器人与队伍源码](46-Lyra-AI机器人与队伍源码.md)：Bot 不需要 LocalPlayer 的控制器与队伍实现。
-- [47-Lyra-调试工具与扩展源码](47-Lyra-调试工具与扩展源码.md)：Pawn/组件调试与开发者设置入口。
+- [47-Lyra-调试工具与扩展源码](../../知识/08-工程实践与质量/调试与性能分析/47-Lyra-调试工具与扩展源码.md)：Pawn/组件调试与开发者设置入口。
 - [48-Lyra扩展插件源码](48-Lyra扩展插件源码.md)：ModularGameplayActors 等扩展插件实现（模块化组件概念的插件侧）。
 
 ## 四十、权威来源

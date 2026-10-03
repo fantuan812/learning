@@ -68,5 +68,5 @@ E) fetch_add 耗时（ms，iters=20000000/线程）
 
 ## 关联知识文档
 
-- [02-Atomic与C++内存模型](../../../00-计算机与工程基础/04-C++并发与内存模型/02-Atomic与C++内存模型.md)
-- [03-LockFree与FalseSharing](../../../00-计算机与工程基础/04-C++并发与内存模型/03-LockFree与FalseSharing.md)
+- [02-Atomic与C++内存模型](../../../知识/01-编程与计算机基础/并发与同步/02-Atomic与C%2B%2B内存模型.md)
+- [03-LockFree与FalseSharing](../../../知识/01-编程与计算机基础/并发与同步/03-LockFree与FalseSharing.md)

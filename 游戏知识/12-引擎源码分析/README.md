@@ -59,7 +59,7 @@ updated: 2026-09-14
 | Enhanced Input、Gameplay Tags | 已有（输入/玩法概念） | 源码深度已完成：[25-EnhancedInput与GameplayTags源码.md](./25-EnhancedInput与GameplayTags源码.md) |
 | CommonUI | 已有（UI 框架概念） | 源码深度已完成：[26-CommonUI源码.md](./26-CommonUI源码.md) |
 | UMG MVVM | 已有（UI 数据绑定概念） | 源码深度已完成：[27-UMGMVVM源码.md](./27-UMGMVVM源码.md) |
-| Unreal Insights/Trace | 已有（性能分析与调试概念） | 源码深度已完成：[28-UnrealInsights与Trace源码.md](./28-UnrealInsights与Trace源码.md) |
+| Unreal Insights/Trace | 已有（性能分析与调试概念） | 源码深度已完成：[28-UnrealInsights与Trace源码.md](../../知识/08-工程实践与质量/调试与性能分析/28-UnrealInsights与Trace源码.md) |
 | Gameplay Tasks | 已有（AI/异步玩法概念） | 源码深度已完成：[29-GameplayTasks源码.md](./29-GameplayTasks源码.md) |
 | UE5.8 Lumen Medium/Lite、MegaLights | 已登记 UE5.8 图形特性 | 源码深度已完成：[30-Lumen与MegaLights源码.md](./30-Lumen与MegaLights源码.md) |
 | Procedural Vegetation Editor | 已登记 UE5.8 世界内容特性 | 源码深度已完成：[31-ProceduralVegetationEditor源码.md](./31-ProceduralVegetationEditor源码.md) |
@@ -89,7 +89,7 @@ updated: 2026-09-14
 | 闭合产品流程 | [44-Lyra-前端会话网络与扩展源码.md](./44-Lyra-前端会话网络与扩展源码.md) | Frontend ControlFlow、CommonUser/Session、加载屏、网络与测试入口 |
 | 表现与流程 | [45-Lyra-相机音频与游戏阶段源码.md](./45-Lyra-相机音频与游戏阶段源码.md) | CameraMode 栈与穿透预防、音频混合设置、GamePhase 阶段能力 |
 | AI 与队伍 | [46-Lyra-AI机器人与队伍源码.md](./46-Lyra-AI机器人与队伍源码.md) | Bot 创建与控制器、Team 归属、伤害过滤与队伍展示 |
-| 调试与测试 | [47-Lyra-调试工具与扩展源码.md](./47-Lyra-调试工具与扩展源码.md) | Cheat/开发者设置、LyraEditor 校验工具与测试层 |
+| 调试与测试 | [47-Lyra-调试工具与扩展源码.md](../../知识/08-工程实践与质量/调试与性能分析/47-Lyra-调试工具与扩展源码.md) | Cheat/开发者设置、LyraEditor 校验工具与测试层 |
 | 扩展插件 | [48-Lyra扩展插件源码.md](./48-Lyra扩展插件源码.md) | AsyncMixin、PocketWorlds、GameSubtitles 等 8 个扩展插件 |
 | UI 控件与表现 | [49-Lyra-UI控件与表现源码.md](./49-Lyra-UI控件与表现源码.md) | LyraHUD/Layout、Foundation 控件族、IndicatorSystem、武器 UI 与性能统计 |
 | 设置系统 | [50-Lyra-设置系统与GameSettings源码.md](./50-Lyra-设置系统与GameSettings源码.md) | GameSettings 插件抽象、Lyra 设置注册表/载体与设置屏 |
@@ -197,7 +197,7 @@ Lyra 系列（39-56）以可复用范式为目标（运行链 + 分层设计 + �
 | [25-EnhancedInput与GameplayTags源码.md](./25-EnhancedInput与GameplayTags源码.md) | Enhanced Input 映射/触发器、Gameplay Tags 注册查询与玩法协作 | 源码深度已完成 |
 | [26-CommonUI源码.md](./26-CommonUI源码.md) | CommonUI 栈、输入路由、激活与可复用 UI 层级源码链路 | 源码深度已完成 |
 | [27-UMGMVVM源码.md](./27-UMGMVVM源码.md) | UMG MVVM 视图模型、绑定编译与运行时更新链路 | 源码深度已完成 |
-| [28-UnrealInsights与Trace源码.md](./28-UnrealInsights与Trace源码.md) | Trace 采集、通道/事件与 Unreal Insights 分析链路 | 源码深度已完成 |
+| [28-UnrealInsights与Trace源码.md](../../知识/08-工程实践与质量/调试与性能分析/28-UnrealInsights与Trace源码.md) | Trace 采集、通道/事件与 Unreal Insights 分析链路 | 源码深度已完成 |
 | [29-GameplayTasks源码.md](./29-GameplayTasks源码.md) | Gameplay Tasks 资源、优先级、依赖与任务调度链路 | 源码深度已完成 |
 | [30-Lumen与MegaLights源码.md](./30-Lumen与MegaLights源码.md) | Lumen 光照路径与 MegaLights UE5.8 渲染特性源码边界 | 源码深度已完成 |
 | [31-ProceduralVegetationEditor源码.md](./31-ProceduralVegetationEditor源码.md) | Procedural Vegetation Editor 的编辑器、规则与实例化源码链路 | 源码深度已完成 |
@@ -216,7 +216,7 @@ Lyra 系列（39-56）以可复用范式为目标（运行链 + 分层设计 + �
 | [44-Lyra-前端会话网络与扩展源码.md](./44-Lyra-前端会话网络与扩展源码.md) | 前端 ControlFlow、登录会话、Travel、加载屏、网络配置、目标与测试扩展 | 源码深度已完成 |
 | [45-Lyra-相机音频与游戏阶段源码.md](./45-Lyra-相机音频与游戏阶段源码.md) | CameraMode 栈、穿透预防、音频混合设置与 GamePhase 阶段能力 | 源码深度已完成 |
 | [46-Lyra-AI机器人与队伍源码.md](./46-Lyra-AI机器人与队伍源码.md) | Bot 创建与控制器、Team 归属、CanCauseDamage 与队伍展示链路 | 源码深度已完成 |
-| [47-Lyra-调试工具与扩展源码.md](./47-Lyra-调试工具与扩展源码.md) | Cheat、开发者设置、LyraEditor 校验、测试控制器与验收清单 | 源码深度已完成 |
+| [47-Lyra-调试工具与扩展源码.md](../../知识/08-工程实践与质量/调试与性能分析/47-Lyra-调试工具与扩展源码.md) | Cheat、开发者设置、LyraEditor 校验、测试控制器与验收清单 | 源码深度已完成 |
 | [48-Lyra扩展插件源码.md](./48-Lyra扩展插件源码.md) | AsyncMixin、PocketWorlds、GameSubtitles、LyraExtTool、ModularGameplayActors、加载屏与测试房间插件 | 源码深度已完成 |
 | [49-Lyra-UI控件与表现源码.md](./49-Lyra-UI控件与表现源码.md) | LyraHUD/Layout、Foundation 控件族、IndicatorSystem 头顶指示器、武器 UI（准星/命中标记）与性能统计（补 LYRA-COV-01 缺口） | 源码深度已完成 |
 | [50-Lyra-设置系统与GameSettings源码.md](./50-Lyra-设置系统与GameSettings源码.md) | GameSettings 插件抽象（GameSetting/Registry/Value/Action）、Lyra 设置注册表/载体（LyraSettingsLocal/Shared）与设置屏（补 LYRA-COV-02 缺口） | 源码深度已完成 |

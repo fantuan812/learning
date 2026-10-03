@@ -339,4 +339,4 @@ Q5：移动端烘焙运行后 SceneCapture 返回纯黑或崩溃？
 - [02-材质系统详解](02-材质系统详解.md)：材质动态参数（MID）与纹理采样机制；
 - [07-UI与性能优化/01-UMG框架与控件系统](../07-UI与性能优化/01-UMG框架与控件系统.md)：将 RenderTarget 封装为 SlateBrush 供 UMG 图像控件显示；
 - [12-10 渲染线程与RHI源码](../12-引擎源码分析/10-渲染线程与RHI源码.md)：ENQUEUE_RENDER_COMMAND 与 RHI 资源分配源码；
-- [00-06 虚拟内存、PageFault与mmap](../../00-计算机与工程基础/06-操作系统/02-虚拟内存、PageFault与mmap.md)：显存驻留与 GPU 贴图缓冲分配底层机理。
+- [00-06 虚拟内存、PageFault与mmap](../../知识/01-编程与计算机基础/操作系统与系统I-O/02-虚拟内存、PageFault与mmap.md)：显存驻留与 GPU 贴图缓冲分配底层机理。

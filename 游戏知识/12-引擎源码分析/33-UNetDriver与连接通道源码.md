@@ -699,4 +699,4 @@ bool UWorld::ServerTravel(const FString& FURL, bool bAbsolute, bool bShouldSkipG
 - [09-网络复制与RPC源码](09-网络复制与RPC源码.md)：深入解析 `UActorChannel::ReceivedBunch` 内部属性反射比较与 RPC 执行；
 - [20-Iris复制源码](20-Iris复制源码.md)：下一代数据驱动复制系统对传统 `UNetDriver` 遍历机制的重构与替代；
 - [06-网络同步/01-网络架构与复制基础](../06-网络同步/01-网络架构与复制基础.md)：客户端-服务器权威模型使用层概念；
-- [08-工具链与打包发布/10-UE Dedicated Server运行参数与性能调优](../08-工具链与打包发布/10-UE%20Dedicated%20Server运行参数与性能调优.md)：生产环境 NetServerMaxTickRate、带宽与超时参数实战调优手册。
+- [08-工具链与打包发布/10-UE Dedicated Server运行参数与性能调优](../../知识/08-工程实践与质量/调试与性能分析/10-UE%20Dedicated%20Server运行参数与性能调优.md)：生产环境 NetServerMaxTickRate、带宽与超时参数实战调优手册。

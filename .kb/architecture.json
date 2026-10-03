@@ -4,6 +4,7 @@
     {
       "id": "content",
       "roots": [
+        "知识",
         "00-计算机与工程基础",
         "游戏知识",
         "游戏服务端",
@@ -13,6 +14,7 @@
         "Knowledge"
       ],
       "entrypoints": [
+        "知识/README.md",
         "00_Index/domains/README.md",
         "Knowledge/README.md"
       ]
@@ -57,14 +59,12 @@
     {
       "id": "navigation",
       "roots": [
-        "00_Index",
-        "知识"
+        "00_Index"
       ],
       "entrypoints": [
         "index.md",
         "README.md",
-        "00_Index/MOC.md",
-        "知识/README.md"
+        "00_Index/MOC.md"
       ]
     },
     {

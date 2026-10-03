@@ -6,7 +6,7 @@ tags: [obsidian, collaboration, bases, templates]
 status: stable
 verified: []
 maturity: L2
-updated: 2026-08-20
+updated: 2026-10-03
 sources:
   - id: obsidian-bases
     title: Bases syntax
@@ -38,9 +38,9 @@ sources:
 
 在 Settings → Core plugins → Templates 启用 Templates，并将 **Templates folder location** 设置为 `references/templates`。插入 `OKF-知识条目` 模板后填写 YAML；模板使用官方变量 `{{title}}` 与 `{{date:YYYY-MM-DD}}`，插入后应检查标题和日期是否正确。
 
-打开 `00_Index/Knowledge.base` 查看 Bases 数据库；当前提供 All、Review、Evidence、Project 四个视图。All 按 `type` 分组，Review 筛选 `status: draft` 或 `maturity: L0`，Evidence 和 Project 使用目录边界过滤。Bases 读取 Markdown 属性，不是新的事实来源；字段不一致时以条目 YAML 为准。
+打开 `00_Index/Knowledge.base` 查看 Bases 数据库；当前提供 All、Review、Evidence、Cases 四个视图。All 按 `type` 分组，Review 筛选 `status: draft` 或 `maturity: L0`，Evidence 按实验目录过滤；Cases 按 `type == "Project"` 或 `type == "CaseStudy"` 过滤，正文搬入八域后不会因旧目录消失而漏掉案例。Bases 读取 Markdown 属性，不是新的事实来源；字段不一致时以条目 YAML 为准。
 
-领域学习顺序从 [00_Index/domains](../00_Index/domains/README.md) 进入，跨域主责关系从 [跨域主题地图](../00_Index/axes/跨域主题.md) 进入。Obsidian 可能在打开 `.base` 时规范化 YAML 引号或属性名展示；应审查语义 diff，不要仅因序列化差异覆盖工作区。
+领域学习顺序从 [八域知识体系](../知识/README.md) 和 [学习路线](../00_Index/学习路线.md) 进入，跨域主责关系从 [跨域主题地图](../00_Index/axes/跨域主题.md) 进入。Obsidian 可能在打开 `.base` 时规范化 YAML 引号或属性名展示；应审查语义 diff，不要仅因序列化差异覆盖工作区。
 
 ## 单写者与同步边界
 
@@ -55,3 +55,7 @@ sources:
 误操作时优先用 Git 历史或 Obsidian Sync 的版本恢复，保留恢复记录。任何自动化脚本必须限定在 vault 根目录，先 dry-run 再写入。
 
 > 知识成熟度：L2。本指南已通过静态校验并具备可执行验证，具体插件行为应随官方文档更新复查。
+
+## 迁移后的属性视图边界
+
+2026-10-03 按 [Bases官方语法](https://obsidian.md/help/bases/syntax) 核对字段比较与视图级过滤；本次静态解析共享 `.base` YAML并验证案例类型覆盖，未启动Obsidian应用运行验证。个人 `.obsidian` 配置未改动。

@@ -1,0 +1,46 @@
+gameplay-perf | instrumentation overhead benchmark
+compiler=14.2.0 c++17 (optimization flags are recorded by the runner)
+harness: batch=20000 calls, rounds=200, reported as p50 ns/call
+contract: exit code covers functionality; P1-P7 are machine/build/sample-local observations
+--------------------------------------------------------------------------------
+  1 bare counter increment           p50=    0.29 ns/call
+FUNCTIONAL PASS F01 bare counter counts            expected_per_counter=500000 counters=8
+  2 atomic relaxed increment         p50=    2.03 ns/call
+FUNCTIONAL PASS F02 atomic count                   actual=4000000 expected=4000000
+  3 scoped steady_clock timer        p50=   51.72 ns/call
+  4 strcmp lookup per call           p50=   11.21 ns/call
+FUNCTIONAL PASS F03 lookup mapping and counts      all names, missing name, and eight counter totals
+  5 snprintf label per call          p50=  175.29 ns/call
+FUNCTIONAL PASS F04 formatting succeeds            errors=0 calls=4000000
+FUNCTIONAL FAIL F05 file opens                     path=build/profiling_overhead_tmp.log
+FUNCTIONAL UNAVAILABLE F06-F12 file-dependent checks: opening the required file failed
+  7 sampled timer (1/100 calls)      p50=    1.11 ns/call
+FUNCTIONAL FAIL F13 all measurement samples valid  seven styles, every batch duration finite and positive; p50 is upper median
+--------------------------------------------------------------------------------
+[observations] Original thresholds retained; UNSUPPORTED is a failed legacy hypothesis, not a functional failure
+OBSERVATION P1 SUPPORTED   atomic / bare; numerator=2.032050 denominator=0.294450 ratio=6.901172 threshold=>=0.500000
+OBSERVATION P2 SUPPORTED   scoped / bare; numerator=51.718500 denominator=0.294450 ratio=175.644422 threshold=>1.000000
+OBSERVATION P3 UNSUPPORTED format / scoped; numerator=175.291900 denominator=51.718500 ratio=3.389346 threshold=>5.000000
+OBSERVATION P4 UNAVAILABLE format+write / format; numerator=nan denominator=175.291900 ratio=nan threshold=>1.000000
+OBSERVATION P5 SUPPORTED   scoped / sampled; numerator=51.718500 denominator=1.105650 ratio=46.776557 threshold=>10.000000
+
+[budget] illustrative frame_budget_ms=16.6; no frame workload measured
+[budget] calls_per_frame=1000
+[budget] bare counter              0.000 ms/frame    0.00% of budget
+[budget] atomic counter            0.002 ms/frame    0.01% of budget
+[budget] scoped timer              0.052 ms/frame    0.31% of budget
+[budget] snprintf label            0.175 ms/frame    1.06% of budget
+[budget] snprintf + fwrite      UNAVAILABLE
+[budget] sampled timer (1/100)     0.001 ms/frame    0.01% of budget
+[budget] calls_per_frame=100000
+[budget] bare counter              0.029 ms/frame    0.18% of budget
+[budget] atomic counter            0.203 ms/frame    1.22% of budget
+[budget] scoped timer              5.172 ms/frame   31.16% of budget
+[budget] snprintf label           17.529 ms/frame  105.60% of budget
+[budget] snprintf + fwrite      UNAVAILABLE
+[budget] sampled timer (1/100)     0.111 ms/frame    0.67% of budget
+OBSERVATION P6 UNAVAILABLE log_ms / budget_ms at 100000 calls/frame; numerator=nan denominator=16.600000 ratio=nan threshold=>1.000000
+OBSERVATION P7 SUPPORTED   timer_ms / budget_ms at 100000 calls/frame; numerator=5.171850 denominator=16.600000 ratio=0.311557 threshold=<1.000000
+--------------------------------------------------------------------------------
+OBSERVATION_RESULT supported=4 unsupported=1 unavailable=2
+FUNCTIONAL_RESULT pass=4 fail=2

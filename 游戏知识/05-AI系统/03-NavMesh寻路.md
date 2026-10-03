@@ -445,8 +445,8 @@ NavMesh 寻路是"多边形粒度"的最优，受网格精度、区域代价、�
 - [02-感知系统与EQS](02-感知系统与EQS.md)：EQS 的 PathingGrid/Pathfinding 测试依赖 NavMesh 进行可达性与路径代价值计算；
 - [06-ZoneGraph与SmartObjects](06-ZoneGraph与SmartObjects.md)：走廊路网与传统多边形导航网格的互补选型；
 - [12-12 行为树与AI源码](../12-引擎源码分析/12-行为树与AI源码.md)：PathFollowingComponent 路径跟随状态机与底层源码实现；
-- [游戏算法/01-寻路与图论/02-A星算法与优化](../../游戏算法/01-寻路与图论/02-A星算法与优化.md)：A* 启发式搜索与堆优化底层数学推导；
-- [游戏算法/04-确定性与基准工程/03-NavMesh工程Recast与Detour](../../游戏算法/04-确定性与基准工程/03-NavMesh工程Recast与Detour.md)：Recast 体素化、轮廓提取与 Detour 多边形漏斗平滑（Funnel）底层工程详解；
+- [游戏算法/01-寻路与图论/02-A星算法与优化](../../知识/02-数学与游戏算法/路径搜索与导航/02-A星算法与优化.md)：A* 启发式搜索与堆优化底层数学推导；
+- [游戏算法/04-确定性与基准工程/03-NavMesh工程Recast与Detour](../../知识/02-数学与游戏算法/路径搜索与导航/03-NavMesh工程Recast与Detour.md)：Recast 体素化、轮廓提取与 Detour 多边形漏斗平滑（Funnel）底层工程详解；
 - UE 官方文档：Navigation System、RecastNavMesh、NavLinkProxy；
 - 源码：`Engine/Source/Runtime/NavigationSystem/`（UNavigationSystemV1、ARecastNavMesh、ANavLinkProxy）、`Engine/Source/Runtime/AIModule/Classes/Navigation/`（PathFollowingComponent、AvoidanceManager）；
 - 延伸阅读：Recast/Detour 开源库文档（体素化、分水岭、漏斗算法）、《游戏编程精粹》寻路章节、GDC 关于大规模 AI 导航的演讲。

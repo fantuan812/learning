@@ -57,8 +57,42 @@ class RendererTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 render(self.root, graph)
 
+    def test_nested_semantic_index_is_generated(self):
+        target = self.root / '知识/01-编程/语言与内存/topic.md'
+        target.parent.mkdir(parents=True)
+        target.write_text('---\ntype: Concept\ntitle: "Topic"\n---\n# Topic\n', encoding='utf-8')
+        graph = copy.deepcopy(self.graph)
+        graph['documents'][0]['path'] = '知识/01-编程/语言与内存/topic.md'
+        outputs = render(self.root, graph)
+        self.assertIn('知识/01-编程/语言与内存/README.md', outputs)
+        self.assertIn('语言与内存/README.md', outputs['知识/01-编程/README.md'])
+        self.assertIn('topic.md', outputs['知识/01-编程/语言与内存/README.md'])
+
+    def test_generated_index_cannot_replace_document(self):
+        target = self.root / '知识/01-编程/子类/README.md'
+        target.parent.mkdir(parents=True)
+        target.write_text('# Authored knowledge\n', encoding='utf-8')
+        graph = copy.deepcopy(self.graph)
+        graph['documents'][0]['path'] = '知识/01-编程/子类/README.md'
+        with self.assertRaises(ValueError):
+            render(self.root, graph)
+
+    def test_nested_output_collision_fails_before_write(self):
+        graph = copy.deepcopy(self.graph)
+        graph['documents'] = []
+        for i, dirname in enumerate(['Case', 'case']):
+            relative = f'知识/01-编程/{dirname}/topic{i}.md'
+            target = self.root / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text('# Topic\n', encoding='utf-8')
+            graph['documents'].append({'id': str(i), 'path': relative, 'domain': 'systems', 'kind': 'concept'})
+        before = {str(p): p.read_bytes() for p in self.root.rglob('*') if p.is_file()}
+        with self.assertRaises(ValueError):
+            render(self.root, graph)
+        self.assertEqual(before, {str(p): p.read_bytes() for p in self.root.rglob('*') if p.is_file()})
+
     def test_path_invariants(self):
-        for path in ['知识/../工作日志/README.md', '知识/./README.md', '知识\\x\\README.md', '知识/x/extra/README.md', '知识//x/README.md']:
+        for path in ['知识/../工作日志/README.md', '知识/./README.md', '知识\\x\\README.md', '知识//x/README.md']:
             with self.assertRaises(ValueError):
                 safe_path(self.root, path, output=True)
 

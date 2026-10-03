@@ -43,6 +43,16 @@ jobs:
         run: |
           python -B evidence/algorithms/astar-contract/test_astar_contract.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Migration safety regression fixtures
+        if: ${{ !cancelled() }}
+        run: |
+          python -B scripts/test_migrate_knowledge.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Profiling functional contract (Linux)
+        if: ${{ !cancelled() && runner.os == 'Linux' }}
+        run: |
+          python -B evidence/labs/profiling/scripts/test_profiling_contract.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Full graph, coverage, YAML, and Markdown validation
         if: ${{ !cancelled() }}
         run: |

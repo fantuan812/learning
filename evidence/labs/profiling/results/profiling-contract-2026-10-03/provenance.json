@@ -1,0 +1,84 @@
+{
+  "generated_utc": "2026-10-03T20:07:53.580489+00:00",
+  "host": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "architecture": "x86_64",
+  "logical_cpus": 9,
+  "python": "3.12.14",
+  "source": "evidence/labs/profiling/src/profiling_overhead.cpp",
+  "source_sha256": "85603a8be307b969f791bc2137328ad07a4cd811f5aaad3b096a987e3fbbf495",
+  "test_sha256": "78b678002c35e26ea81b622932090dbd0021d2c758a003fd6b69fba21961b193",
+  "original_results_sha256_before": {
+    "profiling_overhead.txt": "fe1d6ac9e0f9242677a4e1ce978e180c917dff5fc7971fbc1e3ed8a1b6a654ff",
+    "hitch_and_budget.txt": "869e394983e3b438eafa2546e7a33bbd6ecc45e5d301b5a11125f0601b960fe6"
+  },
+  "samples": {
+    "batch_calls": 20000,
+    "rounds": 200,
+    "normal_runs": 1,
+    "missing_build_runs": 1
+  },
+  "perf_executed": false,
+  "notes": "Fresh temporary workspace; source copied unchanged. No CPU pinning or performance counters. Timing observations are machine/build/sample-local.",
+  "commands": {
+    "compile_benchmark": {
+      "cwd": "temporary workspace",
+      "argv": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-pedantic",
+        "src/profiling_overhead.cpp",
+        "-o",
+        "profiling_overhead"
+      ],
+      "exit_code": 0
+    },
+    "compile_fixture": {
+      "cwd": "temporary workspace",
+      "argv": [
+        "g++",
+        "-std=c++17",
+        "-O2",
+        "-Wall",
+        "-Wextra",
+        "-pedantic",
+        "fixture.cpp",
+        "-o",
+        "fixture"
+      ],
+      "exit_code": 0
+    },
+    "fixture": {
+      "cwd": "temporary workspace",
+      "argv": [
+        "./fixture"
+      ],
+      "exit_code": 0
+    },
+    "normal": {
+      "cwd": "temporary workspace/normal",
+      "argv": [
+        "../profiling_overhead"
+      ],
+      "exit_code": 0
+    },
+    "missing_build": {
+      "cwd": "temporary workspace/missing_build",
+      "argv": [
+        "../profiling_overhead"
+      ],
+      "exit_code": 1
+    }
+  },
+  "compiler": "g++ (Debian 14.2.0-19) 14.2.0",
+  "target": "x86_64-linux-gnu",
+  "original_results_sha256_after": {
+    "profiling_overhead.txt": "fe1d6ac9e0f9242677a4e1ce978e180c917dff5fc7971fbc1e3ed8a1b6a654ff",
+    "hitch_and_budget.txt": "869e394983e3b438eafa2546e7a33bbd6ecc45e5d301b5a11125f0601b960fe6"
+  },
+  "lab_build_existence_unchanged": true,
+  "status": "PASS",
+  "errors": []
+}

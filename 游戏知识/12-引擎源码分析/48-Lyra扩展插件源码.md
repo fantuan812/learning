@@ -430,7 +430,7 @@ EUW 工具与 `ChangeMeshMaterials` 只存在于编辑器流程，打包运行�
 
 ## 十三、关联阅读
 
-- [47-Lyra-调试工具与扩展源码](47-Lyra-调试工具与扩展源码.md)：本篇的母篇，调试命令、编辑器验证与测试层的同源解析。
+- [47-Lyra-调试工具与扩展源码](../../知识/08-工程实践与质量/调试与性能分析/47-Lyra-调试工具与扩展源码.md)：本篇的母篇，调试命令、编辑器验证与测试层的同源解析。
 - [44-Lyra-前端会话网络与扩展源码](44-Lyra-前端会话网络与扩展源码.md)：ShooterTests、Gauntlet、回放与加载屏投票；CommonLoadingScreen 的深挖主体，本篇只交叉引用。
 - [39-Lyra源码总览与阅读路线](39-Lyra源码总览与阅读路线.md)：项目插件地图、Experience 入口和系列阅读顺序。
 - [46-Lyra-AI机器人与队伍源码](46-Lyra-AI机器人与队伍源码.md)：`ALyraPlayerBotController` 与队伍逻辑，ModularAIController 的延伸。

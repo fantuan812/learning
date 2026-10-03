@@ -970,7 +970,7 @@ DS 重新校验 ticket、expiry、instanceId 代数和房间绑定。
 ## 20. 关联阅读
 
 - [UE Dedicated Server启动与监听源码](<../../游戏知识/12-引擎源码分析/32-UE Dedicated Server启动与监听源码.md>)
-- [UE Dedicated Server构建烘焙与运行](<../../游戏知识/08-工具链与打包发布/09-UE Dedicated Server构建烘焙与运行.md>)
+- [UE Dedicated Server构建烘焙与运行](<../../知识/08-工程实践与质量/构建编译与制品/09-UE%20Dedicated%20Server构建烘焙与运行.md>)
 - [多人游戏框架与玩家状态](../../游戏知识/06-网络同步/04-多人游戏框架与玩家状态.md)
 - [游戏服务端 01-架构与网络](../01-架构与网络/README.md)
 - [游戏服务端 03-业务系统设计](../03-业务系统设计/README.md)

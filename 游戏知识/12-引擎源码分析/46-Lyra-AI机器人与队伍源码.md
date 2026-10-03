@@ -631,7 +631,7 @@ Test-Path -LiteralPath "$Lyra\Plugins\GameFeatures\ShooterCore\Content\Bot\B_AI_
 
 ## 八、Bot 作弊命令与开发者设置
 
-> 分工声明：本章从**机器人视角**看"如何用命令驱动机器人创建/移除"（机器人主题归本篇）；`ULyraBotCheats`/`ULyraDeveloperSettings` 作为**调试工具类**本身的完整实现（CDO 构造器逐字代码、自动挂接机制、编译守卫、`ULyraCosmeticCheats` 对照）见 [47-Lyra-调试工具与扩展源码](47-Lyra-调试工具与扩展源码.md) §八/§7（调试域权威章节，KD-005 调试主题归 47），本篇不复述。
+> 分工声明：本章从**机器人视角**看"如何用命令驱动机器人创建/移除"（机器人主题归本篇）；`ULyraBotCheats`/`ULyraDeveloperSettings` 作为**调试工具类**本身的完整实现（CDO 构造器逐字代码、自动挂接机制、编译守卫、`ULyraCosmeticCheats` 对照）见 [47-Lyra-调试工具与扩展源码](../../知识/08-工程实践与质量/调试与性能分析/47-Lyra-调试工具与扩展源码.md) §八/§7（调试域权威章节，KD-005 调试主题归 47），本篇不复述。
 
 ### 8.1 ULyraBotCheats
 
@@ -648,7 +648,7 @@ class ULyraBotCheats final : public UCheatManagerExtension
 };
 ```
 
-构造器在类默认对象上注册全局回调，`CheatManager` 创建时自动挂载扩展（编译条件 `WITH_SERVER_CODE && UE_WITH_CHEAT_MANAGER`；CDO 构造器与挂接机制的逐字实现见 [47 篇 §八](47-Lyra-调试工具与扩展源码.md)）。
+构造器在类默认对象上注册全局回调，`CheatManager` 创建时自动挂载扩展（编译条件 `WITH_SERVER_CODE && UE_WITH_CHEAT_MANAGER`；CDO 构造器与挂接机制的逐字实现见 [47 篇 §八](../../知识/08-工程实践与质量/调试与性能分析/47-Lyra-调试工具与扩展源码.md)）。
 
 命令体通过 `GameState->FindComponentByClass<ULyraBotCreationComponent>()` 找到组件，再调用 `Cheat_AddBot()`/`Cheat_RemoveBot()`——这是机器人主题的关键：**作弊命令是机器人数量的运行时入口**，与 §五 `ULyraBotCreationComponent` 的配置驱动（`BotCreationProfile`）互补。
 
@@ -665,7 +665,7 @@ UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, config, Category=LyraBots, meta=(
 int32 OverrideNumPlayerBotsToSpawn = 0;
 ```
 
-仅当 `GIsEditor` 时读取，独立服务器打包不受影响；`ULyraBotCreationComponent` 读取这两个字段决定初始机器人数量（字段完整清单与读取实现见 [47 篇 §7.2/§7.4](47-Lyra-调试工具与扩展源码.md)）。
+仅当 `GIsEditor` 时读取，独立服务器打包不受影响；`ULyraBotCreationComponent` 读取这两个字段决定初始机器人数量（字段完整清单与读取实现见 [47 篇 §7.2/§7.4](../../知识/08-工程实践与质量/调试与性能分析/47-Lyra-调试工具与扩展源码.md)）。
 
 ### 8.3 静态验证命令
 
@@ -1683,14 +1683,14 @@ Subsystem 是 World 级对象，理论上总是存在，但过早调用（World 
 - [43-Lyra-背包装备消息与UI源码](43-Lyra-背包装备消息与UI源码.md)：UI 装配与消息层，队伍颜色 UI 的另一半。
 - [44-Lyra-前端会话网络与扩展源码](44-Lyra-前端会话网络与扩展源码.md)：ShooterTests、Gauntlet 与网络验证边界。
 - [45-Lyra-相机音频与游戏阶段源码](45-Lyra-相机音频与游戏阶段源码.md)：与本篇并行写作，覆盖相机与游戏阶段。
-- [47-Lyra-调试工具与扩展源码](47-Lyra-调试工具与扩展源码.md)：与本篇并行写作，覆盖调试工具与扩展。
+- [47-Lyra-调试工具与扩展源码](../../知识/08-工程实践与质量/调试与性能分析/47-Lyra-调试工具与扩展源码.md)：与本篇并行写作，覆盖调试工具与扩展。
 - [48-Lyra扩展插件源码](48-Lyra扩展插件源码.md)：ModularGameplayActors 等扩展插件实现（队伍/机器人相关的插件侧）。
 - [19-高优先级源码覆盖路线图](19-高优先级源码覆盖路线图.md)：本主题在源码覆盖路线中的位置。
 - [12-行为树与AI源码](12-行为树与AI源码.md)：引擎行为树框架，与 Lyra 项目未装配的现状对照。
 - [05-GAS能力系统源码](05-GAS能力系统源码.md)：机器人使用的 Ability/AttributeSet 引擎底层。
 - [09-网络复制与RPC源码](09-网络复制与RPC源码.md)：属性复制与 `COND_InitialOnly` 语义。
 - [20-Iris复制源码](20-Iris复制源码.md)：Iris 状态描述与条件复制边界。
-- [28-UnrealInsights与Trace源码](28-UnrealInsights与Trace源码.md)：把出生、队伍分配与伤害事件变成观测证据。
+- [28-UnrealInsights与Trace源码](../../知识/08-工程实践与质量/调试与性能分析/28-UnrealInsights与Trace源码.md)：把出生、队伍分配与伤害事件变成观测证据。
 - [05-AI系统](../05-AI系统/README.md)：AI 系统分类总览与行为树/感知/EQS 的知识地图。
 - [08-AI调试与性能分析](../05-AI系统/08-AI调试与性能分析.md)：机器人调试与性能观测的横向参考。
 - [README](README.md)：本目录全部文章的导航。

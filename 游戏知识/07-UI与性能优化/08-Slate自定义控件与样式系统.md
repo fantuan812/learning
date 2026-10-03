@@ -353,7 +353,7 @@ void FMyActorCustomization::CustomizeDetails(IDetailLayoutBuilder& DetailBuilder
 - [01-UMG框架与控件系统.md](01-UMG框架与控件系统.md) —— UMG 使用层（本文为其 Slate 底层）
 - [07-CommonUI输入路由与焦点管理.md](07-CommonUI输入路由与焦点管理.md) —— 输入路由与焦点（Slate 输入系统之上的 CommonUI 层）
 - [14-UMG与Slate源码.md](../12-引擎源码分析/14-UMG与Slate源码.md) —— 源码深读（本文为使用层互补）
-- [03-插件开发与编辑器扩展.md](../08-工具链与打包发布/03-插件开发与编辑器扩展.md) —— 编辑器扩展场景（ToolMenus/细节面板）
+- [03-插件开发与编辑器扩展.md](../../知识/08-工程实践与质量/编辑器工具与资产自动化/03-插件开发与编辑器扩展.md) —— 编辑器扩展场景（ToolMenus/细节面板）
 
 ## 更新日志
 

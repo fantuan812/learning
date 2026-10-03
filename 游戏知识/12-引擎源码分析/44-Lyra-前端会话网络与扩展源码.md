@@ -2173,14 +2173,14 @@ Beacon 在正式 Travel 前预约服务器容量，减少 Lobby 显示可加入�
 - [43-Lyra-背包装备消息与UI源码](43-Lyra-背包装备消息与UI源码.md)：Inventory、Equipment、GameplayMessage 和 UIExtension。
 - [32-UE Dedicated Server启动与监听源码](<32-UE Dedicated Server启动与监听源码.md>)：服务器启动、监听和部署边界。
 - [33-UNetDriver与连接通道源码](33-UNetDriver与连接通道源码.md)：连接、通道和 Travel 失败排查。
-- [47-Lyra-调试工具与扩展源码](47-Lyra-调试工具与扩展源码.md)：测试层/调试工具与 LyraEditor 校验工具，衔接 Gauntlet 与内容验证（ShooterTests/Gauntlet 深挖在 47，本篇只交叉引用）。
+- [47-Lyra-调试工具与扩展源码](../../知识/08-工程实践与质量/调试与性能分析/47-Lyra-调试工具与扩展源码.md)：测试层/调试工具与 LyraEditor 校验工具，衔接 Gauntlet 与内容验证（ShooterTests/Gauntlet 深挖在 47，本篇只交叉引用）。
 - [48-Lyra扩展插件源码](48-Lyra扩展插件源码.md)：加载屏等插件实现。
 - [45-Lyra-相机音频与游戏阶段源码](45-Lyra-相机音频与游戏阶段源码.md)：进入对局后的相机/音频/游戏阶段表现流程。
 - [游戏服务端/05-UE Dedicated Server平台化/01-UE Dedicated Server实例生命周期与平台化](<../../游戏服务端/05-UE Dedicated Server平台化/01-UE Dedicated Server实例生命周期与平台化.md>)：就绪门禁/健康检查/优雅停机/会话回收的平台化实践（分工互指）。
 - [34-ReplicationGraph源码](34-ReplicationGraph源码.md)：复制图概念和条件创建的引擎背景。
 - [20-Iris复制源码](20-Iris复制源码.md)：Iris 状态描述、过滤与序列化边界。
 - [26-CommonUI源码](26-CommonUI源码.md)：CommonUI 激活栈和输入路由。
-- [28-UnrealInsights与Trace源码](28-UnrealInsights与Trace源码.md)：把登录、Travel、加载屏和复制事件变成可观测证据。
+- [28-UnrealInsights与Trace源码](../../知识/08-工程实践与质量/调试与性能分析/28-UnrealInsights与Trace源码.md)：把登录、Travel、加载屏和复制事件变成可观测证据。
 - [46-Lyra-AI机器人与队伍源码](46-Lyra-AI机器人与队伍源码.md)：Bot 会话与队伍规则补充。
 
 ## 三十、权威来源与验证命令

@@ -1,0 +1,44 @@
+{
+  "record_kind": "Archived pre-repair run; raw stdout preserved byte-for-byte",
+  "date": "2026-10-03",
+  "source": "evidence/labs/profiling/src/profiling_overhead.cpp",
+  "source_revision": "ba0d5bf",
+  "source_sha256": "918dbc13fe5cc7e4a0e49d62cb1405ebb0ad720a4cae827f45242a6e4f2f219e",
+  "stdout_file": "profiling_overhead_legacy_linux_2026-10-03.stdout.txt",
+  "stdout_sha256": "1ca95a65df5237e0eee85a03c1601826a27e79553d4d7ec46e62e4055695b854",
+  "compiler": "g++ (Debian 14.2.0-19) 14.2.0",
+  "host": "Linux 6.18.44 x86_64",
+  "compile_exit": 0,
+  "run_exit": 1,
+  "compile_stdout": "",
+  "compile_stderr": "",
+  "run_stderr": "",
+  "result": "pass=6 fail=1; P3 format/scoped ratio=3.6x fails the legacy >5x timing hypothesis",
+  "temporary_build_existed": true,
+  "temporary_log_cleaned_up": true,
+  "repository_build_created": false,
+  "original_results_changed": false,
+  "perf_executed": false,
+  "reproduction_from_repo_root": [
+    "work=$(mktemp -d)",
+    "git show ba0d5bf:evidence/labs/profiling/src/profiling_overhead.cpp > \"$work/profiling_overhead.cpp\"",
+    "mkdir \"$work/build\"",
+    "g++ -std=c++17 -O2 -g -fno-omit-frame-pointer -o \"$work/profiling_overhead\" \"$work/profiling_overhead.cpp\"",
+    "(cd \"$work\" && ./profiling_overhead)"
+  ],
+  "reproduction_note": "Equivalent isolated commands that extract the exact archived source revision. They preserve the actual compiler flags; timings and hypothesis support will vary.",
+  "compile_flags": [
+    "-std=c++17",
+    "-O2",
+    "-g",
+    "-fno-omit-frame-pointer"
+  ],
+  "original_invocation_variable_form": [
+    "REPO=$(pwd)",
+    "OUT=$(mktemp -d)",
+    "mkdir \"$OUT/build\"",
+    "(cd \"$OUT\" && g++ -std=c++17 -O2 -g -fno-omit-frame-pointer \"$REPO/evidence/labs/profiling/src/profiling_overhead.cpp\" -o profiling_overhead)",
+    "(cd \"$OUT\" && ./profiling_overhead)"
+  ],
+  "original_invocation_note": "Variable-normalized form of the recorded invocation, confirmed from the completed execution record. REPO was the repository root at source revision ba0d5bf; OUT was a fresh temporary workspace. Absolute workspace identifiers are omitted."
+}

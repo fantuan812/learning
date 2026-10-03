@@ -1,0 +1,3 @@
+OBSERVATION fixture UNSUPPORTED failed hypothesis; numerator=178.360000 denominator=49.420000 ratio=3.609065 threshold=>5.000000
+FUNCTIONAL FAIL fixture intentional failure        tests nonzero functional verdict; no real I/O in fixture
+FIXTURE_RESULT cases=27 fail=0

@@ -1538,7 +1538,7 @@ flowchart LR
 - [45-Lyra-相机音频与游戏阶段源码](45-Lyra-相机音频与游戏阶段源码.md)：GamePhase 阶段能力如何承接 Experience 之后的玩法流程。
 - [46-Lyra-AI机器人与队伍源码](46-Lyra-AI机器人与队伍源码.md)：队伍归属与 Bot 补位如何配合 Experience 玩法。
 - [44-Lyra-前端会话网络与扩展源码](44-Lyra-前端会话网络与扩展源码.md)：从前端 UserFacingExperience 到 Host Request/Travel URL 构造的完整闭环（本篇只保留入口摘要）。
-- [47-Lyra-调试工具与扩展源码](47-Lyra-调试工具与扩展源码.md)：调试命令与开发者设置（Experience 相关调试的 Cheat 入口）。
+- [47-Lyra-调试工具与扩展源码](../../知识/08-工程实践与质量/调试与性能分析/47-Lyra-调试工具与扩展源码.md)：调试命令与开发者设置（Experience 相关调试的 Cheat 入口）。
 - [48-Lyra扩展插件源码](48-Lyra扩展插件源码.md)：GameFeature 相关扩展插件（AsyncMixin/PocketWorlds 等）实现。
 
 ## 三十三、权威来源
