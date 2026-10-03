@@ -58,11 +58,11 @@ views:
       - maturity
       - verified
   - type: table
-    name: Project
+    name: Cases
     filters:
       or:
-        - file.inFolder("Projects")
-        - file.inFolder("系统实战")
+        - type == "Project"
+        - type == "CaseStudy"
     order:
       - title
       - file.name

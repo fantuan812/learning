@@ -99,5 +99,5 @@ g++ -O2 -std=c++17 -Wall -Wextra -Wpedantic -Werror \
 
 ## 关联知识文档
 
-- [01-Socket-Epoll与Reactor](../../../00-计算机与工程基础/07-Linux系统编程/01-Socket-Epoll与Reactor.md)：唯一主责正文
-- [02-Linux DS部署与容器实战](<../../../游戏服务端/05-UE Dedicated Server平台化/02-Linux DS部署与容器实战.md>)：部署边界，未在本实验运行 UE DS
+- [01-Socket-Epoll与Reactor](../../../知识/01-编程与计算机基础/操作系统与系统I-O/01-Socket-Epoll与Reactor.md)：唯一主责正文
+- [02-Linux DS部署与容器实战](<../../../知识/08-工程实践与质量/部署运维与可观测性/02-Linux%20DS部署与容器实战.md>)：部署边界，未在本实验运行 UE DS

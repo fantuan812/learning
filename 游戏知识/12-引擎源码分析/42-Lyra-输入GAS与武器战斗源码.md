@@ -1188,7 +1188,7 @@ void ALyraWeaponSpawner::AttemptPickUpWeapon_Implementation(APawn* Pawn)
 - [13-背包与装备系统](../03-游戏玩法编程/13-背包与装备系统.md)：使用层建模。
 - [45-Lyra-相机音频与游戏阶段源码](45-Lyra-相机音频与游戏阶段源码.md)：摄像机与能力联动的模式栈细节。
 - [46-Lyra-AI机器人与队伍源码](46-Lyra-AI机器人与队伍源码.md)：Team 伤害过滤的 `CanCauseDamage` 实现。
-- [47-Lyra-调试工具与扩展源码](47-Lyra-调试工具与扩展源码.md)：武器/伤害相关调试命令入口。
+- [47-Lyra-调试工具与扩展源码](../../知识/08-工程实践与质量/调试与性能分析/47-Lyra-调试工具与扩展源码.md)：武器/伤害相关调试命令入口。
 - [48-Lyra扩展插件源码](48-Lyra扩展插件源码.md)：战斗相关扩展插件（GameplayMessageRouter/UIExtension 等）实现。
 
 ## 四十八、权威来源

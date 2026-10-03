@@ -26,7 +26,7 @@ def safe_path(root, value, output=False):
     if value.startswith('/') or any(part in ('', '..', '.') for part in value.split('/')) or ':' in value:
         raise ValueError('path outside repository')
     if output and value not in FIXED_VIEWS:
-        if len(parts) != 3 or parts[0] != '知识' or parts[2] != 'README.md':
+        if not 3 <= len(parts) <= 6 or parts[0] != '知识' or parts[-1] != 'README.md':
             raise ValueError('output is not an approved knowledge view')
     target = root / value
     for part in [target, *target.parents]:
@@ -49,6 +49,8 @@ def preflight(root, graph):
     if len(paths) != len(set(folded_paths)):
         raise ValueError('duplicate domain output')
     for path in paths:
+        if len(PurePosixPath(path).parts) != 3:
+            raise ValueError('domain entrypoint must be a direct knowledge-domain README')
         if path in FIXED_VIEWS:
             raise ValueError('domain output cannot replace another view')
         safe_path(root, path, output=True)
@@ -83,9 +85,38 @@ def render(root, graph):
     by_id = {node['id']: node for node in nodes}
     for domain in graph['domains']:
         path = domain['entrypoint']
+        domain_root = str(PurePosixPath(path).parent)
+        nested = {}
+        for node in nodes:
+            if node['domain'] != domain['id'] or not node['path'].startswith(domain_root + '/'):
+                continue
+            parent = PurePosixPath(node['path']).parent
+            while str(parent) != domain_root:
+                nested.setdefault(str(parent), [])
+                if str(parent) == str(PurePosixPath(node['path']).parent):
+                    nested[str(parent)].append(node)
+                parent = parent.parent
+        for directory, local_nodes in sorted(nested.items()):
+            index = directory + '/README.md'
+            safe_path(root, index, output=True)
+            if index in {node['path'] for node in nodes}:
+                raise ValueError('generated index cannot overwrite a knowledge document')
+            section = '本分类只提供标准链接，正文、来源与证据仍各自维护。\n\n'
+            children = sorted(key for key in nested if str(PurePosixPath(key).parent) == directory)
+            if children:
+                section += '## 子分类\n\n'
+                section += ''.join('- ' + link(root, index, child + '/README.md', PurePosixPath(child).name) + '\n' for child in children) + '\n'
+            section += '## 条目\n\n'
+            section += ''.join('- ' + link(root, index, node['path']) + '（' + LABELS[node['kind']] + '）\n' for node in sorted(local_nodes, key=lambda n: n['path']))
+            section += '\n' + link(root, index, path, domain['title']) + ' · ' + link(root, index, '知识/README.md', '八域总览') + '\n'
+            result[index] = page(PurePosixPath(directory).name, section)
         body = ('本页按知识职责导航，每份正文只登记一个主域。概念、实现、案例和来源分别列出；'
                 '阅读材料的关联不等于已验证其全部结论。\n\n'
                 '正文迁移沿用稳定身份，不复制另一份权威正文。书籍与工作日志原文、日期、附件完整保留。\n\n')
+        children = sorted(directory for directory in nested if str(PurePosixPath(directory).parent) == domain_root)
+        if children:
+            body += '## 分类目录\n\n'
+            body += ''.join('- ' + link(root, path, child + '/README.md', PurePosixPath(child).name) + '\n' for child in children) + '\n'
         for kind, label in LABELS.items():
             selected = sorted((n for n in nodes if n['domain'] == domain['id'] and n['kind'] == kind), key=lambda n: n['path'])
             if not selected:
@@ -118,6 +149,11 @@ def render(root, graph):
              'Markdown整理保留准确来源与版本，原创解释、引用和示例应可区分。历史版本声明不等于本次运行过对应引擎。\n\n'
              '[八域总览](../知识/README.md) · [源码原始总索引](../游戏知识/12-引擎源码分析/README.md)\n')
     result[path] = page('UE专题、官方来源与源码总览', body)
+    folded_outputs = [unicodedata.normalize('NFC', value).casefold() for value in result]
+    if len(result) != len(set(folded_outputs)):
+        raise ValueError('generated output paths collide by case or Unicode normalization')
+    for value in result:
+        safe_path(root, value, output=True)
     return result
 
 
@@ -129,6 +165,8 @@ def main():
     root = args.root.resolve()
     graph = json.loads((root / '.kb/knowledge-map.json').read_text(encoding='utf-8'))
     outputs = render(root, graph)
+    for name in outputs:
+        safe_path(root, name, output=True)
     drift = []
     for name, content in outputs.items():
         target = safe_path(root, name, output=True)

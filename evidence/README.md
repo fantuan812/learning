@@ -16,15 +16,15 @@ maturity: L0
 | 目录 | 主题 | 状态 | 关联文档 |
 | --- | --- | --- | --- |
 | [labs/protobuf-evolution](labs/protobuf-evolution/README.md) | 新旧 schema 的零值 presence、未知字段中转、ProtoJSON 与业务语义反例 | 已执行（protoc 36.0 / Python protobuf 7.36.0，12+12 测试；非 C++ runtime） | [02-网络通信与协议设计](../游戏服务端/01-架构与网络/02-网络通信与协议设计.md) |
-| [labs/cpp-move](labs/cpp-move/README.md) | Copy/Move 计数：扩容、RVO、moved-from | 已执行（MSVC 2022） | [02-Copy-Move与值语义](../00-计算机与工程基础/01-C++核心/02-Copy-Move与值语义.md) |
-| [labs/atomic-memory-order](labs/atomic-memory-order/README.md) | 原子计数/数据竞争/release-acquire/CAS/内存序开销 | 已执行（MSVC 2022） | [02-Atomic与C++内存模型](../00-计算机与工程基础/04-C++并发与内存模型/02-Atomic与C++内存模型.md) |
-| [labs/false-sharing](labs/false-sharing/README.md) | False Sharing Benchmark（volatile 与原子槽位） | 已执行（MSVC 2022） | [03-LockFree与FalseSharing](../00-计算机与工程基础/04-C++并发与内存模型/03-LockFree与FalseSharing.md) |
+| [labs/cpp-move](labs/cpp-move/README.md) | Copy/Move 计数：扩容、RVO、moved-from | 已执行（MSVC 2022） | [02-Copy-Move与值语义](../知识/01-编程与计算机基础/C%2B%2B语言与对象模型/02-Copy-Move与值语义.md) |
+| [labs/atomic-memory-order](labs/atomic-memory-order/README.md) | 原子计数/数据竞争/release-acquire/CAS/内存序开销 | 已执行（MSVC 2022） | [02-Atomic与C++内存模型](../知识/01-编程与计算机基础/并发与同步/02-Atomic与C%2B%2B内存模型.md) |
+| [labs/false-sharing](labs/false-sharing/README.md) | False Sharing Benchmark（volatile 与原子槽位） | 已执行（MSVC 2022） | [03-LockFree与FalseSharing](../知识/01-编程与计算机基础/并发与同步/03-LockFree与FalseSharing.md) |
 | [server/tick-scheduler](server/tick-scheduler/README.md) | Server Main Loop / Tick 调度模拟 | 已执行（MSVC 2022） | [01-ServerMainLoop与TickScheduler](../游戏服务端/06-世界模拟与运行时/01-ServerMainLoop与TickScheduler.md) |
 | [tests/entry-core](tests/entry-core/README.md) | 进入游戏：SHA-256/HMAC-SHA256 对标准向量自校验、票据签发/验签/过期/重放、进入状态机幂等与回滚、DS 租约与栅栏令牌、JIP 状态追赶（乱序重排）与带宽/CPU 对比 | 已执行（MinGW g++ 16.1.0） | [01-角色进入游戏完整链路](../系统实战/01-角色进入游戏完整链路.md) |
 | [tests/gameplay-core](tests/gameplay-core/README.md) | Gameplay 核心机制：背包事务原子性/幂等、Buff 九类冲突、技能请求管线门禁与确定性重放、属性修正器聚合基准 | 已执行（MinGW g++ 16.1.0） | [05-背包道具完整链路](../系统实战/05-背包道具完整链路.md)、[03-技能释放完整链路](../系统实战/03-技能释放完整链路.md)、[04-Buff系统完整链路](../系统实战/04-Buff系统完整链路.md) |
 | [tests/damage-core](tests/damage-core/README.md) | 伤害与属性结算：修正器聚合顺序、五乘区、护甲曲线、真伤、护盾、过量、死亡/免疫拦截、单次上限、DOT 取整、确定性重放 + 结算基准 | 已执行（MinGW g++ 16.1.0） | [11-伤害与属性结算完整链路](../系统实战/11-伤害与属性结算完整链路.md) |
-| [labs/epoll-reactor](labs/epoll-reactor/README.md) | LT/ET 就绪、部分写、半关闭与有界背压 | 已执行（Linux/g++ 14.2，7+20 契约测试；非容量基准） | [01-Socket-Epoll与Reactor](../00-计算机与工程基础/07-Linux系统编程/01-Socket-Epoll与Reactor.md) |
-| [labs/profiling](labs/profiling/README.md) | 性能定位：6 种插桩样式开销（0.33ns 计数 → 310ns 日志）+ 帧预算换算、卡顿检测（中位数阈值+迟滞）、Tick 预算降级状态机 | 已执行（MinGW g++ 16.1.0） | [10-性能问题定位完整链路](../系统实战/10-性能问题定位完整链路.md) |
+| [labs/epoll-reactor](labs/epoll-reactor/README.md) | LT/ET 就绪、部分写、半关闭与有界背压 | 已执行（Linux/g++ 14.2，7+20 契约测试；非容量基准） | [01-Socket-Epoll与Reactor](../知识/01-编程与计算机基础/操作系统与系统I-O/01-Socket-Epoll与Reactor.md) |
+| [labs/profiling](labs/profiling/README.md) | 性能定位：6 种插桩样式开销（0.33ns 计数 → 310ns 日志）+ 帧预算换算、卡顿检测（中位数阈值+迟滞）、Tick 预算降级状态机 | 已执行（MinGW g++ 16.1.0） | [10-性能问题定位完整链路](../知识/08-工程实践与质量/调试与性能分析/10-性能问题定位完整链路.md) |
 | [labs/skinning-contract](labs/skinning-contract/README.md) | 蒙皮空间/inverse bind/palette/权重裁剪数值反例 | 已执行（Python 3.12/Linux，16 项；非 UE 运行） | [07-动画资产与骨骼基础](../游戏知识/04-动画系统/07-动画资产与骨骼基础.md) |
 | labs/page-fault | Page Fault / mmap 实验 | 规划（需 Linux） | W1-10 |
 | labs/cache-benchmark | Cache stride / branch / SIMD Benchmark | 规划 | W1-12 |

@@ -2369,7 +2369,7 @@ git -C 'C:\project\git' status --short -- '游戏知识/12-引擎源码分析/43
 - [27-UMGMVVM源码](27-UMGMVVM源码.md)：把消息 Payload 转换为可测试的 UI ViewModel。
 - [13-背包与装备系统](../03-游戏玩法编程/13-背包与装备系统.md)：玩法层的库存建模与扩展建议。
 - [46-Lyra-AI机器人与队伍源码](46-Lyra-AI机器人与队伍源码.md)：队伍颜色与 UI 展示数据的来源。
-- [47-Lyra-调试工具与扩展源码](47-Lyra-调试工具与扩展源码.md)：生成物品与调试命令的 Cheat 入口。
+- [47-Lyra-调试工具与扩展源码](../../知识/08-工程实践与质量/调试与性能分析/47-Lyra-调试工具与扩展源码.md)：生成物品与调试命令的 Cheat 入口。
 - [48-Lyra扩展插件源码](48-Lyra扩展插件源码.md)：UIExtension/GameplayMessageRouter 等消息与 UI 相关扩展插件实现。
 
 ## 四十、权威来源

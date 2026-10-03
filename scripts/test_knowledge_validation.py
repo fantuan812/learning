@@ -27,9 +27,11 @@ class Fixture(unittest.TestCase):
         self.write("README.md", VALID + "# Home\n")
         self.write("notes/a.md", VALID + "# Alpha\n")
         self.write("notes/b.md", VALID + "# Beta\n")
+        for domain in sorted(DOMAINS):
+            self.write(f"知识/{domain}/README.md", VALID + f"# {domain}\n")
         self.graph = {
             "version": 1,
-            "domains": [{"id": name, "title": name.title(), "entrypoint": "README.md"} for name in sorted(DOMAINS)],
+            "domains": [{"id": name, "title": name.title(), "entrypoint": f"知识/{name}/README.md"} for name in sorted(DOMAINS)],
             "documents": [
                 {"id": "doc-a", "path": "notes/a.md", "domain": "systems", "kind": "concept"},
                 {"id": "doc-b", "path": "notes/b.md", "domain": "ai", "kind": "source-analysis"},
@@ -155,7 +157,7 @@ class Fixture(unittest.TestCase):
         self.assert_error("graph", "exactly")
 
     def test_missing_domain_entrypoint(self):
-        self.graph["domains"][0]["entrypoint"] = "missing.md"
+        self.graph["domains"][0]["entrypoint"] = "知识/missing/README.md"
         self.assert_error("graph", "missing")
 
     def test_explicit_directional_relation_names(self):
@@ -432,6 +434,57 @@ class Fixture(unittest.TestCase):
         self.graph["documents"].append({"id": "doc-html", "path": "notes/a&b.md", "domain": "systems", "kind": "reference"})
         self.write("notes/a.md", VALID + '# Alpha\n<a href="a&amp;b.md#other">Valid entity</a>\n\n```html\n<img src="missing.png">\n```\n\n`<a href="missing.md">code</a>`\n\n<!-- <img src="missing.png"> -->\n')
         self.assert_valid()
+
+    def test_legacy_path_can_be_absent_without_replacing_canonical(self):
+        self.graph["documents"][0]["legacy_paths"] = ["old/missing.md"]
+        self.assert_valid()
+        self.graph["documents"][0]["path"] = "missing-canonical.md"
+        self.assert_error("graph", "missing")
+
+    def test_legacy_path_shapes_and_safety(self):
+        for value in ("old.md", [], {}, [None], ["../escape.md"], ["/absolute.md"], ["old/../a.md"], ["old\\a.md"], ["C:/a.md"], ["old//a.md"], ["old/a.txt"], ["old/a.md\x00"]):
+            with self.subTest(value=value):
+                self.graph["documents"][0]["legacy_paths"] = value
+                self.assert_error("graph", "legacy")
+
+    def test_legacy_path_duplicates_and_conflicts(self):
+        for value in (["old/a.md", "old/a.md"], ["old/a.md", "OLD/A.MD"], ["old/caf\u00e9.md", "old/cafe\u0301.md"], ["notes/b.md"], ["NOTES/A.MD"]):
+            with self.subTest(value=value):
+                self.graph["documents"][0]["legacy_paths"] = value
+                self.assert_error("graph", "legacy path")
+        self.graph["documents"][0]["legacy_paths"] = ["old/a.md"]
+        self.graph["documents"][1]["legacy_paths"] = ["OLD/A.md"]
+        self.assert_error("graph", "legacy path")
+
+    def test_legacy_path_symlink_ancestor_rejected(self):
+        try:
+            (self.root / "legacy").symlink_to(self.root / "notes", target_is_directory=True)
+        except OSError as exc:
+            self.skipTest(f"OS cannot create symlinks: {exc}")
+        self.graph["documents"][0]["legacy_paths"] = ["legacy/missing.md"]
+        self.assert_error("graph", "symlink")
+
+    def test_migrated_document_matches_declared_domain(self):
+        self.write("知识/systems/topic.md", VALID + "# Migrated\n")
+        self.graph["documents"][0]["path"] = "知识/systems/topic.md"
+        self.graph["coverage_roots"] = []
+        self.assert_valid()
+        self.graph["documents"][0]["domain"] = "ai"
+        self.assert_error("graph", "declared domain")
+
+    def test_knowledge_navigation_cannot_be_canonical(self):
+        self.graph["coverage_roots"] = []
+        self.graph["documents"][0]["path"] = "知识/systems/README.md"
+        self.assert_error("graph", "navigation")
+        self.graph["documents"][0]["path"] = "evidence/README.md"
+        self.write("evidence/README.md", VALID + "# Actual experiment\n")
+        self.graph["documents"][0]["kind"] = "experiment"
+        self.graph["concepts"] = []
+        self.assert_valid()
+
+    def test_domain_entrypoint_shape(self):
+        self.graph["domains"][0]["entrypoint"] = "README.md"
+        self.assert_error("graph", "domain entrypoint must")
 
     def test_invalid_base_ref_fails_closed(self):
         self.assert_error("scope", report=self.validate("missing-ref"))

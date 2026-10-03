@@ -651,7 +651,7 @@ CustomSettings 子目录给抽象层提供 Lyra 专属的具体子类，一条�
 
 - [39-Lyra源码总览与阅读路线](39-Lyra源码总览与阅读路线.md)：插件目录地图、GameSettings 位置、`GameSettings.Action.*` Tag 注册。
 - [45-Lyra-相机音频与游戏阶段源码](45-Lyra-相机音频与游戏阶段源码.md)：`LyraGameSettingRegistry_Audio.cpp` 的音量集合、`ULyraSettingsLocal` 五路音量写入 Control Bus。
-- [47-Lyra-调试工具与扩展源码](47-Lyra-调试工具与扩展源码.md)：开发者设置、性能统计 HUD 渲染读取端。
+- [47-Lyra-调试工具与扩展源码](../../知识/08-工程实践与质量/调试与性能分析/47-Lyra-调试工具与扩展源码.md)：开发者设置、性能统计 HUD 渲染读取端。
 - [48-Lyra扩展插件源码](48-Lyra扩展插件源码.md)：GameSettings 在插件地图中只点名、本篇首次实质分析（补 LYRA-COV-02 缺口）。
 - [44-Lyra-前端会话网络与扩展源码](44-Lyra-前端会话网络与扩展源码.md)：CommonUser/会话层为设置载体提供 LocalPlayer/Shared 生命周期。
 - [26-CommonUI源码](26-CommonUI源码.md)：`UCommonActivatableWidget`、`UCommonButtonBase`、输入动作绑定原理。

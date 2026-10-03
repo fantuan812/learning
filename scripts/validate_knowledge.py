@@ -147,6 +147,27 @@ def safe_path(root, value, *, directory=False, allow_root=False, exact_case=True
     return cursor
 
 
+def validate_legacy_path(root, value):
+    """A historical Markdown identity need not exist; existing ancestors stay safe."""
+    if not nonempty(value) or CONTROL.search(value) or "\\" in value or ":" in value:
+        raise Invalid(f"unsafe legacy path: {value!r}")
+    parts = value.split("/")
+    if any(part in ("", ".", "..") for part in parts) or PurePosixPath(value).is_absolute():
+        raise Invalid(f"unsafe legacy path: {value!r}")
+    if PurePosixPath(value).suffix.casefold() != ".md":
+        raise Invalid(f"legacy path must identify Markdown: {value!r}")
+    cursor = root
+    for part in parts:
+        cursor = cursor / part
+        try:
+            metadata = cursor.lstat()
+        except FileNotFoundError:
+            continue
+        if stat.S_ISLNK(metadata.st_mode) or getattr(metadata, "st_file_attributes", 0) & 0x400:
+            raise Invalid(f"symlink/reparse point in legacy path: {value!r}")
+    return value
+
+
 def inventory(root):
     paths = set(git(root, "ls-files", "--cached", "--others", "--exclude-standard", "-z").split("\0")) - {""}
     # A deleted tracked file is not an extant knowledge document. A graph/link to
@@ -470,6 +491,7 @@ class Validator:
 
         domain_ids, domain_titles = set(), set()
         found_domains = set()
+        domain_roots = {}
         for i, row in enumerate(sections["domains"]):
             label = f"domains[{i}]"
             if not row_check(row, ("id", "title", "entrypoint"), label):
@@ -479,6 +501,10 @@ class Validator:
             if isinstance(row["id"], str):
                 found_domains.add(row["id"])
             try:
+                if not isinstance(row["entrypoint"], str) or not re.fullmatch(r"知识/[^/]+/README\.md", row["entrypoint"]):
+                    raise Invalid("domain entrypoint must be 知识/<domain-folder>/README.md")
+                if isinstance(row["id"], str):
+                    domain_roots[row["id"]] = str(PurePosixPath(row["entrypoint"]).parent)
                 safe_path(self.root, row["entrypoint"])
                 if row["entrypoint"] not in self.markdown:
                     raise Invalid("domain entrypoint must be tracked or nonignored Markdown")
@@ -490,7 +516,7 @@ class Validator:
         ids, paths, docs = set(), set(), {}
         for i, row in enumerate(sections["documents"]):
             label = f"documents[{i}]"
-            if not row_check(row, ("id", "path", "domain", "kind"), label, ("technologies",)):
+            if not row_check(row, ("id", "path", "domain", "kind"), label, ("technologies", "legacy_paths")):
                 continue
             if "technologies" in row:
                 technologies = row["technologies"]
@@ -509,6 +535,12 @@ class Validator:
             unique(row["path"], paths, f"{label}.path")
             if not isinstance(row["domain"], str) or row["domain"] not in DOMAINS:
                 self.add("graph", self.graph, f"{label}: invalid domain {row['domain']!r}")
+            if isinstance(row["path"], str) and row["path"].startswith("知识/"):
+                expected_root = domain_roots.get(row["domain"]) if isinstance(row["domain"], str) else None
+                if expected_root is None or not row["path"].startswith(expected_root + "/"):
+                    self.add("graph", self.graph, f"{label}: canonical path is outside its declared domain entrypoint directory")
+                if folded(PurePosixPath(row["path"]).name) in {"readme.md", "index.md"}:
+                    self.add("graph", self.graph, f"{label}: knowledge navigation README/index cannot be a canonical document")
             if not isinstance(row["kind"], str) or row["kind"] not in KINDS:
                 self.add("graph", self.graph, f"{label}: invalid kind {row['kind']!r}")
             try:
@@ -519,6 +551,28 @@ class Validator:
                 self.add("graph", self.graph, f"{label}: {exc}")
             if valid_id:
                 docs[row["id"]] = row
+
+        alias_owners = {}
+        for i, row in enumerate(sections["documents"]):
+            if not isinstance(row, dict) or "legacy_paths" not in row:
+                continue
+            aliases = row["legacy_paths"]
+            if not isinstance(aliases, list) or not aliases:
+                self.add("graph", self.graph, f"documents[{i}].legacy_paths must be a nonempty array when present")
+                continue
+            for alias in aliases:
+                try:
+                    validate_legacy_path(self.root, alias)
+                except (Invalid, OSError) as exc:
+                    self.add("graph", self.graph, f"documents[{i}].legacy_paths: {exc}")
+                    continue
+                key = folded(alias)
+                if key in paths:
+                    self.add("graph", self.graph, f"legacy path conflicts with an active canonical path: {alias}")
+                if key in alias_owners:
+                    self.add("graph", self.graph, f"duplicate/case/Unicode-conflicting legacy path: {alias} (already in documents[{alias_owners[key]}])")
+                else:
+                    alias_owners[key] = i
 
         concept_ids, titles = set(), set()
         for i, row in enumerate(sections["concepts"]):

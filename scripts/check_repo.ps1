@@ -44,6 +44,178 @@ function Test-PathUnder([string]$Path, [string]$BasePath) {
     return $fullPath -eq $fullBase -or $fullPath.StartsWith($fullBase + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)
 }
 
+# These maps preserve pre-migration quality contracts, not topic classification.
+$qualityLegacyByCurrent = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::OrdinalIgnoreCase)
+$qualityCurrentByLegacy = [Collections.Generic.Dictionary[string,string]]::new([StringComparer]::OrdinalIgnoreCase)
+$qualityNodesByCurrent = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::OrdinalIgnoreCase)
+$knowledgeQualityRoots = @()
+$legacyQualityRoots = @('游戏知识', '游戏AI', '游戏服务端', '游戏算法', '00-计算机与工程基础', '游戏测试与质量', '系统实战') | ForEach-Object { Join-Path $rootPath $_ }
+
+function Get-QualityKey([string]$Path) {
+    return ([IO.Path]::GetFullPath($Path)).Normalize([Text.NormalizationForm]::FormC)
+}
+
+function ConvertTo-KnowledgePath($Relative, [switch]$AllowMissing) {
+    if ($Relative -isnot [string] -or [string]::IsNullOrWhiteSpace($Relative) -or
+        $Relative -match '[\\:\x00-\x1f\x7f-\x9f]|^/|(^|/)\.{1,2}(/|$)|//|/$' -or
+        $Relative -notmatch '(?i)\.md$') { throw "Unsafe knowledge path: $Relative" }
+    $full = [IO.Path]::GetFullPath((Join-Path $rootPath $Relative))
+    if (-not (Test-PathUnder $full $rootPath)) { throw "Knowledge path outside repository: $Relative" }
+    $cursor = $full
+    while ($cursor -ne $rootPath) {
+        $item = Get-Item -LiteralPath $cursor -Force -ErrorAction SilentlyContinue
+        if ($null -ne $item -and ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+            throw "Symlink/reparse point in knowledge path: $Relative"
+        }
+        $cursor = [IO.Path]::GetDirectoryName($cursor)
+    }
+    if (-not $AllowMissing -and -not (Test-Path -LiteralPath $full -PathType Leaf)) {
+        throw "Missing canonical knowledge file: $Relative"
+    }
+    return $full
+}
+
+function ConvertTo-KnowledgeMapValue($Value) {
+    # Use the Windows PowerShell 5.1 ConvertFrom-Json surface. Normalize its
+    # PSCustomObjects without relying on the newer -AsHashtable/-Depth options.
+    # Unary-comma return preserves empty/singleton arrays instead of letting the
+    # PowerShell output pipeline turn them into null or a scalar.
+    if ($null -eq $Value) { return $null }
+    if ($Value -is [Management.Automation.PSCustomObject]) {
+        $mapping = @{}
+        foreach ($property in $Value.PSObject.Properties) {
+            $mapping[$property.Name] = ConvertTo-KnowledgeMapValue $property.Value
+        }
+        return $mapping
+    }
+    if ($Value -is [array]) {
+        $items = [Collections.Generic.List[object]]::new()
+        foreach ($item in $Value) {
+            $items.Add((ConvertTo-KnowledgeMapValue $item))
+        }
+        return ,($items.ToArray())
+    }
+    return $Value
+}
+
+function Initialize-QualityMapping {
+    $graphPath = Join-Path $rootPath '.kb/knowledge-map.json'
+    $graphItem = Get-Item -LiteralPath $graphPath -Force -ErrorAction SilentlyContinue
+    if ($null -eq $graphItem) { return }
+    try {
+        $cursor = $graphPath
+        while ($cursor -ne $rootPath) {
+            $item = Get-Item -LiteralPath $cursor -Force -ErrorAction SilentlyContinue
+            if ($null -ne $item -and ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+                throw 'Symlink/reparse point knowledge map is unsupported'
+            }
+            $cursor = [IO.Path]::GetDirectoryName($cursor)
+        }
+        if (-not (Test-Path -LiteralPath $graphPath -PathType Leaf)) { throw 'Knowledge map must be a regular file' }
+        $parsedGraph = [IO.File]::ReadAllText($graphPath, $utf8Strict) | ConvertFrom-Json
+        $graph = ConvertTo-KnowledgeMapValue $parsedGraph
+        if ($graph.documents -isnot [array]) { throw 'knowledge-map documents must be an array' }
+        if ($graph.domains -isnot [array] -or $graph.domains.Count -eq 0) { throw 'knowledge-map domains must be a nonempty array' }
+        $active = [Collections.Generic.Dictionary[string,string]]::new([StringComparer]::OrdinalIgnoreCase)
+        $ids = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        $visible = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($file in $mdFiles) { [void]$visible.Add((Get-QualityKey $file.FullName)) }
+        foreach ($node in $graph.documents) {
+            if ($node -isnot [Collections.IDictionary] -or $node.id -isnot [string] -or
+                [string]::IsNullOrWhiteSpace($node.id) -or -not $ids.Add($node.id.Normalize([Text.NormalizationForm]::FormC))) {
+                throw 'Invalid or duplicate knowledge document id'
+            }
+            $current = ConvertTo-KnowledgePath $node.path
+            $key = Get-QualityKey $current
+            if ($active.ContainsKey($key)) { throw "Duplicate/case/Unicode-conflicting canonical path: $($node.path)" }
+            if (-not $visible.Contains($key)) { throw "Canonical path is not tracked or nonignored Markdown: $($node.path)" }
+            $active.Add($key, $current)
+            $qualityNodesByCurrent.Add($key, $node)
+        }
+        foreach ($node in $graph.documents) {
+            $current = ConvertTo-KnowledgePath $node.path
+            $key = Get-QualityKey $current
+            if (-not $node.Contains('legacy_paths')) { continue }
+            if ($node.legacy_paths -isnot [array] -or $node.legacy_paths.Count -eq 0) {
+                throw "legacy_paths must be a nonempty array: $($node.path)"
+            }
+            $legacy = [Collections.Generic.List[string]]::new()
+            foreach ($relative in $node.legacy_paths) {
+                $old = ConvertTo-KnowledgePath $relative -AllowMissing
+                $oldKey = Get-QualityKey $old
+                if ($active.ContainsKey($oldKey)) { throw "legacy_paths conflicts with active canonical path: $relative" }
+                if ($qualityCurrentByLegacy.ContainsKey($oldKey)) { throw "Duplicate/case/Unicode-conflicting legacy_paths: $relative" }
+                $qualityCurrentByLegacy.Add($oldKey, $current)
+                $legacy.Add($old)
+            }
+            $qualityLegacyByCurrent.Add($key, @($legacy))
+        }
+        $roots = [Collections.Generic.List[string]]::new()
+        foreach ($domain in @($graph.domains)) {
+            if ($domain.entrypoint -isnot [string] -or $domain.entrypoint -notmatch '^知识/[^/]+/README\.md$') {
+                throw 'Domain entrypoint must be 知识/<domain-folder>/README.md'
+            }
+            $entry = ConvertTo-KnowledgePath $domain.entrypoint
+            $roots.Add([IO.Path]::GetDirectoryName($entry))
+        }
+        $script:knowledgeQualityRoots = @($roots | Sort-Object -Unique)
+    } catch {
+        Add-Failure "知识映射质量兼容配置无效: $($_.Exception.Message)"
+        $qualityLegacyByCurrent.Clear()
+        $qualityCurrentByLegacy.Clear()
+        $qualityNodesByCurrent.Clear()
+        $script:knowledgeQualityRoots = @()
+    }
+}
+
+function Get-QualityPaths([string]$Path) {
+    $full = [IO.Path]::GetFullPath($Path)
+    $full
+    $key = Get-QualityKey $full
+    if ($qualityLegacyByCurrent.ContainsKey($key)) { $qualityLegacyByCurrent[$key] }
+}
+
+function Test-QualityPathUnder([string]$Path, [string]$BasePath) {
+    foreach ($candidate in (Get-QualityPaths $Path)) {
+        if (Test-PathUnder $candidate $BasePath) { return $true }
+    }
+    return $false
+}
+
+function Test-NewKnowledgePath([string]$Path) {
+    $key = Get-QualityKey $Path
+    # An alias is identity history, never an exemption. Only an alias that
+    # actually activates a pre-existing quality profile can replace the new
+    # generic profile; notes/arbitrary aliases still require generic quality.
+    if ($qualityLegacyByCurrent.ContainsKey($key)) {
+        foreach ($legacy in $qualityLegacyByCurrent[$key]) {
+            foreach ($base in $legacyQualityRoots) {
+                if (Test-PathUnder $legacy $base) { return $false }
+            }
+        }
+    }
+    foreach ($base in $knowledgeQualityRoots) {
+        if (Test-PathUnder $Path $base) { return $true }
+    }
+    return $false
+}
+
+function Test-UnrealTechnologyPath([string]$Path, [switch]$SourceAnalysis) {
+    # Technology claims have the same quality requirements with or without
+    # migration aliases. A legacy service/notes path cannot bypass UE checks.
+    $key = Get-QualityKey $Path
+    if (-not $qualityNodesByCurrent.ContainsKey($key)) { return $false }
+    $node = $qualityNodesByCurrent[$key]
+    return ('unreal-engine' -in @($node.technologies)) -and (-not $SourceAnalysis -or $node.kind -eq 'source-analysis')
+}
+
+function Resolve-QualityCanonical([string]$Relative) {
+    $old = ConvertTo-KnowledgePath ($Relative.Replace('\', '/')) -AllowMissing
+    $key = Get-QualityKey $old
+    if ($qualityCurrentByLegacy.ContainsKey($key)) { return $qualityCurrentByLegacy[$key] }
+    return $old
+}
+
 function Get-NonCodeMarkdownText([string]$Text) {
     $kept = [System.Collections.Generic.List[string]]::new()
     $inFence = $false
@@ -165,6 +337,7 @@ function Resolve-LocalTarget([string]$SourceFile, [string]$Target) {
 
 $mdFiles = @(& (Join-Path $PSScriptRoot 'get_kb_markdown.ps1') -Root $rootPath)
 if ($mdFiles.Count -eq 0) { Add-Failure '没有发现 Markdown 文件' }
+Initialize-QualityMapping
 
 $linkedByFile = @{}
 $textByFile = @{}
@@ -293,7 +466,8 @@ if ($scopedPaths.Contains($rootReadme)) {
     }
 }
 
-# 语义质量门禁只作用于游戏知识正文；路线图、维护日志和代码示意不参与源码质量判定。
+# 兼容质量规则沿当前/legacy 路径保留原 UE 正文范围；UE 技术栈标签正文不论有无 legacy 都同样受检。
+# 路径身份仅用于规则覆盖，真实读取和链接解析始终使用当前 canonical 文件。
 $gameKnowledgeRoot = Join-Path $rootPath '游戏知识'
 $sourceAnalysisRoot = Join-Path $gameKnowledgeRoot '12-引擎源码分析'
 $ueInstallRoot = 'C:\Program Files\Epic Games\UE_5.8'
@@ -308,7 +482,7 @@ $qualitySourcePlaceholder = 0
 $uePathWarningEmitted = $false
 
 $gameBodyFiles = @($mdFiles | Where-Object {
-    $_.Name -ne 'README.md' -and (Test-PathUnder $_.FullName $gameKnowledgeRoot)
+    $_.Name -ne 'README.md' -and ((Test-QualityPathUnder $_.FullName $gameKnowledgeRoot) -or (Test-UnrealTechnologyPath $_.FullName))
 })
 foreach ($file in $gameBodyFiles) {
     if (-not $textByFile.ContainsKey($file.FullName)) { continue }
@@ -330,8 +504,8 @@ foreach ($file in $gameBodyFiles) {
 }
 
 $sourceBodyFiles = @($gameBodyFiles | Where-Object {
-    (Test-PathUnder $_.FullName $sourceAnalysisRoot) -and
-    $_.Name -ne '19-高优先级源码覆盖路线图.md'
+    ((Test-QualityPathUnder $_.FullName $sourceAnalysisRoot) -or (Test-UnrealTechnologyPath $_.FullName -SourceAnalysis)) -and
+    -not (@(Get-QualityPaths $_.FullName | ForEach-Object { [IO.Path]::GetFileName($_) }) -contains '19-高优先级源码覆盖路线图.md')
 })
 foreach ($file in $sourceBodyFiles) {
     if (-not $textByFile.ContainsKey($file.FullName)) { continue }
@@ -367,7 +541,9 @@ foreach ($file in $sourceBodyFiles) {
     }
 }
 
-# P2 领域质量门禁：只检查三个顶层领域的正文，README、围栏代码和维护目录不参与判定。
+# 兼容 P2 质量规则按原路径身份覆盖迁移正文；它不是八域分类。
+# 八域中未继承已知旧质量 profile 的正文采用通用 P2 规则；任意 alias 不产生豁免。
+# README、围栏代码和维护目录仍不参与。
 $domainDefinitions = @(
     [pscustomobject]@{ Name = '游戏AI'; Root = (Join-Path $rootPath '游戏AI') }
     [pscustomobject]@{ Name = '游戏服务端'; Root = (Join-Path $rootPath '游戏服务端') }
@@ -376,6 +552,7 @@ $domainDefinitions = @(
     [pscustomobject]@{ Name = '游戏测试与质量'; Root = (Join-Path $rootPath '游戏测试与质量') }
     [pscustomobject]@{ Name = '系统实战'; Root = (Join-Path $rootPath '系统实战') }
 )
+$domainDefinitions += [pscustomobject]@{ Name = '八域新增正文（通用质量规则）'; Root = (Join-Path $rootPath '知识'); NewOnly = $true }
 $domainStats = @{}
 $domainBodyFiles = @{}
 $domainBaselinePattern = '(?m)^\s*(?:(?:>\s*)|(?:[-+*]\s*)|(?:\|\s*)|(?:#+\s*))*\s*(?:\*\*)?(?:知识基线|版本与规范基线|事实边界)(?:\s*\*\*)?\s*[：:](?:\s*\*\*)?\s*\S+'
@@ -400,7 +577,7 @@ foreach ($domain in $domainDefinitions) {
     }
     $domainBodyFiles[$domain.Name] = @($mdFiles | Where-Object {
         $_.Name -ne 'README.md' -and
-        (Test-PathUnder $_.FullName $domain.Root) -and
+        $(if ($domain.NewOnly) { Test-NewKnowledgePath $_.FullName } else { Test-QualityPathUnder $_.FullName $domain.Root }) -and
         -not (Test-MaintenancePath $_.FullName)
     })
 }
@@ -442,8 +619,9 @@ foreach ($domain in $domainDefinitions) {
             Add-Failure "领域质量门禁保留 docs.unrealengine.com 旧域名: $relative"
         }
 
+        $qualityIdentity = (@(Get-QualityPaths $file.FullName | ForEach-Object { Get-RepoRelative $_ }) -join ' ')
         $isServiceOrNetworkDocument = ($domain.Name -eq '游戏服务端') -or
-            ($relative -match '(?i)服务端|网络|协议|通信|传输|TCP|UDP|HTTP|QUIC|WebSocket|RPC')
+            ($qualityIdentity -match '(?i)服务端|网络|协议|通信|传输|TCP|UDP|HTTP|QUIC|WebSocket|RPC')
         if ($isServiceOrNetworkDocument -and $qualityText -match $rfc793Pattern) {
             $rfcReplacementAllowed = $false
             foreach ($paragraph in ($qualityText -split "`r?`n\s*`r?`n")) {
@@ -719,7 +897,7 @@ $dsExtendedDefinitions = @(
 )
 
 foreach ($definition in @($dsDocumentDefinitions + $dsExtendedDefinitions)) {
-    $fullPath = Join-Path $rootPath $definition.Relative
+    $fullPath = Resolve-QualityCanonical $definition.Relative
     if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
         $dsStats.RequiredFileMissing++
         Add-Failure "DS 专项门禁必需文件缺失: $($definition.Relative)"
@@ -743,7 +921,7 @@ foreach ($definition in @($dsDocumentDefinitions + $dsExtendedDefinitions)) {
 }
 
 $dsQualityGateRelative = '游戏知识\08-工具链与打包发布\08-全栈质量门禁与灰度回滚.md'
-$dsQualityGatePath = Join-Path $rootPath $dsQualityGateRelative
+$dsQualityGatePath = Resolve-QualityCanonical $dsQualityGateRelative
 if (-not (Test-Path -LiteralPath $dsQualityGatePath -PathType Leaf)) {
     $dsStats.RequiredFileMissing++
     Add-Failure "DS 专项门禁质量文档缺失: $dsQualityGateRelative"
@@ -757,8 +935,9 @@ if (-not (Test-Path -LiteralPath $dsQualityGatePath -PathType Leaf)) {
 }
 
 $networkSyncRoot = Join-Path $gameKnowledgeRoot '06-网络同步'
-if (Test-Path -LiteralPath $networkSyncRoot -PathType Container) {
-    $networkSyncFiles = @($mdFiles | Where-Object { Test-PathUnder $_.FullName $networkSyncRoot })
+# The historical directory may no longer exist after migration; identity still applies.
+& {
+    $networkSyncFiles = @($mdFiles | Where-Object { Test-QualityPathUnder $_.FullName $networkSyncRoot })
     foreach ($file in $networkSyncFiles) {
         if ($textByFile[$file.FullName] -match '(?i)ActorChannel\.cpp') {
             $dsStats.ActorChannelResidual++
@@ -768,10 +947,10 @@ if (Test-Path -LiteralPath $networkSyncRoot -PathType Container) {
 }
 
 Write-Host "Markdown: $fileCount（正文 $bodyCount，README $readmeCount）"
-Write-Host '领域分布：'
+Write-Host '兼容质量规则覆盖（旧路径身份，不代表八域分类）：'
 foreach ($domainName in @('00-计算机与工程基础', '游戏知识', '游戏服务端', '游戏算法', '游戏AI', '游戏测试与质量', '系统实战')) {
     $domainRoot = Join-Path $rootPath $domainName
-    $domainFiles = @($mdFiles | Where-Object { Test-PathUnder $_.FullName $domainRoot })
+    $domainFiles = @($mdFiles | Where-Object { Test-QualityPathUnder $_.FullName $domainRoot })
     $domainBody = @($domainFiles | Where-Object { $_.Name -ne 'README.md' }).Count
     $domainReadme = $domainFiles.Count - $domainBody
     Write-Host "  $domainName：正文 $domainBody / README $domainReadme"
@@ -788,7 +967,7 @@ $domainTotals = @{
 }
 $domainMetricKeys = @('BaselineMissing', 'DateMissing', 'SourceMissing', 'ValidationMissing', 'LegacyReferenceMissing')
 $domainBodyTotal = 0
-Write-Host '领域质量门禁统计：'
+Write-Host '兼容及新增正文质量门禁统计：'
 foreach ($domain in $domainDefinitions) {
     $stats = $domainStats[$domain.Name]
     $domainBodyTotal += $domainBodyFiles[$domain.Name].Count

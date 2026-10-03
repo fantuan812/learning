@@ -324,4 +324,4 @@ Iris 默认开启了属性状态量化与优先级重排，低优先级的属性
 - [05-ReplicationGraph兴趣管理](05-ReplicationGraph兴趣管理.md)：经典大规模兴趣管理节点拓扑原理；
 - [12-20 Iris复制源码](../12-引擎源码分析/20-Iris复制源码.md)：ReplicationSystem 状态机与序列化器底层源码深度剖析；
 - [12-33 UNetDriver与连接通道源码](../12-引擎源码分析/33-UNetDriver与连接通道源码.md)：底层 Socket 驱动与网络包分发全流程；
-- [08-工具链与打包发布/10-UE Dedicated Server运行参数与性能调优](../08-工具链与打包发布/10-UE%20Dedicated%20Server运行参数与性能调优.md)：服务器 Tick 与带宽预算控制实战。
+- [08-工具链与打包发布/10-UE Dedicated Server运行参数与性能调优](../../知识/08-工程实践与质量/调试与性能分析/10-UE%20Dedicated%20Server运行参数与性能调优.md)：服务器 Tick 与带宽预算控制实战。

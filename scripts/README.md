@@ -37,3 +37,10 @@ updated: 2026-10-03
 [append_lesson.ps1](append_lesson.ps1)是既有记录工具；历史日志本次保留，不与知识检查混用。
 
 [仓库首页](../README.md)
+
+## 可逆正文迁移
+
+- [migrate_knowledge.py](migrate_knowledge.py)：默认只读干跑，按已审迁移计划改标准链接目标并校验逆变换；显式`--apply`才写仓库，不提交Git
+- [test_migrate_knowledge.py](test_migrate_knowledge.py)：隔离Git夹具检验链接语法、保护路径、冲突、并发变化和恢复边界
+
+迁移前保持工作区无并发写入，确认精确范围与原文快照；报告和原文恢复副本保存在仓库外。迁移后更新稳定身份的path/legacy_paths，重建导航与清单并运行全部检查。书籍与工作日志不作为搬迁源；来源保护不能由一个alias取消。

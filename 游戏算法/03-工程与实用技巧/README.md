@@ -28,13 +28,13 @@ updated: 2026-09-03
 | 编号 | 核心专题文件 | 知识类型 | 成熟度 | 一句话简介与工程定位 |
 | :--- | :--- | :---: | :---: | :--- |
 | 00 | [README.md](README.md)（本文件） | Index | L2 | 子域工程导航：玩法算法全景、高并发性能矩阵、专题导航与实战证据 |
-| 01 | [01-随机数与洗牌算法.md](01-随机数与洗牌算法.md) | BestPractice | L2 | PRNG 原理（LCG/MT/PCG/xorshift）、种子确定性、Fisher–Yates 洗牌、Alias 别名表加权抽样、掉落表与抽卡保底设计 |
-| 02 | [02-程序化生成.md](02-程序化生成.md) | Mechanism | L2 | Perlin/Simplex 梯度噪声、Voronoi 细胞划分、迷宫生成（回溯/Prim/Kruskal）、波函数坍缩 WFC 与地形生成管线 |
-| 03 | [03-AOI与视野计算.md](03-AOI与视野计算.md) | Mechanism | L2 | 九宫格、灯塔、十字双向链表 AOI、进入/离开/移动事件发布、视野锥遮挡、战争迷雾与服务端裁剪对比 |
-| 04 | [04-路径平滑与转向行为.md](04-路径平滑与转向行为.md) | Mechanism | L2 | 漏斗算法（String Pulling）、路径平滑简化、Reynolds 转向行为（Seek/Arrive/Pursue/Wander）、Boids 群集与队形保持 |
-| 05 | [05-位运算与性能优化技巧.md](05-位运算与性能优化技巧.md) | BestPractice | L2 | 位标志/位掩码、Bitset、布隆过滤器、Morton 码与 Z 序曲线、SoA 内存布局、SIMD 向量化与微优化方法论 |
-| 06 | [06-数据压缩与序列化.md](06-数据压缩与序列化.md) | Mechanism | L2 | Varint/Zigzag 变长整数、浮点定点量化与位打包、增量差分编码、Huffman/LZ4 压缩选型与协议带宽优化 |
-| 07 | [07-概率分布与采样工程.md](07-概率分布与采样工程.md) | Mechanism | L2 | Bernoulli/Poisson/Normal 分布契约、Reservoir 流式抽样、Poisson-disk 空间采样、蒙特卡洛/重要性采样与置信区间 |
+| 01 | [01-随机数与洗牌算法.md](../../知识/02-数学与游戏算法/随机采样与程序化生成/01-随机数与洗牌算法.md) | BestPractice | L2 | PRNG 原理（LCG/MT/PCG/xorshift）、种子确定性、Fisher–Yates 洗牌、Alias 别名表加权抽样、掉落表与抽卡保底设计 |
+| 02 | [02-程序化生成.md](../../知识/02-数学与游戏算法/随机采样与程序化生成/02-程序化生成.md) | Mechanism | L2 | Perlin/Simplex 梯度噪声、Voronoi 细胞划分、迷宫生成（回溯/Prim/Kruskal）、波函数坍缩 WFC 与地形生成管线 |
+| 03 | [03-AOI与视野计算.md](../../知识/02-数学与游戏算法/空间查询与碰撞/03-AOI与视野计算.md) | Mechanism | L2 | 九宫格、灯塔、十字双向链表 AOI、进入/离开/移动事件发布、视野锥遮挡、战争迷雾与服务端裁剪对比 |
+| 04 | [04-路径平滑与转向行为.md](../../知识/02-数学与游戏算法/路径搜索与导航/04-路径平滑与转向行为.md) | Mechanism | L2 | 漏斗算法（String Pulling）、路径平滑简化、Reynolds 转向行为（Seek/Arrive/Pursue/Wander）、Boids 群集与队形保持 |
+| 05 | [05-位运算与性能优化技巧.md](../../知识/02-数学与游戏算法/数据结构与编码/05-位运算与性能优化技巧.md) | BestPractice | L2 | 位标志/位掩码、Bitset、布隆过滤器、Morton 码与 Z 序曲线、SoA 内存布局、SIMD 向量化与微优化方法论 |
+| 06 | [06-数据压缩与序列化.md](../../知识/02-数学与游戏算法/数据结构与编码/06-数据压缩与序列化.md) | Mechanism | L2 | Varint/Zigzag 变长整数、浮点定点量化与位打包、增量差分编码、Huffman/LZ4 压缩选型与协议带宽优化 |
+| 07 | [07-概率分布与采样工程.md](../../知识/02-数学与游戏算法/随机采样与程序化生成/07-概率分布与采样工程.md) | Mechanism | L2 | Bernoulli/Poisson/Normal 分布契约、Reservoir 流式抽样、Poisson-disk 空间采样、蒙特卡洛/重要性采样与置信区间 |
 
 ---
 

@@ -1,6 +1,7 @@
 {
   "version": 1,
   "coverage_roots": [
+    "知识",
     "00-计算机与工程基础",
     "游戏知识",
     "游戏服务端",
@@ -57,171 +58,255 @@
   "documents": [
     {
       "id": "kb-d69205a7e6f8",
-      "path": "00-计算机与工程基础/01-C++核心/01-C++对象生命周期与RAII.md",
+      "path": "知识/01-编程与计算机基础/C++语言与对象模型/01-C++对象生命周期与RAII.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/01-C++核心/01-C++对象生命周期与RAII.md"
+      ]
     },
     {
       "id": "kb-3609eb46b791",
-      "path": "00-计算机与工程基础/01-C++核心/02-Copy-Move与值语义.md",
+      "path": "知识/01-编程与计算机基础/C++语言与对象模型/02-Copy-Move与值语义.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/01-C++核心/02-Copy-Move与值语义.md"
+      ]
     },
     {
       "id": "kb-3a6fbe2c74a9",
-      "path": "00-计算机与工程基础/02-C++对象模型与内存/01-对象布局、虚函数与内存分配.md",
+      "path": "知识/01-编程与计算机基础/C++语言与对象模型/01-对象布局、虚函数与内存分配.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/02-C++对象模型与内存/01-对象布局、虚函数与内存分配.md"
+      ]
     },
     {
       "id": "kb-691db49afadc",
-      "path": "00-计算机与工程基础/02-C++对象模型与内存/02-STL容器与Allocator.md",
+      "path": "知识/01-编程与计算机基础/C++语言与对象模型/02-STL容器与Allocator.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/02-C++对象模型与内存/02-STL容器与Allocator.md"
+      ]
     },
     {
       "id": "kb-a8ddd89e82c3",
-      "path": "00-计算机与工程基础/03-现代C++与泛型/01-Concepts、Ranges与泛型设计.md",
+      "path": "知识/01-编程与计算机基础/C++语言与对象模型/01-Concepts、Ranges与泛型设计.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/03-现代C++与泛型/01-Concepts、Ranges与泛型设计.md"
+      ]
     },
     {
       "id": "kb-75ba4957307f",
-      "path": "00-计算机与工程基础/03-现代C++与泛型/02-异常、类型系统与标准库实现.md",
+      "path": "知识/01-编程与计算机基础/C++语言与对象模型/02-异常、类型系统与标准库实现.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/03-现代C++与泛型/02-异常、类型系统与标准库实现.md"
+      ]
     },
     {
       "id": "kb-79484ac343bf",
-      "path": "00-计算机与工程基础/04-C++并发与内存模型/02-Atomic与C++内存模型.md",
+      "path": "知识/01-编程与计算机基础/并发与同步/02-Atomic与C++内存模型.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/04-C++并发与内存模型/02-Atomic与C++内存模型.md"
+      ]
     },
     {
       "id": "kb-de8c15ee1031",
-      "path": "00-计算机与工程基础/04-C++并发与内存模型/02-线程同步与锁.md",
+      "path": "知识/01-编程与计算机基础/并发与同步/02-线程同步与锁.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/04-C++并发与内存模型/02-线程同步与锁.md"
+      ]
     },
     {
       "id": "kb-b0b1ebccbab7",
-      "path": "00-计算机与工程基础/04-C++并发与内存模型/03-LockFree与FalseSharing.md",
+      "path": "知识/01-编程与计算机基础/并发与同步/03-LockFree与FalseSharing.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/04-C++并发与内存模型/03-LockFree与FalseSharing.md"
+      ]
     },
     {
       "id": "kb-40f84d187127",
-      "path": "00-计算机与工程基础/04-C++并发与内存模型/04-线程池、任务调度与协程调度.md",
+      "path": "知识/01-编程与计算机基础/并发与同步/04-线程池、任务调度与协程调度.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/04-C++并发与内存模型/04-线程池、任务调度与协程调度.md"
+      ]
     },
     {
       "id": "kb-47e8aafb62d8",
-      "path": "00-计算机与工程基础/04-C++并发与内存模型/05-进程间通信与跨进程同步.md",
+      "path": "知识/01-编程与计算机基础/并发与同步/05-进程间通信与跨进程同步.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/04-C++并发与内存模型/05-进程间通信与跨进程同步.md"
+      ]
     },
     {
       "id": "kb-580fff7e59bc",
-      "path": "00-计算机与工程基础/05-数据结构与复杂度/01-数据结构复杂度与容器选型.md",
+      "path": "知识/02-数学与游戏算法/数据结构与编码/01-数据结构复杂度与容器选型.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/05-数据结构与复杂度/01-数据结构复杂度与容器选型.md"
+      ]
     },
     {
       "id": "kb-049bfe1d9a15",
-      "path": "00-计算机与工程基础/06-操作系统/01-进程线程虚拟内存与系统调用.md",
+      "path": "知识/01-编程与计算机基础/操作系统与系统I-O/01-进程线程虚拟内存与系统调用.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/06-操作系统/01-进程线程虚拟内存与系统调用.md"
+      ]
     },
     {
       "id": "kb-efc011d095f7",
-      "path": "00-计算机与工程基础/06-操作系统/02-虚拟内存、PageFault与mmap.md",
+      "path": "知识/01-编程与计算机基础/操作系统与系统I-O/02-虚拟内存、PageFault与mmap.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/06-操作系统/02-虚拟内存、PageFault与mmap.md"
+      ]
     },
     {
       "id": "kb-b5f72bef3a98",
-      "path": "00-计算机与工程基础/06-操作系统/03-文件系统与存储栈.md",
+      "path": "知识/01-编程与计算机基础/操作系统与系统I-O/03-文件系统与存储栈.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/06-操作系统/03-文件系统与存储栈.md"
+      ]
     },
     {
       "id": "kb-9ae808dbbf8f",
-      "path": "00-计算机与工程基础/06-操作系统/04-权限安全与隔离.md",
+      "path": "知识/01-编程与计算机基础/操作系统与系统I-O/04-权限安全与隔离.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/06-操作系统/04-权限安全与隔离.md"
+      ]
     },
     {
       "id": "kb-dddfb4877f96",
-      "path": "00-计算机与工程基础/07-Linux系统编程/01-Socket-Epoll与Reactor.md",
+      "path": "知识/01-编程与计算机基础/操作系统与系统I-O/01-Socket-Epoll与Reactor.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/07-Linux系统编程/01-Socket-Epoll与Reactor.md"
+      ]
     },
     {
       "id": "kb-c5c9280ecd93",
-      "path": "00-计算机与工程基础/07-Linux系统编程/03-io_uring与异步I-O.md",
+      "path": "知识/01-编程与计算机基础/操作系统与系统I-O/03-io_uring与异步I-O.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/07-Linux系统编程/03-io_uring与异步I-O.md"
+      ]
     },
     {
       "id": "kb-e9b6c7f3abad",
-      "path": "00-计算机与工程基础/07-Linux系统编程/03-性能工具：插桩与perf采样.md",
-      "domain": "systems",
-      "kind": "concept"
+      "path": "知识/08-工程实践与质量/调试与性能分析/03-性能工具：插桩与perf采样.md",
+      "domain": "engineering",
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/07-Linux系统编程/03-性能工具：插桩与perf采样.md"
+      ]
     },
     {
       "id": "kb-c902a4328924",
-      "path": "00-计算机与工程基础/08-计算机体系结构与性能/01-处理器存储层次与性能工程.md",
+      "path": "知识/01-编程与计算机基础/硬件体系结构与性能/01-处理器存储层次与性能工程.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/08-计算机体系结构与性能/01-处理器存储层次与性能工程.md"
+      ]
     },
     {
       "id": "kb-d3c457bbfad5",
-      "path": "00-计算机与工程基础/08-计算机体系结构与性能/03-ISA汇编与调用约定.md",
+      "path": "知识/01-编程与计算机基础/编译链接与ABI/03-ISA汇编与调用约定.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/08-计算机体系结构与性能/03-ISA汇编与调用约定.md"
+      ]
     },
     {
       "id": "kb-fc7331d6602d",
-      "path": "00-计算机与工程基础/08-计算机体系结构与性能/04-编译器优化与GPU异构.md",
+      "path": "知识/01-编程与计算机基础/硬件体系结构与性能/04-编译器优化与GPU异构.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/08-计算机体系结构与性能/04-编译器优化与GPU异构.md"
+      ]
     },
     {
       "id": "kb-cb4724fce8bb",
-      "path": "00-计算机与工程基础/08-计算机体系结构与性能/05-虚拟化与硬件辅助隔离.md",
+      "path": "知识/01-编程与计算机基础/硬件体系结构与性能/05-虚拟化与硬件辅助隔离.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/08-计算机体系结构与性能/05-虚拟化与硬件辅助隔离.md"
+      ]
     },
     {
       "id": "kb-367fe03f073f",
-      "path": "00-计算机与工程基础/09-计算机网络基础/01-网络分层协议与工程实践.md",
+      "path": "知识/01-编程与计算机基础/网络协议基础/01-网络分层协议与工程实践.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/09-计算机网络基础/01-网络分层协议与工程实践.md"
+      ]
     },
     {
       "id": "kb-d0f57d102421",
-      "path": "00-计算机与工程基础/09-计算机网络基础/02-QUIC与HTTP演进.md",
+      "path": "知识/01-编程与计算机基础/网络协议基础/02-QUIC与HTTP演进.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/09-计算机网络基础/02-QUIC与HTTP演进.md"
+      ]
     },
     {
       "id": "kb-37a3beaaba62",
-      "path": "00-计算机与工程基础/09-计算机网络基础/03-IPv6NAT服务发现与负载均衡.md",
+      "path": "知识/01-编程与计算机基础/网络协议基础/03-IPv6NAT服务发现与负载均衡.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/09-计算机网络基础/03-IPv6NAT服务发现与负载均衡.md"
+      ]
     },
     {
       "id": "kb-570fe36966c6",
-      "path": "00-计算机与工程基础/10-编译链接与ABI/01-编译链接与ABI全流程.md",
+      "path": "知识/01-编程与计算机基础/编译链接与ABI/01-编译链接与ABI全流程.md",
       "domain": "systems",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/10-编译链接与ABI/01-编译链接与ABI全流程.md"
+      ]
     },
     {
       "id": "kb-ef24ce50e01c",
-      "path": "00-计算机与工程基础/11-工程调试与性能分析/01-调试与性能分析方法论.md",
+      "path": "知识/08-工程实践与质量/调试与性能分析/01-调试与性能分析方法论.md",
       "domain": "engineering",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/11-工程调试与性能分析/01-调试与性能分析方法论.md"
+      ]
     },
     {
       "id": "kb-d8845a29d02f",
@@ -243,57 +328,84 @@
     },
     {
       "id": "kb-e1b8c642d16f",
-      "path": "00-计算机与工程基础/13-数学与算法基础/02-概率线性代数与数值计算.md",
+      "path": "知识/02-数学与游戏算法/数学与数值计算/02-概率线性代数与数值计算.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/13-数学与算法基础/02-概率线性代数与数值计算.md"
+      ]
     },
     {
       "id": "kb-2100de93be71",
-      "path": "00-计算机与工程基础/13-数学与算法基础/数学与算法基础总览.md",
+      "path": "知识/02-数学与游戏算法/数学与数值计算/数学与算法基础总览.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/13-数学与算法基础/数学与算法基础总览.md"
+      ]
     },
     {
       "id": "kb-ad8254398f00",
-      "path": "00-计算机与工程基础/14-安全与密码基础/02-TLS认证授权与反作弊.md",
+      "path": "知识/08-工程实践与质量/安全与防护/02-TLS认证授权与反作弊.md",
       "domain": "engineering",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/14-安全与密码基础/02-TLS认证授权与反作弊.md"
+      ]
     },
     {
       "id": "kb-468a96939eea",
-      "path": "00-计算机与工程基础/14-安全与密码基础/安全与密码基础总览.md",
+      "path": "知识/08-工程实践与质量/安全与防护/安全与密码基础总览.md",
       "domain": "engineering",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/14-安全与密码基础/安全与密码基础总览.md"
+      ]
     },
     {
       "id": "kb-88a3150102a9",
-      "path": "00-计算机与工程基础/15-软件工程与构建/测试静态分析Fuzz与持续交付.md",
+      "path": "知识/08-工程实践与质量/测试策略与自动化/测试静态分析Fuzz与持续交付.md",
       "domain": "engineering",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/15-软件工程与构建/测试静态分析Fuzz与持续交付.md"
+      ]
     },
     {
       "id": "kb-4065596d7e0b",
-      "path": "00-计算机与工程基础/15-软件工程与构建/版本控制依赖与构建工程.md",
+      "path": "知识/08-工程实践与质量/工程设计与协作/版本控制依赖与构建工程.md",
       "domain": "engineering",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/15-软件工程与构建/版本控制依赖与构建工程.md"
+      ]
     },
     {
       "id": "kb-86b0a20ae42e",
-      "path": "00-计算机与工程基础/15-软件工程与构建/软件工程与构建基础.md",
+      "path": "知识/08-工程实践与质量/工程设计与协作/软件工程与构建基础.md",
       "domain": "engineering",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/15-软件工程与构建/软件工程与构建基础.md"
+      ]
     },
     {
       "id": "kb-cff1a306ce7a",
-      "path": "00-计算机与工程基础/16-容器云与可观测性/02-可观测性SLO与故障演练.md",
+      "path": "知识/08-工程实践与质量/部署运维与可观测性/02-可观测性SLO与故障演练.md",
       "domain": "engineering",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/16-容器云与可观测性/02-可观测性SLO与故障演练.md"
+      ]
     },
     {
       "id": "kb-4cab1468fea9",
-      "path": "00-计算机与工程基础/16-容器云与可观测性/容器云与可观测性基础.md",
+      "path": "知识/08-工程实践与质量/部署运维与可观测性/容器云与可观测性基础.md",
       "domain": "engineering",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/16-容器云与可观测性/容器云与可观测性基础.md"
+      ]
     },
     {
       "id": "kb-8d4647fe90b3",
@@ -585,9 +697,12 @@
     },
     {
       "id": "kb-be96a9a69943",
-      "path": "游戏服务端/02-数据与业务/05-部署运维与监控.md",
+      "path": "知识/08-工程实践与质量/部署运维与可观测性/05-部署运维与监控.md",
       "domain": "engineering",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/02-数据与业务/05-部署运维与监控.md"
+      ]
     },
     {
       "id": "kb-ba788c3015ab",
@@ -675,21 +790,30 @@
     },
     {
       "id": "kb-097b6360b196",
-      "path": "游戏服务端/04-平台与可靠性/06-SLI-SLO与可观测性.md",
+      "path": "知识/08-工程实践与质量/部署运维与可观测性/06-SLI-SLO与可观测性.md",
       "domain": "engineering",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/04-平台与可靠性/06-SLI-SLO与可观测性.md"
+      ]
     },
     {
       "id": "kb-7eeae83ead12",
-      "path": "游戏服务端/04-平台与可靠性/07-故障恢复容灾与多活.md",
+      "path": "知识/08-工程实践与质量/部署运维与可观测性/07-故障恢复容灾与多活.md",
       "domain": "engineering",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/04-平台与可靠性/07-故障恢复容灾与多活.md"
+      ]
     },
     {
       "id": "kb-1a8d8263d7f1",
-      "path": "游戏服务端/04-平台与可靠性/08-灰度发布回滚与事故复盘.md",
+      "path": "知识/08-工程实践与质量/持续交付与发布治理/08-灰度发布回滚与事故复盘.md",
       "domain": "engineering",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/04-平台与可靠性/08-灰度发布回滚与事故复盘.md"
+      ]
     },
     {
       "id": "kb-f737bd11e584",
@@ -702,11 +826,14 @@
     },
     {
       "id": "kb-268eebf7a4ac",
-      "path": "游戏服务端/05-UE Dedicated Server平台化/02-Linux DS部署与容器实战.md",
+      "path": "知识/08-工程实践与质量/部署运维与可观测性/02-Linux DS部署与容器实战.md",
       "domain": "engineering",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏服务端/05-UE Dedicated Server平台化/02-Linux DS部署与容器实战.md"
       ]
     },
     {
@@ -720,11 +847,14 @@
     },
     {
       "id": "kb-86eea3c39373",
-      "path": "游戏服务端/05-UE Dedicated Server平台化/04-DS日志崩溃与可观测性实战.md",
+      "path": "知识/08-工程实践与质量/部署运维与可观测性/04-DS日志崩溃与可观测性实战.md",
       "domain": "engineering",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏服务端/05-UE Dedicated Server平台化/04-DS日志崩溃与可观测性实战.md"
       ]
     },
     {
@@ -831,63 +961,90 @@
     },
     {
       "id": "kb-772b934bb720",
-      "path": "游戏测试与质量/01-测试金字塔与测试策略.md",
+      "path": "知识/08-工程实践与质量/测试策略与自动化/01-测试金字塔与测试策略.md",
       "domain": "engineering",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏测试与质量/01-测试金字塔与测试策略.md"
+      ]
     },
     {
       "id": "kb-ed48c5991947",
-      "path": "游戏测试与质量/02-客户端自动化测试.md",
+      "path": "知识/08-工程实践与质量/测试策略与自动化/02-客户端自动化测试.md",
       "domain": "engineering",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏测试与质量/02-客户端自动化测试.md"
+      ]
     },
     {
       "id": "kb-23e11d1ee726",
-      "path": "游戏测试与质量/03-服务端测试与机器人压测.md",
+      "path": "知识/08-工程实践与质量/测试策略与自动化/03-服务端测试与机器人压测.md",
       "domain": "engineering",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏测试与质量/03-服务端测试与机器人压测.md"
+      ]
     },
     {
       "id": "kb-a0213493a2a2",
-      "path": "游戏测试与质量/04-性能兼容与网络异常测试.md",
+      "path": "知识/08-工程实践与质量/测试策略与自动化/04-性能兼容与网络异常测试.md",
       "domain": "engineering",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏测试与质量/04-性能兼容与网络异常测试.md"
+      ]
     },
     {
       "id": "kb-fbd5b2d7ed02",
-      "path": "游戏测试与质量/05-CI质量门禁与缺陷管理.md",
+      "path": "知识/08-工程实践与质量/持续交付与发布治理/05-CI质量门禁与缺陷管理.md",
       "domain": "engineering",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏测试与质量/05-CI质量门禁与缺陷管理.md"
+      ]
     },
     {
       "id": "kb-184c682f4f85",
-      "path": "游戏测试与质量/06-UE Dedicated Server联机验收与Gauntlet.md",
+      "path": "知识/08-工程实践与质量/测试策略与自动化/06-UE Dedicated Server联机验收与Gauntlet.md",
       "domain": "engineering",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏测试与质量/06-UE Dedicated Server联机验收与Gauntlet.md"
       ]
     },
     {
       "id": "kb-b7ebf507831d",
-      "path": "游戏测试与质量/07-UE DS机器人压测与容量评估.md",
+      "path": "知识/08-工程实践与质量/测试策略与自动化/07-UE DS机器人压测与容量评估.md",
       "domain": "engineering",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏测试与质量/07-UE DS机器人压测与容量评估.md"
       ]
     },
     {
       "id": "kb-8c93f7e75859",
-      "path": "游戏测试与质量/08-存档版本迁移与兼容性测试.md",
+      "path": "知识/08-工程实践与质量/测试策略与自动化/08-存档版本迁移与兼容性测试.md",
       "domain": "engineering",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏测试与质量/08-存档版本迁移与兼容性测试.md"
+      ]
     },
     {
       "id": "kb-d0770dcc65d1",
-      "path": "游戏测试与质量/09-安全合规与反作弊测试.md",
+      "path": "知识/08-工程实践与质量/安全与防护/09-安全合规与反作弊测试.md",
       "domain": "engineering",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏测试与质量/09-安全合规与反作弊测试.md"
+      ]
     },
     {
       "id": "kb-210ecf7f6e6a",
@@ -1464,29 +1621,38 @@
     },
     {
       "id": "kb-6bcb17baf23c",
-      "path": "游戏知识/07-UI与性能优化/03-性能分析工具与Profiling.md",
+      "path": "知识/08-工程实践与质量/调试与性能分析/03-性能分析工具与Profiling.md",
       "domain": "engineering",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/07-UI与性能优化/03-性能分析工具与Profiling.md"
       ]
     },
     {
       "id": "kb-db4d4dc0b8ac",
-      "path": "游戏知识/07-UI与性能优化/04-渲染与加载性能优化.md",
+      "path": "知识/08-工程实践与质量/调试与性能分析/04-渲染与加载性能优化.md",
       "domain": "engineering",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/07-UI与性能优化/04-渲染与加载性能优化.md"
       ]
     },
     {
       "id": "kb-0018a52a2aa8",
-      "path": "游戏知识/07-UI与性能优化/05-GameplayDebugger与运行时调试.md",
+      "path": "知识/08-工程实践与质量/调试与性能分析/05-GameplayDebugger与运行时调试.md",
       "domain": "engineering",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/07-UI与性能优化/05-GameplayDebugger与运行时调试.md"
       ]
     },
     {
@@ -1518,128 +1684,170 @@
     },
     {
       "id": "kb-42979741e27a",
-      "path": "游戏知识/08-工具链与打包发布/01-UBT构建系统与编译配置.md",
+      "path": "知识/08-工程实践与质量/构建编译与制品/01-UBT构建系统与编译配置.md",
       "domain": "engineering",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/08-工具链与打包发布/01-UBT构建系统与编译配置.md"
       ]
     },
     {
       "id": "kb-5c0c98fa82cb",
-      "path": "游戏知识/08-工具链与打包发布/02-UAT与自动化打包.md",
+      "path": "知识/08-工程实践与质量/构建编译与制品/02-UAT与自动化打包.md",
       "domain": "engineering",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/08-工具链与打包发布/02-UAT与自动化打包.md"
       ]
     },
     {
       "id": "kb-2592f72cf01e",
-      "path": "游戏知识/08-工具链与打包发布/03-插件开发与编辑器扩展.md",
+      "path": "知识/08-工程实践与质量/编辑器工具与资产自动化/03-插件开发与编辑器扩展.md",
       "domain": "engineering",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/08-工具链与打包发布/03-插件开发与编辑器扩展.md"
       ]
     },
     {
       "id": "kb-604afe8bdc0c",
-      "path": "游戏知识/08-工具链与打包发布/04-资源管理与热更新.md",
+      "path": "知识/08-工程实践与质量/持续交付与发布治理/04-资源管理与热更新.md",
       "domain": "engineering",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/08-工具链与打包发布/04-资源管理与热更新.md"
       ]
     },
     {
       "id": "kb-f3703177c952",
-      "path": "游戏知识/08-工具链与打包发布/05-GameFeatures特性插件.md",
-      "domain": "engineering",
+      "path": "知识/03-引擎架构与资源系统/插件装配与初始化/05-GameFeatures特性插件.md",
+      "domain": "engine",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/08-工具链与打包发布/05-GameFeatures特性插件.md"
       ]
     },
     {
       "id": "kb-d9fe5586c75b",
-      "path": "游戏知识/08-工具链与打包发布/06-Interchange与DataValidation.md",
+      "path": "知识/08-工程实践与质量/编辑器工具与资产自动化/06-Interchange与DataValidation.md",
       "domain": "engineering",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/08-工具链与打包发布/06-Interchange与DataValidation.md"
       ]
     },
     {
       "id": "kb-aab19815e73e",
-      "path": "游戏知识/08-工具链与打包发布/07-Shader编译管线与PSO.md",
+      "path": "知识/08-工程实践与质量/构建编译与制品/07-Shader编译管线与PSO.md",
       "domain": "engineering",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/08-工具链与打包发布/07-Shader编译管线与PSO.md"
       ]
     },
     {
       "id": "kb-746869156d30",
-      "path": "游戏知识/08-工具链与打包发布/08-全栈质量门禁与灰度回滚.md",
+      "path": "知识/08-工程实践与质量/持续交付与发布治理/08-全栈质量门禁与灰度回滚.md",
       "domain": "engineering",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/08-工具链与打包发布/08-全栈质量门禁与灰度回滚.md"
       ]
     },
     {
       "id": "kb-a7b476d2e2b5",
-      "path": "游戏知识/08-工具链与打包发布/09-UE Dedicated Server构建烘焙与运行.md",
+      "path": "知识/08-工程实践与质量/构建编译与制品/09-UE Dedicated Server构建烘焙与运行.md",
       "domain": "engineering",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/08-工具链与打包发布/09-UE Dedicated Server构建烘焙与运行.md"
       ]
     },
     {
       "id": "kb-afba00c6b15a",
-      "path": "游戏知识/08-工具链与打包发布/10-UE Dedicated Server运行参数与性能调优.md",
+      "path": "知识/08-工程实践与质量/调试与性能分析/10-UE Dedicated Server运行参数与性能调优.md",
       "domain": "engineering",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/08-工具链与打包发布/10-UE Dedicated Server运行参数与性能调优.md"
       ]
     },
     {
       "id": "kb-d4aa4d19c6c7",
-      "path": "游戏知识/08-工具链与打包发布/11-DS内容裁剪与服务器资源预算.md",
+      "path": "知识/08-工程实践与质量/构建编译与制品/11-DS内容裁剪与服务器资源预算.md",
       "domain": "engineering",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/08-工具链与打包发布/11-DS内容裁剪与服务器资源预算.md"
       ]
     },
     {
       "id": "kb-2270e4ee096a",
-      "path": "游戏知识/08-工具链与打包发布/12-版本控制与资产协作.md",
+      "path": "知识/08-工程实践与质量/工程设计与协作/12-版本控制与资产协作.md",
       "domain": "engineering",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/08-工具链与打包发布/12-版本控制与资产协作.md"
       ]
     },
     {
       "id": "kb-1a1124372521",
-      "path": "游戏知识/08-工具链与打包发布/13-本地化发布工作流.md",
+      "path": "知识/08-工程实践与质量/持续交付与发布治理/13-本地化发布工作流.md",
       "domain": "engineering",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/08-工具链与打包发布/13-本地化发布工作流.md"
       ]
     },
     {
       "id": "kb-63bc42651c13",
-      "path": "游戏知识/08-工具链与打包发布/14-Python编辑器脚本与资产自动化.md",
+      "path": "知识/08-工程实践与质量/编辑器工具与资产自动化/14-Python编辑器脚本与资产自动化.md",
       "domain": "engineering",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/08-工具链与打包发布/14-Python编辑器脚本与资产自动化.md"
       ]
     },
     {
@@ -2013,11 +2221,14 @@
     },
     {
       "id": "kb-e4a5edcf22c8",
-      "path": "游戏知识/12-引擎源码分析/28-UnrealInsights与Trace源码.md",
+      "path": "知识/08-工程实践与质量/调试与性能分析/28-UnrealInsights与Trace源码.md",
       "domain": "engineering",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/28-UnrealInsights与Trace源码.md"
       ]
     },
     {
@@ -2184,11 +2395,14 @@
     },
     {
       "id": "kb-3946875a945b",
-      "path": "游戏知识/12-引擎源码分析/47-Lyra-调试工具与扩展源码.md",
+      "path": "知识/08-工程实践与质量/调试与性能分析/47-Lyra-调试工具与扩展源码.md",
       "domain": "engineering",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/47-Lyra-调试工具与扩展源码.md"
       ]
     },
     {
@@ -2328,153 +2542,228 @@
     },
     {
       "id": "kb-e1d914b8ba68",
-      "path": "游戏算法/01-寻路与图论/01-图论基础与搜索算法.md",
+      "path": "知识/02-数学与游戏算法/路径搜索与导航/01-图论基础与搜索算法.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏算法/01-寻路与图论/01-图论基础与搜索算法.md"
+      ]
     },
     {
       "id": "kb-fa8388bb4143",
-      "path": "游戏算法/01-寻路与图论/02-A星算法与优化.md",
+      "path": "知识/02-数学与游戏算法/路径搜索与导航/02-A星算法与优化.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏算法/01-寻路与图论/02-A星算法与优化.md"
+      ]
     },
     {
       "id": "kb-cf320addb77e",
-      "path": "游戏算法/01-寻路与图论/03-流场与群体寻路.md",
+      "path": "知识/02-数学与游戏算法/路径搜索与导航/03-流场与群体寻路.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏算法/01-寻路与图论/03-流场与群体寻路.md"
+      ]
     },
     {
       "id": "kb-ac10c8af34b0",
-      "path": "游戏算法/01-寻路与图论/04-空间分区与索引.md",
+      "path": "知识/02-数学与游戏算法/空间查询与碰撞/04-空间分区与索引.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏算法/01-寻路与图论/04-空间分区与索引.md"
+      ]
     },
     {
       "id": "kb-6d1dffde793e",
-      "path": "游戏算法/02-数学与碰撞/01-向量与矩阵基础.md",
+      "path": "知识/02-数学与游戏算法/数学与数值计算/01-向量与矩阵基础.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏算法/02-数学与碰撞/01-向量与矩阵基础.md"
+      ]
     },
     {
       "id": "kb-969a7e23e2b6",
-      "path": "游戏算法/02-数学与碰撞/02-四元数与旋转.md",
+      "path": "知识/02-数学与游戏算法/数学与数值计算/02-四元数与旋转.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏算法/02-数学与碰撞/02-四元数与旋转.md"
+      ]
     },
     {
       "id": "kb-4d4ab297e2fa",
-      "path": "游戏算法/02-数学与碰撞/03-插值与曲线.md",
+      "path": "知识/02-数学与游戏算法/数学与数值计算/03-插值与曲线.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏算法/02-数学与碰撞/03-插值与曲线.md"
+      ]
     },
     {
       "id": "kb-e26a4f4ce886",
-      "path": "游戏算法/02-数学与碰撞/04-碰撞检测.md",
+      "path": "知识/02-数学与游戏算法/空间查询与碰撞/04-碰撞检测.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏算法/02-数学与碰撞/04-碰撞检测.md"
+      ]
     },
     {
       "id": "kb-c0c1691490e9",
-      "path": "游戏算法/02-数学与碰撞/05-数值积分与运动学模拟.md",
+      "path": "知识/02-数学与游戏算法/数学与数值计算/05-数值积分与运动学模拟.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏算法/02-数学与碰撞/05-数值积分与运动学模拟.md"
+      ]
     },
     {
       "id": "kb-5ddfd0c71fee",
-      "path": "游戏算法/02-数学与碰撞/06-弹道与射击算法.md",
+      "path": "知识/02-数学与游戏算法/空间查询与碰撞/06-弹道与射击算法.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏算法/02-数学与碰撞/06-弹道与射击算法.md"
+      ]
     },
     {
       "id": "kb-6832a90fbe71",
-      "path": "游戏算法/03-工程与实用技巧/01-随机数与洗牌算法.md",
+      "path": "知识/02-数学与游戏算法/随机采样与程序化生成/01-随机数与洗牌算法.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏算法/03-工程与实用技巧/01-随机数与洗牌算法.md"
+      ]
     },
     {
       "id": "kb-2e2fbc0b8cc4",
-      "path": "游戏算法/03-工程与实用技巧/02-程序化生成.md",
+      "path": "知识/02-数学与游戏算法/随机采样与程序化生成/02-程序化生成.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏算法/03-工程与实用技巧/02-程序化生成.md"
+      ]
     },
     {
       "id": "kb-afcc4d7f8b70",
-      "path": "游戏算法/03-工程与实用技巧/03-AOI与视野计算.md",
+      "path": "知识/02-数学与游戏算法/空间查询与碰撞/03-AOI与视野计算.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏算法/03-工程与实用技巧/03-AOI与视野计算.md"
+      ]
     },
     {
       "id": "kb-5bd0993bf0cc",
-      "path": "游戏算法/03-工程与实用技巧/04-路径平滑与转向行为.md",
+      "path": "知识/02-数学与游戏算法/路径搜索与导航/04-路径平滑与转向行为.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏算法/03-工程与实用技巧/04-路径平滑与转向行为.md"
+      ]
     },
     {
       "id": "kb-ef20eb7e08fc",
-      "path": "游戏算法/03-工程与实用技巧/05-位运算与性能优化技巧.md",
+      "path": "知识/02-数学与游戏算法/数据结构与编码/05-位运算与性能优化技巧.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏算法/03-工程与实用技巧/05-位运算与性能优化技巧.md"
+      ]
     },
     {
       "id": "kb-a99cc10ff5cd",
-      "path": "游戏算法/03-工程与实用技巧/06-数据压缩与序列化.md",
+      "path": "知识/02-数学与游戏算法/数据结构与编码/06-数据压缩与序列化.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏算法/03-工程与实用技巧/06-数据压缩与序列化.md"
+      ]
     },
     {
       "id": "kb-b96580bea9a4",
-      "path": "游戏算法/03-工程与实用技巧/07-概率分布与采样工程.md",
+      "path": "知识/02-数学与游戏算法/随机采样与程序化生成/07-概率分布与采样工程.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏算法/03-工程与实用技巧/07-概率分布与采样工程.md"
+      ]
     },
     {
       "id": "kb-7b7a4a6b02b6",
-      "path": "游戏算法/04-确定性与基准工程/01-确定性与基准工程总览.md",
+      "path": "知识/02-数学与游戏算法/确定性与基准/01-确定性与基准工程总览.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏算法/04-确定性与基准工程/01-确定性与基准工程总览.md"
+      ]
     },
     {
       "id": "kb-bbabe253e3fd",
-      "path": "游戏算法/04-确定性与基准工程/02-动态寻路LPA与DStarLite.md",
+      "path": "知识/02-数学与游戏算法/路径搜索与导航/02-动态寻路LPA与DStarLite.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏算法/04-确定性与基准工程/02-动态寻路LPA与DStarLite.md"
+      ]
     },
     {
       "id": "kb-93fe1e562fe0",
-      "path": "游戏算法/04-确定性与基准工程/03-NavMesh工程Recast与Detour.md",
+      "path": "知识/02-数学与游戏算法/路径搜索与导航/03-NavMesh工程Recast与Detour.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏算法/04-确定性与基准工程/03-NavMesh工程Recast与Detour.md"
+      ]
     },
     {
       "id": "kb-05e7913b4360",
-      "path": "游戏算法/04-确定性与基准工程/04-RVO与数值鲁棒.md",
+      "path": "知识/02-数学与游戏算法/路径搜索与导航/04-RVO与数值鲁棒.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏算法/04-确定性与基准工程/04-RVO与数值鲁棒.md"
+      ]
     },
     {
       "id": "kb-5e83069b63cf",
-      "path": "游戏算法/04-确定性与基准工程/05-联机确定性与基准工程.md",
+      "path": "知识/02-数学与游戏算法/确定性与基准/05-联机确定性与基准工程.md",
       "domain": "algorithms",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏算法/04-确定性与基准工程/05-联机确定性与基准工程.md"
+      ]
     },
     {
       "id": "kb-825bb3b391dc",
-      "path": "笔记/A星算法优化.md",
+      "path": "知识/02-数学与游戏算法/路径搜索与导航/A星算法优化.md",
       "domain": "algorithms",
-      "kind": "reference"
+      "kind": "reference",
+      "legacy_paths": [
+        "笔记/A星算法优化.md"
+      ]
     },
     {
       "id": "kb-f70dce7d4101",
-      "path": "笔记/perf性能分析.md",
+      "path": "知识/08-工程实践与质量/调试与性能分析/perf性能分析.md",
       "domain": "engineering",
-      "kind": "reference"
+      "kind": "reference",
+      "legacy_paths": [
+        "笔记/perf性能分析.md"
+      ]
     },
     {
       "id": "kb-1fc080c7d1e0",
-      "path": "笔记/插桩测试.md",
+      "path": "知识/08-工程实践与质量/调试与性能分析/插桩测试.md",
       "domain": "engineering",
-      "kind": "reference"
+      "kind": "reference",
+      "legacy_paths": [
+        "笔记/插桩测试.md"
+      ]
     },
     {
       "id": "kb-db425ceabdb8",
@@ -2514,9 +2803,12 @@
     },
     {
       "id": "kb-bfaa231ef4e8",
-      "path": "系统实战/10-性能问题定位完整链路.md",
+      "path": "知识/08-工程实践与质量/调试与性能分析/10-性能问题定位完整链路.md",
       "domain": "engineering",
-      "kind": "case-study"
+      "kind": "case-study",
+      "legacy_paths": [
+        "系统实战/10-性能问题定位完整链路.md"
+      ]
     },
     {
       "id": "kb-5c0e018d700f",
@@ -3690,7 +3982,8 @@
         "kb-93fe1e562fe0",
         "kb-4671046111ac",
         "kb-37d3faf72ec2",
-        "kb-209eb4eb34c4"
+        "kb-209eb4eb34c4",
+        "kb-825bb3b391dc"
       ]
     },
     {
@@ -3779,7 +4072,9 @@
       "related": [
         "kb-6bcb17baf23c",
         "kb-e9b6c7f3abad",
-        "kb-42798aa488b6"
+        "kb-42798aa488b6",
+        "kb-f70dce7d4101",
+        "kb-1fc080c7d1e0"
       ]
     },
     {
@@ -3983,6 +4278,21 @@
       "from": "kb-fa8388bb4143",
       "to": "kb-209eb4eb34c4",
       "type": "verified_by"
+    },
+    {
+      "from": "kb-825bb3b391dc",
+      "to": "kb-fa8388bb4143",
+      "type": "reads"
+    },
+    {
+      "from": "kb-f70dce7d4101",
+      "to": "kb-e9b6c7f3abad",
+      "type": "reads"
+    },
+    {
+      "from": "kb-1fc080c7d1e0",
+      "to": "kb-e9b6c7f3abad",
+      "type": "reads"
     }
   ]
 }

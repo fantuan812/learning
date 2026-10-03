@@ -16,14 +16,14 @@ updated: 2026-08-20
 
 机器清单与维护契约，不是知识正文。当前八域分类与稳定身份以 knowledge-map 为准，旧目录清单在迁移期间保留。
 
-当前整体设计见 [知识库架构](../references/知识库架构.md)；根目录责任由 architecture.json 管理，领域语义由 taxonomy 管理，二者不重复维护。
+当前整体设计见 [知识库架构](../references/知识库架构.md)；顶层目录责任由 architecture.json 管理，主题归属与主责关系由 knowledge-map 管理；taxonomy 仅保留旧路径的迁移兼容。
 
 | 文件 | 用途 |
 | --- | --- |
 | [knowledge-map.json](knowledge-map.json) | 八域、稳定文档身份、唯一概念主责与关系 |
 | [architecture.json](architecture.json) | 顶层责任层、入口与契约文件的机器清单 |
 | [manifest.yaml](manifest.yaml) | 文档索引（不含正文） |
-| [taxonomy.yaml](taxonomy.yaml) | 分类体系（active，按仓库实际目录维护） |
+| [taxonomy.yaml](taxonomy.yaml) | 旧物理目录的迁移兼容清单，不覆盖八域分类 |
 | [aliases.yaml](aliases.yaml) | 同义分类映射 |
 | [okf-profile.yaml](okf-profile.yaml) | OKF v0.2 hybrid 兼容级别、字段词汇与验证命令 |
 | [audit.md](audit.md) | 历史审计记录；本轮执行与验收见 current plan |

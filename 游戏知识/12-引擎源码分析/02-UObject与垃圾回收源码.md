@@ -2099,4 +2099,4 @@ rg -n 'struct FGCContext|FGCCallbacks' $CU -g '*.h'
 
 - [01-UPROPERTY与反射系统源码](01-UPROPERTY与反射系统源码.md)：反射元数据生成与 `RefLink` 链表构建源码；
 - [03-Actor与Component生命周期源码](03-Actor与Component生命周期源码.md)：Actor 生成与 Destroy 生命周期流程；
-- [00-01 C++核心/01-C++对象生命周期与RAII](../../00-计算机与工程基础/01-C++核心/01-C++对象生命周期与RAII.md)：底层 C++ 对象生命周期与智能指针选型对照。
+- [00-01 C++核心/01-C++对象生命周期与RAII](../../知识/01-编程与计算机基础/C%2B%2B语言与对象模型/01-C%2B%2B对象生命周期与RAII.md)：底层 C++ 对象生命周期与智能指针选型对照。
