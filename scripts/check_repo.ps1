@@ -7,7 +7,7 @@ $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 if ([string]::IsNullOrWhiteSpace($Root)) { $Root = Split-Path -Parent $PSScriptRoot }
-$rootPath = (Resolve-Path -LiteralPath $Root).Path.TrimEnd('\')
+$rootPath = (Resolve-Path -LiteralPath $Root).Path.TrimEnd('\', '/')
 $failures = [System.Collections.Generic.List[string]]::new()
 $warnings = [System.Collections.Generic.List[string]]::new()
 $passes = [System.Collections.Generic.List[string]]::new()
@@ -20,9 +20,10 @@ function Add-Pass([string]$Message) { $script:passes.Add($Message) }
 
 function Get-RepoRelative([string]$Path) {
     $full = [System.IO.Path]::GetFullPath($Path)
-    $prefix = $rootPath + '\'
+    $prefix = $rootPath + [System.IO.Path]::DirectorySeparatorChar
     if ($full.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
-        return $full.Substring($prefix.Length)
+        # Preserve the repository-relative convention used by existing filters.
+        return $full.Substring($prefix.Length).Replace([System.IO.Path]::DirectorySeparatorChar, [char]'\')
     }
     return $full
 }
@@ -38,9 +39,9 @@ function Test-MaintenancePath([string]$Path) {
 }
 
 function Test-PathUnder([string]$Path, [string]$BasePath) {
-    $fullPath = [System.IO.Path]::GetFullPath($Path).TrimEnd('\')
-    $fullBase = [System.IO.Path]::GetFullPath($BasePath).TrimEnd('\')
-    return $fullPath -eq $fullBase -or $fullPath.StartsWith($fullBase + '\', [System.StringComparison]::OrdinalIgnoreCase)
+    $fullPath = [System.IO.Path]::GetFullPath($Path).TrimEnd('\', '/')
+    $fullBase = [System.IO.Path]::GetFullPath($BasePath).TrimEnd('\', '/')
+    return $fullPath -eq $fullBase -or $fullPath.StartsWith($fullBase + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)
 }
 
 function Get-NonCodeMarkdownText([string]$Text) {
