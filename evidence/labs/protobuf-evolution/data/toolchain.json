@@ -1,0 +1,19 @@
+{
+  "verified_at": "2026-10-02",
+  "protoc": {
+    "version": "36.0",
+    "platform": "linux-x86_64",
+    "metadata_url": "https://api.github.com/repos/protocolbuffers/protobuf/releases/tags/v36.0",
+    "url": "https://github.com/protocolbuffers/protobuf/releases/download/v36.0/protoc-36.0-linux-x86_64.zip",
+    "sha256": "bc8211ce760bd43ee21ddc145d6d9dbaeeabae205267a79d9054a240e367d4b4"
+  },
+  "runtime": {
+    "package": "protobuf",
+    "version": "7.36.0",
+    "backend": "python",
+    "filename": "protobuf-7.36.0-py3-none-any.whl",
+    "metadata_url": "https://pypi.org/pypi/protobuf/7.36.0/json",
+    "url": "https://files.pythonhosted.org/packages/01/c3/629999e78d46c1115c11886d51c6bd68c17ce4a944f1ea3e153a91316a33/protobuf-7.36.0-py3-none-any.whl",
+    "sha256": "53374d53fc29a67f7dbbf0ade47d7526a0f0137bf0f9c90e48d8a60790ef748c"
+  }
+}

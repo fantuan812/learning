@@ -1,0 +1,8 @@
+syntax = "proto3";
+package learning.evolution.old;
+
+// Teaching schema v1: x is a value, not a presence-aware patch.
+message MovePatch {
+  int32 x = 1;
+  uint32 sequence = 2;
+}

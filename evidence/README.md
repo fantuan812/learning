@@ -15,6 +15,7 @@ maturity: L0
 
 | 目录 | 主题 | 状态 | 关联文档 |
 | --- | --- | --- | --- |
+| [labs/protobuf-evolution](labs/protobuf-evolution/README.md) | 新旧 schema 的零值 presence、未知字段中转、ProtoJSON 与业务语义反例 | 已执行（protoc 36.0 / Python protobuf 7.36.0，12+12 测试；非 C++ runtime） | [02-网络通信与协议设计](../游戏服务端/01-架构与网络/02-网络通信与协议设计.md) |
 | [labs/cpp-move](labs/cpp-move/README.md) | Copy/Move 计数：扩容、RVO、moved-from | 已执行（MSVC 2022） | [02-Copy-Move与值语义](../00-计算机与工程基础/01-C++核心/02-Copy-Move与值语义.md) |
 | [labs/atomic-memory-order](labs/atomic-memory-order/README.md) | 原子计数/数据竞争/release-acquire/CAS/内存序开销 | 已执行（MSVC 2022） | [02-Atomic与C++内存模型](../00-计算机与工程基础/04-C++并发与内存模型/02-Atomic与C++内存模型.md) |
 | [labs/false-sharing](labs/false-sharing/README.md) | False Sharing Benchmark（volatile 与原子槽位） | 已执行（MSVC 2022） | [03-LockFree与FalseSharing](../00-计算机与工程基础/04-C++并发与内存模型/03-LockFree与FalseSharing.md) |

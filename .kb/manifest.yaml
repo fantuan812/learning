@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-01 (paths, bytes, lines, and maturity mechanically recalculated; Python equivalent).
+# Generated: 2026-10-02 (paths, bytes, lines, and maturity mechanically recalculated; Python equivalent).
 version: 4
 
 okf:
@@ -449,13 +449,13 @@ documents:
   "README.md":
     kind: README
     maturity: L2
-    bytes: 9229
+    bytes: 9378
     lines: 122
   "evidence/README.md":
     kind: README
     maturity: L0
-    bytes: 5043
-    lines: 43
+    bytes: 5393
+    lines: 44
   "evidence/algorithms/aoi/README.md":
     kind: README
     maturity: L0
@@ -491,6 +491,11 @@ documents:
     maturity: L0
     bytes: 8128
     lines: 129
+  "evidence/labs/protobuf-evolution/README.md":
+    kind: README
+    maturity: L4
+    bytes: 8882
+    lines: 124
   "evidence/server/tick-scheduler/README.md":
     kind: README
     maturity: L0
@@ -534,8 +539,8 @@ documents:
   "learning/log.md":
     kind: doc
     maturity: L0
-    bytes: 46463
-    lines: 54
+    bytes: 47819
+    lines: 55
   "log.md":
     kind: doc
     maturity: L2
@@ -569,8 +574,8 @@ documents:
   "references/仓库结构.md":
     kind: doc
     maturity: L2
-    bytes: 11385
-    lines: 131
+    bytes: 11592
+    lines: 133
   "references/写作规范.md":
     kind: doc
     maturity: L2
@@ -749,8 +754,8 @@ documents:
   "游戏服务端/01-架构与网络/02-网络通信与协议设计.md":
     kind: doc
     maturity: L2
-    bytes: 45845
-    lines: 749
+    bytes: 49477
+    lines: 781
   "游戏服务端/01-架构与网络/03-帧同步与状态同步.md":
     kind: doc
     maturity: L2
@@ -769,7 +774,7 @@ documents:
   "游戏服务端/01-架构与网络/README.md":
     kind: README
     maturity: L0
-    bytes: 6457
+    bytes: 6624
     lines: 115
   "游戏服务端/02-数据与业务/01-数据库选型与存储设计.md":
     kind: doc
