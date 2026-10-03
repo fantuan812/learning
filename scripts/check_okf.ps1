@@ -23,9 +23,10 @@ function Invoke-Git([string[]]$GitArgs) {
 
 function Get-ChangedMarkdown {
     $items = New-Object System.Collections.Generic.List[string]
-    $diff = @(Invoke-Git @('diff','--name-only','--diff-filter=ACMRTUXB','HEAD','--','*.md'))
+    # Explicit Git glob avoids native wildcard expansion of array arguments.
+    $diff = @(Invoke-Git @('diff','--name-only','--diff-filter=ACMRTUXB','HEAD','--',':(glob)**/*.md'))
     foreach ($x in $diff) { if ($x -and ([string]$x -notmatch '(?i)^\.agents[\\/]skills[\\/].*[\\/]SKILL\.md$') -and ([string]$x -notmatch '(?i)^learning[\\/]log\.md$')) { [void]$items.Add((Join-Path $rootPath ([string]$x))) } }
-    $untracked = @(Invoke-Git @('ls-files','--others','--exclude-standard','--','*.md'))
+    $untracked = @(Invoke-Git @('ls-files','--others','--exclude-standard','--',':(glob)**/*.md'))
     foreach ($p in $untracked) {
         if ($p -and ($p -notmatch '(?i)^\.agents[\\/]skills[\\/].*[\\/]SKILL\.md$') -and ($p -notmatch '(?i)^learning[\\/]log\.md$') -and (Test-Path -LiteralPath (Join-Path $rootPath $p))) { [void]$items.Add((Join-Path $rootPath $p)) }
     }
@@ -189,6 +190,7 @@ function Test-GeneratedField {
 
 function Test-Note($Path) {
     $name = [IO.Path]::GetFileName($Path)
+    $isRootIndex = [string]::Equals([IO.Path]::GetFullPath($Path), (Join-Path $rootPath 'index.md'), [StringComparison]::OrdinalIgnoreCase)
     $reserved = ($name -ieq 'index.md' -or $name -ieq 'log.md')
     $lines = @(Get-Content -LiteralPath $Path -ErrorAction Stop)
     $has = ($lines.Count -gt 0 -and $lines[0].Trim() -eq '---')
@@ -214,13 +216,13 @@ function Test-Note($Path) {
     if ($inSources -and $itemActive -and -not $itemHasResource) {$missingSourceResources++}
     $frontmatterLines = if ($close -gt 1) { @($lines[1..($close-1)]) } else { @() }
     $errs=New-Object System.Collections.Generic.List[string]
-    if ($name -ieq 'index.md' -and $Path -notlike "$rootPath\index.md") { [void]$errs.Add('non-root index frontmatter forbidden') }
-    if ($name -ieq 'index.md' -and $Path -like "$rootPath\index.md") {
+    if ($name -ieq 'index.md' -and -not $isRootIndex) { [void]$errs.Add('non-root index frontmatter forbidden') }
+    if ($name -ieq 'index.md' -and $isRootIndex) {
         foreach($k in $fm.Keys){if($k -ne 'okf_version'){[void]$errs.Add('root index only okf_version')}}
         if ($fm.ContainsKey('okf_version') -and $fm['okf_version'] -ne '0.2') { [void]$errs.Add('root index okf_version must be 0.2') }
     }
     if ($name -ieq 'log.md') { [void]$errs.Add('log.md must not have frontmatter') }
-    if ($name -ine 'index.md' -or $Path -notlike "$rootPath\index.md") { if (-not $fm.ContainsKey('type') -or [string]::IsNullOrWhiteSpace($fm['type'])) { [void]$errs.Add('type missing/empty') } }
+    if ($name -ine 'index.md' -or -not $isRootIndex) { if (-not $fm.ContainsKey('type') -or [string]::IsNullOrWhiteSpace($fm['type'])) { [void]$errs.Add('type missing/empty') } }
     if ($fm.ContainsKey('status') -and $fm['status'] -notin @('draft','stable','deprecated')) { [void]$errs.Add('invalid status') }
     $verifiedField = Get-FrontmatterField $frontmatterLines 'verified'
     if ($verifiedField.Found) { $reason = Test-VerifiedField $verifiedField; if ($reason) { [void]$errs.Add($reason) } }
