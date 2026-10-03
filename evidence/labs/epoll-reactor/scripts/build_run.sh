@@ -1,25 +1,47 @@
 #!/usr/bin/env bash
-# build_run.sh — Linux 下编译并运行 epoll echo server（LT/ET 对照）
-# 用法: bash build_run.sh [port]
+# Linux-only correctness experiment. Optional port argument is retained; default 0
+# avoids collisions. Failure/timeout is nonzero, including through the tee pipeline.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-PORT="${1:-9000}"
-mkdir -p "$ROOT/build" "$ROOT/results"
-g++ -O2 -std=c++17 -Wall -Wextra "$ROOT/src/echo_server_epoll.cpp" -o "$ROOT/build/echo_server_epoll"
+PORT="${1:-0}"
+CXX="${CXX:-g++}"
+PYTHON="${PYTHON:-python3}"
+LOG="${LOG:-$ROOT/results/validation.log}"
+if (( $# > 1 )); then
+    printf 'usage: %s [port:0..65535]\n' "$0" >&2
+    exit 2
+fi
+mkdir -p "$(dirname "$LOG")"
+BUILD="$(mktemp -d "${TMPDIR:-/tmp}/epoll-reactor.XXXXXXXX")"
+cleanup() { rm -rf -- "$BUILD"; }
+trap cleanup EXIT
 
-echo "== LT 模式（后台启动，30 秒后结束）=="
-"$ROOT/build/echo_server_epoll" "$PORT" lt &
-SRV=$!
-sleep 1
-printf 'hello-lt\n' | timeout 2 bash -c "exec 3<>/dev/tcp/127.0.0.1/$PORT; cat >&3; head -c 64 <&3" || true
-kill $SRV 2>/dev/null || true
-wait $SRV 2>/dev/null || true
-
-echo "== ET 模式 =="
-"$ROOT/build/echo_server_epoll" "$PORT" et > "$ROOT/results/epoll_et_linux.txt" 2>&1 &
-SRV=$!
-sleep 1
-printf 'hello-et\n' | timeout 2 bash -c "exec 3<>/dev/tcp/127.0.0.1/$PORT; cat >&3; head -c 64 <&3" || true
-kill $SRV 2>/dev/null || true
-wait $SRV 2>/dev/null || true
-echo "结果: $(cat "$ROOT/results/epoll_et_linux.txt")"
+run() {
+    printf '+'
+    printf ' %q' "$@"
+    printf '\n'
+    "$@"
+}
+validate() {
+    printf 'epoll-reactor correctness validation\n'
+    run date -u '+UTC %Y-%m-%dT%H:%M:%SZ'
+    run uname -a
+    run "$CXX" --version
+    run "$PYTHON" --version
+    run bash --version
+    run timeout --version
+    run sha256sum "$ROOT/src/echo_server_epoll.cpp" "$ROOT/src/reactor_io.hpp" \
+        "$ROOT/tests/epoll_contract_test.cpp" "$ROOT/tests/tcp_integration_test.py" \
+        "$ROOT/scripts/build_run.sh"
+    printf 'NOTE: readiness counts and elapsed time are not performance evidence.\n'
+    run timeout 30 "$CXX" -O2 -g -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+        "$ROOT/src/echo_server_epoll.cpp" -o "$BUILD/echo_server_epoll"
+    run timeout 30 "$CXX" -O2 -g -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+        "$ROOT/tests/epoll_contract_test.cpp" -o "$BUILD/epoll_contract_test"
+    run timeout --kill-after=3s 25s "$BUILD/epoll_contract_test"
+    run timeout --kill-after=3s 120s "$PYTHON" -u "$ROOT/tests/tcp_integration_test.py" \
+        "$BUILD/echo_server_epoll" --port "$PORT"
+    printf 'PASS complete: 7 mechanism cases + 20 integration cases = 27 cases\n'
+}
+# Do not wrap validate in `if`, `!`, or `||`: that would disable errexit inside it.
+validate 2>&1 | tee "$LOG"

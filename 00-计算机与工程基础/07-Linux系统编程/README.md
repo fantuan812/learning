@@ -4,7 +4,7 @@ title: "07-Linux系统编程 · 分类"
 status: stable
 verified: []
 maturity: L2
-updated: 2026-08-20
+updated: 2026-10-03
 ---
 
 # 07-Linux系统编程 · 分类
@@ -19,7 +19,7 @@ updated: 2026-08-20
 
 | 逻辑序号 | 专题文件与 Canonical 路径 | 知识类型 | 成熟度 | 核心范畴与工程解答 |
 | :---: | :--- | :---: | :---: | :--- |
-| **01** | [01-Socket-Epoll与Reactor](01-Socket-Epoll与Reactor.md) | Architecture | L3 | 阻塞/非阻塞模式、Epoll 内核红黑树与就绪链表、水平触发（LT）vs 边缘触发（ET）正确读写逻辑、Reactor 事件循环、Partial Write 与背压处理。 |
+| **01** | [01-Socket-Epoll与Reactor](01-Socket-Epoll与Reactor.md) | Architecture | L3 | 阻塞/非阻塞模式、Epoll 内核红黑树与就绪链表、水平触发（LT）vs 边缘触发（ET）正确读写逻辑、Reactor 事件循环、Partial Write、半关闭与有界背压；[Linux 27 项契约实验](../../evidence/labs/epoll-reactor/README.md)，非生产容量基准。 |
 | **02** | [03-io_uring与异步I-O](03-io_uring与异步I-O.md) | Mechanism | L2 | 共享提交队列（SQ）与完成队列（CQ）环形缓冲区、内核轮询（SQPOLL）、零拷贝（Zero-Copy）、批量系统调用合并与高性能高吞吐场景应用。 |
 | **03** | [03-性能工具：插桩与perf采样](03-性能工具：插桩与perf采样.md) | Tutorial | L2 | 服务端耗时瓶颈定位：C++ RAII 细粒度计时插桩与 Linux perf 硬件性能计数器周期采样（IPC/Cache-Miss）、火焰图生成与热点闭环定位。 |
 

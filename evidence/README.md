@@ -23,7 +23,7 @@ maturity: L0
 | [tests/entry-core](tests/entry-core/README.md) | 进入游戏：SHA-256/HMAC-SHA256 对标准向量自校验、票据签发/验签/过期/重放、进入状态机幂等与回滚、DS 租约与栅栏令牌、JIP 状态追赶（乱序重排）与带宽/CPU 对比 | 已执行（MinGW g++ 16.1.0） | [01-角色进入游戏完整链路](../系统实战/01-角色进入游戏完整链路.md) |
 | [tests/gameplay-core](tests/gameplay-core/README.md) | Gameplay 核心机制：背包事务原子性/幂等、Buff 九类冲突、技能请求管线门禁与确定性重放、属性修正器聚合基准 | 已执行（MinGW g++ 16.1.0） | [05-背包道具完整链路](../系统实战/05-背包道具完整链路.md)、[03-技能释放完整链路](../系统实战/03-技能释放完整链路.md)、[04-Buff系统完整链路](../系统实战/04-Buff系统完整链路.md) |
 | [tests/damage-core](tests/damage-core/README.md) | 伤害与属性结算：修正器聚合顺序、五乘区、护甲曲线、真伤、护盾、过量、死亡/免疫拦截、单次上限、DOT 取整、确定性重放 + 结算基准 | 已执行（MinGW g++ 16.1.0） | [11-伤害与属性结算完整链路](../系统实战/11-伤害与属性结算完整链路.md) |
-| labs/epoll-reactor | epoll LT/ET + Reactor 最小实现 | 代码已建，待 Linux 执行 | [01-Socket-Epoll与Reactor](../00-计算机与工程基础/07-Linux系统编程/01-Socket-Epoll与Reactor.md) |
+| [labs/epoll-reactor](labs/epoll-reactor/README.md) | LT/ET 就绪、部分写、半关闭与有界背压 | 已执行（Linux/g++ 14.2，7+20 契约测试；非容量基准） | [01-Socket-Epoll与Reactor](../00-计算机与工程基础/07-Linux系统编程/01-Socket-Epoll与Reactor.md) |
 | [labs/profiling](labs/profiling/README.md) | 性能定位：6 种插桩样式开销（0.33ns 计数 → 310ns 日志）+ 帧预算换算、卡顿检测（中位数阈值+迟滞）、Tick 预算降级状态机 | 已执行（MinGW g++ 16.1.0） | [10-性能问题定位完整链路](../系统实战/10-性能问题定位完整链路.md) |
 | [labs/skinning-contract](labs/skinning-contract/README.md) | 蒙皮空间/inverse bind/palette/权重裁剪数值反例 | 已执行（Python 3.12/Linux，16 项；非 UE 运行） | [07-动画资产与骨骼基础](../游戏知识/04-动画系统/07-动画资产与骨骼基础.md) |
 | labs/page-fault | Page Fault / mmap 实验 | 规划（需 Linux） | W1-10 |

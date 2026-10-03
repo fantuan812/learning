@@ -117,6 +117,6 @@ updated: 2026-08-20
 - [游戏算法/](游戏算法/README.md) —— 游戏算法知识库（寻路图论 / 数学碰撞 / 概率采样 / 工程技巧 / 确定性基准）
 - [游戏AI/](游戏AI/README.md) —— 游戏 AI 知识库（决策架构 / 移动学习与服务端 / 评测与安全）
 - [游戏测试与质量/](游戏测试与质量/README.md) —— 游戏测试与质量保障知识库（测试策略 / 自动化 / 压测 / CI 门禁）
-- [evidence/](evidence/README.md) —— 实验与基准证据库（Demo / Test / Benchmark / 原始数据，供 L3~L5 文档引用）；新增 [protobuf schema 演进实验](evidence/labs/protobuf-evolution/README.md)（presence / 未知字段 / ProtoJSON，固定 Python runtime）；含 [蒙皮坐标与权重契约实验](evidence/labs/skinning-contract/README.md)（数学模型，非 UE 运行）
+- [evidence/](evidence/README.md) —— 实验与基准证据库（Demo / Test / Benchmark / 原始数据，供 L3~L5 文档引用）；新增 [protobuf schema 演进实验](evidence/labs/protobuf-evolution/README.md)（presence / 未知字段 / ProtoJSON，固定 Python runtime）；含 [蒙皮坐标与权重契约实验](evidence/labs/skinning-contract/README.md)（数学模型，非 UE 运行）；[epoll 契约实验](evidence/labs/epoll-reactor/README.md) 已在 Linux 执行（LT/ET、部分写、半关闭与有界背压）
 
 > 六大知识域 + 系统实战共同构成**游戏全栈**知识体系：计算机基础（00-计算机与工程基础）+ 客户端（游戏知识）+ 服务端（游戏服务端）+ 通用算法（游戏算法）+ AI（游戏AI）+ 质量保障（游戏测试与质量）；纵向由 系统实战 贯通，横向由 evidence 提供证据支撑。
