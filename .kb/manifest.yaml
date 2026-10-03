@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-02 (paths, bytes, lines, and maturity mechanically recalculated; Python equivalent).
+# Generated: 2026-10-03 (skinning-contract integrated after protobuf; paths, bytes, lines, and maturity mechanically recalculated).
 version: 4
 
 okf:
@@ -449,13 +449,13 @@ documents:
   "README.md":
     kind: README
     maturity: L2
-    bytes: 9378
+    bytes: 9497
     lines: 122
   "evidence/README.md":
     kind: README
     maturity: L0
-    bytes: 5393
-    lines: 44
+    bytes: 5679
+    lines: 45
   "evidence/algorithms/aoi/README.md":
     kind: README
     maturity: L0
@@ -496,6 +496,11 @@ documents:
     maturity: L4
     bytes: 8882
     lines: 124
+  "evidence/labs/skinning-contract/README.md":
+    kind: README
+    maturity: L4
+    bytes: 6476
+    lines: 94
   "evidence/server/tick-scheduler/README.md":
     kind: README
     maturity: L0
@@ -539,8 +544,8 @@ documents:
   "learning/log.md":
     kind: doc
     maturity: L0
-    bytes: 47819
-    lines: 55
+    bytes: 48950
+    lines: 57
   "log.md":
     kind: doc
     maturity: L2
@@ -574,7 +579,7 @@ documents:
   "references/仓库结构.md":
     kind: doc
     maturity: L2
-    bytes: 11592
+    bytes: 11670
     lines: 133
   "references/写作规范.md":
     kind: doc
@@ -1299,8 +1304,8 @@ documents:
   "游戏知识/04-动画系统/07-动画资产与骨骼基础.md":
     kind: doc
     maturity: L2
-    bytes: 24551
-    lines: 322
+    bytes: 31894
+    lines: 386
   "游戏知识/04-动画系统/08-动作战斗系统与打击手感.md":
     kind: doc
     maturity: L2
@@ -1309,8 +1314,8 @@ documents:
   "游戏知识/04-动画系统/README.md":
     kind: README
     maturity: L2
-    bytes: 8043
-    lines: 90
+    bytes: 8377
+    lines: 94
   "游戏知识/05-AI系统/01-行为树详解.md":
     kind: doc
     maturity: L2
