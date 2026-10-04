@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-04 (Inventory memory exception and remembered-result contracts; mechanically recalculated).
+# Generated: 2026-10-04 (Server inventory pseudocode and durable confirmation teaching; mechanically recalculated).
 version: 4
 
 okf:
@@ -1434,8 +1434,8 @@ documents:
   "知识/05-Gameplay与交互系统/背包装备与存档/01-背包与道具系统.md":
     kind: doc
     maturity: L2
-    bytes: 26112
-    lines: 428
+    bytes: 45193
+    lines: 530
   "知识/05-Gameplay与交互系统/背包装备与存档/05-背包道具完整链路.md":
     kind: doc
     maturity: L2
