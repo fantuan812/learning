@@ -147,38 +147,82 @@ runner在**新的本地输出目录**仍产生原始`samples.csv`和四份JSON�
 - gzip SHA-256：`a995624d3476a2994123e4f7d3274e19249c3706078a634ac7a008f0dc9e7019`
 - 原始3,902,044 bytes，归档538,644 bytes；原CSV另作整字节保全，不删除任何样本或改写数值
 
-从仓库根解压到**尚不存在**的外部路径，避免覆盖已有文件：
+以下两条归档配方只需 Python 3.10+ 标准库，不需编译器；从仓库根运行。默认读取本页归档目录，可用环境变量 `ASTAR_RESULT_DIR` 指向它的完整副本。hash 固定对应这一次归档，不能用新实验数据替换后仍声称验证了旧记录。
+
+恢复前设置 `ASTAR_RESTORE_CSV` 为**尚不存在的仓库外绝对文件路径**，其父目录须已存在。例如 Bash 中设置 `export ASTAR_RESTORE_CSV="$HOME/astar-restored-samples.csv"`；不设置就失败，不隐式写入固定的 `/tmp` 文件。先完成解压、原始 CSV 与归档 hash 校验，再以 `xb` 独占创建目标；坏输入不会创建恢复文件，已有目标拒绝覆盖。
+
+<!-- astar-archive-recipe:restore:start -->
 
 ```bash
 python3 -B - <<'PY'
-import gzip, hashlib
+import gzip, hashlib, os
 from pathlib import Path
-archive = Path("evidence/algorithms/astar/results/astar-measurement-2026-10-04/samples.csv.gz")
-raw = gzip.decompress(archive.read_bytes())
-assert hashlib.sha256(raw).hexdigest() == "d3db5d3b3e67d33415e6b38639ec6a4380e9f72eeb8eaea0e687f3e965c51a1b"
-with Path("/tmp/astar-restored-samples.csv").open("xb") as output:
+target_text = os.environ.get("ASTAR_RESTORE_CSV")
+if not target_text:
+    raise ValueError("set ASTAR_RESTORE_CSV to a new external absolute path")
+target = Path(target_text).expanduser()
+if not target.is_absolute() or target.resolve().is_relative_to(Path.cwd().resolve()):
+    raise ValueError("restore target must be an external absolute path")
+if target.exists() or target.is_symlink():
+    raise FileExistsError("restore target already exists; refusing overwrite")
+result = Path(os.environ.get("ASTAR_RESULT_DIR", "evidence/algorithms/astar/results/astar-measurement-2026-10-04"))
+archive = (result / "samples.csv.gz").read_bytes()
+raw = gzip.decompress(archive)
+if hashlib.sha256(raw).hexdigest() != "d3db5d3b3e67d33415e6b38639ec6a4380e9f72eeb8eaea0e687f3e965c51a1b":
+    raise ValueError("raw CSV SHA-256 mismatch")
+if hashlib.sha256(archive).hexdigest() != "a995624d3476a2994123e4f7d3274e19249c3706078a634ac7a008f0dc9e7019":
+    raise ValueError("archive SHA-256 mismatch")
+with target.open("xb") as output:
     output.write(raw)
+print(f"PASS: verified archived CSV restored to {target}")
 PY
 ```
 
-也可以不落地解压文件，直接用同一runner的统计函数重算全部摘要与schema校验；这只重算已有观测，不重新计时：
+<!-- astar-archive-recipe:restore:end -->
+
+也可以不落地解压文件：先核对固定 hash 和 `provenance.samples_sha256`，再把全部 **30,008 条数据记录（另有一行表头）**交给同一 runner 的 `summarize`，重算摘要及 CSV-derived 的 schema、样本覆盖和配对校验。逐项比较重新产生的值，而非读取原文件的 `PASS` 就算成功：
+
+<!-- astar-archive-recipe:recompute:start -->
 
 ```bash
 python3 -B - <<'PY'
-import csv, gzip, importlib.util, json
+import csv, gzip, hashlib, importlib.util, io, json, os
 from pathlib import Path
 base = Path("evidence/algorithms/astar")
-result = base / "results/astar-measurement-2026-10-04"
+result = Path(os.environ.get("ASTAR_RESULT_DIR", str(base / "results/astar-measurement-2026-10-04")))
+archive = (result / "samples.csv.gz").read_bytes()
+raw = gzip.decompress(archive)
+raw_sha256 = hashlib.sha256(raw).hexdigest()
+if raw_sha256 != "d3db5d3b3e67d33415e6b38639ec6a4380e9f72eeb8eaea0e687f3e965c51a1b":
+    raise ValueError("raw CSV SHA-256 mismatch")
+if hashlib.sha256(archive).hexdigest() != "a995624d3476a2994123e4f7d3274e19249c3706078a634ac7a008f0dc9e7019":
+    raise ValueError("archive SHA-256 mismatch")
+provenance = json.loads((result / "provenance.json").read_text(encoding="utf-8"))
+if provenance["samples_sha256"] != raw_sha256:
+    raise ValueError("provenance raw CSV SHA-256 mismatch")
 spec = importlib.util.spec_from_file_location("astar_runner", base / "scripts/run_benchmark.py")
 runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
-with gzip.open(result / "samples.csv.gz", "rt", encoding="utf-8", newline="") as source:
+with io.StringIO(raw.decode("utf-8"), newline="") as source:
     summary, validation = runner.summarize(list(csv.DictReader(source)), 1000, 5)
-assert summary == json.loads((result / "summary.json").read_text(encoding="utf-8"))
+if summary != json.loads((result / "summary.json").read_text(encoding="utf-8")):
+    raise ValueError("recomputed summary mismatch")
 saved = json.loads((result / "validation.json").read_text(encoding="utf-8"))
-assert all(saved[key] == value for key, value in validation.items())
-print("PASS: archived observations reproduce summary and sample validation")
+for key, value in validation.items():
+    if key not in saved or saved[key] != value:
+        raise ValueError(f"CSV-derived validation mismatch: {key}")
+print("PASS: CSV-derived summary and sample validation match archived observations; no C++ rerun")
 PY
+```
+
+<!-- astar-archive-recipe:recompute:end -->
+
+这两条配方用显式条件抛出异常：hash、gzip、JSON、摘要或派生校验不符均非零退出，失败前不打印 `PASS`；`python -O` 或继承的 `PYTHONOPTIMIZE=1` 不会删除这些检查。`validation.json` 中的 `functional`、`negative_lru_no_touch`、`runner_tests`、`existing_astar_contract` 是历史功能测试记录，**上述复算不重新认证它们，不运行 C++，不重测性能**。要重新获得这些证据，运行第 7 节完整入口。
+
+[归档配方回归](scripts/test_archive_recipe.py) 直接抽取上面两块的 Python 正文并按原 `-B -` 调用执行；标记缺失、重复或命令结构不符就失败，不在测试内维护另一份配方。测试在独占临时目录使用真实归档副本，覆盖正常解释器、显式 `-O`、继承优化环境，及篡改 raw、坏/截断 gzip、错误摘要/派生字段/hash、已有恢复目标等反例。Windows 同样直接运行 Python 正文，不依赖 Bash 或编译器。每次子进程的参数、输入指纹、模式、超时、stdout、stderr、退出码都保留在诊断输出中；可加 `--log-jsonl <新的仓库外日志路径>` 单独保存。入口失败必须传播非零，不能用管道或后续命令掩盖：
+
+```bash
+python3 -B evidence/algorithms/astar/scripts/test_archive_recipe.py
 ```
 
 ## 8. 关联与未验证边界

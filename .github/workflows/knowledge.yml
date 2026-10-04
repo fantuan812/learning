@@ -38,6 +38,12 @@ jobs:
         run: |
           python -B scripts/test_knowledge_validation.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: A-star archived-observation recipe integrity (Python, both platforms)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 5
+        run: |
+          python -B evidence/algorithms/astar/scripts/test_archive_recipe.py --log-jsonl "$env:RUNNER_TEMP/astar-archive-recipes-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT.jsonl"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: A-star contract experiment (Linux)
         if: ${{ !cancelled() && runner.os == 'Linux' }}
         run: |
@@ -147,6 +153,7 @@ jobs:
           path: |
             ${{ runner.temp }}/knowledge-validation.json
             ${{ runner.temp }}/quality-evidence-regressions.txt
+            ${{ runner.temp }}/astar-archive-recipes-${{ github.run_id }}-${{ github.run_attempt }}.jsonl
             ${{ runner.temp }}/astar-measurement-${{ github.run_id }}-${{ github.run_attempt }}/*.json
             ${{ runner.temp }}/astar-measurement-${{ github.run_id }}-${{ github.run_attempt }}/*.csv
             ${{ runner.temp }}/tick-policy-${{ github.run_id }}-${{ github.run_attempt }}/*.json
