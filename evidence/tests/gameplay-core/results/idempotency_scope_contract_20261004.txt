@@ -1,0 +1,2733 @@
+# SQLite scope contract evidence: synthetic temporary data only
+# Generated UTC: 2026-10-04T18:35:57.404149+00:00
+# Host: Linux x86_64
+# Python: 3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ] SQLite: 3.53.1
+# Scope: initialized temporary SQLite databases; no production migration/authentication/payment
+# Source snapshot hashes:
+# {"path": "evidence/tests/gameplay-core/src/idempotency_sqlite.py", "sha256": "8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c"}
+# {"path": "evidence/tests/gameplay-core/scripts/run_idempotency.sh", "sha256": "a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c"}
+# {"path": "evidence/tests/gameplay-core/scripts/test_idempotency_runner.py", "sha256": "cba68fe9f16cce4c16a1b0246b8421709bfe3b32151bf0b838c07679e37154d9"}
+# Negative controls intentionally assert known bad outcomes; their PASS is not production correctness.
+# Runner version failures simulate metadata; test timeouts, failures and EFBIG use real subprocess/file operations.
+
+# ===== command 1 =====
+# cwd: /workspace/scratch/234c8048d85d/learning-sqlite-contract-quality-20261004
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -c '
+from dataclasses import replace
+from pathlib import Path
+import hashlib, json, subprocess, sys, tempfile, types
+head = '"'"'3bac049b0194567040b75cda8622f6f3ec497f67'"'"'
+path = '"'"'evidence/tests/gameplay-core/src/idempotency_sqlite.py'"'"'
+source = subprocess.run(['"'"'git'"'"', '"'"'show'"'"', f'"'"'{head}:{path}'"'"'], check=True, capture_output=True).stdout
+print('"'"'baseline_commit='"'"' + head)
+print('"'"'baseline_source_sha256='"'"' + hashlib.sha256(source).hexdigest())
+module = types.ModuleType('"'"'frozen_idempotency'"'"'); module.__file__ = '"'"'frozen_idempotency.py'"'"'
+sys.modules[module.__name__] = module
+exec(compile(source, module.__file__, '"'"'exec'"'"'), module.__dict__)
+for label, req in [('"'"'null_operation'"'"',replace(module.Request(),operation=None)),
+                   ('"'"'legal_string'"'"',module.Request()),
+                   ('"'"'missing_key'"'"',replace(module.Request(),key=None))]:
+    with tempfile.TemporaryDirectory(prefix='"'"'baseline-idem-'"'"') as temp:
+        dbpath = str(Path(temp)/'"'"'test.sqlite'"'"'); module.initialize(dbpath)
+        replies=[]
+        for _ in range(2):
+            try: replies.append({'"'"'reply'"'"':json.loads(module.purchase(dbpath,req))})
+            except ValueError as exc: replies.append({'"'"'error'"'"':type(exc).__name__,'"'"'message'"'"':str(exc)})
+        db=module.connect(dbpath)
+        try:
+            wallet=db.execute('"'"'SELECT balance,items FROM wallet WHERE tenant=1 AND account=10'"'"').fetchone()
+            rows=db.execute('"'"'SELECT tenant,account,operation,intent_key,status,snapshot FROM idem'"'"').fetchall()
+        finally: db.close()
+        print(json.dumps({'"'"'case'"'"':label,'"'"'optimize'"'"':sys.flags.optimize,'"'"'replies'"'"':replies,'"'"'wallet'"'"':wallet,'"'"'idem'"'"':rows}))
+        expected={'"'"'null_operation'"'"':(800,2),'"'"'legal_string'"'"':(900,1),'"'"'missing_key'"'"':(1000,0)}[label]
+        if wallet != expected: raise RuntimeError('"'"'baseline mismatch'"'"')
+        if label=='"'"'null_operation'"'"' and (len(rows)!=2 or any(row[2] is not None or row[4]!='"'"'PROCESSING'"'"' or row[5] is not None for row in rows)):
+            raise RuntimeError('"'"'baseline NULL terminal mismatch'"'"')
+'
+# stdout_begin
+baseline_commit=3bac049b0194567040b75cda8622f6f3ec497f67
+baseline_source_sha256=cad173b8d91fe6b5a94603a55206d8b1aada0930f2c2d3307bc2d0277671895f
+{"case": "null_operation", "optimize": 0, "replies": [{"reply": {"balance": 900, "items": 1, "state": "SUCCEEDED"}}, {"reply": {"balance": 800, "items": 2, "state": "SUCCEEDED"}}], "wallet": [800, 2], "idem": [[1, 10, null, "intent-A", "PROCESSING", null], [1, 10, null, "intent-A", "PROCESSING", null]]}
+{"case": "legal_string", "optimize": 0, "replies": [{"reply": {"balance": 900, "items": 1, "state": "SUCCEEDED"}}, {"reply": {"balance": 900, "items": 1, "state": "SUCCEEDED"}}], "wallet": [900, 1], "idem": [[1, 10, "mall-buy-v1", "intent-A", "SUCCEEDED", "{\"balance\":900,\"items\":1,\"state\":\"SUCCEEDED\"}"]]}
+{"case": "missing_key", "optimize": 0, "replies": [{"error": "ValueError", "message": "missing or invalid required idempotency key"}, {"error": "ValueError", "message": "missing or invalid required idempotency key"}], "wallet": [1000, 0], "idem": []}
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# exit_code: 0
+
+# ===== command 2 =====
+# cwd: /workspace/scratch/234c8048d85d/learning-sqlite-contract-quality-20261004
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -O -c '
+from dataclasses import replace
+from pathlib import Path
+import hashlib, json, subprocess, sys, tempfile, types
+head = '"'"'3bac049b0194567040b75cda8622f6f3ec497f67'"'"'
+path = '"'"'evidence/tests/gameplay-core/src/idempotency_sqlite.py'"'"'
+source = subprocess.run(['"'"'git'"'"', '"'"'show'"'"', f'"'"'{head}:{path}'"'"'], check=True, capture_output=True).stdout
+print('"'"'baseline_commit='"'"' + head)
+print('"'"'baseline_source_sha256='"'"' + hashlib.sha256(source).hexdigest())
+module = types.ModuleType('"'"'frozen_idempotency'"'"'); module.__file__ = '"'"'frozen_idempotency.py'"'"'
+sys.modules[module.__name__] = module
+exec(compile(source, module.__file__, '"'"'exec'"'"'), module.__dict__)
+for label, req in [('"'"'null_operation'"'"',replace(module.Request(),operation=None)),
+                   ('"'"'legal_string'"'"',module.Request()),
+                   ('"'"'missing_key'"'"',replace(module.Request(),key=None))]:
+    with tempfile.TemporaryDirectory(prefix='"'"'baseline-idem-'"'"') as temp:
+        dbpath = str(Path(temp)/'"'"'test.sqlite'"'"'); module.initialize(dbpath)
+        replies=[]
+        for _ in range(2):
+            try: replies.append({'"'"'reply'"'"':json.loads(module.purchase(dbpath,req))})
+            except ValueError as exc: replies.append({'"'"'error'"'"':type(exc).__name__,'"'"'message'"'"':str(exc)})
+        db=module.connect(dbpath)
+        try:
+            wallet=db.execute('"'"'SELECT balance,items FROM wallet WHERE tenant=1 AND account=10'"'"').fetchone()
+            rows=db.execute('"'"'SELECT tenant,account,operation,intent_key,status,snapshot FROM idem'"'"').fetchall()
+        finally: db.close()
+        print(json.dumps({'"'"'case'"'"':label,'"'"'optimize'"'"':sys.flags.optimize,'"'"'replies'"'"':replies,'"'"'wallet'"'"':wallet,'"'"'idem'"'"':rows}))
+        expected={'"'"'null_operation'"'"':(800,2),'"'"'legal_string'"'"':(900,1),'"'"'missing_key'"'"':(1000,0)}[label]
+        if wallet != expected: raise RuntimeError('"'"'baseline mismatch'"'"')
+        if label=='"'"'null_operation'"'"' and (len(rows)!=2 or any(row[2] is not None or row[4]!='"'"'PROCESSING'"'"' or row[5] is not None for row in rows)):
+            raise RuntimeError('"'"'baseline NULL terminal mismatch'"'"')
+'
+# stdout_begin
+baseline_commit=3bac049b0194567040b75cda8622f6f3ec497f67
+baseline_source_sha256=cad173b8d91fe6b5a94603a55206d8b1aada0930f2c2d3307bc2d0277671895f
+{"case": "null_operation", "optimize": 1, "replies": [{"reply": {"balance": 900, "items": 1, "state": "SUCCEEDED"}}, {"reply": {"balance": 800, "items": 2, "state": "SUCCEEDED"}}], "wallet": [800, 2], "idem": [[1, 10, null, "intent-A", "PROCESSING", null], [1, 10, null, "intent-A", "PROCESSING", null]]}
+{"case": "legal_string", "optimize": 1, "replies": [{"reply": {"balance": 900, "items": 1, "state": "SUCCEEDED"}}, {"reply": {"balance": 900, "items": 1, "state": "SUCCEEDED"}}], "wallet": [900, 1], "idem": [[1, 10, "mall-buy-v1", "intent-A", "SUCCEEDED", "{\"balance\":900,\"items\":1,\"state\":\"SUCCEEDED\"}"]]}
+{"case": "missing_key", "optimize": 1, "replies": [{"error": "ValueError", "message": "missing or invalid required idempotency key"}, {"error": "ValueError", "message": "missing or invalid required idempotency key"}], "wallet": [1000, 0], "idem": []}
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# exit_code: 0
+
+# ===== command 3 =====
+# cwd: /workspace/scratch/234c8048d85d/learning-sqlite-contract-quality-20261004
+# command: bash -n evidence/tests/gameplay-core/scripts/run_idempotency.sh
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# exit_code: 0
+
+# ===== command 4 =====
+# cwd: /workspace/scratch/234c8048d85d/learning-sqlite-contract-quality-20261004
+# command: bash evidence/tests/gameplay-core/scripts/run_idempotency.sh /workspace/scratch/234c8048d85d/content-audit-20261004/sqlite-author-output/final-model-v2.log
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:35:57.796145+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: 8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 60.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B /workspace/scratch/234c8048d85d/learning-sqlite-contract-quality-20261004/evidence/tests/gameplay-core/src/idempotency_sqlite.py
+# stdout_begin
+python=3.12.14 sqlite=3.53.1 optimize=0
+
+# stdout_end
+# stderr_begin
+test_01_first_commit_and_same_key_replay (__main__.IdempotencyTests.test_01_first_commit_and_same_key_replay) ... ok
+test_02_same_key_changed_payload_is_conflict (__main__.IdempotencyTests.test_02_same_key_changed_payload_is_conflict) ... ok
+test_03_authenticated_account_scope_isolated (__main__.IdempotencyTests.test_03_authenticated_account_scope_isolated) ... ok
+test_04_tenant_scope_isolated (__main__.IdempotencyTests.test_04_tenant_scope_isolated) ... ok
+test_05_new_intent_is_a_new_purchase (__main__.IdempotencyTests.test_05_new_intent_is_a_new_purchase) ... ok
+test_06_rejection_snapshot_does_not_change_after_topup (__main__.IdempotencyTests.test_06_rejection_snapshot_does_not_change_after_topup) ... ok
+test_07_failure_after_debit_rolls_back_everything (__main__.IdempotencyTests.test_07_failure_after_debit_rolls_back_everything) ... ok
+test_08_process_exit_before_commit_leaves_no_effect (__main__.IdempotencyTests.test_08_process_exit_before_commit_leaves_no_effect) ... ok
+test_09_process_exit_after_commit_replays_saved_result (__main__.IdempotencyTests.test_09_process_exit_after_commit_replays_saved_result) ... ok
+test_10_inflight_writer_is_busy_not_permission_to_duplicate (__main__.IdempotencyTests.test_10_inflight_writer_is_busy_not_permission_to_duplicate) ... ok
+test_11_eight_concurrent_connections_commit_one_effect (__main__.IdempotencyTests.test_11_eight_concurrent_connections_commit_one_effect) ... ok
+test_12_negative_control_split_commit_duplicates (__main__.IdempotencyTests.test_12_negative_control_split_commit_duplicates) ... ok
+test_13_negative_control_pruning_all_memory_allows_old_key (__main__.IdempotencyTests.test_13_negative_control_pruning_all_memory_allows_old_key) ... ok
+test_14_stale_epoch_rejected_and_current_epoch_only_once (__main__.IdempotencyTests.test_14_stale_epoch_rejected_and_current_epoch_only_once) ... ok
+test_15_fencing_phase_and_effect_roll_back_together (__main__.IdempotencyTests.test_15_fencing_phase_and_effect_roll_back_together) ... ok
+test_16_invalid_request_does_not_create_record (__main__.IdempotencyTests.test_16_invalid_request_does_not_create_record) ... ok
+test_17_operation_scope_isolated (__main__.IdempotencyTests.test_17_operation_scope_isolated) ... ok
+test_18_committed_processing_is_not_reexecuted (__main__.IdempotencyTests.test_18_committed_processing_is_not_reexecuted) ... ok
+test_19_missing_required_key_cannot_bypass_gate (__main__.IdempotencyTests.test_19_missing_required_key_cannot_bypass_gate) ... ok
+test_20_invalid_operation_rejected_before_connection (__main__.IdempotencyTests.test_20_invalid_operation_rejected_before_connection) ... ok
+test_21_identity_is_exact_int_in_sqlite_signed64_domain (__main__.IdempotencyTests.test_21_identity_is_exact_int_in_sqlite_signed64_domain) ... ok
+test_22_signed64_endpoints_zero_and_negative_are_representable (__main__.IdempotencyTests.test_22_signed64_endpoints_zero_and_negative_are_representable) ... ok
+test_23_key_equality_preserves_case_space_unicode_and_nul (__main__.IdempotencyTests.test_23_key_equality_preserves_case_space_unicode_and_nul) ... ok
+test_24_operation_is_nonempty_without_silent_normalization (__main__.IdempotencyTests.test_24_operation_is_nonempty_without_silent_normalization) ... ok
+test_25_schema_rejects_null_for_all_six_scope_columns (__main__.IdempotencyTests.test_25_schema_rejects_null_for_all_six_scope_columns) ... ok
+test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection (__main__.IdempotencyTests.test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection) ... ok
+test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder (__main__.IdempotencyTests.test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder) ... ok
+test_28_hook_new_connection_reentry_before_and_after_commit (__main__.IdempotencyTests.test_28_hook_new_connection_reentry_before_and_after_commit) ... ok
+test_29_explicit_sql_transaction_control (__main__.IdempotencyTests.test_29_explicit_sql_transaction_control) ... ok
+test_30_invalid_key_and_payload_rejected_before_connection (__main__.IdempotencyTests.test_30_invalid_key_and_payload_rejected_before_connection) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 0.212s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 30
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -O /workspace/scratch/234c8048d85d/learning-sqlite-contract-quality-20261004/evidence/tests/gameplay-core/src/idempotency_sqlite.py
+# stdout_begin
+python=3.12.14 sqlite=3.53.1 optimize=1
+
+# stdout_end
+# stderr_begin
+test_01_first_commit_and_same_key_replay (__main__.IdempotencyTests.test_01_first_commit_and_same_key_replay) ... ok
+test_02_same_key_changed_payload_is_conflict (__main__.IdempotencyTests.test_02_same_key_changed_payload_is_conflict) ... ok
+test_03_authenticated_account_scope_isolated (__main__.IdempotencyTests.test_03_authenticated_account_scope_isolated) ... ok
+test_04_tenant_scope_isolated (__main__.IdempotencyTests.test_04_tenant_scope_isolated) ... ok
+test_05_new_intent_is_a_new_purchase (__main__.IdempotencyTests.test_05_new_intent_is_a_new_purchase) ... ok
+test_06_rejection_snapshot_does_not_change_after_topup (__main__.IdempotencyTests.test_06_rejection_snapshot_does_not_change_after_topup) ... ok
+test_07_failure_after_debit_rolls_back_everything (__main__.IdempotencyTests.test_07_failure_after_debit_rolls_back_everything) ... ok
+test_08_process_exit_before_commit_leaves_no_effect (__main__.IdempotencyTests.test_08_process_exit_before_commit_leaves_no_effect) ... ok
+test_09_process_exit_after_commit_replays_saved_result (__main__.IdempotencyTests.test_09_process_exit_after_commit_replays_saved_result) ... ok
+test_10_inflight_writer_is_busy_not_permission_to_duplicate (__main__.IdempotencyTests.test_10_inflight_writer_is_busy_not_permission_to_duplicate) ... ok
+test_11_eight_concurrent_connections_commit_one_effect (__main__.IdempotencyTests.test_11_eight_concurrent_connections_commit_one_effect) ... ok
+test_12_negative_control_split_commit_duplicates (__main__.IdempotencyTests.test_12_negative_control_split_commit_duplicates) ... ok
+test_13_negative_control_pruning_all_memory_allows_old_key (__main__.IdempotencyTests.test_13_negative_control_pruning_all_memory_allows_old_key) ... ok
+test_14_stale_epoch_rejected_and_current_epoch_only_once (__main__.IdempotencyTests.test_14_stale_epoch_rejected_and_current_epoch_only_once) ... ok
+test_15_fencing_phase_and_effect_roll_back_together (__main__.IdempotencyTests.test_15_fencing_phase_and_effect_roll_back_together) ... ok
+test_16_invalid_request_does_not_create_record (__main__.IdempotencyTests.test_16_invalid_request_does_not_create_record) ... ok
+test_17_operation_scope_isolated (__main__.IdempotencyTests.test_17_operation_scope_isolated) ... ok
+test_18_committed_processing_is_not_reexecuted (__main__.IdempotencyTests.test_18_committed_processing_is_not_reexecuted) ... ok
+test_19_missing_required_key_cannot_bypass_gate (__main__.IdempotencyTests.test_19_missing_required_key_cannot_bypass_gate) ... ok
+test_20_invalid_operation_rejected_before_connection (__main__.IdempotencyTests.test_20_invalid_operation_rejected_before_connection) ... ok
+test_21_identity_is_exact_int_in_sqlite_signed64_domain (__main__.IdempotencyTests.test_21_identity_is_exact_int_in_sqlite_signed64_domain) ... ok
+test_22_signed64_endpoints_zero_and_negative_are_representable (__main__.IdempotencyTests.test_22_signed64_endpoints_zero_and_negative_are_representable) ... ok
+test_23_key_equality_preserves_case_space_unicode_and_nul (__main__.IdempotencyTests.test_23_key_equality_preserves_case_space_unicode_and_nul) ... ok
+test_24_operation_is_nonempty_without_silent_normalization (__main__.IdempotencyTests.test_24_operation_is_nonempty_without_silent_normalization) ... ok
+test_25_schema_rejects_null_for_all_six_scope_columns (__main__.IdempotencyTests.test_25_schema_rejects_null_for_all_six_scope_columns) ... ok
+test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection (__main__.IdempotencyTests.test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection) ... ok
+test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder (__main__.IdempotencyTests.test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder) ... ok
+test_28_hook_new_connection_reentry_before_and_after_commit (__main__.IdempotencyTests.test_28_hook_new_connection_reentry_before_and_after_commit) ... ok
+test_29_explicit_sql_transaction_control (__main__.IdempotencyTests.test_29_explicit_sql_transaction_control) ... ok
+test_30_invalid_key_and_payload_rejected_before_connection (__main__.IdempotencyTests.test_30_invalid_key_and_payload_rejected_before_connection) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 0.598s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 30
+# runner_exit_code: 0 (both nonempty unittest runs verified)
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# exit_code: 0
+
+# ===== command 5 =====
+# cwd: /workspace/scratch/234c8048d85d/learning-sqlite-contract-quality-20261004
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B evidence/tests/gameplay-core/scripts/test_idempotency_runner.py
+# stdout_begin
+runner_regression_python=3.12.14 optimize=0
+
+# case: __main__.RunnerTests.test_01_actual_sqlite_suite_runs_normal_and_optimized_from_space_paths call=1
+# command: bash '/tmp/learning idem runner xwiisigh/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner xwiisigh/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:35:59.057507+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: 8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner xwiisigh/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+python=3.12.14 sqlite=3.53.1 optimize=0
+
+# stdout_end
+# stderr_begin
+test_01_first_commit_and_same_key_replay (__main__.IdempotencyTests.test_01_first_commit_and_same_key_replay) ... ok
+test_02_same_key_changed_payload_is_conflict (__main__.IdempotencyTests.test_02_same_key_changed_payload_is_conflict) ... ok
+test_03_authenticated_account_scope_isolated (__main__.IdempotencyTests.test_03_authenticated_account_scope_isolated) ... ok
+test_04_tenant_scope_isolated (__main__.IdempotencyTests.test_04_tenant_scope_isolated) ... ok
+test_05_new_intent_is_a_new_purchase (__main__.IdempotencyTests.test_05_new_intent_is_a_new_purchase) ... ok
+test_06_rejection_snapshot_does_not_change_after_topup (__main__.IdempotencyTests.test_06_rejection_snapshot_does_not_change_after_topup) ... ok
+test_07_failure_after_debit_rolls_back_everything (__main__.IdempotencyTests.test_07_failure_after_debit_rolls_back_everything) ... ok
+test_08_process_exit_before_commit_leaves_no_effect (__main__.IdempotencyTests.test_08_process_exit_before_commit_leaves_no_effect) ... ok
+test_09_process_exit_after_commit_replays_saved_result (__main__.IdempotencyTests.test_09_process_exit_after_commit_replays_saved_result) ... ok
+test_10_inflight_writer_is_busy_not_permission_to_duplicate (__main__.IdempotencyTests.test_10_inflight_writer_is_busy_not_permission_to_duplicate) ... ok
+test_11_eight_concurrent_connections_commit_one_effect (__main__.IdempotencyTests.test_11_eight_concurrent_connections_commit_one_effect) ... ok
+test_12_negative_control_split_commit_duplicates (__main__.IdempotencyTests.test_12_negative_control_split_commit_duplicates) ... ok
+test_13_negative_control_pruning_all_memory_allows_old_key (__main__.IdempotencyTests.test_13_negative_control_pruning_all_memory_allows_old_key) ... ok
+test_14_stale_epoch_rejected_and_current_epoch_only_once (__main__.IdempotencyTests.test_14_stale_epoch_rejected_and_current_epoch_only_once) ... ok
+test_15_fencing_phase_and_effect_roll_back_together (__main__.IdempotencyTests.test_15_fencing_phase_and_effect_roll_back_together) ... ok
+test_16_invalid_request_does_not_create_record (__main__.IdempotencyTests.test_16_invalid_request_does_not_create_record) ... ok
+test_17_operation_scope_isolated (__main__.IdempotencyTests.test_17_operation_scope_isolated) ... ok
+test_18_committed_processing_is_not_reexecuted (__main__.IdempotencyTests.test_18_committed_processing_is_not_reexecuted) ... ok
+test_19_missing_required_key_cannot_bypass_gate (__main__.IdempotencyTests.test_19_missing_required_key_cannot_bypass_gate) ... ok
+test_20_invalid_operation_rejected_before_connection (__main__.IdempotencyTests.test_20_invalid_operation_rejected_before_connection) ... ok
+test_21_identity_is_exact_int_in_sqlite_signed64_domain (__main__.IdempotencyTests.test_21_identity_is_exact_int_in_sqlite_signed64_domain) ... ok
+test_22_signed64_endpoints_zero_and_negative_are_representable (__main__.IdempotencyTests.test_22_signed64_endpoints_zero_and_negative_are_representable) ... ok
+test_23_key_equality_preserves_case_space_unicode_and_nul (__main__.IdempotencyTests.test_23_key_equality_preserves_case_space_unicode_and_nul) ... ok
+test_24_operation_is_nonempty_without_silent_normalization (__main__.IdempotencyTests.test_24_operation_is_nonempty_without_silent_normalization) ... ok
+test_25_schema_rejects_null_for_all_six_scope_columns (__main__.IdempotencyTests.test_25_schema_rejects_null_for_all_six_scope_columns) ... ok
+test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection (__main__.IdempotencyTests.test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection) ... ok
+test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder (__main__.IdempotencyTests.test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder) ... ok
+test_28_hook_new_connection_reentry_before_and_after_commit (__main__.IdempotencyTests.test_28_hook_new_connection_reentry_before_and_after_commit) ... ok
+test_29_explicit_sql_transaction_control (__main__.IdempotencyTests.test_29_explicit_sql_transaction_control) ... ok
+test_30_invalid_key_and_payload_rejected_before_connection (__main__.IdempotencyTests.test_30_invalid_key_and_payload_rejected_before_connection) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 0.236s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 30
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -O '/tmp/learning idem runner xwiisigh/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+python=3.12.14 sqlite=3.53.1 optimize=1
+
+# stdout_end
+# stderr_begin
+test_01_first_commit_and_same_key_replay (__main__.IdempotencyTests.test_01_first_commit_and_same_key_replay) ... ok
+test_02_same_key_changed_payload_is_conflict (__main__.IdempotencyTests.test_02_same_key_changed_payload_is_conflict) ... ok
+test_03_authenticated_account_scope_isolated (__main__.IdempotencyTests.test_03_authenticated_account_scope_isolated) ... ok
+test_04_tenant_scope_isolated (__main__.IdempotencyTests.test_04_tenant_scope_isolated) ... ok
+test_05_new_intent_is_a_new_purchase (__main__.IdempotencyTests.test_05_new_intent_is_a_new_purchase) ... ok
+test_06_rejection_snapshot_does_not_change_after_topup (__main__.IdempotencyTests.test_06_rejection_snapshot_does_not_change_after_topup) ... ok
+test_07_failure_after_debit_rolls_back_everything (__main__.IdempotencyTests.test_07_failure_after_debit_rolls_back_everything) ... ok
+test_08_process_exit_before_commit_leaves_no_effect (__main__.IdempotencyTests.test_08_process_exit_before_commit_leaves_no_effect) ... ok
+test_09_process_exit_after_commit_replays_saved_result (__main__.IdempotencyTests.test_09_process_exit_after_commit_replays_saved_result) ... ok
+test_10_inflight_writer_is_busy_not_permission_to_duplicate (__main__.IdempotencyTests.test_10_inflight_writer_is_busy_not_permission_to_duplicate) ... ok
+test_11_eight_concurrent_connections_commit_one_effect (__main__.IdempotencyTests.test_11_eight_concurrent_connections_commit_one_effect) ... ok
+test_12_negative_control_split_commit_duplicates (__main__.IdempotencyTests.test_12_negative_control_split_commit_duplicates) ... ok
+test_13_negative_control_pruning_all_memory_allows_old_key (__main__.IdempotencyTests.test_13_negative_control_pruning_all_memory_allows_old_key) ... ok
+test_14_stale_epoch_rejected_and_current_epoch_only_once (__main__.IdempotencyTests.test_14_stale_epoch_rejected_and_current_epoch_only_once) ... ok
+test_15_fencing_phase_and_effect_roll_back_together (__main__.IdempotencyTests.test_15_fencing_phase_and_effect_roll_back_together) ... ok
+test_16_invalid_request_does_not_create_record (__main__.IdempotencyTests.test_16_invalid_request_does_not_create_record) ... ok
+test_17_operation_scope_isolated (__main__.IdempotencyTests.test_17_operation_scope_isolated) ... ok
+test_18_committed_processing_is_not_reexecuted (__main__.IdempotencyTests.test_18_committed_processing_is_not_reexecuted) ... ok
+test_19_missing_required_key_cannot_bypass_gate (__main__.IdempotencyTests.test_19_missing_required_key_cannot_bypass_gate) ... ok
+test_20_invalid_operation_rejected_before_connection (__main__.IdempotencyTests.test_20_invalid_operation_rejected_before_connection) ... ok
+test_21_identity_is_exact_int_in_sqlite_signed64_domain (__main__.IdempotencyTests.test_21_identity_is_exact_int_in_sqlite_signed64_domain) ... ok
+test_22_signed64_endpoints_zero_and_negative_are_representable (__main__.IdempotencyTests.test_22_signed64_endpoints_zero_and_negative_are_representable) ... ok
+test_23_key_equality_preserves_case_space_unicode_and_nul (__main__.IdempotencyTests.test_23_key_equality_preserves_case_space_unicode_and_nul) ... ok
+test_24_operation_is_nonempty_without_silent_normalization (__main__.IdempotencyTests.test_24_operation_is_nonempty_without_silent_normalization) ... ok
+test_25_schema_rejects_null_for_all_six_scope_columns (__main__.IdempotencyTests.test_25_schema_rejects_null_for_all_six_scope_columns) ... ok
+test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection (__main__.IdempotencyTests.test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection) ... ok
+test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder (__main__.IdempotencyTests.test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder) ... ok
+test_28_hook_new_connection_reentry_before_and_after_commit (__main__.IdempotencyTests.test_28_hook_new_connection_reentry_before_and_after_commit) ... ok
+test_29_explicit_sql_transaction_control (__main__.IdempotencyTests.test_29_explicit_sql_transaction_control) ... ok
+test_30_invalid_key_and_payload_rejected_before_connection (__main__.IdempotencyTests.test_30_invalid_key_and_payload_rejected_before_connection) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 0.636s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 30
+# runner_exit_code: 0 (both nonempty unittest runs verified)
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 0
+
+# case: __main__.RunnerTests.test_02_actual_unittest_failure_in_each_mode_propagates call=1
+# command: bash '/tmp/learning idem runner zacu9bqy/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner zacu9bqy/failure-0.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '4236e4cbf96903a1fb26e74871536e34e47eef4483179ae3f5b22586a1c6b9a6', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:00.362843+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: 4236e4cbf96903a1fb26e74871536e34e47eef4483179ae3f5b22586a1c6b9a6
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner zacu9bqy/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+test_actual_failure (__main__.FailingTest.test_actual_failure) ... FAIL
+
+======================================================================
+FAIL: test_actual_failure (__main__.FailingTest.test_actual_failure)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/learning idem runner zacu9bqy/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py", line 4, in test_actual_failure
+    self.assertNotEqual(sys.flags.optimize, 0, "intentional unittest failure")
+AssertionError: 0 == 0 : intentional unittest failure
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (failures=1)
+
+# stderr_end
+# process_exit_code: 1
+# runner_exit_code: 1
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_02_actual_unittest_failure_in_each_mode_propagates call=2
+# command: bash '/tmp/learning idem runner zacu9bqy/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner zacu9bqy/failure-1.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': 'd97b57c8e43dd2c1085253fba95bf1a00c40e4f507bda9c1c38a199c946c9b3a', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:00.453798+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: d97b57c8e43dd2c1085253fba95bf1a00c40e4f507bda9c1c38a199c946c9b3a
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner zacu9bqy/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+test_actual_failure (__main__.FailingTest.test_actual_failure) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 1
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -O '/tmp/learning idem runner zacu9bqy/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+test_actual_failure (__main__.FailingTest.test_actual_failure) ... FAIL
+
+======================================================================
+FAIL: test_actual_failure (__main__.FailingTest.test_actual_failure)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/learning idem runner zacu9bqy/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py", line 4, in test_actual_failure
+    self.assertNotEqual(sys.flags.optimize, 1, "intentional unittest failure")
+AssertionError: 1 == 1 : intentional unittest failure
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (failures=1)
+
+# stderr_end
+# process_exit_code: 1
+# runner_exit_code: 1
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_03_nonzero_exit_code_is_preserved call=1
+# command: bash '/tmp/learning idem runner zjl24x8w/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner zjl24x8w/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '3d4d5350194cde7f19726705d0b2777d6e25bab004dcce4973a98e997c37245a', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:00.702101+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: 3d4d5350194cde7f19726705d0b2777d6e25bab004dcce4973a98e997c37245a
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner zjl24x8w/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+deliberate exit 23
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# process_exit_code: 23
+# runner_exit_code: 23
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 23
+
+# case: __main__.RunnerTests.test_04_actual_timeout_in_each_mode_is_failure call=1
+# command: bash '/tmp/learning idem runner uw4m43pg/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner uw4m43pg/timeout-0.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': 'cf3acea3082a9502f3eeca20990ea90f26fbc4e370be4bf7b749900004df3d78', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='0.5' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:00.746359+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: cf3acea3082a9502f3eeca20990ea90f26fbc4e370be4bf7b749900004df3d78
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 0.5
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner uw4m43pg/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+entered actual sleeping test
+
+# stdout_end
+# stderr_begin
+test_real_sleep (__main__.SlowTest.test_real_sleep) ... 
+# stderr_end
+# process_exit_code: -9
+# timed_out: true
+# runner_exit_code: 124
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 124
+
+# case: __main__.RunnerTests.test_04_actual_timeout_in_each_mode_is_failure call=2
+# command: bash '/tmp/learning idem runner uw4m43pg/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner uw4m43pg/timeout-1.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '39a0d2a6e6e295857f810bc4596b4b7f77154b70b2fbf802ea0ef83bbc9d8b6d', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='0.5' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:01.285290+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: 39a0d2a6e6e295857f810bc4596b4b7f77154b70b2fbf802ea0ef83bbc9d8b6d
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 0.5
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner uw4m43pg/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+test_real_sleep (__main__.SlowTest.test_real_sleep) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 1
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -O '/tmp/learning idem runner uw4m43pg/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+entered actual sleeping test
+
+# stdout_end
+# stderr_begin
+test_real_sleep (__main__.SlowTest.test_real_sleep) ... 
+# stderr_end
+# process_exit_code: -9
+# timed_out: true
+# runner_exit_code: 124
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 124
+
+# case: __main__.RunnerTests.test_05_simulated_unsupported_python_version_preflight call=1
+# command: bash '/tmp/learning idem runner p2qzdf8z/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner p2qzdf8z/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/tmp/learning idem runner p2qzdf8z/version fixture python' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: requires Python 3.11+ and SQLite 3.35+
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_06_simulated_unsupported_sqlite_version_preflight call=1
+# command: bash '/tmp/learning idem runner 3h9xytzk/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner 3h9xytzk/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/tmp/learning idem runner 3h9xytzk/version fixture python' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: requires Python 3.11+ and SQLite 3.35+
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_07_missing_python_is_failure call=1
+# command: bash '/tmp/learning idem runner wtw22pdk/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner wtw22pdk/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/tmp/learning idem runner wtw22pdk/absent python' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+/tmp/learning idem runner wtw22pdk/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh: line 12: /tmp/learning idem runner wtw22pdk/absent python: No such file or directory
+
+# stderr_end
+# actual_exit_code: 127
+
+# case: __main__.RunnerTests.test_08_existing_file_is_not_overwritten call=1
+# command: bash '/tmp/learning idem runner ynbvvvye/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner ynbvvvye/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: refusing existing output (file, directory, or symlink)
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_09_existing_directory_is_not_reused call=1
+# command: bash '/tmp/learning idem runner wya1vnzp/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner wya1vnzp/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: refusing existing output (file, directory, or symlink)
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_10_existing_and_dangling_symlinks_are_rejected call=1
+# command: bash '/tmp/learning idem runner drnls3fp/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner drnls3fp/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: refusing existing output (file, directory, or symlink)
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_10_existing_and_dangling_symlinks_are_rejected call=2
+# command: bash '/tmp/learning idem runner drnls3fp/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner drnls3fp/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: refusing existing output (file, directory, or symlink)
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_11_old_raw_and_new_repository_outputs_are_rejected call=1
+# command: bash '/tmp/learning idem runner se1cyk2v/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner se1cyk2v/fixture repo/evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: refusing existing output (file, directory, or symlink)
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_11_old_raw_and_new_repository_outputs_are_rejected call=2
+# command: bash '/tmp/learning idem runner se1cyk2v/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner se1cyk2v/fixture repo/evidence/tests/gameplay-core/results/new.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: output must be outside the repository, including symlink aliases
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_12_symlink_parent_into_repository_is_rejected call=1
+# command: bash '/tmp/learning idem runner mi8vdwrv/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner mi8vdwrv/repo alias/new.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: output must be outside the repository, including symlink aliases
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_13_missing_parent_and_file_parent_cannot_be_written call=1
+# command: bash '/tmp/learning idem runner vb04p0sh/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner vb04p0sh/bad parent/new.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: FileNotFoundError: [Errno 2] No such file or directory: '/tmp/learning idem runner vb04p0sh/bad parent'
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_13_missing_parent_and_file_parent_cannot_be_written call=2
+# command: bash '/tmp/learning idem runner vb04p0sh/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner vb04p0sh/bad parent/new.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: NotADirectoryError: [Errno 20] Not a directory: '/tmp/learning idem runner vb04p0sh/bad parent/new.log'
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_14_actual_log_write_limit_failure_cannot_report_success call=1
+# command: bash '/tmp/learning idem runner w_ui9h3t/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner w_ui9h3t/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/tmp/learning idem runner w_ui9h3t/limited python' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:02.258804+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: 8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner w_ui9h3t/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+python=3.12.14 sqlite=3.53.1 optimize=0
+
+# stdout_end
+# stderr_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: OSError: [Errno 27] File too large
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_15_required_absolute_output_argument call=1
+# command: bash '/tmp/learning idem runner 4fudvl90/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+usage: run_idempotency.sh /absolute/outside-repository/new-output.log
+
+# stderr_end
+# actual_exit_code: 64
+
+# case: __main__.RunnerTests.test_15_required_absolute_output_argument call=2
+# command: bash '/tmp/learning idem runner 4fudvl90/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' a b
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+usage: run_idempotency.sh /absolute/outside-repository/new-output.log
+
+# stderr_end
+# actual_exit_code: 64
+
+# case: __main__.RunnerTests.test_15_required_absolute_output_argument call=3
+# command: bash '/tmp/learning idem runner 4fudvl90/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' relative.log
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: output must be an absolute path
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_16_invalid_timeout_values_are_rejected call=1
+# command: bash '/tmp/learning idem runner tzs6981q/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner tzs6981q/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='0' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: IDEMPOTENCY_TIMEOUT_SECONDS must be finite and positive
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_16_invalid_timeout_values_are_rejected call=2
+# command: bash '/tmp/learning idem runner tzs6981q/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner tzs6981q/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='-1' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: IDEMPOTENCY_TIMEOUT_SECONDS must be finite and positive
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_16_invalid_timeout_values_are_rejected call=3
+# command: bash '/tmp/learning idem runner tzs6981q/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner tzs6981q/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='nan' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: IDEMPOTENCY_TIMEOUT_SECONDS must be finite and positive
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_16_invalid_timeout_values_are_rejected call=4
+# command: bash '/tmp/learning idem runner tzs6981q/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner tzs6981q/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='inf' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: IDEMPOTENCY_TIMEOUT_SECONDS must be finite and positive
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_16_invalid_timeout_values_are_rejected call=5
+# command: bash '/tmp/learning idem runner tzs6981q/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner tzs6981q/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='bad' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: could not convert string to float: 'bad'
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_17_real_empty_unittest_suite_is_not_success call=1
+# command: bash '/tmp/learning idem runner y7rjepgv/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner y7rjepgv/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': 'bdba6e49cfd2af4e272c2f1a505c23bdd2b7e066d6b9555c7005892850a0b732', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:02.567692+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: bdba6e49cfd2af4e272c2f1a505c23bdd2b7e066d6b9555c7005892850a0b732
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner y7rjepgv/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+
+----------------------------------------------------------------------
+Ran 0 tests in 0.000s
+
+NO TESTS RAN
+
+# stderr_end
+# process_exit_code: 0
+# invalid_or_empty_unittest_report
+# runner_exit_code: 65
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 65
+
+# case: __main__.RunnerTests.test_18_missing_completion_report_is_not_success call=1
+# command: bash '/tmp/learning idem runner uwdp0wwm/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner uwdp0wwm/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': 'c1223c475fd2e5debdf8543e71f3b7dd6286b2aeff1769062f023228a7372c11', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:02.657212+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: c1223c475fd2e5debdf8543e71f3b7dd6286b2aeff1769062f023228a7372c11
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner uwdp0wwm/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+program exited without running unittest
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# process_exit_code: 0
+# invalid_or_empty_unittest_report
+# runner_exit_code: 65
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 65
+
+# case: __main__.RunnerTests.test_19_real_failed_unittest_with_exit_zero_is_not_success call=1
+# command: bash '/tmp/learning idem runner s1ge70gz/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner s1ge70gz/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '9dcb9558a85b4f74e5aac594106500a4d3f5cd023a50789856d2bcdf5bc1a6f5', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:02.700846+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: 9dcb9558a85b4f74e5aac594106500a4d3f5cd023a50789856d2bcdf5bc1a6f5
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner s1ge70gz/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+test_failure (__main__.FailingTest.test_failure) ... FAIL
+
+======================================================================
+FAIL: test_failure (__main__.FailingTest.test_failure)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/learning idem runner s1ge70gz/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py", line 4, in test_failure
+    self.fail("real failure with deliberately missing process exit propagation")
+AssertionError: real failure with deliberately missing process exit propagation
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (failures=1)
+
+# stderr_end
+# process_exit_code: 0
+# invalid_or_empty_unittest_report
+# runner_exit_code: 65
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 65
+
+# case: __main__.RunnerTests.test_20_real_suite_with_corrupt_completion_report_is_not_success call=1
+# command: bash '/tmp/learning idem runner irdop88h/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner irdop88h/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': 'c94619423ac30a681ac842c97337f8a6a63fc72c5d115d48a14249d3f70949f4', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:02.783003+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: c94619423ac30a681ac842c97337f8a6a63fc72c5d115d48a14249d3f70949f4
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner irdop88h/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+test_pass (__main__.PassingTest.test_pass) ... ok
+
+----------------------------------------------------------------------
+BROKEN completion in 0.000s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# invalid_or_empty_unittest_report
+# runner_exit_code: 65
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 65
+
+# case: __main__.RunnerTests.test_21_normal_and_optimized_suite_count_must_match call=1
+# command: bash '/tmp/learning idem runner j0divefm/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner j0divefm/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '69c547d7b3cf28513526786649922830193ab849029f9e1bac7167df9bb4c173', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:02.869241+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: 69c547d7b3cf28513526786649922830193ab849029f9e1bac7167df9bb4c173
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner j0divefm/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+test_pass (__main__.PassingTest.test_pass) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 1
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -O '/tmp/learning idem runner j0divefm/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+test_pass (__main__.PassingTest.test_pass) ... ok
+test_pass (__main__.PassingTest.test_pass) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 2
+# normal_optimized_test_count_mismatch
+# runner_exit_code: 65
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 65
+
+# case: __main__.RunnerTests.test_22_inherited_optimization_cannot_change_requested_modes call=1
+# command: bash '/tmp/learning idem runner 1ghbq3eb/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner 1ghbq3eb/inherited-1.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE='1'
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:03.201402+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: 8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner 1ghbq3eb/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+python=3.12.14 sqlite=3.53.1 optimize=0
+
+# stdout_end
+# stderr_begin
+test_01_first_commit_and_same_key_replay (__main__.IdempotencyTests.test_01_first_commit_and_same_key_replay) ... ok
+test_02_same_key_changed_payload_is_conflict (__main__.IdempotencyTests.test_02_same_key_changed_payload_is_conflict) ... ok
+test_03_authenticated_account_scope_isolated (__main__.IdempotencyTests.test_03_authenticated_account_scope_isolated) ... ok
+test_04_tenant_scope_isolated (__main__.IdempotencyTests.test_04_tenant_scope_isolated) ... ok
+test_05_new_intent_is_a_new_purchase (__main__.IdempotencyTests.test_05_new_intent_is_a_new_purchase) ... ok
+test_06_rejection_snapshot_does_not_change_after_topup (__main__.IdempotencyTests.test_06_rejection_snapshot_does_not_change_after_topup) ... ok
+test_07_failure_after_debit_rolls_back_everything (__main__.IdempotencyTests.test_07_failure_after_debit_rolls_back_everything) ... ok
+test_08_process_exit_before_commit_leaves_no_effect (__main__.IdempotencyTests.test_08_process_exit_before_commit_leaves_no_effect) ... ok
+test_09_process_exit_after_commit_replays_saved_result (__main__.IdempotencyTests.test_09_process_exit_after_commit_replays_saved_result) ... ok
+test_10_inflight_writer_is_busy_not_permission_to_duplicate (__main__.IdempotencyTests.test_10_inflight_writer_is_busy_not_permission_to_duplicate) ... ok
+test_11_eight_concurrent_connections_commit_one_effect (__main__.IdempotencyTests.test_11_eight_concurrent_connections_commit_one_effect) ... ok
+test_12_negative_control_split_commit_duplicates (__main__.IdempotencyTests.test_12_negative_control_split_commit_duplicates) ... ok
+test_13_negative_control_pruning_all_memory_allows_old_key (__main__.IdempotencyTests.test_13_negative_control_pruning_all_memory_allows_old_key) ... ok
+test_14_stale_epoch_rejected_and_current_epoch_only_once (__main__.IdempotencyTests.test_14_stale_epoch_rejected_and_current_epoch_only_once) ... ok
+test_15_fencing_phase_and_effect_roll_back_together (__main__.IdempotencyTests.test_15_fencing_phase_and_effect_roll_back_together) ... ok
+test_16_invalid_request_does_not_create_record (__main__.IdempotencyTests.test_16_invalid_request_does_not_create_record) ... ok
+test_17_operation_scope_isolated (__main__.IdempotencyTests.test_17_operation_scope_isolated) ... ok
+test_18_committed_processing_is_not_reexecuted (__main__.IdempotencyTests.test_18_committed_processing_is_not_reexecuted) ... ok
+test_19_missing_required_key_cannot_bypass_gate (__main__.IdempotencyTests.test_19_missing_required_key_cannot_bypass_gate) ... ok
+test_20_invalid_operation_rejected_before_connection (__main__.IdempotencyTests.test_20_invalid_operation_rejected_before_connection) ... ok
+test_21_identity_is_exact_int_in_sqlite_signed64_domain (__main__.IdempotencyTests.test_21_identity_is_exact_int_in_sqlite_signed64_domain) ... ok
+test_22_signed64_endpoints_zero_and_negative_are_representable (__main__.IdempotencyTests.test_22_signed64_endpoints_zero_and_negative_are_representable) ... ok
+test_23_key_equality_preserves_case_space_unicode_and_nul (__main__.IdempotencyTests.test_23_key_equality_preserves_case_space_unicode_and_nul) ... ok
+test_24_operation_is_nonempty_without_silent_normalization (__main__.IdempotencyTests.test_24_operation_is_nonempty_without_silent_normalization) ... ok
+test_25_schema_rejects_null_for_all_six_scope_columns (__main__.IdempotencyTests.test_25_schema_rejects_null_for_all_six_scope_columns) ... ok
+test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection (__main__.IdempotencyTests.test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection) ... ok
+test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder (__main__.IdempotencyTests.test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder) ... ok
+test_28_hook_new_connection_reentry_before_and_after_commit (__main__.IdempotencyTests.test_28_hook_new_connection_reentry_before_and_after_commit) ... ok
+test_29_explicit_sql_transaction_control (__main__.IdempotencyTests.test_29_explicit_sql_transaction_control) ... ok
+test_30_invalid_key_and_payload_rejected_before_connection (__main__.IdempotencyTests.test_30_invalid_key_and_payload_rejected_before_connection) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 0.200s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 30
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -O '/tmp/learning idem runner 1ghbq3eb/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+python=3.12.14 sqlite=3.53.1 optimize=1
+
+# stdout_end
+# stderr_begin
+test_01_first_commit_and_same_key_replay (__main__.IdempotencyTests.test_01_first_commit_and_same_key_replay) ... ok
+test_02_same_key_changed_payload_is_conflict (__main__.IdempotencyTests.test_02_same_key_changed_payload_is_conflict) ... ok
+test_03_authenticated_account_scope_isolated (__main__.IdempotencyTests.test_03_authenticated_account_scope_isolated) ... ok
+test_04_tenant_scope_isolated (__main__.IdempotencyTests.test_04_tenant_scope_isolated) ... ok
+test_05_new_intent_is_a_new_purchase (__main__.IdempotencyTests.test_05_new_intent_is_a_new_purchase) ... ok
+test_06_rejection_snapshot_does_not_change_after_topup (__main__.IdempotencyTests.test_06_rejection_snapshot_does_not_change_after_topup) ... ok
+test_07_failure_after_debit_rolls_back_everything (__main__.IdempotencyTests.test_07_failure_after_debit_rolls_back_everything) ... ok
+test_08_process_exit_before_commit_leaves_no_effect (__main__.IdempotencyTests.test_08_process_exit_before_commit_leaves_no_effect) ... ok
+test_09_process_exit_after_commit_replays_saved_result (__main__.IdempotencyTests.test_09_process_exit_after_commit_replays_saved_result) ... ok
+test_10_inflight_writer_is_busy_not_permission_to_duplicate (__main__.IdempotencyTests.test_10_inflight_writer_is_busy_not_permission_to_duplicate) ... ok
+test_11_eight_concurrent_connections_commit_one_effect (__main__.IdempotencyTests.test_11_eight_concurrent_connections_commit_one_effect) ... ok
+test_12_negative_control_split_commit_duplicates (__main__.IdempotencyTests.test_12_negative_control_split_commit_duplicates) ... ok
+test_13_negative_control_pruning_all_memory_allows_old_key (__main__.IdempotencyTests.test_13_negative_control_pruning_all_memory_allows_old_key) ... ok
+test_14_stale_epoch_rejected_and_current_epoch_only_once (__main__.IdempotencyTests.test_14_stale_epoch_rejected_and_current_epoch_only_once) ... ok
+test_15_fencing_phase_and_effect_roll_back_together (__main__.IdempotencyTests.test_15_fencing_phase_and_effect_roll_back_together) ... ok
+test_16_invalid_request_does_not_create_record (__main__.IdempotencyTests.test_16_invalid_request_does_not_create_record) ... ok
+test_17_operation_scope_isolated (__main__.IdempotencyTests.test_17_operation_scope_isolated) ... ok
+test_18_committed_processing_is_not_reexecuted (__main__.IdempotencyTests.test_18_committed_processing_is_not_reexecuted) ... ok
+test_19_missing_required_key_cannot_bypass_gate (__main__.IdempotencyTests.test_19_missing_required_key_cannot_bypass_gate) ... ok
+test_20_invalid_operation_rejected_before_connection (__main__.IdempotencyTests.test_20_invalid_operation_rejected_before_connection) ... ok
+test_21_identity_is_exact_int_in_sqlite_signed64_domain (__main__.IdempotencyTests.test_21_identity_is_exact_int_in_sqlite_signed64_domain) ... ok
+test_22_signed64_endpoints_zero_and_negative_are_representable (__main__.IdempotencyTests.test_22_signed64_endpoints_zero_and_negative_are_representable) ... ok
+test_23_key_equality_preserves_case_space_unicode_and_nul (__main__.IdempotencyTests.test_23_key_equality_preserves_case_space_unicode_and_nul) ... ok
+test_24_operation_is_nonempty_without_silent_normalization (__main__.IdempotencyTests.test_24_operation_is_nonempty_without_silent_normalization) ... ok
+test_25_schema_rejects_null_for_all_six_scope_columns (__main__.IdempotencyTests.test_25_schema_rejects_null_for_all_six_scope_columns) ... ok
+test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection (__main__.IdempotencyTests.test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection) ... ok
+test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder (__main__.IdempotencyTests.test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder) ... ok
+test_28_hook_new_connection_reentry_before_and_after_commit (__main__.IdempotencyTests.test_28_hook_new_connection_reentry_before_and_after_commit) ... ok
+test_29_explicit_sql_transaction_control (__main__.IdempotencyTests.test_29_explicit_sql_transaction_control) ... ok
+test_30_invalid_key_and_payload_rejected_before_connection (__main__.IdempotencyTests.test_30_invalid_key_and_payload_rejected_before_connection) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 0.544s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 30
+# runner_exit_code: 0 (both nonempty unittest runs verified)
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 0
+
+# case: __main__.RunnerTests.test_22_inherited_optimization_cannot_change_requested_modes call=2
+# command: bash '/tmp/learning idem runner 1ghbq3eb/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner 1ghbq3eb/inherited-2.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE='2'
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:04.392345+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: 8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner 1ghbq3eb/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+python=3.12.14 sqlite=3.53.1 optimize=0
+
+# stdout_end
+# stderr_begin
+test_01_first_commit_and_same_key_replay (__main__.IdempotencyTests.test_01_first_commit_and_same_key_replay) ... ok
+test_02_same_key_changed_payload_is_conflict (__main__.IdempotencyTests.test_02_same_key_changed_payload_is_conflict) ... ok
+test_03_authenticated_account_scope_isolated (__main__.IdempotencyTests.test_03_authenticated_account_scope_isolated) ... ok
+test_04_tenant_scope_isolated (__main__.IdempotencyTests.test_04_tenant_scope_isolated) ... ok
+test_05_new_intent_is_a_new_purchase (__main__.IdempotencyTests.test_05_new_intent_is_a_new_purchase) ... ok
+test_06_rejection_snapshot_does_not_change_after_topup (__main__.IdempotencyTests.test_06_rejection_snapshot_does_not_change_after_topup) ... ok
+test_07_failure_after_debit_rolls_back_everything (__main__.IdempotencyTests.test_07_failure_after_debit_rolls_back_everything) ... ok
+test_08_process_exit_before_commit_leaves_no_effect (__main__.IdempotencyTests.test_08_process_exit_before_commit_leaves_no_effect) ... ok
+test_09_process_exit_after_commit_replays_saved_result (__main__.IdempotencyTests.test_09_process_exit_after_commit_replays_saved_result) ... ok
+test_10_inflight_writer_is_busy_not_permission_to_duplicate (__main__.IdempotencyTests.test_10_inflight_writer_is_busy_not_permission_to_duplicate) ... ok
+test_11_eight_concurrent_connections_commit_one_effect (__main__.IdempotencyTests.test_11_eight_concurrent_connections_commit_one_effect) ... ok
+test_12_negative_control_split_commit_duplicates (__main__.IdempotencyTests.test_12_negative_control_split_commit_duplicates) ... ok
+test_13_negative_control_pruning_all_memory_allows_old_key (__main__.IdempotencyTests.test_13_negative_control_pruning_all_memory_allows_old_key) ... ok
+test_14_stale_epoch_rejected_and_current_epoch_only_once (__main__.IdempotencyTests.test_14_stale_epoch_rejected_and_current_epoch_only_once) ... ok
+test_15_fencing_phase_and_effect_roll_back_together (__main__.IdempotencyTests.test_15_fencing_phase_and_effect_roll_back_together) ... ok
+test_16_invalid_request_does_not_create_record (__main__.IdempotencyTests.test_16_invalid_request_does_not_create_record) ... ok
+test_17_operation_scope_isolated (__main__.IdempotencyTests.test_17_operation_scope_isolated) ... ok
+test_18_committed_processing_is_not_reexecuted (__main__.IdempotencyTests.test_18_committed_processing_is_not_reexecuted) ... ok
+test_19_missing_required_key_cannot_bypass_gate (__main__.IdempotencyTests.test_19_missing_required_key_cannot_bypass_gate) ... ok
+test_20_invalid_operation_rejected_before_connection (__main__.IdempotencyTests.test_20_invalid_operation_rejected_before_connection) ... ok
+test_21_identity_is_exact_int_in_sqlite_signed64_domain (__main__.IdempotencyTests.test_21_identity_is_exact_int_in_sqlite_signed64_domain) ... ok
+test_22_signed64_endpoints_zero_and_negative_are_representable (__main__.IdempotencyTests.test_22_signed64_endpoints_zero_and_negative_are_representable) ... ok
+test_23_key_equality_preserves_case_space_unicode_and_nul (__main__.IdempotencyTests.test_23_key_equality_preserves_case_space_unicode_and_nul) ... ok
+test_24_operation_is_nonempty_without_silent_normalization (__main__.IdempotencyTests.test_24_operation_is_nonempty_without_silent_normalization) ... ok
+test_25_schema_rejects_null_for_all_six_scope_columns (__main__.IdempotencyTests.test_25_schema_rejects_null_for_all_six_scope_columns) ... ok
+test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection (__main__.IdempotencyTests.test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection) ... ok
+test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder (__main__.IdempotencyTests.test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder) ... ok
+test_28_hook_new_connection_reentry_before_and_after_commit (__main__.IdempotencyTests.test_28_hook_new_connection_reentry_before_and_after_commit) ... ok
+test_29_explicit_sql_transaction_control (__main__.IdempotencyTests.test_29_explicit_sql_transaction_control) ... ok
+test_30_invalid_key_and_payload_rejected_before_connection (__main__.IdempotencyTests.test_30_invalid_key_and_payload_rejected_before_connection) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 0.220s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 30
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -O '/tmp/learning idem runner 1ghbq3eb/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+python=3.12.14 sqlite=3.53.1 optimize=1
+
+# stdout_end
+# stderr_begin
+test_01_first_commit_and_same_key_replay (__main__.IdempotencyTests.test_01_first_commit_and_same_key_replay) ... ok
+test_02_same_key_changed_payload_is_conflict (__main__.IdempotencyTests.test_02_same_key_changed_payload_is_conflict) ... ok
+test_03_authenticated_account_scope_isolated (__main__.IdempotencyTests.test_03_authenticated_account_scope_isolated) ... ok
+test_04_tenant_scope_isolated (__main__.IdempotencyTests.test_04_tenant_scope_isolated) ... ok
+test_05_new_intent_is_a_new_purchase (__main__.IdempotencyTests.test_05_new_intent_is_a_new_purchase) ... ok
+test_06_rejection_snapshot_does_not_change_after_topup (__main__.IdempotencyTests.test_06_rejection_snapshot_does_not_change_after_topup) ... ok
+test_07_failure_after_debit_rolls_back_everything (__main__.IdempotencyTests.test_07_failure_after_debit_rolls_back_everything) ... ok
+test_08_process_exit_before_commit_leaves_no_effect (__main__.IdempotencyTests.test_08_process_exit_before_commit_leaves_no_effect) ... ok
+test_09_process_exit_after_commit_replays_saved_result (__main__.IdempotencyTests.test_09_process_exit_after_commit_replays_saved_result) ... ok
+test_10_inflight_writer_is_busy_not_permission_to_duplicate (__main__.IdempotencyTests.test_10_inflight_writer_is_busy_not_permission_to_duplicate) ... ok
+test_11_eight_concurrent_connections_commit_one_effect (__main__.IdempotencyTests.test_11_eight_concurrent_connections_commit_one_effect) ... ok
+test_12_negative_control_split_commit_duplicates (__main__.IdempotencyTests.test_12_negative_control_split_commit_duplicates) ... ok
+test_13_negative_control_pruning_all_memory_allows_old_key (__main__.IdempotencyTests.test_13_negative_control_pruning_all_memory_allows_old_key) ... ok
+test_14_stale_epoch_rejected_and_current_epoch_only_once (__main__.IdempotencyTests.test_14_stale_epoch_rejected_and_current_epoch_only_once) ... ok
+test_15_fencing_phase_and_effect_roll_back_together (__main__.IdempotencyTests.test_15_fencing_phase_and_effect_roll_back_together) ... ok
+test_16_invalid_request_does_not_create_record (__main__.IdempotencyTests.test_16_invalid_request_does_not_create_record) ... ok
+test_17_operation_scope_isolated (__main__.IdempotencyTests.test_17_operation_scope_isolated) ... ok
+test_18_committed_processing_is_not_reexecuted (__main__.IdempotencyTests.test_18_committed_processing_is_not_reexecuted) ... ok
+test_19_missing_required_key_cannot_bypass_gate (__main__.IdempotencyTests.test_19_missing_required_key_cannot_bypass_gate) ... ok
+test_20_invalid_operation_rejected_before_connection (__main__.IdempotencyTests.test_20_invalid_operation_rejected_before_connection) ... ok
+test_21_identity_is_exact_int_in_sqlite_signed64_domain (__main__.IdempotencyTests.test_21_identity_is_exact_int_in_sqlite_signed64_domain) ... ok
+test_22_signed64_endpoints_zero_and_negative_are_representable (__main__.IdempotencyTests.test_22_signed64_endpoints_zero_and_negative_are_representable) ... ok
+test_23_key_equality_preserves_case_space_unicode_and_nul (__main__.IdempotencyTests.test_23_key_equality_preserves_case_space_unicode_and_nul) ... ok
+test_24_operation_is_nonempty_without_silent_normalization (__main__.IdempotencyTests.test_24_operation_is_nonempty_without_silent_normalization) ... ok
+test_25_schema_rejects_null_for_all_six_scope_columns (__main__.IdempotencyTests.test_25_schema_rejects_null_for_all_six_scope_columns) ... ok
+test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection (__main__.IdempotencyTests.test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection) ... ok
+test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder (__main__.IdempotencyTests.test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder) ... ok
+test_28_hook_new_connection_reentry_before_and_after_commit (__main__.IdempotencyTests.test_28_hook_new_connection_reentry_before_and_after_commit) ... ok
+test_29_explicit_sql_transaction_control (__main__.IdempotencyTests.test_29_explicit_sql_transaction_control) ... ok
+test_30_invalid_key_and_payload_rejected_before_connection (__main__.IdempotencyTests.test_30_invalid_key_and_payload_rejected_before_connection) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 0.569s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 30
+# runner_exit_code: 0 (both nonempty unittest runs verified)
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 0
+
+# case: __main__.RunnerTests.test_23_optimized_empty_missing_and_failed_reports_are_not_success call=1
+# command: bash '/tmp/learning idem runner dnhi0o6f/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner dnhi0o6f/optimized-empty.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': 'e17aa6b8687275526b531ab9213f430a6ad6a8b3ece91694854b38d118390ccc', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:05.536850+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: e17aa6b8687275526b531ab9213f430a6ad6a8b3ece91694854b38d118390ccc
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner dnhi0o6f/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+unittest.case.FunctionTestCase (<lambda>) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 1
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -O '/tmp/learning idem runner dnhi0o6f/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+
+----------------------------------------------------------------------
+Ran 0 tests in 0.000s
+
+NO TESTS RAN
+
+# stderr_end
+# process_exit_code: 0
+# invalid_or_empty_unittest_report
+# runner_exit_code: 65
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 65
+
+# case: __main__.RunnerTests.test_23_optimized_empty_missing_and_failed_reports_are_not_success call=2
+# command: bash '/tmp/learning idem runner dnhi0o6f/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner dnhi0o6f/optimized-missing.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8d205cdac38885ab049ac241f938133b7d274a93d653e7551711843d60732808', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:05.780141+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: 8d205cdac38885ab049ac241f938133b7d274a93d653e7551711843d60732808
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner dnhi0o6f/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+unittest.case.FunctionTestCase (<lambda>) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 1
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -O '/tmp/learning idem runner dnhi0o6f/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+missing optimized report
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# process_exit_code: 0
+# invalid_or_empty_unittest_report
+# runner_exit_code: 65
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 65
+
+# case: __main__.RunnerTests.test_23_optimized_empty_missing_and_failed_reports_are_not_success call=3
+# command: bash '/tmp/learning idem runner dnhi0o6f/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner dnhi0o6f/optimized-failed.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': 'd9a66ab7f8e94861c89ae51e7c5c7ba193b6a0fcf5b54acfecdcd1a1bd774578', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:06.014189+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: d9a66ab7f8e94861c89ae51e7c5c7ba193b6a0fcf5b54acfecdcd1a1bd774578
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner dnhi0o6f/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+unittest.case.FunctionTestCase (<lambda>) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 1
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -O '/tmp/learning idem runner dnhi0o6f/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+unittest.case.FunctionTestCase (<lambda>) ... ERROR
+
+======================================================================
+ERROR: unittest.case.FunctionTestCase (<lambda>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/learning idem runner dnhi0o6f/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py", line 3, in <lambda>
+    unittest.TextTestRunner(verbosity=2).run(unittest.FunctionTestCase(lambda: 1/0))
+                                                                               ~^~
+ZeroDivisionError: division by zero
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)
+
+# stderr_end
+# process_exit_code: 0
+# invalid_or_empty_unittest_report
+# runner_exit_code: 65
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 65
+
+# case: __main__.RunnerTests.test_23_optimized_empty_missing_and_failed_reports_are_not_success call=4
+# command: bash '/tmp/learning idem runner dnhi0o6f/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner dnhi0o6f/optimized-corrupt.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '96340770215578d81f7d77b69252499137b5733b0e87ef599ae067ce02e0b8b5', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:06.251032+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: 96340770215578d81f7d77b69252499137b5733b0e87ef599ae067ce02e0b8b5
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner dnhi0o6f/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+unittest.case.FunctionTestCase (<lambda>) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 1
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -O '/tmp/learning idem runner dnhi0o6f/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+Ran INVALID tests in 0.01s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# invalid_or_empty_unittest_report
+# runner_exit_code: 65
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 65
+
+# stdout_end
+# stderr_begin
+test_01_actual_sqlite_suite_runs_normal_and_optimized_from_space_paths (__main__.RunnerTests.test_01_actual_sqlite_suite_runs_normal_and_optimized_from_space_paths) ... ok
+test_02_actual_unittest_failure_in_each_mode_propagates (__main__.RunnerTests.test_02_actual_unittest_failure_in_each_mode_propagates) ... ok
+test_03_nonzero_exit_code_is_preserved (__main__.RunnerTests.test_03_nonzero_exit_code_is_preserved) ... ok
+test_04_actual_timeout_in_each_mode_is_failure (__main__.RunnerTests.test_04_actual_timeout_in_each_mode_is_failure) ... ok
+test_05_simulated_unsupported_python_version_preflight (__main__.RunnerTests.test_05_simulated_unsupported_python_version_preflight) ... ok
+test_06_simulated_unsupported_sqlite_version_preflight (__main__.RunnerTests.test_06_simulated_unsupported_sqlite_version_preflight) ... ok
+test_07_missing_python_is_failure (__main__.RunnerTests.test_07_missing_python_is_failure) ... ok
+test_08_existing_file_is_not_overwritten (__main__.RunnerTests.test_08_existing_file_is_not_overwritten) ... ok
+test_09_existing_directory_is_not_reused (__main__.RunnerTests.test_09_existing_directory_is_not_reused) ... ok
+test_10_existing_and_dangling_symlinks_are_rejected (__main__.RunnerTests.test_10_existing_and_dangling_symlinks_are_rejected) ... ok
+test_11_old_raw_and_new_repository_outputs_are_rejected (__main__.RunnerTests.test_11_old_raw_and_new_repository_outputs_are_rejected) ... ok
+test_12_symlink_parent_into_repository_is_rejected (__main__.RunnerTests.test_12_symlink_parent_into_repository_is_rejected) ... ok
+test_13_missing_parent_and_file_parent_cannot_be_written (__main__.RunnerTests.test_13_missing_parent_and_file_parent_cannot_be_written) ... ok
+test_14_actual_log_write_limit_failure_cannot_report_success (__main__.RunnerTests.test_14_actual_log_write_limit_failure_cannot_report_success) ... ok
+test_15_required_absolute_output_argument (__main__.RunnerTests.test_15_required_absolute_output_argument) ... ok
+test_16_invalid_timeout_values_are_rejected (__main__.RunnerTests.test_16_invalid_timeout_values_are_rejected) ... ok
+test_17_real_empty_unittest_suite_is_not_success (__main__.RunnerTests.test_17_real_empty_unittest_suite_is_not_success) ... ok
+test_18_missing_completion_report_is_not_success (__main__.RunnerTests.test_18_missing_completion_report_is_not_success) ... ok
+test_19_real_failed_unittest_with_exit_zero_is_not_success (__main__.RunnerTests.test_19_real_failed_unittest_with_exit_zero_is_not_success) ... ok
+test_20_real_suite_with_corrupt_completion_report_is_not_success (__main__.RunnerTests.test_20_real_suite_with_corrupt_completion_report_is_not_success) ... ok
+test_21_normal_and_optimized_suite_count_must_match (__main__.RunnerTests.test_21_normal_and_optimized_suite_count_must_match) ... ok
+test_22_inherited_optimization_cannot_change_requested_modes (__main__.RunnerTests.test_22_inherited_optimization_cannot_change_requested_modes) ... ok
+test_23_optimized_empty_missing_and_failed_reports_are_not_success (__main__.RunnerTests.test_23_optimized_empty_missing_and_failed_reports_are_not_success) ... ok
+
+----------------------------------------------------------------------
+Ran 23 tests in 7.446s
+
+OK
+
+# stderr_end
+# exit_code: 0
+
+# ===== command 6 =====
+# cwd: /workspace/scratch/234c8048d85d/learning-sqlite-contract-quality-20261004
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -O evidence/tests/gameplay-core/scripts/test_idempotency_runner.py
+# stdout_begin
+runner_regression_python=3.12.14 optimize=1
+
+# case: __main__.RunnerTests.test_01_actual_sqlite_suite_runs_normal_and_optimized_from_space_paths call=1
+# command: bash '/tmp/learning idem runner kipu1ezq/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner kipu1ezq/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:06.728218+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: 8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner kipu1ezq/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+python=3.12.14 sqlite=3.53.1 optimize=0
+
+# stdout_end
+# stderr_begin
+test_01_first_commit_and_same_key_replay (__main__.IdempotencyTests.test_01_first_commit_and_same_key_replay) ... ok
+test_02_same_key_changed_payload_is_conflict (__main__.IdempotencyTests.test_02_same_key_changed_payload_is_conflict) ... ok
+test_03_authenticated_account_scope_isolated (__main__.IdempotencyTests.test_03_authenticated_account_scope_isolated) ... ok
+test_04_tenant_scope_isolated (__main__.IdempotencyTests.test_04_tenant_scope_isolated) ... ok
+test_05_new_intent_is_a_new_purchase (__main__.IdempotencyTests.test_05_new_intent_is_a_new_purchase) ... ok
+test_06_rejection_snapshot_does_not_change_after_topup (__main__.IdempotencyTests.test_06_rejection_snapshot_does_not_change_after_topup) ... ok
+test_07_failure_after_debit_rolls_back_everything (__main__.IdempotencyTests.test_07_failure_after_debit_rolls_back_everything) ... ok
+test_08_process_exit_before_commit_leaves_no_effect (__main__.IdempotencyTests.test_08_process_exit_before_commit_leaves_no_effect) ... ok
+test_09_process_exit_after_commit_replays_saved_result (__main__.IdempotencyTests.test_09_process_exit_after_commit_replays_saved_result) ... ok
+test_10_inflight_writer_is_busy_not_permission_to_duplicate (__main__.IdempotencyTests.test_10_inflight_writer_is_busy_not_permission_to_duplicate) ... ok
+test_11_eight_concurrent_connections_commit_one_effect (__main__.IdempotencyTests.test_11_eight_concurrent_connections_commit_one_effect) ... ok
+test_12_negative_control_split_commit_duplicates (__main__.IdempotencyTests.test_12_negative_control_split_commit_duplicates) ... ok
+test_13_negative_control_pruning_all_memory_allows_old_key (__main__.IdempotencyTests.test_13_negative_control_pruning_all_memory_allows_old_key) ... ok
+test_14_stale_epoch_rejected_and_current_epoch_only_once (__main__.IdempotencyTests.test_14_stale_epoch_rejected_and_current_epoch_only_once) ... ok
+test_15_fencing_phase_and_effect_roll_back_together (__main__.IdempotencyTests.test_15_fencing_phase_and_effect_roll_back_together) ... ok
+test_16_invalid_request_does_not_create_record (__main__.IdempotencyTests.test_16_invalid_request_does_not_create_record) ... ok
+test_17_operation_scope_isolated (__main__.IdempotencyTests.test_17_operation_scope_isolated) ... ok
+test_18_committed_processing_is_not_reexecuted (__main__.IdempotencyTests.test_18_committed_processing_is_not_reexecuted) ... ok
+test_19_missing_required_key_cannot_bypass_gate (__main__.IdempotencyTests.test_19_missing_required_key_cannot_bypass_gate) ... ok
+test_20_invalid_operation_rejected_before_connection (__main__.IdempotencyTests.test_20_invalid_operation_rejected_before_connection) ... ok
+test_21_identity_is_exact_int_in_sqlite_signed64_domain (__main__.IdempotencyTests.test_21_identity_is_exact_int_in_sqlite_signed64_domain) ... ok
+test_22_signed64_endpoints_zero_and_negative_are_representable (__main__.IdempotencyTests.test_22_signed64_endpoints_zero_and_negative_are_representable) ... ok
+test_23_key_equality_preserves_case_space_unicode_and_nul (__main__.IdempotencyTests.test_23_key_equality_preserves_case_space_unicode_and_nul) ... ok
+test_24_operation_is_nonempty_without_silent_normalization (__main__.IdempotencyTests.test_24_operation_is_nonempty_without_silent_normalization) ... ok
+test_25_schema_rejects_null_for_all_six_scope_columns (__main__.IdempotencyTests.test_25_schema_rejects_null_for_all_six_scope_columns) ... ok
+test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection (__main__.IdempotencyTests.test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection) ... ok
+test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder (__main__.IdempotencyTests.test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder) ... ok
+test_28_hook_new_connection_reentry_before_and_after_commit (__main__.IdempotencyTests.test_28_hook_new_connection_reentry_before_and_after_commit) ... ok
+test_29_explicit_sql_transaction_control (__main__.IdempotencyTests.test_29_explicit_sql_transaction_control) ... ok
+test_30_invalid_key_and_payload_rejected_before_connection (__main__.IdempotencyTests.test_30_invalid_key_and_payload_rejected_before_connection) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 0.205s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 30
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -O '/tmp/learning idem runner kipu1ezq/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+python=3.12.14 sqlite=3.53.1 optimize=1
+
+# stdout_end
+# stderr_begin
+test_01_first_commit_and_same_key_replay (__main__.IdempotencyTests.test_01_first_commit_and_same_key_replay) ... ok
+test_02_same_key_changed_payload_is_conflict (__main__.IdempotencyTests.test_02_same_key_changed_payload_is_conflict) ... ok
+test_03_authenticated_account_scope_isolated (__main__.IdempotencyTests.test_03_authenticated_account_scope_isolated) ... ok
+test_04_tenant_scope_isolated (__main__.IdempotencyTests.test_04_tenant_scope_isolated) ... ok
+test_05_new_intent_is_a_new_purchase (__main__.IdempotencyTests.test_05_new_intent_is_a_new_purchase) ... ok
+test_06_rejection_snapshot_does_not_change_after_topup (__main__.IdempotencyTests.test_06_rejection_snapshot_does_not_change_after_topup) ... ok
+test_07_failure_after_debit_rolls_back_everything (__main__.IdempotencyTests.test_07_failure_after_debit_rolls_back_everything) ... ok
+test_08_process_exit_before_commit_leaves_no_effect (__main__.IdempotencyTests.test_08_process_exit_before_commit_leaves_no_effect) ... ok
+test_09_process_exit_after_commit_replays_saved_result (__main__.IdempotencyTests.test_09_process_exit_after_commit_replays_saved_result) ... ok
+test_10_inflight_writer_is_busy_not_permission_to_duplicate (__main__.IdempotencyTests.test_10_inflight_writer_is_busy_not_permission_to_duplicate) ... ok
+test_11_eight_concurrent_connections_commit_one_effect (__main__.IdempotencyTests.test_11_eight_concurrent_connections_commit_one_effect) ... ok
+test_12_negative_control_split_commit_duplicates (__main__.IdempotencyTests.test_12_negative_control_split_commit_duplicates) ... ok
+test_13_negative_control_pruning_all_memory_allows_old_key (__main__.IdempotencyTests.test_13_negative_control_pruning_all_memory_allows_old_key) ... ok
+test_14_stale_epoch_rejected_and_current_epoch_only_once (__main__.IdempotencyTests.test_14_stale_epoch_rejected_and_current_epoch_only_once) ... ok
+test_15_fencing_phase_and_effect_roll_back_together (__main__.IdempotencyTests.test_15_fencing_phase_and_effect_roll_back_together) ... ok
+test_16_invalid_request_does_not_create_record (__main__.IdempotencyTests.test_16_invalid_request_does_not_create_record) ... ok
+test_17_operation_scope_isolated (__main__.IdempotencyTests.test_17_operation_scope_isolated) ... ok
+test_18_committed_processing_is_not_reexecuted (__main__.IdempotencyTests.test_18_committed_processing_is_not_reexecuted) ... ok
+test_19_missing_required_key_cannot_bypass_gate (__main__.IdempotencyTests.test_19_missing_required_key_cannot_bypass_gate) ... ok
+test_20_invalid_operation_rejected_before_connection (__main__.IdempotencyTests.test_20_invalid_operation_rejected_before_connection) ... ok
+test_21_identity_is_exact_int_in_sqlite_signed64_domain (__main__.IdempotencyTests.test_21_identity_is_exact_int_in_sqlite_signed64_domain) ... ok
+test_22_signed64_endpoints_zero_and_negative_are_representable (__main__.IdempotencyTests.test_22_signed64_endpoints_zero_and_negative_are_representable) ... ok
+test_23_key_equality_preserves_case_space_unicode_and_nul (__main__.IdempotencyTests.test_23_key_equality_preserves_case_space_unicode_and_nul) ... ok
+test_24_operation_is_nonempty_without_silent_normalization (__main__.IdempotencyTests.test_24_operation_is_nonempty_without_silent_normalization) ... ok
+test_25_schema_rejects_null_for_all_six_scope_columns (__main__.IdempotencyTests.test_25_schema_rejects_null_for_all_six_scope_columns) ... ok
+test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection (__main__.IdempotencyTests.test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection) ... ok
+test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder (__main__.IdempotencyTests.test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder) ... ok
+test_28_hook_new_connection_reentry_before_and_after_commit (__main__.IdempotencyTests.test_28_hook_new_connection_reentry_before_and_after_commit) ... ok
+test_29_explicit_sql_transaction_control (__main__.IdempotencyTests.test_29_explicit_sql_transaction_control) ... ok
+test_30_invalid_key_and_payload_rejected_before_connection (__main__.IdempotencyTests.test_30_invalid_key_and_payload_rejected_before_connection) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 0.561s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 30
+# runner_exit_code: 0 (both nonempty unittest runs verified)
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 0
+
+# case: __main__.RunnerTests.test_02_actual_unittest_failure_in_each_mode_propagates call=1
+# command: bash '/tmp/learning idem runner jov6kjcq/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner jov6kjcq/failure-0.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '4236e4cbf96903a1fb26e74871536e34e47eef4483179ae3f5b22586a1c6b9a6', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:07.847410+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: 4236e4cbf96903a1fb26e74871536e34e47eef4483179ae3f5b22586a1c6b9a6
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner jov6kjcq/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+test_actual_failure (__main__.FailingTest.test_actual_failure) ... FAIL
+
+======================================================================
+FAIL: test_actual_failure (__main__.FailingTest.test_actual_failure)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/learning idem runner jov6kjcq/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py", line 4, in test_actual_failure
+    self.assertNotEqual(sys.flags.optimize, 0, "intentional unittest failure")
+AssertionError: 0 == 0 : intentional unittest failure
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (failures=1)
+
+# stderr_end
+# process_exit_code: 1
+# runner_exit_code: 1
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_02_actual_unittest_failure_in_each_mode_propagates call=2
+# command: bash '/tmp/learning idem runner jov6kjcq/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner jov6kjcq/failure-1.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': 'd97b57c8e43dd2c1085253fba95bf1a00c40e4f507bda9c1c38a199c946c9b3a', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:07.947896+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: d97b57c8e43dd2c1085253fba95bf1a00c40e4f507bda9c1c38a199c946c9b3a
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner jov6kjcq/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+test_actual_failure (__main__.FailingTest.test_actual_failure) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 1
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -O '/tmp/learning idem runner jov6kjcq/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+test_actual_failure (__main__.FailingTest.test_actual_failure) ... FAIL
+
+======================================================================
+FAIL: test_actual_failure (__main__.FailingTest.test_actual_failure)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/learning idem runner jov6kjcq/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py", line 4, in test_actual_failure
+    self.assertNotEqual(sys.flags.optimize, 1, "intentional unittest failure")
+AssertionError: 1 == 1 : intentional unittest failure
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (failures=1)
+
+# stderr_end
+# process_exit_code: 1
+# runner_exit_code: 1
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_03_nonzero_exit_code_is_preserved call=1
+# command: bash '/tmp/learning idem runner 9wc8e9ya/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner 9wc8e9ya/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '3d4d5350194cde7f19726705d0b2777d6e25bab004dcce4973a98e997c37245a', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:08.218519+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: 3d4d5350194cde7f19726705d0b2777d6e25bab004dcce4973a98e997c37245a
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner 9wc8e9ya/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+deliberate exit 23
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# process_exit_code: 23
+# runner_exit_code: 23
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 23
+
+# case: __main__.RunnerTests.test_04_actual_timeout_in_each_mode_is_failure call=1
+# command: bash '/tmp/learning idem runner fkhi628x/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner fkhi628x/timeout-0.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': 'cf3acea3082a9502f3eeca20990ea90f26fbc4e370be4bf7b749900004df3d78', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='0.5' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:08.265241+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: cf3acea3082a9502f3eeca20990ea90f26fbc4e370be4bf7b749900004df3d78
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 0.5
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner fkhi628x/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+entered actual sleeping test
+
+# stdout_end
+# stderr_begin
+test_real_sleep (__main__.SlowTest.test_real_sleep) ... 
+# stderr_end
+# process_exit_code: -9
+# timed_out: true
+# runner_exit_code: 124
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 124
+
+# case: __main__.RunnerTests.test_04_actual_timeout_in_each_mode_is_failure call=2
+# command: bash '/tmp/learning idem runner fkhi628x/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner fkhi628x/timeout-1.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '39a0d2a6e6e295857f810bc4596b4b7f77154b70b2fbf802ea0ef83bbc9d8b6d', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='0.5' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:08.805775+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: 39a0d2a6e6e295857f810bc4596b4b7f77154b70b2fbf802ea0ef83bbc9d8b6d
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 0.5
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner fkhi628x/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+test_real_sleep (__main__.SlowTest.test_real_sleep) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 1
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -O '/tmp/learning idem runner fkhi628x/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+entered actual sleeping test
+
+# stdout_end
+# stderr_begin
+test_real_sleep (__main__.SlowTest.test_real_sleep) ... 
+# stderr_end
+# process_exit_code: -9
+# timed_out: true
+# runner_exit_code: 124
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 124
+
+# case: __main__.RunnerTests.test_05_simulated_unsupported_python_version_preflight call=1
+# command: bash '/tmp/learning idem runner z0k_p593/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner z0k_p593/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/tmp/learning idem runner z0k_p593/version fixture python' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: requires Python 3.11+ and SQLite 3.35+
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_06_simulated_unsupported_sqlite_version_preflight call=1
+# command: bash '/tmp/learning idem runner ajwrm3y1/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner ajwrm3y1/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/tmp/learning idem runner ajwrm3y1/version fixture python' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: requires Python 3.11+ and SQLite 3.35+
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_07_missing_python_is_failure call=1
+# command: bash '/tmp/learning idem runner bo8irdxu/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner bo8irdxu/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/tmp/learning idem runner bo8irdxu/absent python' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+/tmp/learning idem runner bo8irdxu/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh: line 12: /tmp/learning idem runner bo8irdxu/absent python: No such file or directory
+
+# stderr_end
+# actual_exit_code: 127
+
+# case: __main__.RunnerTests.test_08_existing_file_is_not_overwritten call=1
+# command: bash '/tmp/learning idem runner hq2_srld/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner hq2_srld/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: refusing existing output (file, directory, or symlink)
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_09_existing_directory_is_not_reused call=1
+# command: bash '/tmp/learning idem runner 5hh5tgkg/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner 5hh5tgkg/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: refusing existing output (file, directory, or symlink)
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_10_existing_and_dangling_symlinks_are_rejected call=1
+# command: bash '/tmp/learning idem runner j8kp09ba/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner j8kp09ba/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: refusing existing output (file, directory, or symlink)
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_10_existing_and_dangling_symlinks_are_rejected call=2
+# command: bash '/tmp/learning idem runner j8kp09ba/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner j8kp09ba/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: refusing existing output (file, directory, or symlink)
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_11_old_raw_and_new_repository_outputs_are_rejected call=1
+# command: bash '/tmp/learning idem runner ycyn_46b/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner ycyn_46b/fixture repo/evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: refusing existing output (file, directory, or symlink)
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_11_old_raw_and_new_repository_outputs_are_rejected call=2
+# command: bash '/tmp/learning idem runner ycyn_46b/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner ycyn_46b/fixture repo/evidence/tests/gameplay-core/results/new.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: output must be outside the repository, including symlink aliases
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_12_symlink_parent_into_repository_is_rejected call=1
+# command: bash '/tmp/learning idem runner im2nosv0/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner im2nosv0/repo alias/new.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: output must be outside the repository, including symlink aliases
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_13_missing_parent_and_file_parent_cannot_be_written call=1
+# command: bash '/tmp/learning idem runner f9hyly6b/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner f9hyly6b/bad parent/new.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: FileNotFoundError: [Errno 2] No such file or directory: '/tmp/learning idem runner f9hyly6b/bad parent'
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_13_missing_parent_and_file_parent_cannot_be_written call=2
+# command: bash '/tmp/learning idem runner f9hyly6b/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner f9hyly6b/bad parent/new.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: NotADirectoryError: [Errno 20] Not a directory: '/tmp/learning idem runner f9hyly6b/bad parent/new.log'
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_14_actual_log_write_limit_failure_cannot_report_success call=1
+# command: bash '/tmp/learning idem runner ekivoanj/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner ekivoanj/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/tmp/learning idem runner ekivoanj/limited python' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:09.795464+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: 8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner ekivoanj/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+python=3.12.14 sqlite=3.53.1 optimize=0
+
+# stdout_end
+# stderr_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: OSError: [Errno 27] File too large
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_15_required_absolute_output_argument call=1
+# command: bash '/tmp/learning idem runner vxayhuft/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+usage: run_idempotency.sh /absolute/outside-repository/new-output.log
+
+# stderr_end
+# actual_exit_code: 64
+
+# case: __main__.RunnerTests.test_15_required_absolute_output_argument call=2
+# command: bash '/tmp/learning idem runner vxayhuft/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' a b
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+usage: run_idempotency.sh /absolute/outside-repository/new-output.log
+
+# stderr_end
+# actual_exit_code: 64
+
+# case: __main__.RunnerTests.test_15_required_absolute_output_argument call=3
+# command: bash '/tmp/learning idem runner vxayhuft/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' relative.log
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: output must be an absolute path
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_16_invalid_timeout_values_are_rejected call=1
+# command: bash '/tmp/learning idem runner bqoj8vw7/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner bqoj8vw7/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='0' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: IDEMPOTENCY_TIMEOUT_SECONDS must be finite and positive
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_16_invalid_timeout_values_are_rejected call=2
+# command: bash '/tmp/learning idem runner bqoj8vw7/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner bqoj8vw7/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='-1' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: IDEMPOTENCY_TIMEOUT_SECONDS must be finite and positive
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_16_invalid_timeout_values_are_rejected call=3
+# command: bash '/tmp/learning idem runner bqoj8vw7/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner bqoj8vw7/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='nan' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: IDEMPOTENCY_TIMEOUT_SECONDS must be finite and positive
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_16_invalid_timeout_values_are_rejected call=4
+# command: bash '/tmp/learning idem runner bqoj8vw7/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner bqoj8vw7/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='inf' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: IDEMPOTENCY_TIMEOUT_SECONDS must be finite and positive
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_16_invalid_timeout_values_are_rejected call=5
+# command: bash '/tmp/learning idem runner bqoj8vw7/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner bqoj8vw7/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='bad' PYTHONOPTIMIZE=None
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+run_idempotency: ValueError: could not convert string to float: 'bad'
+
+# stderr_end
+# actual_exit_code: 1
+
+# case: __main__.RunnerTests.test_17_real_empty_unittest_suite_is_not_success call=1
+# command: bash '/tmp/learning idem runner etkccx1j/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner etkccx1j/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': 'bdba6e49cfd2af4e272c2f1a505c23bdd2b7e066d6b9555c7005892850a0b732', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:10.119140+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: bdba6e49cfd2af4e272c2f1a505c23bdd2b7e066d6b9555c7005892850a0b732
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner etkccx1j/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+
+----------------------------------------------------------------------
+Ran 0 tests in 0.000s
+
+NO TESTS RAN
+
+# stderr_end
+# process_exit_code: 0
+# invalid_or_empty_unittest_report
+# runner_exit_code: 65
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 65
+
+# case: __main__.RunnerTests.test_18_missing_completion_report_is_not_success call=1
+# command: bash '/tmp/learning idem runner jcwwwke8/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner jcwwwke8/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': 'c1223c475fd2e5debdf8543e71f3b7dd6286b2aeff1769062f023228a7372c11', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:10.207848+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: c1223c475fd2e5debdf8543e71f3b7dd6286b2aeff1769062f023228a7372c11
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner jcwwwke8/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+program exited without running unittest
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# process_exit_code: 0
+# invalid_or_empty_unittest_report
+# runner_exit_code: 65
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 65
+
+# case: __main__.RunnerTests.test_19_real_failed_unittest_with_exit_zero_is_not_success call=1
+# command: bash '/tmp/learning idem runner n9bl55jd/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner n9bl55jd/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '9dcb9558a85b4f74e5aac594106500a4d3f5cd023a50789856d2bcdf5bc1a6f5', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:10.255712+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: 9dcb9558a85b4f74e5aac594106500a4d3f5cd023a50789856d2bcdf5bc1a6f5
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner n9bl55jd/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+test_failure (__main__.FailingTest.test_failure) ... FAIL
+
+======================================================================
+FAIL: test_failure (__main__.FailingTest.test_failure)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/learning idem runner n9bl55jd/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py", line 4, in test_failure
+    self.fail("real failure with deliberately missing process exit propagation")
+AssertionError: real failure with deliberately missing process exit propagation
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (failures=1)
+
+# stderr_end
+# process_exit_code: 0
+# invalid_or_empty_unittest_report
+# runner_exit_code: 65
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 65
+
+# case: __main__.RunnerTests.test_20_real_suite_with_corrupt_completion_report_is_not_success call=1
+# command: bash '/tmp/learning idem runner 0vkx1riq/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner 0vkx1riq/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': 'c94619423ac30a681ac842c97337f8a6a63fc72c5d115d48a14249d3f70949f4', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:10.344226+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: c94619423ac30a681ac842c97337f8a6a63fc72c5d115d48a14249d3f70949f4
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner 0vkx1riq/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+test_pass (__main__.PassingTest.test_pass) ... ok
+
+----------------------------------------------------------------------
+BROKEN completion in 0.000s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# invalid_or_empty_unittest_report
+# runner_exit_code: 65
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 65
+
+# case: __main__.RunnerTests.test_21_normal_and_optimized_suite_count_must_match call=1
+# command: bash '/tmp/learning idem runner _aql571r/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner _aql571r/fresh output.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '69c547d7b3cf28513526786649922830193ab849029f9e1bac7167df9bb4c173', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:10.434177+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: 69c547d7b3cf28513526786649922830193ab849029f9e1bac7167df9bb4c173
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner _aql571r/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+test_pass (__main__.PassingTest.test_pass) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 1
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -O '/tmp/learning idem runner _aql571r/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+test_pass (__main__.PassingTest.test_pass) ... ok
+test_pass (__main__.PassingTest.test_pass) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 2
+# normal_optimized_test_count_mismatch
+# runner_exit_code: 65
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 65
+
+# case: __main__.RunnerTests.test_22_inherited_optimization_cannot_change_requested_modes call=1
+# command: bash '/tmp/learning idem runner 4ys1eu0d/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner 4ys1eu0d/inherited-1.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE='1'
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:10.763443+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: 8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner 4ys1eu0d/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+python=3.12.14 sqlite=3.53.1 optimize=0
+
+# stdout_end
+# stderr_begin
+test_01_first_commit_and_same_key_replay (__main__.IdempotencyTests.test_01_first_commit_and_same_key_replay) ... ok
+test_02_same_key_changed_payload_is_conflict (__main__.IdempotencyTests.test_02_same_key_changed_payload_is_conflict) ... ok
+test_03_authenticated_account_scope_isolated (__main__.IdempotencyTests.test_03_authenticated_account_scope_isolated) ... ok
+test_04_tenant_scope_isolated (__main__.IdempotencyTests.test_04_tenant_scope_isolated) ... ok
+test_05_new_intent_is_a_new_purchase (__main__.IdempotencyTests.test_05_new_intent_is_a_new_purchase) ... ok
+test_06_rejection_snapshot_does_not_change_after_topup (__main__.IdempotencyTests.test_06_rejection_snapshot_does_not_change_after_topup) ... ok
+test_07_failure_after_debit_rolls_back_everything (__main__.IdempotencyTests.test_07_failure_after_debit_rolls_back_everything) ... ok
+test_08_process_exit_before_commit_leaves_no_effect (__main__.IdempotencyTests.test_08_process_exit_before_commit_leaves_no_effect) ... ok
+test_09_process_exit_after_commit_replays_saved_result (__main__.IdempotencyTests.test_09_process_exit_after_commit_replays_saved_result) ... ok
+test_10_inflight_writer_is_busy_not_permission_to_duplicate (__main__.IdempotencyTests.test_10_inflight_writer_is_busy_not_permission_to_duplicate) ... ok
+test_11_eight_concurrent_connections_commit_one_effect (__main__.IdempotencyTests.test_11_eight_concurrent_connections_commit_one_effect) ... ok
+test_12_negative_control_split_commit_duplicates (__main__.IdempotencyTests.test_12_negative_control_split_commit_duplicates) ... ok
+test_13_negative_control_pruning_all_memory_allows_old_key (__main__.IdempotencyTests.test_13_negative_control_pruning_all_memory_allows_old_key) ... ok
+test_14_stale_epoch_rejected_and_current_epoch_only_once (__main__.IdempotencyTests.test_14_stale_epoch_rejected_and_current_epoch_only_once) ... ok
+test_15_fencing_phase_and_effect_roll_back_together (__main__.IdempotencyTests.test_15_fencing_phase_and_effect_roll_back_together) ... ok
+test_16_invalid_request_does_not_create_record (__main__.IdempotencyTests.test_16_invalid_request_does_not_create_record) ... ok
+test_17_operation_scope_isolated (__main__.IdempotencyTests.test_17_operation_scope_isolated) ... ok
+test_18_committed_processing_is_not_reexecuted (__main__.IdempotencyTests.test_18_committed_processing_is_not_reexecuted) ... ok
+test_19_missing_required_key_cannot_bypass_gate (__main__.IdempotencyTests.test_19_missing_required_key_cannot_bypass_gate) ... ok
+test_20_invalid_operation_rejected_before_connection (__main__.IdempotencyTests.test_20_invalid_operation_rejected_before_connection) ... ok
+test_21_identity_is_exact_int_in_sqlite_signed64_domain (__main__.IdempotencyTests.test_21_identity_is_exact_int_in_sqlite_signed64_domain) ... ok
+test_22_signed64_endpoints_zero_and_negative_are_representable (__main__.IdempotencyTests.test_22_signed64_endpoints_zero_and_negative_are_representable) ... ok
+test_23_key_equality_preserves_case_space_unicode_and_nul (__main__.IdempotencyTests.test_23_key_equality_preserves_case_space_unicode_and_nul) ... ok
+test_24_operation_is_nonempty_without_silent_normalization (__main__.IdempotencyTests.test_24_operation_is_nonempty_without_silent_normalization) ... ok
+test_25_schema_rejects_null_for_all_six_scope_columns (__main__.IdempotencyTests.test_25_schema_rejects_null_for_all_six_scope_columns) ... ok
+test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection (__main__.IdempotencyTests.test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection) ... ok
+test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder (__main__.IdempotencyTests.test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder) ... ok
+test_28_hook_new_connection_reentry_before_and_after_commit (__main__.IdempotencyTests.test_28_hook_new_connection_reentry_before_and_after_commit) ... ok
+test_29_explicit_sql_transaction_control (__main__.IdempotencyTests.test_29_explicit_sql_transaction_control) ... ok
+test_30_invalid_key_and_payload_rejected_before_connection (__main__.IdempotencyTests.test_30_invalid_key_and_payload_rejected_before_connection) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 0.212s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 30
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -O '/tmp/learning idem runner 4ys1eu0d/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+python=3.12.14 sqlite=3.53.1 optimize=1
+
+# stdout_end
+# stderr_begin
+test_01_first_commit_and_same_key_replay (__main__.IdempotencyTests.test_01_first_commit_and_same_key_replay) ... ok
+test_02_same_key_changed_payload_is_conflict (__main__.IdempotencyTests.test_02_same_key_changed_payload_is_conflict) ... ok
+test_03_authenticated_account_scope_isolated (__main__.IdempotencyTests.test_03_authenticated_account_scope_isolated) ... ok
+test_04_tenant_scope_isolated (__main__.IdempotencyTests.test_04_tenant_scope_isolated) ... ok
+test_05_new_intent_is_a_new_purchase (__main__.IdempotencyTests.test_05_new_intent_is_a_new_purchase) ... ok
+test_06_rejection_snapshot_does_not_change_after_topup (__main__.IdempotencyTests.test_06_rejection_snapshot_does_not_change_after_topup) ... ok
+test_07_failure_after_debit_rolls_back_everything (__main__.IdempotencyTests.test_07_failure_after_debit_rolls_back_everything) ... ok
+test_08_process_exit_before_commit_leaves_no_effect (__main__.IdempotencyTests.test_08_process_exit_before_commit_leaves_no_effect) ... ok
+test_09_process_exit_after_commit_replays_saved_result (__main__.IdempotencyTests.test_09_process_exit_after_commit_replays_saved_result) ... ok
+test_10_inflight_writer_is_busy_not_permission_to_duplicate (__main__.IdempotencyTests.test_10_inflight_writer_is_busy_not_permission_to_duplicate) ... ok
+test_11_eight_concurrent_connections_commit_one_effect (__main__.IdempotencyTests.test_11_eight_concurrent_connections_commit_one_effect) ... ok
+test_12_negative_control_split_commit_duplicates (__main__.IdempotencyTests.test_12_negative_control_split_commit_duplicates) ... ok
+test_13_negative_control_pruning_all_memory_allows_old_key (__main__.IdempotencyTests.test_13_negative_control_pruning_all_memory_allows_old_key) ... ok
+test_14_stale_epoch_rejected_and_current_epoch_only_once (__main__.IdempotencyTests.test_14_stale_epoch_rejected_and_current_epoch_only_once) ... ok
+test_15_fencing_phase_and_effect_roll_back_together (__main__.IdempotencyTests.test_15_fencing_phase_and_effect_roll_back_together) ... ok
+test_16_invalid_request_does_not_create_record (__main__.IdempotencyTests.test_16_invalid_request_does_not_create_record) ... ok
+test_17_operation_scope_isolated (__main__.IdempotencyTests.test_17_operation_scope_isolated) ... ok
+test_18_committed_processing_is_not_reexecuted (__main__.IdempotencyTests.test_18_committed_processing_is_not_reexecuted) ... ok
+test_19_missing_required_key_cannot_bypass_gate (__main__.IdempotencyTests.test_19_missing_required_key_cannot_bypass_gate) ... ok
+test_20_invalid_operation_rejected_before_connection (__main__.IdempotencyTests.test_20_invalid_operation_rejected_before_connection) ... ok
+test_21_identity_is_exact_int_in_sqlite_signed64_domain (__main__.IdempotencyTests.test_21_identity_is_exact_int_in_sqlite_signed64_domain) ... ok
+test_22_signed64_endpoints_zero_and_negative_are_representable (__main__.IdempotencyTests.test_22_signed64_endpoints_zero_and_negative_are_representable) ... ok
+test_23_key_equality_preserves_case_space_unicode_and_nul (__main__.IdempotencyTests.test_23_key_equality_preserves_case_space_unicode_and_nul) ... ok
+test_24_operation_is_nonempty_without_silent_normalization (__main__.IdempotencyTests.test_24_operation_is_nonempty_without_silent_normalization) ... ok
+test_25_schema_rejects_null_for_all_six_scope_columns (__main__.IdempotencyTests.test_25_schema_rejects_null_for_all_six_scope_columns) ... ok
+test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection (__main__.IdempotencyTests.test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection) ... ok
+test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder (__main__.IdempotencyTests.test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder) ... ok
+test_28_hook_new_connection_reentry_before_and_after_commit (__main__.IdempotencyTests.test_28_hook_new_connection_reentry_before_and_after_commit) ... ok
+test_29_explicit_sql_transaction_control (__main__.IdempotencyTests.test_29_explicit_sql_transaction_control) ... ok
+test_30_invalid_key_and_payload_rejected_before_connection (__main__.IdempotencyTests.test_30_invalid_key_and_payload_rejected_before_connection) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 0.566s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 30
+# runner_exit_code: 0 (both nonempty unittest runs verified)
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 0
+
+# case: __main__.RunnerTests.test_22_inherited_optimization_cannot_change_requested_modes call=2
+# command: bash '/tmp/learning idem runner 4ys1eu0d/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner 4ys1eu0d/inherited-2.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE='2'
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:11.995536+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: 8784bc1c0561f2a256e75ecf39f512f3f0eb708cf4974246ff82aa760bef480c
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner 4ys1eu0d/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+python=3.12.14 sqlite=3.53.1 optimize=0
+
+# stdout_end
+# stderr_begin
+test_01_first_commit_and_same_key_replay (__main__.IdempotencyTests.test_01_first_commit_and_same_key_replay) ... ok
+test_02_same_key_changed_payload_is_conflict (__main__.IdempotencyTests.test_02_same_key_changed_payload_is_conflict) ... ok
+test_03_authenticated_account_scope_isolated (__main__.IdempotencyTests.test_03_authenticated_account_scope_isolated) ... ok
+test_04_tenant_scope_isolated (__main__.IdempotencyTests.test_04_tenant_scope_isolated) ... ok
+test_05_new_intent_is_a_new_purchase (__main__.IdempotencyTests.test_05_new_intent_is_a_new_purchase) ... ok
+test_06_rejection_snapshot_does_not_change_after_topup (__main__.IdempotencyTests.test_06_rejection_snapshot_does_not_change_after_topup) ... ok
+test_07_failure_after_debit_rolls_back_everything (__main__.IdempotencyTests.test_07_failure_after_debit_rolls_back_everything) ... ok
+test_08_process_exit_before_commit_leaves_no_effect (__main__.IdempotencyTests.test_08_process_exit_before_commit_leaves_no_effect) ... ok
+test_09_process_exit_after_commit_replays_saved_result (__main__.IdempotencyTests.test_09_process_exit_after_commit_replays_saved_result) ... ok
+test_10_inflight_writer_is_busy_not_permission_to_duplicate (__main__.IdempotencyTests.test_10_inflight_writer_is_busy_not_permission_to_duplicate) ... ok
+test_11_eight_concurrent_connections_commit_one_effect (__main__.IdempotencyTests.test_11_eight_concurrent_connections_commit_one_effect) ... ok
+test_12_negative_control_split_commit_duplicates (__main__.IdempotencyTests.test_12_negative_control_split_commit_duplicates) ... ok
+test_13_negative_control_pruning_all_memory_allows_old_key (__main__.IdempotencyTests.test_13_negative_control_pruning_all_memory_allows_old_key) ... ok
+test_14_stale_epoch_rejected_and_current_epoch_only_once (__main__.IdempotencyTests.test_14_stale_epoch_rejected_and_current_epoch_only_once) ... ok
+test_15_fencing_phase_and_effect_roll_back_together (__main__.IdempotencyTests.test_15_fencing_phase_and_effect_roll_back_together) ... ok
+test_16_invalid_request_does_not_create_record (__main__.IdempotencyTests.test_16_invalid_request_does_not_create_record) ... ok
+test_17_operation_scope_isolated (__main__.IdempotencyTests.test_17_operation_scope_isolated) ... ok
+test_18_committed_processing_is_not_reexecuted (__main__.IdempotencyTests.test_18_committed_processing_is_not_reexecuted) ... ok
+test_19_missing_required_key_cannot_bypass_gate (__main__.IdempotencyTests.test_19_missing_required_key_cannot_bypass_gate) ... ok
+test_20_invalid_operation_rejected_before_connection (__main__.IdempotencyTests.test_20_invalid_operation_rejected_before_connection) ... ok
+test_21_identity_is_exact_int_in_sqlite_signed64_domain (__main__.IdempotencyTests.test_21_identity_is_exact_int_in_sqlite_signed64_domain) ... ok
+test_22_signed64_endpoints_zero_and_negative_are_representable (__main__.IdempotencyTests.test_22_signed64_endpoints_zero_and_negative_are_representable) ... ok
+test_23_key_equality_preserves_case_space_unicode_and_nul (__main__.IdempotencyTests.test_23_key_equality_preserves_case_space_unicode_and_nul) ... ok
+test_24_operation_is_nonempty_without_silent_normalization (__main__.IdempotencyTests.test_24_operation_is_nonempty_without_silent_normalization) ... ok
+test_25_schema_rejects_null_for_all_six_scope_columns (__main__.IdempotencyTests.test_25_schema_rejects_null_for_all_six_scope_columns) ... ok
+test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection (__main__.IdempotencyTests.test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection) ... ok
+test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder (__main__.IdempotencyTests.test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder) ... ok
+test_28_hook_new_connection_reentry_before_and_after_commit (__main__.IdempotencyTests.test_28_hook_new_connection_reentry_before_and_after_commit) ... ok
+test_29_explicit_sql_transaction_control (__main__.IdempotencyTests.test_29_explicit_sql_transaction_control) ... ok
+test_30_invalid_key_and_payload_rejected_before_connection (__main__.IdempotencyTests.test_30_invalid_key_and_payload_rejected_before_connection) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 0.236s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 30
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -O '/tmp/learning idem runner 4ys1eu0d/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+python=3.12.14 sqlite=3.53.1 optimize=1
+
+# stdout_end
+# stderr_begin
+test_01_first_commit_and_same_key_replay (__main__.IdempotencyTests.test_01_first_commit_and_same_key_replay) ... ok
+test_02_same_key_changed_payload_is_conflict (__main__.IdempotencyTests.test_02_same_key_changed_payload_is_conflict) ... ok
+test_03_authenticated_account_scope_isolated (__main__.IdempotencyTests.test_03_authenticated_account_scope_isolated) ... ok
+test_04_tenant_scope_isolated (__main__.IdempotencyTests.test_04_tenant_scope_isolated) ... ok
+test_05_new_intent_is_a_new_purchase (__main__.IdempotencyTests.test_05_new_intent_is_a_new_purchase) ... ok
+test_06_rejection_snapshot_does_not_change_after_topup (__main__.IdempotencyTests.test_06_rejection_snapshot_does_not_change_after_topup) ... ok
+test_07_failure_after_debit_rolls_back_everything (__main__.IdempotencyTests.test_07_failure_after_debit_rolls_back_everything) ... ok
+test_08_process_exit_before_commit_leaves_no_effect (__main__.IdempotencyTests.test_08_process_exit_before_commit_leaves_no_effect) ... ok
+test_09_process_exit_after_commit_replays_saved_result (__main__.IdempotencyTests.test_09_process_exit_after_commit_replays_saved_result) ... ok
+test_10_inflight_writer_is_busy_not_permission_to_duplicate (__main__.IdempotencyTests.test_10_inflight_writer_is_busy_not_permission_to_duplicate) ... ok
+test_11_eight_concurrent_connections_commit_one_effect (__main__.IdempotencyTests.test_11_eight_concurrent_connections_commit_one_effect) ... ok
+test_12_negative_control_split_commit_duplicates (__main__.IdempotencyTests.test_12_negative_control_split_commit_duplicates) ... ok
+test_13_negative_control_pruning_all_memory_allows_old_key (__main__.IdempotencyTests.test_13_negative_control_pruning_all_memory_allows_old_key) ... ok
+test_14_stale_epoch_rejected_and_current_epoch_only_once (__main__.IdempotencyTests.test_14_stale_epoch_rejected_and_current_epoch_only_once) ... ok
+test_15_fencing_phase_and_effect_roll_back_together (__main__.IdempotencyTests.test_15_fencing_phase_and_effect_roll_back_together) ... ok
+test_16_invalid_request_does_not_create_record (__main__.IdempotencyTests.test_16_invalid_request_does_not_create_record) ... ok
+test_17_operation_scope_isolated (__main__.IdempotencyTests.test_17_operation_scope_isolated) ... ok
+test_18_committed_processing_is_not_reexecuted (__main__.IdempotencyTests.test_18_committed_processing_is_not_reexecuted) ... ok
+test_19_missing_required_key_cannot_bypass_gate (__main__.IdempotencyTests.test_19_missing_required_key_cannot_bypass_gate) ... ok
+test_20_invalid_operation_rejected_before_connection (__main__.IdempotencyTests.test_20_invalid_operation_rejected_before_connection) ... ok
+test_21_identity_is_exact_int_in_sqlite_signed64_domain (__main__.IdempotencyTests.test_21_identity_is_exact_int_in_sqlite_signed64_domain) ... ok
+test_22_signed64_endpoints_zero_and_negative_are_representable (__main__.IdempotencyTests.test_22_signed64_endpoints_zero_and_negative_are_representable) ... ok
+test_23_key_equality_preserves_case_space_unicode_and_nul (__main__.IdempotencyTests.test_23_key_equality_preserves_case_space_unicode_and_nul) ... ok
+test_24_operation_is_nonempty_without_silent_normalization (__main__.IdempotencyTests.test_24_operation_is_nonempty_without_silent_normalization) ... ok
+test_25_schema_rejects_null_for_all_six_scope_columns (__main__.IdempotencyTests.test_25_schema_rejects_null_for_all_six_scope_columns) ... ok
+test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection (__main__.IdempotencyTests.test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection) ... ok
+test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder (__main__.IdempotencyTests.test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder) ... ok
+test_28_hook_new_connection_reentry_before_and_after_commit (__main__.IdempotencyTests.test_28_hook_new_connection_reentry_before_and_after_commit) ... ok
+test_29_explicit_sql_transaction_control (__main__.IdempotencyTests.test_29_explicit_sql_transaction_control) ... ok
+test_30_invalid_key_and_payload_rejected_before_connection (__main__.IdempotencyTests.test_30_invalid_key_and_payload_rejected_before_connection) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 0.566s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 30
+# runner_exit_code: 0 (both nonempty unittest runs verified)
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 0
+
+# case: __main__.RunnerTests.test_23_optimized_empty_missing_and_failed_reports_are_not_success call=1
+# command: bash '/tmp/learning idem runner 0l8p2emk/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner 0l8p2emk/optimized-empty.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': 'e17aa6b8687275526b531ab9213f430a6ad6a8b3ece91694854b38d118390ccc', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:13.153369+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: e17aa6b8687275526b531ab9213f430a6ad6a8b3ece91694854b38d118390ccc
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner 0l8p2emk/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+unittest.case.FunctionTestCase (<lambda>) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 1
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -O '/tmp/learning idem runner 0l8p2emk/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+
+----------------------------------------------------------------------
+Ran 0 tests in 0.000s
+
+NO TESTS RAN
+
+# stderr_end
+# process_exit_code: 0
+# invalid_or_empty_unittest_report
+# runner_exit_code: 65
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 65
+
+# case: __main__.RunnerTests.test_23_optimized_empty_missing_and_failed_reports_are_not_success call=2
+# command: bash '/tmp/learning idem runner 0l8p2emk/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner 0l8p2emk/optimized-missing.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '8d205cdac38885ab049ac241f938133b7d274a93d653e7551711843d60732808', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:13.393957+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: 8d205cdac38885ab049ac241f938133b7d274a93d653e7551711843d60732808
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner 0l8p2emk/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+unittest.case.FunctionTestCase (<lambda>) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 1
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -O '/tmp/learning idem runner 0l8p2emk/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+missing optimized report
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# process_exit_code: 0
+# invalid_or_empty_unittest_report
+# runner_exit_code: 65
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 65
+
+# case: __main__.RunnerTests.test_23_optimized_empty_missing_and_failed_reports_are_not_success call=3
+# command: bash '/tmp/learning idem runner 0l8p2emk/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner 0l8p2emk/optimized-failed.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': 'd9a66ab7f8e94861c89ae51e7c5c7ba193b6a0fcf5b54acfecdcd1a1bd774578', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:13.638395+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: d9a66ab7f8e94861c89ae51e7c5c7ba193b6a0fcf5b54acfecdcd1a1bd774578
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner 0l8p2emk/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+unittest.case.FunctionTestCase (<lambda>) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 1
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -O '/tmp/learning idem runner 0l8p2emk/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+unittest.case.FunctionTestCase (<lambda>) ... ERROR
+
+======================================================================
+ERROR: unittest.case.FunctionTestCase (<lambda>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/learning idem runner 0l8p2emk/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py", line 3, in <lambda>
+    unittest.TextTestRunner(verbosity=2).run(unittest.FunctionTestCase(lambda: 1/0))
+                                                                               ~^~
+ZeroDivisionError: division by zero
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)
+
+# stderr_end
+# process_exit_code: 0
+# invalid_or_empty_unittest_report
+# runner_exit_code: 65
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 65
+
+# case: __main__.RunnerTests.test_23_optimized_empty_missing_and_failed_reports_are_not_success call=4
+# command: bash '/tmp/learning idem runner 0l8p2emk/fixture repo/evidence/tests/gameplay-core/scripts/run_idempotency.sh' '/tmp/learning idem runner 0l8p2emk/optimized-corrupt.log'
+# fixture_sha256: {'evidence/tests/gameplay-core/scripts/run_idempotency.sh': 'a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c', 'evidence/tests/gameplay-core/src/idempotency_sqlite.py': '96340770215578d81f7d77b69252499137b5733b0e87ef599ae067ce02e0b8b5', 'evidence/tests/gameplay-core/results/idempotency_sqlite_linux.txt': 'eb47c15fb3afc343148494dc5b60c8dcdb0f6e3259c2503814a2ab8e43ad3ce8'}
+# selected_environment: PYTHON='/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3' IDEMPOTENCY_TIMEOUT_SECONDS='10' PYTHONOPTIMIZE=None
+# stdout_begin
+# evidence: gameplay-core/idempotency_sqlite (synthetic local databases only)
+# generated: 2026-10-04T18:36:13.907119+00:00
+# host: Linux x86_64
+# python: 3.12.14 sqlite: 3.53.1
+# source_sha256: 96340770215578d81f7d77b69252499137b5733b0e87ef599ae067ce02e0b8b5
+# runner_sha256: a26bb0545601d607b9f395a1a833bb02e08f950df9304626e17f5d52b2d2db6c
+# timeout_seconds_per_run: 10.0
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B '/tmp/learning idem runner 0l8p2emk/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+unittest.case.FunctionTestCase (<lambda>) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# verified_tests_run: 1
+# command: /opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -O '/tmp/learning idem runner 0l8p2emk/fixture repo/evidence/tests/gameplay-core/src/idempotency_sqlite.py'
+# stdout_begin
+
+# stdout_end
+# stderr_begin
+Ran INVALID tests in 0.01s
+
+OK
+
+# stderr_end
+# process_exit_code: 0
+# invalid_or_empty_unittest_report
+# runner_exit_code: 65
+
+# stdout_end
+# stderr_begin
+
+# stderr_end
+# actual_exit_code: 65
+
+# stdout_end
+# stderr_begin
+test_01_actual_sqlite_suite_runs_normal_and_optimized_from_space_paths (__main__.RunnerTests.test_01_actual_sqlite_suite_runs_normal_and_optimized_from_space_paths) ... ok
+test_02_actual_unittest_failure_in_each_mode_propagates (__main__.RunnerTests.test_02_actual_unittest_failure_in_each_mode_propagates) ... ok
+test_03_nonzero_exit_code_is_preserved (__main__.RunnerTests.test_03_nonzero_exit_code_is_preserved) ... ok
+test_04_actual_timeout_in_each_mode_is_failure (__main__.RunnerTests.test_04_actual_timeout_in_each_mode_is_failure) ... ok
+test_05_simulated_unsupported_python_version_preflight (__main__.RunnerTests.test_05_simulated_unsupported_python_version_preflight) ... ok
+test_06_simulated_unsupported_sqlite_version_preflight (__main__.RunnerTests.test_06_simulated_unsupported_sqlite_version_preflight) ... ok
+test_07_missing_python_is_failure (__main__.RunnerTests.test_07_missing_python_is_failure) ... ok
+test_08_existing_file_is_not_overwritten (__main__.RunnerTests.test_08_existing_file_is_not_overwritten) ... ok
+test_09_existing_directory_is_not_reused (__main__.RunnerTests.test_09_existing_directory_is_not_reused) ... ok
+test_10_existing_and_dangling_symlinks_are_rejected (__main__.RunnerTests.test_10_existing_and_dangling_symlinks_are_rejected) ... ok
+test_11_old_raw_and_new_repository_outputs_are_rejected (__main__.RunnerTests.test_11_old_raw_and_new_repository_outputs_are_rejected) ... ok
+test_12_symlink_parent_into_repository_is_rejected (__main__.RunnerTests.test_12_symlink_parent_into_repository_is_rejected) ... ok
+test_13_missing_parent_and_file_parent_cannot_be_written (__main__.RunnerTests.test_13_missing_parent_and_file_parent_cannot_be_written) ... ok
+test_14_actual_log_write_limit_failure_cannot_report_success (__main__.RunnerTests.test_14_actual_log_write_limit_failure_cannot_report_success) ... ok
+test_15_required_absolute_output_argument (__main__.RunnerTests.test_15_required_absolute_output_argument) ... ok
+test_16_invalid_timeout_values_are_rejected (__main__.RunnerTests.test_16_invalid_timeout_values_are_rejected) ... ok
+test_17_real_empty_unittest_suite_is_not_success (__main__.RunnerTests.test_17_real_empty_unittest_suite_is_not_success) ... ok
+test_18_missing_completion_report_is_not_success (__main__.RunnerTests.test_18_missing_completion_report_is_not_success) ... ok
+test_19_real_failed_unittest_with_exit_zero_is_not_success (__main__.RunnerTests.test_19_real_failed_unittest_with_exit_zero_is_not_success) ... ok
+test_20_real_suite_with_corrupt_completion_report_is_not_success (__main__.RunnerTests.test_20_real_suite_with_corrupt_completion_report_is_not_success) ... ok
+test_21_normal_and_optimized_suite_count_must_match (__main__.RunnerTests.test_21_normal_and_optimized_suite_count_must_match) ... ok
+test_22_inherited_optimization_cannot_change_requested_modes (__main__.RunnerTests.test_22_inherited_optimization_cannot_change_requested_modes) ... ok
+test_23_optimized_empty_missing_and_failed_reports_are_not_success (__main__.RunnerTests.test_23_optimized_empty_missing_and_failed_reports_are_not_success) ... ok
+
+----------------------------------------------------------------------
+Ran 23 tests in 7.439s
+
+OK
+
+# stderr_end
+# exit_code: 0
+
+# All six top-level commands completed with exit code 0; nested expected failures are labeled by their test.

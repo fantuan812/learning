@@ -6,3 +6,6 @@ evidence/cpp/foundation-contracts/observed-gcc14-2026-10-04/old_byte_stride.stde
 
 # Keep the reviewed preserved-source defect baseline byte fingerprint stable.
 /.kb/preserved-source-defects.json text eol=lf
+
+# Preserve timeout-truncated unittest progress bytes in this raw record only.
+evidence/tests/gameplay-core/results/idempotency_scope_contract_20261004.txt whitespace=-blank-at-eol

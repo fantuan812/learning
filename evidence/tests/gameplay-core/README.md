@@ -156,48 +156,72 @@ g++ -std=c++17 -O2 -Wall -Wextra -Werror evidence/tests/gameplay-core/src/skill_
 
 ## 2026-10-01 持久化幂等补充
 
-### 问题与假设
+### 问题与假设（2026-10-04 合同修订）
 
-原背包 C++ 模型的进程内 requestId 集合并不证明数据库持久化幂等。本次单独增加 [idempotency_sqlite.py](src/idempotency_sqlite.py)，研究“去重占位、扣款发货、结果快照是否同一次提交”以及结果未知时如何恢复。沿用现有证据目录，不覆盖历史结果；原 C++/PowerShell runner 仍只列五个程序，不自动执行此 Python 实验。
+原背包 C++ 模型的进程内 requestId 集合并不证明数据库持久化幂等。[idempotency_sqlite.py](src/idempotency_sqlite.py)单独研究“去重占位、扣款发货、结果快照是否同一次提交”及结果未知后的同键重放。原 C++/PowerShell runner 仍只列五个程序，不执行此 Python 实验。
 
-模型用 SQLite 文件数据库、独立连接和显式 `BEGIN IMMEDIATE`，假设一份权威数据库、无跨库外部副作用。三种认证作用域（租户、账号、操作）加入复合主键；商品固定为 potion，服务端单价 100，余额从 1000 开始。暂时错误回滚；余额不足按本模型契约保存 REJECTED 快照；长任务示例另有 job epoch，且资源更新与阶段转换同事务。
+模型用新建的临时 SQLite 文件库、独立连接和显式 `BEGIN IMMEDIATE`，假设一份权威数据库、无跨库外部副作用。租户/账号应由调用者从认证上下文提供，operation 由服务端业务端点选择，四项 `(tenant, account, operation, key)` 组成唯一域；模型不实现认证。商品固定 potion、单价 100、种子余额 1000。暂时错误回滚；余额不足保存 REJECTED 快照，充值后同键仍重放旧拒绝，新意图用新键。长任务示例另有 job epoch，资源更新与阶段转换同事务。
 
-### 运行方式与实际环境
+修订前 `operation=None` 两次返回 SUCCEEDED，却将余额 1000→900→800、物品 0→1→2，并留下两条 NULL operation/PROCESSING/NULL snapshot。普通 SQLite 复合主键允许 NULL 且 NULL 不相等，`operation=?` 绑定 NULL 又匹配不到终态更新，旧代码未检查 0 行就提交。**不是 SQLite 事务失效**：`key=None` 原本已拒绝，合法字符串同键原本仍只扣一次。
+
+2026-10-04 修订闭合三个边界：
+
+- 连接前校验完整 scope：tenant/account 为 exact int、SQLite signed64 范围，拒绝 bool/float/str/整数子类；允许可表示的 0/负数，账号存在性另查，不把类型检查当认证
+- operation/key 均为非空且可 UTF-8 编码的字符串；key 最多 128 个 Python 字符。保持大小写、空白、Unicode 原始码点序列与内嵌 NUL，拒绝孤立 surrogate，不 trim/lower/Unicode 规范化/截断；空白字符串有效，v1/v2 继续隔离。原商品/quantity 校验保留
+- wallet 身份两列、idem 唯一域四列显式 NOT NULL；这是数据库空值兜底，普通表的类型亲和性仍不能替代 API 合同。终态 UPDATE 限定 PROCESSING/NULL snapshot 并要求 rowcount 精确为 1，否则整笔事务回滚
+
+### 运行方式与版本边界
 
 ```bash
-# 在仓库根运行；Python 3.11+、其内置 SQLite 3.35+，不安装任何包。
-bash evidence/tests/gameplay-core/scripts/run_idempotency.sh
-# 也可独立执行，不写仓库日志：
-python3 evidence/tests/gameplay-core/src/idempotency_sqlite.py
-python3 -O evidence/tests/gameplay-core/src/idempotency_sqlite.py
+# 仓库根；Python 3.11+、内置 SQLite 3.35+，不安装第三方包
+# 输出文件必须尚不存在、父目录已存在且位于仓库外；含空格路径加引号
+bash evidence/tests/gameplay-core/scripts/run_idempotency.sh /tmp/new-idempotency-run.log
+# 可选：PYTHON=/path/to/python3 IDEMPOTENCY_TIMEOUT_SECONDS=60 bash ... /tmp/new.log
+# 直接运行模型，不写仓库日志
+python3 -B evidence/tests/gameplay-core/src/idempotency_sqlite.py
+python3 -B -O evidence/tests/gameplay-core/src/idempotency_sqlite.py
+# Linux/Bash runner 自身的永久回归；会实际运行模型及故障子进程
+python3 -B evidence/tests/gameplay-core/scripts/test_idempotency_runner.py
+python3 -B -O evidence/tests/gameplay-core/scripts/test_idempotency_runner.py
 ```
 
-2026-10-01 实测环境：Linux x86_64、Python 3.12.14、SQLite 3.53.1。runner 使用 Bash `pipefail` 保存 Python 输出与非零状态；本轮 `bash -n`、Python 语法编译通过，并用隔离 fixture 验证前置检查失败、普通运行失败、`-O` 运行失败均返回相应非零码且不打印成功尾标。未运行 PowerShell、Windows 或 UE。
+[run_idempotency.sh](scripts/run_idempotency.sh)没有默认结果路径，拒绝已存在文件、目录、symlink、旧 raw 及经父目录 symlink 指向仓库内的新输出。日志独占创建，写失败/子进程失败/超时均非零，失败保留部分日志；不会覆盖历史输出。超时按每次模型运行计算，默认 60 秒，Linux 下终止该运行的进程组。环境变量 PYTHON 是一个可执行路径，不是待 eval 的命令串。此工具假定本机输出祖先目录不会被恶意并发替换，不是安全沙箱。
 
-### 输入、断言与原始结果
+runner 分别记录真实 stdout/stderr、源码与 runner SHA-256、命令、环境和退出码。只有两次退出 0、各有非空标准 unittest 完成报告、普通/优化测试数相同才打印成功尾标；无报告、Ran 0、FAILED 却 exit 0、损坏报告都不是通过。子进程环境仅移除继承的 PYTHONOPTIMIZE，确保第一轮 optimize=0、显式 -O 轮 optimize=1，其他环境保留；继承值 1/2 都有真实模型回归。不硬编码测试总数；输出协议不防测试程序主动伪造报告。测试数为 unittest 方法数，方法内 subTest 不另计数。
 
-19 个 unittest 测试在普通与 `-O` 模式各通过一次；`unittest` 的断言不因 `-O` 被移除。测试源码、环境、SHA-256 与未经修改输出见 [idempotency_sqlite_linux.txt](results/idempotency_sqlite_linux.txt)。每个用例独立临时数据库，结束后清理，不接触真实账号或网络。
+Python 3.12 新增 autocommit，isolation_level=None 依赖 legacy transaction control。连接函数在该选项存在时显式传 `LEGACY_TRANSACTION_CONTROL`，保留 SQL BEGIN/COMMIT/ROLLBACK；Python 3.11 用原接口。没有引入 STRICT 或生产库迁移，也未实跑门槛以上的每个组合。
+
+### 实际环境、输入与原始结果
+
+- 2026-10-01 历史：Linux x86_64、Python 3.12.14、SQLite 3.53.1；原 19 项普通与 -O 输出 [idempotency_sqlite_linux.txt](results/idempotency_sqlite_linux.txt)逐字保留，只说明旧实现已测场景
+- 2026-10-04 本地：同为 Linux x86_64、Python 3.12.14、SQLite 3.53.1；30 项语义测试普通/-O 各通过，23 项 runner 回归普通/-O 各通过。实际次数、源码哈希、修订前对照、完整输出与退出码见新 [idempotency_scope_contract_20261004.txt](results/idempotency_scope_contract_20261004.txt)
+- 每例独立临时库/目录，只有合成身份与商品，不接触真实账号或凭据。unittest 断言在 -O 下仍执行。runner 回归的成功路径运行当前真实 SQLite 模型；失败/超时/写失败也是实际子进程/文件错误，坏版本前检用明确标记的版本元数据模拟
+- CI 平台入口与本地证据分开：[knowledge workflow](../../../.github/workflows/knowledge.yml)配置普通/-O 模型的 Ubuntu/Windows 步骤及 Linux runner 回归；各提交是否通过以相应 CI 运行记录为准。本次归档不包含 Windows 本地执行，也不预先宣布远端 CI 通过
 
 | 用例 | 场景 | 断言 |
 | --- | --- | --- |
 | 01–06 | 首次/重放、异参、账号/租户隔离、新意图、拒绝后充值 | 正确域去重，冲突无副作用；旧快照不被后来状态改写 |
 | 07 | 扣款后、发货前抛异常 | 余额、物品、去重占位一起回滚，再试仅提交一次 |
 | 08–09 | 子进程在 COMMIT 前/后 `os._exit(86)` | 前者无提交，后者同键回放已提交快照；父进程校验退出码 |
-| 10 | 首个连接持有写事务，第二个连接立即尝试 | 精确得到 SQLITE_BUSY，不把锁竞争当首次执行许可；稍后重放 |
+| 10 | 首个连接持有写事务，第二个连接立即尝试 | 精确 SQLITE_BUSY，不把锁竞争当首次执行许可；稍后重放 |
 | 11 | 8 个线程、各自连接、屏障同时起跑 | 相同快照，最终余额 900、物品 1、去重记录 1 |
-| 12–13 | 反例：业务与去重分开提交；删除全部去重证据后旧键重试 | 复现余额 800/物品 2 的坏结果；PASS 表示捕捉到缺陷 |
+| 12–13 | 故意坏负例：业务与去重分开提交；删尽记忆后旧键重试 | 复现余额 800/物品 2 的坏结果；PASS 表示捕捉到缺陷 |
 | 14–15 | 旧 epoch、重复完成、阶段更新后故障 | 旧/已完成执行者不能再加物品；阶段与效果一起回滚 |
-| 16–19 | 非法数量、操作域、已提交 PROCESSING、缺键 | 非法/不确定请求不执行业务，操作域独立 |
+| 16–19 | 非法数量、v1/v2 操作域、已提交 PROCESSING、缺键 | 非法/不确定请求不执行业务，操作域独立 |
+| 20–24、30 | NULL/空/错类型/不可编码 scope、signed64 端点、键相等性 | 非法输入在连接前拒绝；合法边界同键重放一次，distinct 键不合并 |
+| 25 | 不经过 API，直接给六列 INSERT/UPDATE NULL | SQLite IntegrityError；无多插入/空值更新 |
+| 26–27 | 隔离库真实 BEFORE UPDATE trigger：RAISE(IGNORE)/RAISE(ABORT) | 终态影响 0 行或 SQL 报错时，钱包与占位全部回滚；不是 mock rowcount |
+| 28–29 | hook 用新连接在 commit 前/后重入；显式事务状态 | 前者精确 BUSY 并外层回滚，后者只重放；BEGIN/ROLLBACK 状态正确 |
 
 ### 结论与局限
 
-1. 同库事务缩小的是提交窗口：占位、目标效果与结果同时存在或同时回滚；丢失响应不意味着业务失败。先业务后记录的两次提交，即使每个 SQL 本身原子，也有可重现双写缺口。
-2. 安全性需要记忆：删除全部去重证据会让迟到键重新生效；实验没有实现墓碑/保留期策略，只用反例暴露必要条件。
-3. fencing 在实际提交端检查 epoch 和阶段才起效；此模型没有实现真实租约、时钟或 Redis 集群，只验证数据库资源端条件更新，不能据此宣称分布式锁安全。
-4. SQLite 同时只有一个写者，`BEGIN IMMEDIATE` 用于控制实验次序；不能外推 PostgreSQL/MySQL 的行锁、死锁、隔离可见性、吞吐或 failover。8 个并发连接不是生产压力测试。
-5. `os._exit` 演示应用进程退出，宿主和文件系统持续运行；不是断电、磁盘损坏、fsync 可靠性或网络提交不确定性验证。实验未含 Outbox/MQ/第三方支付，规范化只覆盖示例字段，没有完整鉴权、退款、审计和存储迁移实现。
+1. 非空唯一域、同库事务与终态精确写入共同闭合提交合同；BEGIN/COMMIT 本身不能修正错误域。终态 0 行有真实故障回归；完好复合主键下不应发生多行，代码 `!= 1` 同样拒绝，但未制造真实多行终态更新。
+2. 同库事务保证本模型中的占位、目标效果与终态一起提交或回滚；丢失响应不等于业务失败。先业务后记录仍有双写窗口；删尽记忆仍可让旧键再生效，没有实现墓碑/保留期策略。
+3. fencing 在实际提交端检查 epoch 和阶段才有效；本模型没有真实租约、时钟或 Redis 集群，不能宣称分布式锁安全或全局 exactly-once。
+4. SQLite 写事务串行化，8 个连接不是生产压力测试；不能外推 PostgreSQL/MySQL 行锁、死锁、隔离、吞吐或 failover。hook 仅供故障注入，新连接重入不代表同连接嵌套事务支持。
+5. os._exit 的宿主和文件系统仍运行，不是断电、磁盘损坏/fsync 或真实网络提交不确定性实验。本地本次未运行 UE、Outbox/MQ/第三方支付，没有完整鉴权、退款、审计或既存库迁移；结果也不能替代生产多数据库验证。
 
-一手依据：[SQLite 事务](https://www.sqlite.org/lang_transaction.html)、[SQLite 隔离](https://www.sqlite.org/isolation.html)。主责原理、生产验证矩阵与跨系统边界见 [幂等重试与消息语义](../../../知识/07-网络与游戏服务端/持久化与分布式一致性/03-幂等重试与消息语义.md)，重试时间预算见 [限流熔断背压](../../../知识/07-网络与游戏服务端/运行调度与过载保护/02-限流熔断背压与过载保护.md)。
+一手依据：[SQLite PRIMARY KEY/NOT NULL](https://www.sqlite.org/lang_createtable.html#the_primary_key)、[NULL 比较](https://www.sqlite.org/lang_expr.html)、[SQLite 事务](https://www.sqlite.org/lang_transaction.html)、[SQLite 隔离](https://www.sqlite.org/isolation.html)、[Python rowcount](https://docs.python.org/3.12/library/sqlite3.html#sqlite3.Cursor.rowcount) 与 [legacy transaction control](https://docs.python.org/3.12/library/sqlite3.html#transaction-control-via-the-isolation-level-attribute)。主责原理、表示域细节和生产矩阵见 [幂等重试与消息语义](../../../知识/07-网络与游戏服务端/持久化与分布式一致性/03-幂等重试与消息语义.md)，重试时间预算见 [限流熔断背压](../../../知识/07-网络与游戏服务端/运行调度与过载保护/02-限流熔断背压与过载保护.md)。
 
 ## 关联知识文档
 
