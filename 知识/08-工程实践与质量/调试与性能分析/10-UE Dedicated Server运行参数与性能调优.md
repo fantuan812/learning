@@ -386,10 +386,10 @@ Win64 与 Linux、Development 与 Shipping 的调优结论不能互相替代。
 ## 13. 关联阅读
 
 - [UE Dedicated Server构建烘焙与运行](<../构建编译与制品/09-UE%20Dedicated%20Server构建烘焙与运行.md>)
-- [UE Dedicated Server启动与监听源码](<../../../游戏知识/12-引擎源码分析/32-UE%20Dedicated%20Server启动与监听源码.md>)
-- [ReplicationGraph兴趣管理](../../../游戏知识/06-网络同步/05-ReplicationGraph兴趣管理.md)
-- [网络复制与RPC源码](../../../游戏知识/12-引擎源码分析/09-网络复制与RPC源码.md)
-- [UE Dedicated Server实例生命周期与平台化](<../../../游戏服务端/05-UE%20Dedicated%20Server平台化/01-UE%20Dedicated%20Server实例生命周期与平台化.md>)
+- [UE Dedicated Server启动与监听源码](<../../07-网络与游戏服务端/专用服务器实例与容量/32-UE%20Dedicated%20Server启动与监听源码.md>)
+- [ReplicationGraph兴趣管理](../../07-网络与游戏服务端/状态复制与兴趣管理/05-ReplicationGraph兴趣管理.md)
+- [网络复制与RPC源码](../../07-网络与游戏服务端/状态复制与兴趣管理/09-网络复制与RPC源码.md)
+- [UE Dedicated Server实例生命周期与平台化](<../../07-网络与游戏服务端/专用服务器实例与容量/01-UE%20Dedicated%20Server实例生命周期与平台化.md>)
 - [UE Dedicated Server联机验收与Gauntlet](<../测试策略与自动化/06-UE%20Dedicated%20Server联机验收与Gauntlet.md>)
 
 ## 14. 更新日志

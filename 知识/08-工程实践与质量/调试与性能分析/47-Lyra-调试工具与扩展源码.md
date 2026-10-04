@@ -1070,7 +1070,7 @@ Test-Path -LiteralPath 'C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime
 | Gauntlet 测试瞬间结束 | `IsBootProcessComplete` 时间判定过早（BootTest） | 观察 `TestDelay` 与进程焦点时序 |
 | HTTP Cheat 请求失败 | 非 Shipping 但端口未监听；`GetPlayerController` 为空 | 检查 `WITH_RPC_REGISTRY`、`/core/cheatcommand` 路径与 JSON 字段 |
 
-> 插件域失败模式（PocketWorld 重复创建、RedRoom/GreenRoom 无文本引用等）已随插件正文迁至 [48-Lyra扩展插件源码](../../../游戏知识/12-引擎源码分析/48-Lyra扩展插件源码.md) §十 失败模式排查表。
+> 插件域失败模式（PocketWorld 重复创建、RedRoom/GreenRoom 无文本引用等）已随插件正文迁至 [48-Lyra扩展插件源码](../../03-引擎架构与资源系统/模块化框架与对象通信/48-Lyra扩展插件源码.md) §十 失败模式排查表。
 
 ## 二十、常见反模式
 
@@ -1182,21 +1182,21 @@ Spec 用 AutomationDriver 驱动真实 UI 点击（前端路径）；ShooterTest
 
 ## 二十二、关联阅读
 
-- [39-Lyra源码总览与阅读路线](../../../游戏知识/12-引擎源码分析/39-Lyra源码总览与阅读路线.md)：项目插件地图、Experience 入口和系列阅读顺序。
-- [40-Lyra-Experience与GameFeature源码](../../../游戏知识/12-引擎源码分析/40-Lyra-Experience与GameFeature源码.md)：Experience 装配与 GameFeature 激活，理解 StartEliminationTest 的判定对象。
-- [41-Lyra-Pawn初始化与模块化组件源码](../../../游戏知识/12-引擎源码分析/41-Lyra-Pawn初始化与模块化组件源码.md)：PawnExtension 初始化状态与 `DamageSelfDestruct` 的就绪检查。
-- [42-Lyra-输入GAS与武器战斗源码](../../../游戏知识/12-引擎源码分析/42-Lyra-输入GAS与武器战斗源码.md)：ASC、动态 Tag 与 SetByCaller 伤害链路。
-- [43-Lyra-背包装备消息与UI源码](../../../游戏知识/12-引擎源码分析/43-Lyra-背包装备消息与UI源码.md)：Inventory、GameplayMessage 与 UIExtension，RPC 组件读取库存的上下文。
-- [44-Lyra-前端会话网络与扩展源码](../../../游戏知识/12-引擎源码分析/44-Lyra-前端会话网络与扩展源码.md)：ShooterTests、Gauntlet、回放与加载屏投票，本篇只交叉引用不重复。
-- [45-Lyra-相机音频与游戏阶段源码](../../../游戏知识/12-引擎源码分析/45-Lyra-相机音频与游戏阶段源码.md)：相机与游戏阶段（并行写作，最终存在）。
-- [46-Lyra-AI机器人与队伍源码](../../../游戏知识/12-引擎源码分析/46-Lyra-AI机器人与队伍源码.md)：AI 机器人与队伍（并行写作，最终存在）；ModularAIController 与机器人 Cheat 的延伸。
-- [48-Lyra扩展插件源码](../../../游戏知识/12-引擎源码分析/48-Lyra扩展插件源码.md)：AsyncMixin、PocketWorlds、GameSubtitles、LyraExtTool、RedRoom/GreenRoom、ModularGameplayActors 与加载屏插件的独立解析与 25 个完整源码附录。
-- [19-高优先级源码覆盖路线图](../../../游戏知识/12-引擎源码分析/19-高优先级源码覆盖路线图.md)：调试与验证工具的覆盖位置。
-- [05-GAS能力系统源码](../../../游戏知识/12-引擎源码分析/05-GAS能力系统源码.md)：AbilitySystemComponent 与 GameplayEffect 底层。
-- [13-资源加载与异步加载源码](../../../游戏知识/12-引擎源码分析/13-资源加载与异步加载源码.md)：FStreamableHandle 与异步加载机制，理解 FAsyncMixin。
-- [26-CommonUI源码](../../../游戏知识/12-引擎源码分析/26-CommonUI源码.md)：SCommonButton 与 UI 自动化定位器背景。
+- [39-Lyra源码总览与阅读路线](../../05-Gameplay与交互系统/玩法架构与任务协作/39-Lyra源码总览与阅读路线.md)：项目插件地图、Experience 入口和系列阅读顺序。
+- [40-Lyra-Experience与GameFeature源码](../../03-引擎架构与资源系统/模块化框架与对象通信/40-Lyra-Experience与GameFeature源码.md)：Experience 装配与 GameFeature 激活，理解 StartEliminationTest 的判定对象。
+- [41-Lyra-Pawn初始化与模块化组件源码](../../03-引擎架构与资源系统/模块化框架与对象通信/41-Lyra-Pawn初始化与模块化组件源码.md)：PawnExtension 初始化状态与 `DamageSelfDestruct` 的就绪检查。
+- [42-Lyra-输入GAS与武器战斗源码](../../05-Gameplay与交互系统/技能战斗与属性结算/42-Lyra-输入GAS与武器战斗源码.md)：ASC、动态 Tag 与 SetByCaller 伤害链路。
+- [43-Lyra-背包装备消息与UI源码](../../05-Gameplay与交互系统/背包装备与存档/43-Lyra-背包装备消息与UI源码.md)：Inventory、GameplayMessage 与 UIExtension，RPC 组件读取库存的上下文。
+- [44-Lyra-前端会话网络与扩展源码](../../07-网络与游戏服务端/会话身份与在线服务/44-Lyra-前端会话网络与扩展源码.md)：ShooterTests、Gauntlet、回放与加载屏投票，本篇只交叉引用不重复。
+- [45-Lyra-相机音频与游戏阶段源码](../../05-Gameplay与交互系统/输入移动与交互/45-Lyra-相机音频与游戏阶段源码.md)：相机与游戏阶段（并行写作，最终存在）。
+- [46-Lyra-AI机器人与队伍源码](../../06-游戏AI/战斗战术与机器人/46-Lyra-AI机器人与队伍源码.md)：AI 机器人与队伍（并行写作，最终存在）；ModularAIController 与机器人 Cheat 的延伸。
+- [48-Lyra扩展插件源码](../../03-引擎架构与资源系统/模块化框架与对象通信/48-Lyra扩展插件源码.md)：AsyncMixin、PocketWorlds、GameSubtitles、LyraExtTool、RedRoom/GreenRoom、ModularGameplayActors 与加载屏插件的独立解析与 25 个完整源码附录。
+- [19-高优先级源码覆盖路线图](../../03-引擎架构与资源系统/源码阅读与覆盖基线/19-高优先级源码覆盖路线图.md)：调试与验证工具的覆盖位置。
+- [05-GAS能力系统源码](../../05-Gameplay与交互系统/技能战斗与属性结算/05-GAS能力系统源码.md)：AbilitySystemComponent 与 GameplayEffect 底层。
+- [13-资源加载与异步加载源码](../../03-引擎架构与资源系统/世界组织与资源加载/13-资源加载与异步加载源码.md)：FStreamableHandle 与异步加载机制，理解 FAsyncMixin。
+- [26-CommonUI源码](../../05-Gameplay与交互系统/界面设置与无障碍/26-CommonUI源码.md)：SCommonButton 与 UI 自动化定位器背景。
 - [28-UnrealInsights与Trace源码](28-UnrealInsights与Trace源码.md)：把调试命令与加载过程变成可观测证据。
-- [32-UE Dedicated Server启动与监听源码](<../../../游戏知识/12-引擎源码分析/32-UE%20Dedicated%20Server启动与监听源码.md>)：服务器进程与 Cheat 的服务器侧行为。
+- [32-UE Dedicated Server启动与监听源码](<../../07-网络与游戏服务端/专用服务器实例与容量/32-UE%20Dedicated%20Server启动与监听源码.md>)：服务器进程与 Cheat 的服务器侧行为。
 - [README](../../../游戏知识/12-引擎源码分析/README.md)：本目录索引。
 - [游戏玩法编程 README](../../../游戏知识/03-游戏玩法编程/README.md)、[AI系统 README](../../../游戏知识/05-AI系统/README.md)、[网络同步 README](../../../游戏知识/06-网络同步/README.md)、[UI与性能优化 README](../../../游戏知识/07-UI与性能优化/README.md)、[工具链与打包发布 README](../../../游戏知识/08-工具链与打包发布/README.md)、[世界构建与过场 README](../../../游戏知识/13-世界构建与过场/README.md)：跨分类入口。
 
@@ -4920,7 +4920,7 @@ bool ULyraGameplayRpcRegistrationComponent::HttpGetPlayerVitalsCommand(const FHt
 | Uncooked Folder | 打包时永不 Cook 的目录（`DirectoriesToNeverCook`） |
 | Data-Only Blueprint | 无图表逻辑、仅数据的蓝图 |
 
-> 插件域术语（FAsyncMixin/PocketWorld/Modular Actor/PreLoadScreen 等）已随插件正文迁至 [48-Lyra扩展插件源码](../../../游戏知识/12-引擎源码分析/48-Lyra扩展插件源码.md)，术语见 48 篇 §十八 术语速查。
+> 插件域术语（FAsyncMixin/PocketWorld/Modular Actor/PreLoadScreen 等）已随插件正文迁至 [48-Lyra扩展插件源码](../../03-引擎架构与资源系统/模块化框架与对象通信/48-Lyra扩展插件源码.md)，术语见 48 篇 §十八 术语速查。
 
 ## 二十八、最终复盘
 

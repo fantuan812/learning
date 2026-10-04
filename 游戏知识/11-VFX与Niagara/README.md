@@ -29,10 +29,10 @@ updated: 2026-08-20
 
 | 专题文件（Canonical 路径） | 知识类型 | 成熟度 | 核心工程关注点与落地场景 |
 | :--- | :---: | :---: | :--- |
-| [01-Niagara粒子系统基础.md](01-Niagara粒子系统基础.md) | Concept | L2 | Niagara 架构栈：System/Emitter/Module、粒子属性通道、CPU vs GPU 选型、Sprite/Mesh/Ribbon 渲染器与生命周期管理 |
-| [02-Niagara高级技巧.md](02-Niagara高级技巧.md) | Concept | L2 | 数据接口 DI（骨骼采样/距离场碰撞/音频驱动）、粒子间事件通信（Events）、C++ 参数动态绑定与 NiagaraParameterCollection |
-| [03-VFX性能优化.md](03-VFX性能优化.md) | Concept | L2 | 半透明 Overdraw 压降、粒子数量预算与 Scalability 分级、固定边界框（Fixed Bounds）消除 CPU 遍历、stat niagara 性能判读 |
-| [04-Niagara流体模拟.md](04-Niagara流体模拟.md) | Concept | L2 | NiagaraFluids 网格流体（Grid2D/Grid3D）、Navier-Stokes 方程数值求解近似、GPU 模拟阶段调度、烟雾火焰与性能边界控制 |
+| [01-Niagara粒子系统基础.md](../../知识/04-图形动画与物理仿真/特效粒子与流体仿真/01-Niagara粒子系统基础.md) | Concept | L2 | Niagara 架构栈：System/Emitter/Module、粒子属性通道、CPU vs GPU 选型、Sprite/Mesh/Ribbon 渲染器与生命周期管理 |
+| [02-Niagara高级技巧.md](../../知识/04-图形动画与物理仿真/特效粒子与流体仿真/02-Niagara高级技巧.md) | Concept | L2 | 数据接口 DI（骨骼采样/距离场碰撞/音频驱动）、粒子间事件通信（Events）、C++ 参数动态绑定与 NiagaraParameterCollection |
+| [03-VFX性能优化.md](../../知识/04-图形动画与物理仿真/特效粒子与流体仿真/03-VFX性能优化.md) | Concept | L2 | 半透明 Overdraw 压降、粒子数量预算与 Scalability 分级、固定边界框（Fixed Bounds）消除 CPU 遍历、stat niagara 性能判读 |
+| [04-Niagara流体模拟.md](../../知识/04-图形动画与物理仿真/特效粒子与流体仿真/04-Niagara流体模拟.md) | Concept | L2 | NiagaraFluids 网格流体（Grid2D/Grid3D）、Navier-Stokes 方程数值求解近似、GPU 模拟阶段调度、烟雾火焰与性能边界控制 |
 
 ---
 
@@ -67,7 +67,7 @@ flowchart TD
   - GPU 计算着色器与异构：[00-08 计算机体系结构与性能](../../00-计算机与工程基础/08-计算机体系结构与性能/README.md)
   - 数值积分与微积分运动模拟：[游戏算法 02-数学与碰撞](../../游戏算法/02-数学与碰撞/README.md)
 - **向上驱动（引擎源码剖析）**：
-  - Niagara 引擎源码实现：[12-17 Niagara源码](../12-引擎源码分析/17-Niagara源码.md)
+  - Niagara 引擎源码实现：[12-17 Niagara源码](../../知识/04-图形动画与物理仿真/特效粒子与流体仿真/17-Niagara源码.md)
 - **横向协同（渲染与音频）**：
   - 材质着色与半透明混合：[02-渲染与图形](../02-渲染与图形/README.md)
   - 音频频谱驱动粒子：[10-音频系统](../10-音频系统/README.md)

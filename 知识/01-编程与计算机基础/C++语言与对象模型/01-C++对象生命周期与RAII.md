@@ -244,7 +244,7 @@ public:
 
 `std::thread`对象析构时若仍joinable，会按[标准合同](https://eel.is/c%2B%2Bdraft/thread.thread.destr)终止程序；线程函数自然返回也不会自动把句柄变为非joinable。RAII join守卫可以防忘记汇合，却不保证等待时间上界。不能从工作线程join自身，不能持有工作线程退出所需的锁去join，也不能在GameThread等一个依赖GameThread continuation的任务。
 
-C++20的jthread/stop_token可简化部分样板，仍是协作停止，不强杀工作；本页可运行例子只用C++11。队列的结果接纳字段已在[AI预算主文](../../../游戏服务端/06-世界模拟与运行时/11-AI与寻路时间预算.md)定义，这里只负责所有权与停止确认，避免复制第二份协议。实际线程池drain/cancel语义继续看[线程同步与锁](../并发与同步/02-线程同步与锁.md)。
+C++20的jthread/stop_token可简化部分样板，仍是协作停止，不强杀工作；本页可运行例子只用C++11。队列的结果接纳字段已在[AI预算主文](../../07-网络与游戏服务端/运行调度与过载保护/11-AI与寻路时间预算.md)定义，这里只负责所有权与停止确认，避免复制第二份协议。实际线程池drain/cancel语义继续看[线程同步与锁](../并发与同步/02-线程同步与锁.md)。
 
 ## 4. 示例
 
@@ -515,5 +515,5 @@ cl /nologo /utf-8 /std:c++17 /EHsc scope_guard.cpp /Fe:scope_guard.exe
 
 - [Smart Pointers in Unreal Engine](https://dev.epicgames.com/documentation/en-us/unreal-engine/smart-pointers-in-unreal-engine)：可选线程安全模式与普通对象所有权
 - [C++异常规格](https://eel.is/c%2B%2Bdraft/except.spec)：析构异常规格的推导与非抛出承诺
-- [AI与寻路时间预算](../../../游戏服务端/06-世界模拟与运行时/11-AI与寻路时间预算.md)：取消之后的代次、deadline与结果接纳
-- [UE多线程回写边界](../../../游戏知识/01-引擎基础/11-多线程与任务系统.md)：引擎线程亲和与回调生命周期
+- [AI与寻路时间预算](../../07-网络与游戏服务端/运行调度与过载保护/11-AI与寻路时间预算.md)：取消之后的代次、deadline与结果接纳
+- [UE多线程回写边界](../../03-引擎架构与资源系统/运行架构与任务调度/11-多线程与任务系统.md)：引擎线程亲和与回调生命周期

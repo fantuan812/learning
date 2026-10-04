@@ -32,7 +32,7 @@ sources:
 
 ## 问题与假设
 
-待验证的问题来自 [网络通信与协议设计](../../../游戏服务端/01-架构与网络/02-网络通信与协议设计.md)：解析成功是否足以证明更新语义与透传完整？
+待验证的问题来自 [网络通信与协议设计](../../../知识/07-网络与游戏服务端/服务架构与消息通信/02-网络通信与协议设计.md)：解析成功是否足以证明更新语义与透传完整？
 
 三条可被测试推翻的假设：
 
@@ -119,6 +119,6 @@ bash evidence/labs/protobuf-evolution/scripts/run_all.sh
 
 ## 关联阅读
 
-- [网络通信与协议设计](../../../游戏服务端/01-架构与网络/02-网络通信与协议设计.md)：主责原理、所有权与迁移验收
+- [网络通信与协议设计](../../../知识/07-网络与游戏服务端/服务架构与消息通信/02-网络通信与协议设计.md)：主责原理、所有权与迁移验收
 - [Evidence 索引](../../README.md)：实验与原始结果入口
 - [字段存在性](https://protobuf.dev/programming-guides/field_presence/)、[未知字段](https://protobuf.dev/programming-guides/proto3/#unknowns)、[ProtoJSON](https://protobuf.dev/programming-guides/json/)：官方规则

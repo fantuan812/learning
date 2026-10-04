@@ -30,17 +30,17 @@ updated: 2026-08-20
 
 | 专题文件（Canonical 路径） | 知识类型 | 成熟度 | 核心工程关注点与落地场景 |
 | :--- | :---: | :---: | :--- |
-| [01-渲染管线概览.md](01-渲染管线概览.md) | Concept | L2 | 延迟渲染管线各阶段（BasePass/Lighting/PostProcess）、RDG 依赖图、渲染线程架构与 stat gpu 分析 |
-| [02-材质系统详解.md](02-材质系统详解.md) | Concept | L2 | PBR 物理光照模型、材质域（Material Domain）与混合模式、HLSL 节点翻译、材质实例化与着色模型（Shading Model） |
-| [03-光照与阴影系统.md](03-光照与阴影系统.md) | Concept | L2 | 方向光/点光/聚光/矩形光、Shadow Map、级联阴影 CSM、距离场阴影 DFS、虚拟阴影贴图 VSM 原理与性能权衡 |
-| [04-Nanite与Lumen.md](04-Nanite与Lumen.md) | Concept | L2 | Nanite 几何体虚拟化集群剔除与软光栅、Lumen 表面缓存（Surface Cache）、屏幕空间光线追踪与动态 GI 调优 |
-| [05-后处理与画面特效.md](05-后处理与画面特效.md) | Concept | L2 | PostProcessVolume、色调映射（Tonemapping ACES）、自动曝光、泛光（Bloom）、景深（DOF）、TAA/TSR 超分辨率 |
-| [06-Groom毛发系统.md](06-Groom毛发系统.md) | Concept | L2 | Strands/Cards/Meshes 三种几何表示、发丝 RHI 渲染管线、Niagara 物理仿真集成、LOD 切换与显存带宽控制 |
-| [07-虚拟纹理与材质混合.md](07-虚拟纹理与材质混合.md) | Concept | L2 | 运行时虚拟纹理（RVT）页面缓存与反馈机制、地形/网格体多层材质混合、流送虚拟纹理（SVT）与显存开销优化 |
-| [08-体积渲染与云.md](08-体积渲染与云.md) | Concept | L2 | Volumetric Fog 体素网格（Froxel）、Raymarching 步进采样、体积云多重散射近似与天空大气系统协同 |
-| [09-光线追踪与路径追踪.md](09-光线追踪与路径追踪.md) | Concept | L2 | DXR 硬件光追、TLAS/BLAS 加速结构构建、降噪器（Denoiser）、Path Tracer 离线级参考渲染管线 |
-| [10-移动端渲染专项.md](10-移动端渲染专项.md) | Concept | L2 | 移动端 Forward/Mobile Deferred、TBDR 架构贴片显存（Tile Memory）、带宽与 Overdraw 压降、ASTC 纹理压缩与设备分级 |
-| [11-RenderTarget与SceneCapture实战.md](11-RenderTarget与SceneCapture实战.md) | Concept | L2 | TextureRenderTarget2D 动态绘制、SceneCapture2D 相机捕获、镜面反射/小地图/流体表面交互与显存管理 |
+| [01-渲染管线概览.md](../../知识/04-图形动画与物理仿真/渲染管线与光照/01-渲染管线概览.md) | Concept | L2 | 延迟渲染管线各阶段（BasePass/Lighting/PostProcess）、RDG 依赖图、渲染线程架构与 stat gpu 分析 |
+| [02-材质系统详解.md](../../知识/04-图形动画与物理仿真/材质地形与世界表现/02-材质系统详解.md) | Concept | L2 | PBR 物理光照模型、材质域（Material Domain）与混合模式、HLSL 节点翻译、材质实例化与着色模型（Shading Model） |
+| [03-光照与阴影系统.md](../../知识/04-图形动画与物理仿真/渲染管线与光照/03-光照与阴影系统.md) | Concept | L2 | 方向光/点光/聚光/矩形光、Shadow Map、级联阴影 CSM、距离场阴影 DFS、虚拟阴影贴图 VSM 原理与性能权衡 |
+| [04-Nanite与Lumen.md](../../知识/04-图形动画与物理仿真/渲染管线与光照/04-Nanite与Lumen.md) | Concept | L2 | Nanite 几何体虚拟化集群剔除与软光栅、Lumen 表面缓存（Surface Cache）、屏幕空间光线追踪与动态 GI 调优 |
+| [05-后处理与画面特效.md](../../知识/04-图形动画与物理仿真/渲染管线与光照/05-后处理与画面特效.md) | Concept | L2 | PostProcessVolume、色调映射（Tonemapping ACES）、自动曝光、泛光（Bloom）、景深（DOF）、TAA/TSR 超分辨率 |
+| [06-Groom毛发系统.md](../../知识/04-图形动画与物理仿真/材质地形与世界表现/06-Groom毛发系统.md) | Concept | L2 | Strands/Cards/Meshes 三种几何表示、发丝 RHI 渲染管线、Niagara 物理仿真集成、LOD 切换与显存带宽控制 |
+| [07-虚拟纹理与材质混合.md](../../知识/04-图形动画与物理仿真/材质地形与世界表现/07-虚拟纹理与材质混合.md) | Concept | L2 | 运行时虚拟纹理（RVT）页面缓存与反馈机制、地形/网格体多层材质混合、流送虚拟纹理（SVT）与显存开销优化 |
+| [08-体积渲染与云.md](../../知识/04-图形动画与物理仿真/材质地形与世界表现/08-体积渲染与云.md) | Concept | L2 | Volumetric Fog 体素网格（Froxel）、Raymarching 步进采样、体积云多重散射近似与天空大气系统协同 |
+| [09-光线追踪与路径追踪.md](../../知识/04-图形动画与物理仿真/渲染管线与光照/09-光线追踪与路径追踪.md) | Concept | L2 | DXR 硬件光追、TLAS/BLAS 加速结构构建、降噪器（Denoiser）、Path Tracer 离线级参考渲染管线 |
+| [10-移动端渲染专项.md](../../知识/04-图形动画与物理仿真/渲染管线与光照/10-移动端渲染专项.md) | Concept | L2 | 移动端 Forward/Mobile Deferred、TBDR 架构贴片显存（Tile Memory）、带宽与 Overdraw 压降、ASTC 纹理压缩与设备分级 |
+| [11-RenderTarget与SceneCapture实战.md](../../知识/04-图形动画与物理仿真/渲染管线与光照/11-RenderTarget与SceneCapture实战.md) | Concept | L2 | TextureRenderTarget2D 动态绘制、SceneCapture2D 相机捕获、镜面反射/小地图/流体表面交互与显存管理 |
 
 ---
 
@@ -80,9 +80,9 @@ flowchart TD
   - GPU 异构与编译器优化：[00-08 计算机体系结构与性能](../../00-计算机与工程基础/08-计算机体系结构与性能/README.md)
   - 虚拟内存映射与缺页管理：[00-06 操作系统](../../00-计算机与工程基础/06-操作系统/README.md)
 - **向上驱动（引擎源码剖析）**：
-  - 渲染线程与 RHI 源码：[12-10 渲染线程与RHI源码](../12-引擎源码分析/10-渲染线程与RHI源码.md)
-  - Nanite 源码实现：[12-35 Nanite源码](../12-引擎源码分析/35-Nanite源码.md)
-  - Lumen 源码实现：[12-30 Lumen与MegaLights源码](../12-引擎源码分析/30-Lumen与MegaLights源码.md)
+  - 渲染线程与 RHI 源码：[12-10 渲染线程与RHI源码](../../知识/04-图形动画与物理仿真/渲染管线与光照/10-渲染线程与RHI源码.md)
+  - Nanite 源码实现：[12-35 Nanite源码](../../知识/04-图形动画与物理仿真/渲染管线与光照/35-Nanite源码.md)
+  - Lumen 源码实现：[12-30 Lumen与MegaLights源码](../../知识/04-图形动画与物理仿真/渲染管线与光照/30-Lumen与MegaLights源码.md)
 - **横向协同（粒子与大世界）**：
   - 粒子特效与 GPU 模拟：[11-VFX与Niagara](../11-VFX与Niagara/README.md)
   - 地形与植被渲染：[13-世界构建与过场](../13-世界构建与过场/README.md)

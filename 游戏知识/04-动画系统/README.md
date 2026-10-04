@@ -30,14 +30,14 @@ updated: 2026-10-02
 
 | 专题文件（Canonical 路径） | 知识类型 | 成熟度 | 核心工程关注点与落地场景 |
 | :--- | :---: | :---: | :--- |
-| [01-动画蓝图与状态机.md](01-动画蓝图与状态机.md) | Concept | L2 | AnimBlueprint 架构、EventGraph 与 AnimGraph 分工、FastPath 优化、状态机转换规则与 Slot 槽位混合 |
-| [02-动画蒙太奇与混合空间.md](02-动画蒙太奇与混合空间.md) | Concept | L2 | Animation Montage 分段播放、AnimNotify/AnimNotifyState 事件通知管线、1D/2D BlendSpace 与 AimOffset 瞄准偏移 |
-| [03-IK与程序化动画.md](03-IK与程序化动画.md) | Concept | L2 | TwoBoneIK/FABRIK 解析求解器、Foot IK 复杂地形自适应、Control Rig 程序化控制、Root Motion 根骨骼位移提取 |
-| [04-动画性能与预算分配.md](04-动画性能与预算分配.md) | Concept | L2 | Animation Budget Allocator（ABA）预算算法、三档降级与丢帧插值、URO 更新率优化与大规模海量角色开销压降 |
-| [05-AnimNext动画框架.md](05-AnimNext动画框架.md) | Concept | L2 | UE5.8+ AnimNext/UAF 新一代无图动画框架、功能数据流图驱动求值、Trait 模块化装配与 StateTree 协同 |
-| [06-动画重定向与IKRetargeter.md](06-动画重定向与IKRetargeter.md) | Concept | L2 | IK Rig 与 IK Retargeter 跨骨骼拓扑资产复用、骨骼链（Chains）映射、22 种 Retarget Op 与批量资产离线转换 |
-| [07-动画资产与骨骼基础.md](07-动画资产与骨骼基础.md) | Concept | L2 | Skeleton 共享骨架、蒙皮坐标/inverse bind/palette 与影响数契约、数值反例、AnimSequence 与 FBX 管线 |
-| [08-动作战斗系统与打击手感.md](08-动作战斗系统与打击手感.md) | Architecture | L2 | ACT/ARPG 核心动作战斗：输入缓冲预输入、连招打断窗口、受击硬直与霸体物理、五维打击反馈管线、连续骨骼扫掠判定与 Root Motion 网络同步校验 |
+| [01-动画蓝图与状态机.md](../../知识/04-图形动画与物理仿真/动画求值与角色表现/01-动画蓝图与状态机.md) | Concept | L2 | AnimBlueprint 架构、EventGraph 与 AnimGraph 分工、FastPath 优化、状态机转换规则与 Slot 槽位混合 |
+| [02-动画蒙太奇与混合空间.md](../../知识/04-图形动画与物理仿真/动画求值与角色表现/02-动画蒙太奇与混合空间.md) | Concept | L2 | Animation Montage 分段播放、AnimNotify/AnimNotifyState 事件通知管线、1D/2D BlendSpace 与 AimOffset 瞄准偏移 |
+| [03-IK与程序化动画.md](../../知识/04-图形动画与物理仿真/动画求值与角色表现/03-IK与程序化动画.md) | Concept | L2 | TwoBoneIK/FABRIK 解析求解器、Foot IK 复杂地形自适应、Control Rig 程序化控制、Root Motion 根骨骼位移提取 |
+| [04-动画性能与预算分配.md](../../知识/04-图形动画与物理仿真/动画求值与角色表现/04-动画性能与预算分配.md) | Concept | L2 | Animation Budget Allocator（ABA）预算算法、三档降级与丢帧插值、URO 更新率优化与大规模海量角色开销压降 |
+| [05-AnimNext动画框架.md](../../知识/04-图形动画与物理仿真/动画求值与角色表现/05-AnimNext动画框架.md) | Concept | L2 | UE5.8+ AnimNext/UAF 新一代无图动画框架、功能数据流图驱动求值、Trait 模块化装配与 StateTree 协同 |
+| [06-动画重定向与IKRetargeter.md](../../知识/04-图形动画与物理仿真/动画求值与角色表现/06-动画重定向与IKRetargeter.md) | Concept | L2 | IK Rig 与 IK Retargeter 跨骨骼拓扑资产复用、骨骼链（Chains）映射、22 种 Retarget Op 与批量资产离线转换 |
+| [07-动画资产与骨骼基础.md](../../知识/04-图形动画与物理仿真/动画求值与角色表现/07-动画资产与骨骼基础.md) | Concept | L2 | Skeleton 共享骨架、蒙皮坐标/inverse bind/palette 与影响数契约、数值反例、AnimSequence 与 FBX 管线 |
+| [08-动作战斗系统与打击手感.md](../../知识/04-图形动画与物理仿真/动画求值与角色表现/08-动作战斗系统与打击手感.md) | Architecture | L2 | ACT/ARPG 核心动作战斗：输入缓冲预输入、连招打断窗口、受击硬直与霸体物理、五维打击反馈管线、连续骨骼扫掠判定与 Root Motion 网络同步校验 |
 
 ---
 
@@ -79,14 +79,14 @@ flowchart TD
   - SIMD 向量矩阵乘法：[00-08 计算机体系结构与性能](../../00-计算机与工程基础/08-计算机体系结构与性能/README.md)
   - 四元数与骨骼旋转：[游戏算法 02-数学与碰撞](../../游戏算法/02-数学与碰撞/README.md)
 - **向上驱动（引擎源码剖析）**：
-  - 动画求值底层源码：[12-11 动画系统求值源码](../12-引擎源码分析/11-动画系统求值源码.md)
-  - AnimNext 源码实现：[12-36 AnimNext与UAF源码](../12-引擎源码分析/36-AnimNext与UAF源码.md)
-  - ControlRig 源码：[12-18 RigVM与ControlRig源码](../12-引擎源码分析/18-RigVM与ControlRig源码.md)
+  - 动画求值底层源码：[12-11 动画系统求值源码](../../知识/04-图形动画与物理仿真/动画求值与角色表现/11-动画系统求值源码.md)
+  - AnimNext 源码实现：[12-36 AnimNext与UAF源码](../../知识/04-图形动画与物理仿真/动画求值与角色表现/36-AnimNext与UAF源码.md)
+  - ControlRig 源码：[12-18 RigVM与ControlRig源码](../../知识/04-图形动画与物理仿真/动画求值与角色表现/18-RigVM与ControlRig源码.md)
 - **横向协同（玩法、AI与服务端）**：
   - 技能攻击与 GAS 能力：[03-游戏玩法编程](../03-游戏玩法编程/README.md)
-  - 角色移动与网络预测：[03-06 角色移动系统UCharacterMovement](../03-游戏玩法编程/06-角色移动系统UCharacterMovement.md)
-  - 服务端技能与伤害管线：[游戏服务端/03-业务系统设计/08-技能与战斗框架.md](../../游戏服务端/03-业务系统设计/08-技能与战斗框架.md)
-  - 战斗 AI 决策与破招反馈：[游戏AI/02-移动学习与服务端/02-战斗与Boss设计.md](../../游戏AI/02-移动学习与服务端/02-战斗与Boss设计.md)
+  - 角色移动与网络预测：[03-06 角色移动系统UCharacterMovement](../../知识/05-Gameplay与交互系统/输入移动与交互/06-角色移动系统UCharacterMovement.md)
+  - 服务端技能与伤害管线：[游戏服务端/03-业务系统设计/08-技能与战斗框架.md](../../知识/05-Gameplay与交互系统/技能战斗与属性结算/08-技能与战斗框架.md)
+  - 战斗 AI 决策与破招反馈：[游戏AI/02-移动学习与服务端/02-战斗与Boss设计.md](../../知识/06-游戏AI/战斗战术与机器人/02-战斗与Boss设计.md)
   - 布娃娃与物理动画：[09-物理系统](../09-物理系统/README.md)
 
 ## 6. 局部数值证据

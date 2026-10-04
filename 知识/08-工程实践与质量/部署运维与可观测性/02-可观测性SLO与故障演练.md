@@ -325,7 +325,7 @@ service:
   - [15-软件工程与构建/测试静态分析Fuzz与持续交付](../测试策略与自动化/测试静态分析Fuzz与持续交付.md)：故障注入与灰度验证。
 - **游戏服务端运维落地**：
   - [游戏服务端/05-UE Dedicated Server平台化/README](<../../../游戏服务端/05-UE%20Dedicated%20Server平台化/README.md>)：DS 舰队集群健康检测与弹性扩缩容。
-  - [游戏服务端/06-世界模拟与运行时/01-ServerMainLoop与TickScheduler](../../../游戏服务端/06-世界模拟与运行时/01-ServerMainLoop与TickScheduler.md)：Tick 周期 SLO 治理。
+  - [游戏服务端/06-世界模拟与运行时/01-ServerMainLoop与TickScheduler](../../07-网络与游戏服务端/运行调度与过载保护/01-ServerMainLoop与TickScheduler.md)：Tick 周期 SLO 治理。
 - **分类与领域入口**：
   - [16-容器云与可观测性 README](../../../00-计算机与工程基础/16-容器云与可观测性/README.md)
   - [计算机与工程基础 Domain MOC](../../../00_Index/domains/计算机与工程基础.md)
