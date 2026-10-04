@@ -1,6 +1,8 @@
 [CmdletBinding()]
 param(
-    [string]$Root = ''
+    [string]$Root = '',
+    # Optional checkout/install directory containing Engine; never inferred from a historical machine.
+    [string]$UeInstallRoot = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -216,36 +218,115 @@ function Resolve-QualityCanonical([string]$Relative) {
     return $old
 }
 
-function Get-NonCodeMarkdownText([string]$Text) {
-    $kept = [System.Collections.Generic.List[string]]::new()
+function Get-NonCodeMarkdownText([string]$Text, [switch]$WithFenceState) {
+    # Bounded filtering, not a full CommonMark parser. Remember the direct
+    # quote/list containers as well as the delimiter character and length.
+    $kept = [Collections.Generic.List[string]]::new()
+    $unclosed = [Collections.Generic.List[int]]::new()
     $inFence = $false
     $fenceChar = ''
+    $fenceLength = 0
+    $fenceOuterQuotes = 0
+    $fenceInnerQuotes = 0
+    $fenceIndent = 0
+    $fenceLine = 0
+    $lineNumber = 0
     foreach ($line in ($Text -split "`r?`n")) {
-        if ($line -match '^\s*(```|~~~)') {
-            $markerChar = $Matches[1].Substring(0, 1)
-            if (-not $inFence) {
-                $inFence = $true
-                $fenceChar = $markerChar
-            } elseif ($fenceChar -eq $markerChar) {
-                $inFence = $false
-                $fenceChar = ''
+        $lineNumber++
+        # Markdown container indentation uses four-column tab stops, not the
+        # number of characters in "-`t" or "12.`t". Keep original prose bytes.
+        $expandedLine = $line
+        if ($line.Contains("`t")) {
+            $expanded = [Text.StringBuilder]::new()
+            $column = 0
+            foreach ($character in $line.ToCharArray()) {
+                if ($character -eq [char]9) {
+                    $padding = 4 - ($column % 4)
+                    [void]$expanded.Append((' ' * $padding))
+                    $column += $padding
+                } else { [void]$expanded.Append($character); $column++ }
             }
-            continue
+            $expandedLine = $expanded.ToString()
         }
-        if (-not $inFence) { $kept.Add($line) }
+        if ($inFence) {
+            $closing = $expandedLine
+            $sameContainer = $true
+            # Strip exactly the outer quote prefix, not arbitrary code text
+            # that happens to start with a greater-than operator.
+            for ($q = 0; $q -lt $fenceOuterQuotes; $q++) {
+                if ($closing -match '^ {0,3}>[ \t]?(.*)$') { $closing = $Matches[1] }
+                else { $sameContainer = $false; break }
+            }
+            if ($sameContainer -and $fenceIndent -gt 0) {
+                if ([string]::IsNullOrWhiteSpace($closing)) { $closing = '' }
+                elseif ($closing -match ('^ {' + $fenceIndent + '}(.*)$')) { $closing = $Matches[1] }
+                else { $sameContainer = $false }
+            }
+            if ($sameContainer) {
+                for ($q = 0; $q -lt $fenceInnerQuotes; $q++) {
+                    if ($closing -match '^ {0,3}>[ \t]?(.*)$') { $closing = $Matches[1] }
+                    else { $sameContainer = $false; break }
+                }
+            }
+            if ($sameContainer) {
+                if ($closing -match '^ {0,3}(`{3,}|~{3,})[ \t]*$') {
+                    $marker = $Matches[1]
+                    if ($marker[0].ToString() -eq $fenceChar -and $marker.Length -ge $fenceLength) { $inFence = $false }
+                }
+                continue
+            }
+            # A nonblank unindent or a missing quote marker ends the old
+            # container. Our explicit-close policy records its unfinished fence,
+            # then reprocesses THIS line: a top-level ``` opens a new code block.
+            $unclosed.Add($fenceLine)
+            $inFence = $false
+        }
+        $candidate = $expandedLine
+        $outerQuotes = 0
+        while ($candidate -match '^ {0,3}>[ \t]?(.*)$') {
+            $candidate = $Matches[1]
+            $outerQuotes++
+        }
+        $opening = $candidate
+        $listIndent = 0
+        $innerQuotes = 0
+        if ($opening -match '^( {0,3})((?:[-+*]|\d{1,9}[.)])[ \t]+)(.*)$') {
+            $listIndent = $Matches[1].Length + $Matches[2].Length
+            $opening = $Matches[3]
+            while ($opening -match '^ {0,3}>[ \t]?(.*)$') {
+                $opening = $Matches[1]
+                $innerQuotes++
+            }
+        }
+        if ($opening -match '^ {0,3}(`{3,}|~{3,})(.*)$') {
+            $marker = $Matches[1]
+            $info = $Matches[2]
+            if ($marker[0] -ne [char]96 -or -not $info.Contains('`')) {
+                $inFence = $true
+                $fenceChar = $marker[0].ToString()
+                $fenceLength = $marker.Length
+                $fenceOuterQuotes = $outerQuotes
+                $fenceInnerQuotes = $innerQuotes
+                $fenceIndent = $listIndent
+                $fenceLine = $lineNumber
+                continue
+            }
+        }
+        # Retain the conservative indented-code exclusion. This is not a
+        # general parser for arbitrary nested or lazily continued lists.
+        if ($candidate -match '^(?: {4}|\t)') { continue }
+        $kept.Add($line)
     }
-    return ($kept -join "`n")
+    if ($inFence) { $unclosed.Add($fenceLine) }
+    $nonCode = $kept -join "`n"
+    if ($WithFenceState) { return [pscustomobject]@{ Text = $nonCode; UnclosedFences = @($unclosed) } }
+    return $nonCode
 }
 
 function Get-NonCodeMarkdownLinkText([string]$Text) {
-    $kept = [System.Collections.Generic.List[string]]::new()
     $nonCode = Get-NonCodeMarkdownText $Text
-    foreach ($line in ($nonCode -split "`r?`n")) {
-        # 与 README 链接解析保持一致：缩进代码块和行内代码不作为来源文本。
-        if ($line -match '^\s{4,}') { continue }
-        $kept.Add([regex]::Replace($line, '`[^`]*`', ''))
-    }
-    return ($kept -join "`n")
+    # Equal-length runs; a shorter interior run is part of the code span.
+    return [regex]::Replace($nonCode, '(?s)(?<!`)(`+)(?!`)(.*?)(?<!`)\1(?!`)', '')
 }
 
 function Test-ExternalSourceUrl([string]$Candidate) {
@@ -292,38 +373,120 @@ function Get-ExternalSourceUrls([string]$Text) {
 }
 
 function Get-LinkTargets([string]$Text) {
-    $targets = [System.Collections.Generic.List[string]]::new()
-    $inFence = $false
-    $fenceChar = ''
-    $lines = $Text -split "`r?`n"
-    foreach ($line in $lines) {
-        if ($line -match '^\s*(```|~~~)') {
-            $marker = $Matches[1]
-            $markerChar = $marker.Substring(0, 1)
-            if (-not $inFence) {
-                $inFence = $true
-                $fenceChar = $markerChar
-            } elseif ($fenceChar -eq $markerChar) {
-                $inFence = $false
-                $fenceChar = ''
-            }
-            continue
-        }
-        if ($inFence) { continue }
-        # Indented code blocks and inline-code spans are not Markdown links.
-        if ($line -match '^\s{4,}') { continue }
-        $line = [regex]::Replace($line, '`[^`]*`', '')
-
+    $targets = [Collections.Generic.List[string]]::new()
+    foreach ($line in ((Get-NonCodeMarkdownLinkText $Text) -split "`r?`n")) {
         $pattern = '(?<!\!)\[[^\]]*\]\((?:<(?<angle>[^>]+)>|(?<plain>[^)\s]+))'
         foreach ($match in [regex]::Matches($line, $pattern)) {
-            if ($match.Groups['angle'].Success) {
-                $targets.Add($match.Groups['angle'].Value)
-            } else {
-                $targets.Add($match.Groups['plain'].Value)
-            }
+            if ($match.Groups['angle'].Success) { $targets.Add($match.Groups['angle'].Value) }
+            else { $targets.Add($match.Groups['plain'].Value) }
         }
     }
     return $targets
+}
+
+function Assert-ContainedEvidencePath([string]$Path, [string]$BasePath) {
+    $full = [IO.Path]::GetFullPath($Path)
+    $base = [IO.Path]::GetFullPath($BasePath).TrimEnd('\', '/')
+    # Case-sensitive on Unix; a differently cased sibling is not the selected root.
+    $comparison = if ([IO.Path]::DirectorySeparatorChar -eq '/') { [StringComparison]::Ordinal } else { [StringComparison]::OrdinalIgnoreCase }
+    if (-not $full.Equals($base, $comparison) -and -not $full.StartsWith($base + [IO.Path]::DirectorySeparatorChar, $comparison)) {
+        throw '路径越界'
+    }
+    $cursor = $full
+    while ($cursor) {
+        $item = Get-Item -LiteralPath $cursor -Force -ErrorAction SilentlyContinue
+        if ($null -ne $item -and ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw '符号链接/重解析点' }
+        # Include the root and its ancestors; aliased roots are not safe boundaries.
+        $parent = [IO.Path]::GetDirectoryName($cursor)
+        if ($parent -eq $cursor) { break }
+        $cursor = $parent
+    }
+    return $full
+}
+
+# Changing this pin is a separate authorized baseline change and requires
+# independent review with the JSON. No CLI override or automatic refresh exists.
+$preservedSourceBaselineSha256 = '197b656e10dc2b1ad275c87af298331b990e5e97aebf4f9b1e67ec2194393a5d'
+$preservedSourceDefects = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::OrdinalIgnoreCase)
+$knownSourceDefects = [Collections.Generic.List[string]]::new()
+
+function Get-BytesSha256([byte[]]$Bytes) {
+    $hasher = [Security.Cryptography.SHA256]::Create()
+    try { return ([BitConverter]::ToString($hasher.ComputeHash($Bytes))).Replace('-', '').ToLowerInvariant() }
+    finally { $hasher.Dispose() }
+}
+
+function Initialize-PreservedSourceDefects {
+    $baselinePath = Join-Path $rootPath '.kb/preserved-source-defects.json'
+    $item = Get-Item -LiteralPath $baselinePath -Force -ErrorAction SilentlyContinue
+    if ($null -eq $item) { return }
+    try {
+        $null = Assert-ContainedEvidencePath $baselinePath $rootPath
+        if (-not (Test-Path -LiteralPath $baselinePath -PathType Leaf)) { throw 'baseline must be a regular file' }
+        $baselineBytes = [IO.File]::ReadAllBytes($baselinePath)
+        if ((Get-BytesSha256 $baselineBytes) -cne $preservedSourceBaselineSha256) { throw 'baseline fingerprint differs from the independently approved pin' }
+        $baseline = ConvertTo-KnowledgeMapValue ($utf8Strict.GetString($baselineBytes) | ConvertFrom-Json)
+        if ($baseline -isnot [Collections.IDictionary] -or
+            ((@($baseline.Keys | Sort-Object) -join '|') -cne 'baseline_commit|defects|version')) { throw 'unexpected baseline fields' }
+        if (($baseline.version -isnot [int] -and $baseline.version -isnot [long]) -or $baseline.version -ne 1) { throw 'baseline version must be integer 1' }
+        if ($baseline.baseline_commit -isnot [string] -or $baseline.baseline_commit -cne '21b44e8fe732ad76be02024dfa4732238c2443e2') { throw 'unexpected baseline commit' }
+        if ($baseline.defects -isnot [array] -or $baseline.defects.Count -eq 0) { throw 'defects must be a nonempty array' }
+        $visible = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($file in $mdFiles) { [void]$visible.Add((Get-QualityKey $file.FullName)) }
+        foreach ($defect in $baseline.defects) {
+            if ($defect -isnot [Collections.IDictionary] -or
+                ((@($defect.Keys | Sort-Object) -join '|') -cne 'kind|opening_line|path|sha256')) { throw 'unexpected defect fields' }
+            if ($defect.path -isnot [string] -or -not $defect.path.StartsWith('读书笔记/', [StringComparison]::Ordinal) -or
+                $defect.path -cne $defect.path.Normalize([Text.NormalizationForm]::FormC)) { throw 'defect path must be a normalized preserved-source path' }
+            $full = ConvertTo-KnowledgePath $defect.path
+            $key = Get-QualityKey $full
+            if (-not $visible.Contains($key)) { throw "orphan baseline: file not in Git-visible Markdown scope: $($defect.path)" }
+            if ($preservedSourceDefects.ContainsKey($key)) { throw "duplicate baseline path: $($defect.path)" }
+            if ($defect.sha256 -isnot [string] -or $defect.sha256 -cnotmatch '^[a-f0-9]{64}$') { throw 'invalid exact-byte sha256' }
+            if ($defect.kind -isnot [string] -or $defect.kind -cne 'unclosed_code_fence') { throw 'unsupported defect kind' }
+            if (($defect.opening_line -isnot [int] -and $defect.opening_line -isnot [long]) -or $defect.opening_line -le 0) { throw 'opening_line must be a positive integer' }
+            $preservedSourceDefects.Add($key, [pscustomobject]@{
+                Path = $defect.path; Sha256 = $defect.sha256; Kind = $defect.kind
+                OpeningLine = $defect.opening_line; Observed = $false
+            })
+        }
+    } catch {
+        Add-Failure "保护来源缺陷基线无效: $($_.Exception.Message)"
+        $preservedSourceDefects.Clear()
+    }
+}
+
+function Get-UeEvidenceReferences([string]$Text) {
+    $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $references = [Collections.Generic.List[object]]::new()
+    $qualityText = Get-NonCodeMarkdownText $Text
+    foreach ($line in ($qualityText -split "`r?`n")) {
+        if ($line -match '^\s{4,}') { continue }
+        $candidates = [Collections.Generic.List[string]]::new()
+        foreach ($match in [regex]::Matches($line, '(?<!`)(`+)(?!`)(.*?)(?<!`)\1(?!`)')) { $candidates.Add($match.Groups[2].Value) }
+        $bareLine = [regex]::Replace($line, '(?<!`)(`+)(?!`)(.*?)(?<!`)\1(?!`)', '')
+        # Bare paths must have no whitespace. Consume the WHOLE token, including
+        # Unicode and punctuation, so an unsupported suffix cannot become a
+        # successful check of an existing parent directory. Quote spaces inline.
+        foreach ($match in [regex]::Matches($bareLine, '(?i)(?<![\p{L}\p{N}_/:\\])(?:[A-Za-z]:[/\\]|/)[^\s`]*[/\\]Engine[/\\](?:Source|Plugins|Build)(?:[/\\][^\s`]*|(?=$|[\s`]))')) {
+            $candidates.Add($match.Value)
+        }
+        foreach ($match in [regex]::Matches($bareLine, '(?i)(?<![#\p{L}\p{N}_./\\-])Engine[/\\](?:Source|Plugins|Build)(?:[/\\][^\s`]*|(?=$|[\s`]))')) {
+            $candidates.Add($match.Value)
+        }
+        foreach ($candidate in $candidates) {
+            $value = $candidate.Trim().Replace('\', '/')
+            while ($value.Contains('//')) { $value = $value.Replace('//', '/') }
+            $value = [regex]::Replace($value, ':\d+(?:[-~]\d+)?$', '')
+            if ($value -notmatch '(?i)(?:^|/)Engine/(?:Source|Plugins|Build)(?:/|$)') { continue }
+            if (-not $seen.Add($value)) { continue }
+            $isRelative = $value -match '^Engine/'
+            $isTemplate = $value -match '(?:^|/)\.{3}(?:/|$)|[<>*?]'
+            $isFile = $value -match '(?i)\.(?:h|hpp|hxx|c|cc|cpp|cxx|inl|cs|usf|ush|uplugin|uproject|version|json|ini)$'
+            $references.Add([pscustomobject]@{ Value = $value; Relative = $isRelative; Template = $isTemplate; File = $isFile })
+        }
+    }
+    return @($references)
 }
 
 function Resolve-LocalTarget([string]$SourceFile, [string]$Target) {
@@ -338,6 +501,7 @@ function Resolve-LocalTarget([string]$SourceFile, [string]$Target) {
 $mdFiles = @(& (Join-Path $PSScriptRoot 'get_kb_markdown.ps1') -Root $rootPath)
 if ($mdFiles.Count -eq 0) { Add-Failure '没有发现 Markdown 文件' }
 Initialize-QualityMapping
+Initialize-PreservedSourceDefects
 
 $linkedByFile = @{}
 $textByFile = @{}
@@ -364,30 +528,22 @@ foreach ($file in $mdFiles) {
     if ($text.Contains([char]0xFFFD)) { Add-Failure "替换字符 U+FFFD: $relative" }
     $textByFile[$file.FullName] = $text
 
-    $inFence = $false
-    $fenceChar = ''
-    $fenceLine = 0
-    $lineNumber = 0
-    foreach ($line in ($text -split "`r?`n")) {
-        $lineNumber++
-        if ($line -match '^\s*(```|~~~)') {
-            $markerChar = $Matches[1].Substring(0, 1)
-            if (-not $inFence) {
-                $inFence = $true
-                $fenceChar = $markerChar
-                $fenceLine = $lineNumber
-            } elseif ($fenceChar -eq $markerChar) {
-                $inFence = $false
-                $fenceChar = ''
-                $fenceLine = 0
+    $knownKey = Get-QualityKey $file.FullName
+    $knownDefect = if ($preservedSourceDefects.ContainsKey($knownKey)) { $preservedSourceDefects[$knownKey] } else { $null }
+    $knownBytesMatch = $null -ne $knownDefect -and (Get-BytesSha256 $bytes) -ceq $knownDefect.Sha256
+    if ($null -ne $knownDefect -and -not $knownBytesMatch) {
+        Add-Failure "保护来源缺陷基线字节变化（须重新授权审核，不自动更新）: $relative"
+    }
+    $markdownScan = Get-NonCodeMarkdownText $text -WithFenceState
+    foreach ($fenceLine in $markdownScan.UnclosedFences) {
+        if ($null -ne $knownDefect -and $fenceLine -eq $knownDefect.OpeningLine) {
+            $knownDefect.Observed = $true
+            if ($knownBytesMatch) {
+                $knownSourceDefects.Add("$($knownDefect.Kind)；$($knownDefect.Path):$fenceLine；sha256=$($knownDefect.Sha256)")
+                continue
             }
         }
-    }
-    if ($inFence) { Add-Failure "未闭合代码围栏（第 $fenceLine 行）: $relative" }
-
-    if ($file.Name -ne 'README.md' -and -not (Test-MaintenancePath $file.FullName)) {
-        $lineCount = @($text -split "`r?`n").Count
-        if ($lineCount -lt 300) { Add-Warning "正文少于 300 行（$lineCount 行）: $relative" }
+        Add-Failure "未闭合代码围栏（第 $fenceLine 行）: $relative"
     }
 
     $linked = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
@@ -401,6 +557,10 @@ foreach ($file in $mdFiles) {
             continue
         }
         if ($null -eq $resolved) { continue }
+        try { $resolved = Assert-ContainedEvidencePath $resolved $rootPath } catch {
+            Add-Failure "链接路径不安全 [$target]（$($_.Exception.Message)）: $relative"
+            continue
+        }
         if (-not (Test-Path -LiteralPath $resolved)) {
             Add-Failure "断链 [$target] -> $(Get-RepoRelative $resolved): $relative"
         } else {
@@ -408,6 +568,10 @@ foreach ($file in $mdFiles) {
         }
     }
     $linkedByFile[$file.FullName] = $linked
+}
+
+foreach ($defect in $preservedSourceDefects.Values) {
+    if (-not $defect.Observed) { Add-Failure "保护来源缺陷基线孤儿（当前未检测到指定缺陷）: $($defect.Path):$($defect.OpeningLine)" }
 }
 
 $scopedPaths = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
@@ -470,16 +634,25 @@ if ($scopedPaths.Contains($rootReadme)) {
 # 路径身份仅用于规则覆盖，真实读取和链接解析始终使用当前 canonical 文件。
 $gameKnowledgeRoot = Join-Path $rootPath '游戏知识'
 $sourceAnalysisRoot = Join-Path $gameKnowledgeRoot '12-引擎源码分析'
-$ueInstallRoot = 'C:\Program Files\Epic Games\UE_5.8'
-# Foreign evidence paths are labels on hosts without that drive; do not ask a PowerShell provider to resolve them.
+# Keep the lexical join safe even when a caller supplies a foreign provider path.
 $ueEngineRoot = [IO.Path]::Combine($ueInstallRoot, 'Engine')
-$absoluteEvidencePattern = '(?i)(?<![#A-Za-z0-9])C:\\+Program Files\\+Epic Games\\+UE_5\.8\\+Engine(?:\\+[A-Za-z0-9_+.\-]+)*'
-$relativeEvidencePattern = '(?i)(?<![#A-Za-z0-9_./-])Engine/(?:Source|Plugins)(?:/[A-Za-z0-9_+.\-]+)*(?:/)?'
 $qualityVersionMissing = 0
 $qualityDateMissing = 0
 $qualityOfficialLinkMissing = 0
-$qualitySourcePlaceholder = 0
-$uePathWarningEmitted = $false
+$qualitySourceClaimInvalid = 0
+$ueEvidenceStats = @{ Checked = 0; Unchecked = 0; Templates = 0; Foreign = 0 }
+$ueRootReady = $false
+$ueRootRequested = -not [string]::IsNullOrWhiteSpace($ueInstallRoot)
+if ($ueRootRequested) {
+    try {
+        if (-not [IO.Path]::IsPathRooted($ueInstallRoot)) { throw '必须显式提供绝对 checkout 根' }
+        $null = Assert-ContainedEvidencePath $ueEngineRoot $ueEngineRoot
+        if (-not (Test-Path -LiteralPath $ueEngineRoot -PathType Container)) { throw 'Engine 目录不存在或不可访问' }
+        $ueRootReady = $true
+    } catch {
+        Add-Failure "源码路径核对未运行（显式源码根无效）: $ueInstallRoot；$($_.Exception.Message)"
+    }
+}
 
 $gameBodyFiles = @($mdFiles | Where-Object {
     $_.Name -ne 'README.md' -and ((Test-QualityPathUnder $_.FullName $gameKnowledgeRoot) -or (Test-UnrealTechnologyPath $_.FullName))
@@ -497,7 +670,12 @@ foreach ($file in $gameBodyFiles) {
         $qualityDateMissing++
         Add-Failure "质量元数据缺少最后更新/更新日期/更新时间: $relative"
     }
-    if ($qualityText -notmatch 'https://dev\.epicgames\.com/documentation') {
+    $officialUrls = @(Get-ExternalSourceUrls $textByFile[$file.FullName] | Where-Object {
+        $candidateUri = [Uri]$_
+        $candidateUri.Scheme -eq 'https' -and $candidateUri.Host -eq 'dev.epicgames.com' -and
+        ($candidateUri.AbsolutePath -eq '/documentation' -or $candidateUri.AbsolutePath.StartsWith('/documentation/'))
+    })
+    if ($officialUrls.Count -eq 0) {
         $qualityOfficialLinkMissing++
         Add-Failure "质量元数据缺少官方链接 https://dev.epicgames.com/documentation: $relative"
     }
@@ -511,34 +689,57 @@ foreach ($file in $sourceBodyFiles) {
     if (-not $textByFile.ContainsKey($file.FullName)) { continue }
     $relative = Get-RepoRelative $file.FullName
     $qualityText = Get-NonCodeMarkdownText $textByFile[$file.FullName]
-    $placeholder = [regex]::Match($qualityText, '预留|待补充|学习骨架')
-    if ($placeholder.Success) {
-        $qualitySourcePlaceholder++
-        Add-Failure "源码占位词 [$($placeholder.Value)]: $relative"
+    $evidenceReferences = @(Get-UeEvidenceReferences $textByFile[$file.FullName])
+    # Check an explicit completion declaration, not isolated words such as the
+    # API concept "预留" or an honest "待补充" limitation. This cannot judge prose truth.
+    $completedSourceClaim = $qualityText -match '(?m)^\s*(?:>\s*)?(?:源码核对状态|源码验证状态)\s*[：:]\s*(?:已核对|已完成|已验证)'
+    if ($completedSourceClaim -and @($evidenceReferences | Where-Object { $_.File -and -not $_.Template }).Count -eq 0) {
+        $qualitySourceClaimInvalid++
+        Add-Failure "源码完成声明缺少具体文件定位（占位路径不构成证据）: $relative"
     }
-
-    $absoluteEvidence = [regex]::Matches($qualityText, $absoluteEvidencePattern)
-    $relativeEvidence = [regex]::Matches($qualityText, $relativeEvidencePattern)
-    if ($absoluteEvidence.Count -eq 0 -and $relativeEvidence.Count -eq 0) { continue }
-
-    if (-not (Test-Path -LiteralPath $ueEngineRoot -PathType Container)) {
-        if (-not $uePathWarningEmitted) {
-            Add-Warning "源码证据路径未验证（UE 安装根不存在）: $ueInstallRoot"
-            $uePathWarningEmitted = $true
+    foreach ($reference in $evidenceReferences) {
+        $value = $reference.Value
+        # Unsafe segments are rejected even when no source root is available.
+        $decoded = [Uri]::UnescapeDataString($value)
+        if ($decoded -match '(^|[/\\])\.{1,2}([/\\]|$)|[\x00-\x1f\x7f]') {
+            Add-Failure "源码证据路径不安全（路径越界或控制字符）: $value（$relative）"
+            continue
         }
-        continue
-    }
-
-    # 相对 Engine/... 路径可能是模块/目录示意；只对明确的 UE 绝对路径判定明显不存在。
-    $checkedAbsolute = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-    foreach ($match in $absoluteEvidence) {
-        $evidencePath = $match.Value
-        while ($evidencePath.Contains('\\')) { $evidencePath = $evidencePath.Replace('\\', '\') }
-        if (-not $checkedAbsolute.Add($evidencePath)) { continue }
-        if (-not (Test-Path -LiteralPath $evidencePath)) {
-            Add-Failure "源码绝对证据路径不存在: $evidencePath（$relative）"
+        if ($reference.Template) { $ueEvidenceStats.Templates++; continue }
+        if (-not $ueRootReady) { $ueEvidenceStats.Unchecked++; continue }
+        if ($reference.Relative) {
+            $suffix = $decoded.Substring('Engine/'.Length).Replace('/', [IO.Path]::DirectorySeparatorChar)
+            $candidate = [IO.Path]::Combine($ueEngineRoot, $suffix)
+        } else {
+            # Never reinterpret another machine's absolute source label as this
+            # checkout. Only native absolute paths within the explicit root apply.
+            if (-not [IO.Path]::IsPathRooted($decoded) -or
+                ([IO.Path]::DirectorySeparatorChar -eq '/' -and $decoded -match '^[A-Za-z]:/')) {
+                $ueEvidenceStats.Foreign++; continue
+            }
+            $candidate = $decoded.Replace('/', [IO.Path]::DirectorySeparatorChar)
+            $comparison = if ([IO.Path]::DirectorySeparatorChar -eq '/') { [StringComparison]::Ordinal } else { [StringComparison]::OrdinalIgnoreCase }
+            $prefix = [IO.Path]::GetFullPath($ueEngineRoot).TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
+            if (-not [IO.Path]::GetFullPath($candidate).StartsWith($prefix, $comparison)) { $ueEvidenceStats.Foreign++; continue }
         }
+        try { $candidate = Assert-ContainedEvidencePath $candidate $ueEngineRoot } catch {
+            Add-Failure "源码证据路径不安全（$($_.Exception.Message)）: $value（$relative）"
+            continue
+        }
+        $expectedType = if ($reference.File) { 'Leaf' } else { 'Any' }
+        if (-not (Test-Path -LiteralPath $candidate -PathType $expectedType)) {
+            Add-Failure "源码证据路径不存在: $value（$relative；实际根 $ueEngineRoot）"
+        } else { $ueEvidenceStats.Checked++ }
     }
+}
+if ($sourceBodyFiles.Count -gt 0 -and -not $ueRootRequested) {
+    Add-Warning '源码路径核对未运行：未提供 -UeInstallRoot；未确认源码版本、符号或运行行为'
+}
+if ($ueEvidenceStats.Foreign -gt 0) {
+    Add-Warning "源码绝对位置未覆盖：$($ueEvidenceStats.Foreign) 个外部/历史位置不属于本次指定源码根；未自动重映射"
+}
+if ($ueEvidenceStats.Templates -gt 0) {
+    Add-Warning "源码路径模板不作证据：$($ueEvidenceStats.Templates) 个省略/占位定位未检查存在性"
 }
 
 # 兼容 P2 质量规则按原路径身份覆盖迁移正文；它不是八域分类。
@@ -649,7 +850,8 @@ foreach ($domain in $domainDefinitions) {
 }
 
 # 知识成熟度门禁（W0-03）：阶段 B——既有正文与本次新增/修改正文缺成熟度均 FAIL；
-# L3 必须有 Evidence/Demo 入口，L4 必须有 Benchmark/Test 证据，L5 必须有工作日志/复盘/生产证据。
+# L3/L4/L5 关键词只检查最低证据入口，不证明实验已执行、语义真实或覆盖整篇。
+# 不依据关键词自动标级；独立内容审查须复核实际链接、范围、输入/结果和原始记录。
 # 豁免：README、维护目录（references/learning/scripts）、工作日志/笔记/方案（过程记录与规划）。
 $changedFiles = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 $safeDirectoryArg = "safe.directory=$rootPath"
@@ -947,6 +1149,8 @@ $networkSyncRoot = Join-Path $gameKnowledgeRoot '06-网络同步'
 }
 
 Write-Host "Markdown: $fileCount（正文 $bodyCount，README $readmeCount）"
+Write-Host '质量检查边界：机械 lint 不判定教学正确性、证据真实性或整篇成熟度；需独立内容审查'
+Write-Host "源码路径存在性：已检查 $($ueEvidenceStats.Checked)、未检查 $($ueEvidenceStats.Unchecked)、外部绝对位置 $($ueEvidenceStats.Foreign)、路径模板 $($ueEvidenceStats.Templates)；不验证版本/符号/运行行为"
 Write-Host '兼容质量规则覆盖（旧路径身份，不代表八域分类）：'
 foreach ($domainName in @('00-计算机与工程基础', '游戏知识', '游戏服务端', '游戏算法', '游戏AI', '游戏测试与质量', '系统实战')) {
     $domainRoot = Join-Path $rootPath $domainName
@@ -957,7 +1161,7 @@ foreach ($domainName in @('00-计算机与工程基础', '游戏知识', '游戏
 }
 Write-Host "成熟度分布：L0 $($maturityStats.L0)、L1 $($maturityStats.L1)、L2 $($maturityStats.L2)、L3 $($maturityStats.L3)、L4 $($maturityStats.L4)、L5 $($maturityStats.L5)"
 Write-Host "PASS: $($passes.Count + 1) 项基础检查已执行"
-Write-Host "质量元数据：版本缺失 $qualityVersionMissing、日期缺失 $qualityDateMissing、官方链接缺失 $qualityOfficialLinkMissing、源码占位 $qualitySourcePlaceholder"
+Write-Host "质量元数据：版本缺失 $qualityVersionMissing、日期缺失 $qualityDateMissing、官方链接缺失 $qualityOfficialLinkMissing、源码完成声明无定位 $qualitySourceClaimInvalid"
 $domainTotals = @{
     BaselineMissing = 0
     DateMissing = 0
@@ -982,12 +1186,19 @@ if ($warnings.Count -gt 0) {
 } else {
     Write-Host 'WARN: 0'
 }
+Write-Host "KNOWN_SOURCE_DEFECT: $($knownSourceDefects.Count)（保留原件的已知欠账，不代表缺陷已修复）"
+$knownSourceDefects | ForEach-Object { Write-Host "KNOWN_SOURCE_DEFECT $_" }
 if ($failures.Count -gt 0) {
     Write-Host "FAIL: $($failures.Count)"
     $failures | ForEach-Object { Write-Host "FAIL $_" }
     Write-Host 'RESULT: FAIL'
     exit 1
 }
-Write-Host 'FAIL: 0'
-Write-Host 'RESULT: PASS'
+if ($knownSourceDefects.Count -gt 0) {
+    Write-Host 'UNEXPECTED_FAILURES: 0'
+    Write-Host "RESULT: PASS_WITH_KNOWN_SOURCE_DEFECTS（已知来源缺陷 $($knownSourceDefects.Count)；不是零缺陷或全质量通过）"
+} else {
+    Write-Host 'FAIL: 0'
+    Write-Host 'RESULT: PASS'
+}
 exit 0

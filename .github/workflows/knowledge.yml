@@ -118,6 +118,12 @@ jobs:
             $failed | ForEach-Object { Write-Output "FAILED: $_" }
             exit 1
           }
+      - name: Teaching evidence rules and preserved-source regressions
+        if: ${{ !cancelled() }}
+        timeout-minutes: 10
+        run: |
+          & pwsh -NoProfile -File scripts/test_quality_evidence.ps1 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/quality-evidence-regressions.txt"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Commit-range whitespace check
         if: ${{ !cancelled() }}
         env:
@@ -140,6 +146,7 @@ jobs:
           name: knowledge-validation-${{ matrix.os }}
           path: |
             ${{ runner.temp }}/knowledge-validation.json
+            ${{ runner.temp }}/quality-evidence-regressions.txt
             ${{ runner.temp }}/astar-measurement-${{ github.run_id }}-${{ github.run_attempt }}/*.json
             ${{ runner.temp }}/astar-measurement-${{ github.run_id }}-${{ github.run_attempt }}/*.csv
             ${{ runner.temp }}/tick-policy-${{ github.run_id }}-${{ github.run_attempt }}/*.json

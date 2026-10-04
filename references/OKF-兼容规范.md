@@ -24,7 +24,7 @@ sources:
 
 ## 2. 条目最小合同
 
-OKF 强制字段只有 `type`；本库模板推荐同时提供 `title`、`description`、`tags`、`status`、`verified`、`maturity`、`updated`、`sources`。`verified` 是验证事件列表（或单一 mapping），每项至少 `{by, at}`；trust tier `unverified|machine-confirmed|human-reviewed` 由 actor 推导，与 `maturity` 正交。
+OKF 强制字段只有 `type`；本库模板推荐同时提供 `title`、`description`、`tags`、`status`、`verified`、`maturity`、`updated`、`sources`。`verified` 是验证事件列表（或单一 mapping），每项至少 `{by, at}`；trust tier `unverified|machine-confirmed|human-reviewed` 由 actor 推导，与 `maturity` 正交。`maturity` 标定全文主要承诺所获支持的证据深度，不能直接取最高子项；局部实验应单列对象、输入、环境、结果和未覆盖项，详见[写作规范](写作规范.md)。
 
 正文优先使用标准 Markdown 相对链接；稳定身份在 `.kb/knowledge-map.json` 登记。可选 YAML `canonical` 保留兼容用途，填写时必须与图中的文档 ID 或当前路径一致，不成为第二份身份源；不要把 Obsidian 专有语法作为唯一链接。
 
@@ -47,12 +47,12 @@ OKF 强制字段只有 `type`；本库模板推荐同时提供 `title`、`descri
 1. 盘点现有 Markdown，保留 `index.md`（导航）和 `log.md`（变更日志），建立路径到 canonical 的映射。
 2. 为新建或修改条目补齐最小 YAML；未来导入的旧条目先分批审查再纳入 Strict，欠账由 `check_okf` Audit 报告。
 3. 迁移时保持稳定 ID，更新图中的当前路径、legacy_paths 与标准 Markdown 入链。只保留经审计确有必要的兼容入口；不能复制第二份正文，也不能孤立受保护资料的旧引用。
-4. 重建 manifest 并运行 Changed + `check_repo`；canonical/sources 语义由人工 review。
-5. 在 `log.md` 记录迁移批次、范围和校验结果；审核通过后追加 `{by: human:<id>, at: <ISO8601>}` 验证事件。
+4. 重建 manifest 并运行 Changed + `check_repo`；canonical/sources 语义由独立内容审阅核对，审阅者可为获分配的 Agent 或人类；记录事件时仍按实际 actor，不能把权限授权或 CI 通过当作人类审核。
+5. 在 `log.md` 记录迁移批次、范围和校验结果。只有实际发生、actor 和时间可核实的验证才追加事件；机器/Agent 审核采用真实工具或流程 actor，不能自动写为 `human:<id>`。没有可记录事件时保留 `verified: []`；人类审核也不能由 CI 通过或用户授权维护推定。
 
 ## 5. 质量门禁
 
-质量门禁与当前实现一致：OKF 只要求 `type`；本库 Changed 对已记录字段检查 frontmatter、type、status、日期、`sources[].resource`、`generated.by/at` 与 `verified[].by/at`；`check_repo` 校验链接和编码。`check_okf` 是本库所用 YAML 子集的轻量 lint，不是通用 YAML parser；当前不自动检查在线可访问性或 canonical 唯一性。事实变化时清空或移除旧 verified 事件，复核后再追加新事件，不自动降低 maturity。
+质量门禁与当前实现一致：OKF 只要求 `type`；本库 Changed 对已记录字段检查 frontmatter、type、status、日期、`sources[].resource`、`generated.by/at` 与 `verified[].by/at`；`check_repo` 校验链接和编码。`check_okf` 是本库所用 YAML 子集的轻量 lint，不是通用 YAML parser；当前不自动检查在线可访问性或 canonical 唯一性。事实变化时清空或移除不再覆盖现行正文的旧 verified 事件，实际复核后才追加新事件，不自动升降 maturity。若内容审查发现整篇误用局部证据，应明确修订标定、理由和仍成立的范围；这与添加验证事件是两项独立操作。机械 lint 不能判定教学正确性、来源是否支持结论或实验是否真实。
 
 ## 6. 版本与兼容
 

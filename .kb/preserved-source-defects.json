@@ -1,0 +1,162 @@
+{
+  "version": 1,
+  "baseline_commit": "21b44e8fe732ad76be02024dfa4732238c2443e2",
+  "defects": [
+    {
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/19-creating-high-order-navigation-meshes-th.md",
+      "sha256": "558cb1b32133dc26df948a7ddbd30ca9bf2862e228788db2d47366082f5e182e",
+      "kind": "unclosed_code_fence",
+      "opening_line": 533
+    },
+    {
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/22-collision-avoidance-for-pre-planned-loco.md",
+      "sha256": "df95a885f74bb2d8929a64b82eb47d802a61326fa6519678fa78043395643db2",
+      "kind": "unclosed_code_fence",
+      "opening_line": 580
+    },
+    {
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/23-crowd-pathfinding-and-steering-using-flo.md",
+      "sha256": "31296f16b72bddb31e6fb625a5f0f61532faf6e81c6f39827c3f639a44627fac",
+      "kind": "unclosed_code_fence",
+      "opening_line": 574
+    },
+    {
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/26-tactical-position-selection-an-architect.md",
+      "sha256": "5f26d3659c901284b6cfe7c6534ed9fad7dd4678edf2b3cc823056ec93ad7725",
+      "kind": "unclosed_code_fence",
+      "opening_line": 1239
+    },
+    {
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/35-a-simple-and-practical-social-dynamics-s.md",
+      "sha256": "02b19b26f835db2b8e49992958acc3b635e02c0fd9b04b95dfca986fc664cd39",
+      "kind": "unclosed_code_fence",
+      "opening_line": 878
+    },
+    {
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/38-an-architecture-overview-for-ai-in-racin.md",
+      "sha256": "659cf919a0329a187b1bfca0634487a90f5c7880b2caa7427fbc26e2ce5029fd",
+      "kind": "unclosed_code_fence",
+      "opening_line": 825
+    },
+    {
+      "path": "读书笔记/GameAIPro/卷1-GameAIPro1/43-an-architecture-for-character-rich-socia.md",
+      "sha256": "c9343292f7042e06b7a67b7ec8e3e30eef50fd08c6edd1bac633ee34e5004c25",
+      "kind": "unclosed_code_fence",
+      "opening_line": 935
+    },
+    {
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/20-hierarchical-architecture-for-group-navi.md",
+      "sha256": "662119980ffbceaee99990cc20481c9a2cb7aa972d70bd816d71bc69d472815d",
+      "kind": "unclosed_code_fence",
+      "opening_line": 736
+    },
+    {
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/21-dynamic-obstacle-navigation-in-fuse.md",
+      "sha256": "ae02400a4ef75a1b9b340f1575e8cf5abce2590af1b3002a88156dc5c603c5a0",
+      "kind": "unclosed_code_fence",
+      "opening_line": 815
+    },
+    {
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/24-interest-search-a-faster-minimax.md",
+      "sha256": "788068647d9a73cfa271e38674259ab651e52ce57997298d7be7237d2f027039",
+      "kind": "unclosed_code_fence",
+      "opening_line": 842
+    },
+    {
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/31-spatial-reasoning-for-strategic-decision.md",
+      "sha256": "9feae92619d7060a648a9766669050fca4fa5f8ec6c6b297df45fea3a347b2a3",
+      "kind": "unclosed_code_fence",
+      "opening_line": 1255
+    },
+    {
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/34-human-enemy-ai-in-the-last-of-us.md",
+      "sha256": "66a3682a4fdd38d87bf24dabfc5856e7943754feda8e55b55046925cd3745704",
+      "kind": "unclosed_code_fence",
+      "opening_line": 823
+    },
+    {
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/36-realizing-npcs-animation-and-behavior-co.md",
+      "sha256": "af84cc9243befb66d15fd1d0a7215e67a6ba9bd94fb011b3b11d4908ddb2467b",
+      "kind": "unclosed_code_fence",
+      "opening_line": 1320
+    },
+    {
+      "path": "读书笔记/GameAIPro/卷2-GameAIPro2/39-analytics-based-ai-techniques-for-a-bett.md",
+      "sha256": "40f0e52323ed153164501b14bf0ec27430991c16a24acc1249277a0dd2444832",
+      "kind": "unclosed_code_fence",
+      "opening_line": 1288
+    },
+    {
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/06-debugging-ai-with-instant-in-game-scrubb.md",
+      "sha256": "9c605eb4d60d4d50f84cc1a27197fba3e9239471f002ee06deaacbe49d8679cb",
+      "kind": "unclosed_code_fence",
+      "opening_line": 594
+    },
+    {
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/07-but-it-worked-on-my-machine-how-to-build.md",
+      "sha256": "bb441bc03556aee2a3797a82d459040d498edb8dea830625a3f7779a290c060f",
+      "kind": "unclosed_code_fence",
+      "opening_line": 406
+    },
+    {
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/10-from-behavior-to-animation-a-reactive-ai.md",
+      "sha256": "8edc5f72481d161c5d54dd7233be06af4cb3034a0aaa7765dc9af414f1130555",
+      "kind": "unclosed_code_fence",
+      "opening_line": 1245
+    },
+    {
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/17-fast-cars-big-city-the-ai-of-driver-san-.md",
+      "sha256": "befbf473ccb32c2a1d758d8789d427b865ca484885cc2f609d15c8121dca9ac1",
+      "kind": "unclosed_code_fence",
+      "opening_line": 785
+    },
+    {
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/19-rvo-and-orca-how-they-really-work.md",
+      "sha256": "ac9c26c9c48e47b1e8f228c753133225bebea23caf5b999dbd4831d57e4cdd95",
+      "kind": "unclosed_code_fence",
+      "opening_line": 882
+    },
+    {
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/21-3d-flight-navigation-using-sparse-voxel-.md",
+      "sha256": "4382339230cf92f78873d921ebc554b13773308c19b36dc25a212a2f20e03b06",
+      "kind": "unclosed_code_fence",
+      "opening_line": 718
+    },
+    {
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/24-being-where-it-counts-telling-paragon-bo.md",
+      "sha256": "a0f14a5c14fb9bf904673e66ee9cb3bb2b44d1a8e0e4873352d7e2a4bfcd837f",
+      "kind": "unclosed_code_fence",
+      "opening_line": 838
+    },
+    {
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/26-guide-to-effective-auto-generated-spatia.md",
+      "sha256": "d99ab499278587e3c3e00aa3765667c8ad4ebea2c97615d14b39068860efb9a2",
+      "kind": "unclosed_code_fence",
+      "opening_line": 1590
+    },
+    {
+      "path": "读书笔记/GameAIPro/卷3-GameAIPro3/35-ambient-interactions-improving-believabi.md",
+      "sha256": "39292502cc49c04df1d4195c109045ebe71e586101d02e395aed9a4e0569b2f5",
+      "kind": "unclosed_code_fence",
+      "opening_line": 979
+    },
+    {
+      "path": "读书笔记/游戏引擎架构/卷1-基础与核心引擎系统/05-游戏中的3D数学.md",
+      "sha256": "9280bbc891700c362c944c7cbd342e9f7add7e8f6275ae02a899b2bfc98c837c",
+      "kind": "unclosed_code_fence",
+      "opening_line": 2524
+    },
+    {
+      "path": "读书笔记/游戏引擎架构/卷2-图形动作与声音/11-渲染.md",
+      "sha256": "4684a76edc6ee6c7e7eba27ac8d7073fbbb2d1f422de93354af6ada856cd826a",
+      "kind": "unclosed_code_fence",
+      "opening_line": 5133
+    },
+    {
+      "path": "读书笔记/游戏引擎架构/卷2-图形动作与声音/15-音频.md",
+      "sha256": "f0d36c2f375e6bccd367e07ed5cdceb645d59f7fd12b645555ce05aece10e455",
+      "kind": "unclosed_code_fence",
+      "opening_line": 3589
+    }
+  ]
+}
