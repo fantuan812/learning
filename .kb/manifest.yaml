@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-04 (Teaching evidence rules and preserved-source defect policy; mechanically recalculated).
+# Generated: 2026-10-04 (A-star archive recipe verification; mechanically recalculated).
 version: 4
 
 okf:
@@ -219,8 +219,8 @@ documents:
   "evidence/algorithms/astar/README.md":
     kind: README
     maturity: L0
-    bytes: 16560
-    lines: 191
+    bytes: 20441
+    lines: 235
   "evidence/cpp/README.md":
     kind: README
     maturity: L0
