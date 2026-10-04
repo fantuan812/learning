@@ -61,6 +61,12 @@ jobs:
         run: |
           python -B evidence/server/tick-scheduler/scripts/run_policy.py --output-dir "$env:RUNNER_TEMP/tick-policy-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" --compiler g++-14 --timeout 120
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Synthetic entry isolation contracts and runner negative controls (Linux)
+        if: ${{ !cancelled() && runner.os == 'Linux' }}
+        timeout-minutes: 8
+        run: |
+          bash evidence/tests/entry-core/scripts/run_all.sh --output-dir "$env:RUNNER_TEMP/entry-isolation-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" --cxx g++-14 --ubsan --with-self-test --pwsh pwsh 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/entry-isolation-console-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT.txt"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Migration safety regression fixtures
         if: ${{ !cancelled() }}
         run: |
@@ -158,4 +164,7 @@ jobs:
             ${{ runner.temp }}/astar-measurement-${{ github.run_id }}-${{ github.run_attempt }}/*.csv
             ${{ runner.temp }}/tick-policy-${{ github.run_id }}-${{ github.run_attempt }}/*.json
             ${{ runner.temp }}/tick-policy-${{ github.run_id }}-${{ github.run_attempt }}/*.csv
+            ${{ runner.temp }}/entry-isolation-${{ github.run_id }}-${{ github.run_attempt }}/*.json
+            ${{ runner.temp }}/entry-isolation-${{ github.run_id }}-${{ github.run_attempt }}/*.txt
+            ${{ runner.temp }}/entry-isolation-console-${{ github.run_id }}-${{ github.run_attempt }}.txt
           if-no-files-found: warn

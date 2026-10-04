@@ -1,0 +1,226 @@
+# generated_utc: 2026-10-04T14:28:17.936608+00:00
+# host: {"system": "Linux", "release": "6.18.44", "machine": "x86_64", "libc": ["glibc", "2.41"]}
+# python: 3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]
+# build_cwd: fresh temporary directory
+# target: ds_allocator
+# compiler_version_command: ["g++-14", "--version"]
+# compiler_version_exit: 0
+# compiler_version_timed_out: False
+--- compiler_version stdout ---
+g++-14 (Debian 14.2.0-19) 14.2.0
+Copyright (C) 2024 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+
+--- compiler_version stderr ---
+
+# source_sha256: 909313c4ce1ac74aeae894f65c69ac9ba18e74ebb9a2f1fa22d4079a93c65b99
+# compile_command: ["g++-14", "-std=c++17", "-O2", "-Wall", "-Wextra", "-Werror", "-pedantic", "-fsanitize=undefined", "-fno-sanitize-recover=all", "-fno-omit-frame-pointer", "ds_allocator.cpp", "-o", "ds_allocator"]
+# compile_exit: 0
+# compile_timed_out: False
+--- compile stdout ---
+
+--- compile stderr ---
+
+# run_command: ["./ds_allocator"]
+# run_exit: 0
+# run_timed_out: False
+--- run stdout ---
+ds_allocator: half-open live/grace windows; serialized model, no persistent fencing claim
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1029 op=0 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1029 op=1 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1029 op=2 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1029 op=3 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1030 op=0 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1030 op=1 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1030 op=2 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1030 op=3 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1031 op=0 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1031 op=1 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1031 op=2 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1031 op=3 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1039 op=0 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1039 op=1 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1039 op=2 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1039 op=3 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1040 op=0 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1040 op=1 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1040 op=2 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1040 op=3 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1041 op=0 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1041 op=1 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1041 op=2 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1041 op=3 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=2000 op=0 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=2000 op=1 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=2000 op=2 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=2000 op=3 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1029 op=0 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1029 op=1 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1029 op=2 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1029 op=3 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1030 op=0 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1030 op=1 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1030 op=2 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1030 op=3 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1031 op=0 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1031 op=1 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1031 op=2 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1031 op=3 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1039 op=0 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1039 op=1 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1039 op=2 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1039 op=3 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1040 op=0 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1040 op=1 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1040 op=2 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1040 op=3 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1041 op=0 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1041 op=1 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1041 op=2 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1041 op=3 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=2000 op=0 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=2000 op=1 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=2000 op=2 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=2000 op=3 with Reap
+PASS  grace reconnect on a full original DS reuses its counted seat and rotates epoch
+PASS  old generation commit rejected after grace reconnect
+PASS  old generation heartbeat rejected after grace reconnect
+PASS  old generation release cannot clear new reservation
+PASS  new generation can commit
+PASS  new generation heartbeat maintains one seat
+PASS  forged handle commit rejected field=0
+PASS  forged handle heartbeat rejected field=0
+PASS  forged handle release rejected without resource changes field=0
+PASS  forged handle commit rejected field=1
+PASS  forged handle heartbeat rejected field=1
+PASS  forged handle release rejected without resource changes field=1
+PASS  forged handle commit rejected field=2
+PASS  forged handle heartbeat rejected field=2
+PASS  forged handle release rejected without resource changes field=2
+PASS  matching live release decrements exactly one seat
+PASS  duplicate release cannot double decrement
+PASS  cross-DS allocation increases allocator-wide epoch
+PASS  old ds-1 handle cannot commit/renew/release p1 now on ds-2
+PASS  even equal epoch numeric value cannot authorize another DS
+PASS  no capacity leaves output and resource state unchanged
+PASS  expired heartbeat without Reap cannot revive owner
+PASS  clock rollback after expired rejection cannot restore authority
+PASS  invalid TTL/grace or deadline overflow rejects without resource effects case=0
+PASS  invalid TTL/grace or deadline overflow rejects without resource effects case=1
+PASS  invalid TTL/grace or deadline overflow rejects without resource effects case=2
+PASS  invalid TTL/grace or deadline overflow rejects without resource effects case=3
+PASS  invalid TTL/grace or deadline overflow rejects without resource effects case=4
+PASS  allocation rejects backwards trusted clock
+PASS  all operations reject backwards clock without resource effects
+PASS  input preflight failure is not a clock observation; valid later call uses last observed watermark
+PASS  exact INT64_MAX deadline is representable
+PASS  expiry at INT64_MAX still loses authority
+PASS  overflow allocation does not reap or overwrite old accounting
+PASS  cleanup uses stored deadline without overflow
+PASS  live heartbeat overflow leaves expiry unchanged
+PASS  last representable epoch can be issued once
+PASS  grace reacquire refuses epoch exhaustion without wrapping or leaking seat
+PASS  expired last epoch can still be reaped
+PASS  reap does not reset epoch high water mark
+PASS  sequence 1 allocate p
+PASS  sequence 2 allocate q
+PASS  sequence 3 renew p
+PASS  sequence 4 q becomes read-only at TTL
+PASS  sequence 5 q reconnect retains full DS seat
+PASS  sequence 6 delayed old q release
+PASS  sequence 7 reap only expired p
+PASS  sequence 8 release new q
+PASS  sequence 9 repeated cleanup stays empty
+PASS  negative control: invariant detects phantom seat on another DS
+PASS  negative control: invariant detects wrong player ownership
+RESULT pass=191 fail=0
+
+--- run stderr ---
+
+# accepted_by_runner: True

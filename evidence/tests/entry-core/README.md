@@ -1,7 +1,7 @@
 ---
 type: Evidence
 title: "进入游戏可运行证据（登录票据 / 会话状态机 / DS 租约 / JIP 追赶）"
-description: "验证进入游戏链路的四组核心机制：密码学票据验签、进入状态机的幂等与回滚、DS 分配租约与栅栏令牌、断线重连的状态追赶与带宽/CPU 权衡。"
+description: "三个独立的串行入口合同模型、严格runner与负向控制；保留JIP历史证据及已知未修边界。"
 tags:
   - evidence
   - entry
@@ -12,134 +12,139 @@ tags:
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-01
+updated: 2026-10-04
 ---
 
 # 进入游戏可运行证据
 
-> 证据范围：本机可编译运行的 4 个程序，**83 条断言全部通过**（24 + 27 + 20 + 12），含 SHA-256/HMAC-SHA256 对 RFC 4231 与 FIPS 180-4 的选定标准向量校验、状态机回滚不变量、租约栅栏判定、以及 JIP 追赶的 P50/P95/P99 与带宽对比。按本仓库约定，`evidence/` 属维护基础设施，其 README 的 maturity 字段不参与知识成熟度门禁。
-
-进入游戏是**唯一一条"每一步都还没进游戏、却已经把玩家状态写进线上系统"的链路**：票在网关签、名额在调度器占、角色档在 DB 读、状态在 DS 建。它会同时踩到密码学、幂等、分布式租约和状态同步四类问题。本目录把这四类各做一个最小可运行模型，并给出可判定的输出。
+> **当前范围：三个独立C++17教学模型，不是票据→网关→DS端到端系统。** 2026-10-04严格GCC14/UBSan运行票据解析、Session主体/意图隔离和DS座位/写权合同；Auth与全部凭据均合成，不读取真实secret、不调用真实认证服务。
+> **已知未修：`jip_resync.cpp` 在“最新快照+零增量”时返回成功却没有ApplySnapshot。** JIP不在本批默认runner内。2026-09-11的83条（24+27+20+12）是历史选定用例，不能证明全部不变量。原4份raw及旧PASS行原样保留。
+> 本README的L0是证据基础设施分类，不是对局部测试深度的分级；对应主文继续区分设计核对与局部运行，不用总PASS提升整篇成熟度。
 
 ## 问题
 
-1. 登录票据怎么签、怎么验？签名、过期、时钟偏移、跨服使用、重放，分别由哪一步拦下？
-2. "验签"这一步到底该用什么比较方式？提前返回的字符串比较会泄漏什么？
-3. 客户端进入过程中断线重发（换 requestId / 不换 requestId），会不会多占一个 DS 名额？
-4. 某一步失败（无容量 / 超时 / 被拒）之后，链路是否立刻终止？占用的名额是否释放？
-5. DS 名额怎么保证不超卖？玩家掉线后名额何时回收？"僵尸 owner"回来提交状态会怎样？
-6. 断线重连/JIP 时，客户端状态怎么追上权威？乱序包该丢弃还是缓冲？
-7. 增量追赶与全量快照，在 CPU 和带宽上分别差多少？
+进入过程可能已经占座却还未Ready，因此“重试”“归属仍有效”“这个失败请求有权撤销什么”必须分开判断。本目录回答：
+
+1. 不可信票据如何严格限长/解析，错误如何不消费nonce、不发布半个输出？
+2. 同字符串requestId能否跨主体取到旧成功结果？同键变更match/character/region怎么办？
+3. 新请求借用旧Ready资源失败，或旧取消迟到，能否误释放新资源？
+4. 保留座位与写权到期如何分离？满DS中包含本人的座位时如何重连？
+5. 编译失败、超时、假RESULT或写盘失败能否被runner误记成通过？
 
 ## 假设
 
-- **票据是网关签、DS 验**：验签方不做时间回拨检测，只做「过期 + 时钟容差 + 一次性消费」三件事。
-- **进入游戏由客户端驱动、服务端判定**：客户端可重发，因此入口必须幂等；requestId 是幂等键。
-- **名额在"分配成功"那一刻即被占用**，而不是"进服成功后"。
-- **租约 + 栅栏令牌**：任何状态提交都必须带当前令牌，令牌不匹配即拒绝，防止过期持有者写回。
-- **JIP 走「快照 + 增量」**：增量日志按版本追加，客户端有重排缓冲；日志窗口不足时回退全量快照。
+- 三程序各自有main、各自状态；没有跨程序票据传递或真实会话服务
+- 串行单进程调用；AuthFn是可信认证层的测试替身，客户端自报player不是可信主体
+- `entry_session`检验请求/资源代次补偿，没有租约时钟；`ds_allocator`独立检验时间/容量，不实现认证服务。不能把各自局部保证自动拼成集成保证
+- 所有now参数由可信服务端时钟提供；DS模型拒绝观察到的倒退，票据模型仅计算合法窗口
+- 下文“失败状态不变”限调用前置条件成立且正常返回错误码的路径。`bad_alloc`、回调抛异常等没有强回滚保证；数字转换无异常不等于整个API noexcept。进程崩溃、持久化事务和线程竞争也未注入
+- struct的public状态用于测试观测、故障夹具和受信配置；不允许调用方任意改写容器/epoch/cache并期待合同继续成立。正常调用前复制所需句柄/ID，out必须是独立对象，不能别名allocator/codec内部容器元素；未声称别名、外部篡改或异步重入安全
 
 ## 环境
 
-| 项目 | 值 |
+| 记录 | 真实范围 |
 | --- | --- |
-| 主机 | Windows（MINGW64_NT-10.0-26200，x86_64，16 逻辑核） |
-| 工具链 | MSYS2 MinGW-w64 `g++` 16.1.0，`-std=c++17 -O2 -Wall` |
-| 依赖 | 仅 C++17 标准库（SHA-256/HMAC 为自实现，不引入 OpenSSL） |
-| 未使用 | 真实网关/Redis/etcd/Agones、UE NetDriver、线上压测 |
+| 2026-10-04本批 | Linux x86_64，GCC 14.2.0-19，C++17；完整版本/OS/源码SHA在各raw |
+| 严格选项 | `-std=c++17 -O2 -Wall -Wextra -Werror -pedantic`，不使用`-fpermissive` |
+| UBSan | 同严格选项加`-fsanitize=undefined -fno-sanitize-recover=all -fno-omit-frame-pointer` |
+| runner依赖 | Python3标准库、Bash；可选pwsh测试PowerShell wrapper；不安装依赖 |
+| PowerShell边界 | Linux pwsh 7.6.6跑wrapper成功/失败fixture；**不是Windows/MinGW C++运行** |
+| 历史2026-09-11 | 原raw标为Windows/MSYS2 MinGW g++16.1.0；保留为当时记录，不冒充本批宿主 |
+| 未使用 | UE/PIE、真实网关/DS/DB、Redis/etcd/Agones、线上压测、OpenSSL/KMS集成 |
 
 ## 运行方式
 
-```powershell
-& (Join-Path $RepoRoot 'evidence/tests/entry-core/scripts/build_run.ps1')
-```
+输出目录必须**不存在**，连已存在的空目录也拒绝；不再默认写旧`results/*.txt`。从仓库根运行：
 
 ```bash
-bash evidence/tests/entry-core/scripts/run_all.sh
+RUN_ROOT="$(mktemp -d)"
+PYTHONDONTWRITEBYTECODE=1 bash evidence/tests/entry-core/scripts/run_all.sh \
+  --output-dir "$RUN_ROOT/strict" --cxx g++-14
+PYTHONDONTWRITEBYTECODE=1 bash evidence/tests/entry-core/scripts/run_all.sh \
+  --output-dir "$RUN_ROOT/ubsan" --cxx g++-14 --ubsan --with-self-test
 ```
 
-脚本重新编译并把**未经修改的原始输出**写入 `results/`。
+只跑runner合同与三项真实语义mutation（另建目录，不嵌套自身self-test）：
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 -B evidence/tests/entry-core/scripts/test_runner_contract.py \
+  --self-test --output-dir "$RUN_ROOT/runner" --cxx g++-14 --ubsan --pwsh pwsh
+```
+
+可省略`--pwsh`，但结果会明确标记PowerShell未运行；Windows须自行准备其实际编译器和Python，本批没有Windows结果。PowerShell入口：
+
+```powershell
+./evidence/tests/entry-core/scripts/build_run.ps1 -OutputDir <不存在的输出目录> -Cxx <实际编译器> -Ubsan
+```
+
+`--timeout`与`--compile-timeout`分别限制运行和编译（默认15/60秒）；可用`--targets entry_ticket`选择已定义目标。`--source-dir`只用于显式替代源码/故障夹具。runner：
+
+- 每目标复制固定源字节到全新临时build，记录原SHA；编译失败/未产生binary绝不执行旧binary
+- 只看本run stdout的一条规范RESULT，要求exit=0、pass>0、fail=0、PASS逐项数一致且无FAIL；不扫描历史raw
+- 缺编译器/Python、编译失败、程序非0、缺失/坏/重复/伪造RESULT、编译/运行超时、输出创建/写入失败均非0
+- raw分别记录编译与运行stdout/stderr、退出码、命令、UTC、OS、编译器版本；写入用exclusive创建，错误不打印虚假的“完成”
+- 有意破坏的源码在临时目录真实编译；它们必须产生非0和FAIL，才说明oracle确实能发现目标语义回归
 
 ## 输入
 
-- `entry_ticket`：4 组密码学标准向量 + 20 条票据语义断言（TTL 60s、时钟容差 5s）。
-- `entry_session`：4 台 DS × 容量 2 = 8 个名额；每步最多重试 3 次。
-- `ds_allocator`：3 台 DS × 容量 2；租约 30s + 宽限期 10s。
-- `jip_resync`：三种规模（2 000 / 20 000 / 200 000 实体），缺口 2 000 / 20 000 条增量。
+### 票据：严格grammar与失败原子性
+
+[entry_ticket.cpp](src/entry_ticket.cpp)保留SHA-256空串/abc/56字节向量、1000字节分块一致性、RFC4231 TC1/2/3/6。比较例仅检查相等/首差异/末差异/长度差异，未证明constant-time。
+
+wire固定`v1|player|server|nonce|iat|exp|sig`字段顺序：ID为1–64字节ASCII字母/数字/下划线/连字符，nonce为16–64小写hex，MAC为64小写hex，总长≤1024；iat/exp是0..INT64_MAX规范十进制。`from_chars`要求全量消费；签发也执行相同规则。默认TTL60/skew5，政策上限TTL300/skew30，时间窗为`[iat-skew, exp+skew)`，以差值判断避免溢出。
+
+反例输入包括iat和exp各自空/非数/超范围/尾缀/符号/空白/前导零、重复/乱序/缺失/未知字段、嵌入分隔符/NUL、过长、坏MAC编码及有效MAC下颠倒时间区间。每个测试中的Verify正常错误返回都比较nonce表和独立外部Ticket完整字段不变。有效MAC非法格式来自合成签名者，不表示外人能伪造MAC。
+
+`consume=false`仍拒绝已消费nonce，只是不新增消费记录，不能用作原结果恢复查询。消费键是codec内`(player,server,nonce)`，最多1024项，满表拒绝且无清理；这是有界教学状态，不是部署建议。生产须设计CSPRNG、密钥域/轮换、原子持久化消费、保留期和消费成功但响应丢失后的查询。
+
+### Session：主体、完整意图与资源代次
+
+[entry_session.cpp](src/entry_session.cpp)先运行合成Auth白名单并验证声明player，再访问`(tenant,subject,operation,requestId)`缓存。完整意图`{player,match,character,region}`逐字段比较；同键异意图冲突，跨主体不返回别人的对象。
+
+Session的Auth每次重验当前主体/权限，不能机械接成`Verify(..., consume=true)`：首次消费成功后，同票再验会在缓存前失败；改为consume=false也仍会拒绝已消费nonce。真实集成须提供由独立当前身份凭据认证的原requestId/完整意图查询，首次nonce原子消费与查询分开；三模型没有实现这个跨模块接口。
+
+分配器结果明确区分new和borrowed。只有本请求新取得且完整`{principal,ds,epoch}`仍匹配的资源可被Rollback/Cancel释放。旧Ready存在时对Auth/Allocate回调/Travel/Load/Spawn分别注入Reject、Timeout、Cancel；同时检查旧handle/epoch/DS/load不变和后续回调没有执行。没有旧Ready时同矩阵检查本次新座位被清理、重复补偿无二次减账。
+
+另测早Auth失败的迟到Cancel、旧代次补偿、新requestId合法借用、Ready后Cancel、无容量立即return，以及资源失效后重放旧Ready返回stale。重试配置仅接受1–3；0/4/INT_MAX均在调用回调前拒绝，没有运行巨量循环。没有真实UE Spawn/Destroy：这只是结果回调与座位账，不是实体回收测试。
+
+### DS：座位账和写权分别判断
+
+[ds_allocator.cpp](src/ds_allocator.cpp)使用`{player,ds,epoch}`和allocator全局高水位。Live为`now<expiresAt`；GraceHeld为`expiresAt≤now<holdUntil`。Live有写权，GraceHeld只保留座位；重连经外部重新鉴权后原位换代，满DS也不再加load。请求Release与Commit/Heartbeat采用同样Live限制，过期owner不能清掉保留位。
+
+Expired待清扫的记录可以还占物理账，但不能写。对正常返回码路径，Reap在`now≥holdUntil`清理，Allocate计算候选账后仅在新分配提交分支结清过期账；容器/字符串分配异常没有强回滚保证。每个DS满足`load==座位记录数`及容量上限，玩家唯一归属；不把“活跃”含混地同时用于占座和写权。
+
+固定序列/边界覆盖1029/1030/1031/1039/1040/1041/2000含/不含Reap，1DS×1满座本人重连、跨DS旧句柄、伪造player/ds/epoch、迟到释放、时钟回拨、TTL/grace溢出和UINT64_MAX耗尽。通过输入/配置前检、进入Observe后，即使拒绝旧句柄也推进可信时间水位，以防到期判断后回拨复活；空player/null输出/非法配置的前检失败不采样时间。在上述前置条件成立且正常返回错误码时，除此之外保持资源、load、epoch和独立输出不变；不对bad_alloc等异常或内部容器别名输出作强保证。该水位是时间观察状态，不是新的写授权。
 
 ## 指标与原始结果
 
-**断言：`entry_ticket` pass=24 fail=0；`entry_session` pass=27 fail=0；`ds_allocator` pass=20 fail=0；`jip_resync` pass=12 fail=0**
+本批使用显式断言，不从断言总数推导安全证明。权威运行元数据和源码hash见[run-manifest.json](results/2026-10-04-entry-isolation/run-manifest.json)：
 
-密码学自校验（对标准向量，不是自证）：
+- [票据严格GCC14 + UBSan raw](results/2026-10-04-entry-isolation/entry_ticket-linux.txt)
+- [Session严格GCC14 + UBSan raw](results/2026-10-04-entry-isolation/entry_session-linux.txt)
+- [DS严格GCC14 + UBSan raw](results/2026-10-04-entry-isolation/ds_allocator-linux.txt)
+- [Bash/Linux pwsh故障fixture及语义mutation raw](results/2026-10-04-entry-isolation/runner-contract-linux.txt)
 
-```text
-SHA-256("")                     e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-SHA-256("abc")                  ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
-SHA-256(56B padding boundary)   248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1
-HMAC-SHA256 RFC4231 TC1         b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7
-HMAC-SHA256 RFC4231 TC2("Jefe") 5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843
-HMAC-SHA256 RFC4231 TC3         773ea91e36800e46854db8ebd09181a72959098b3ef8c122d9635514ced565fe
-HMAC-SHA256 RFC4231 TC6(>64B key) 60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54
-```
+负向控制分别移除票据合法区间检查、Session acquired-new判断、以及故意给grace重连多加load。它们的FAIL和非0是被预期捕获的证据，不能删掉后只展示绿行。
 
-进入状态机（成功路径的完整转移）：
-
-```text
-Idle -> Authenticated -> Allocated(ds-1,new) -> Traveling(ds-1) -> Loaded -> Ready
-```
-
-失败与回滚路径：
-
-```text
-Travel 连续超时 3 次  -> reason=Travel:timeout-after-3   load=0（名额已释放）
-Auth 被拒             -> auth attempts=1                 load=0（不重试、不占名额）
-Spawn 被拒            -> reason=Spawn:reject             load=0（侧效应后仍回滚）
-第 9 个玩家           -> reason=no_capacity              load=8（不超卖）
-```
-
-DS 租约与栅栏：
-
-```text
-首次分配 token=1 -> 释放后再分配 token=2 -> 过期回收 -> 新玩家拿到 token=2
-旧持有者以 token=1 提交 -> 被拒绝（A6）；旧持有者 token=1 续约 -> 被拒绝（A7）
-玩家回归重新分配 -> token=3，且 token=1 永久失效（A10）
-```
-
-JIP 追赶（p50 / p95 / p99，微秒）：
-
-```text
-entities=2000   gap=2000    catch_up 6.510 / 7.990 / 11.005   snapshot 1.300 / 1.400 / 1.500
-                            带宽节省 1.00x   CPU 额外开销 +5.210 us
-entities=20000  gap=20000   catch_up 117.960 / 172.680 / 176.740  snapshot 25.200 / 33.500 / 35.600
-                            带宽节省 1.00x   CPU 额外开销 +92.760 us
-entities=200000 gap=20000   catch_up 2104.845 / 2718.270 / 2718.270  snapshot 1941.100 / 2328.500 / 2357.600
-                            带宽节省 10.00x  CPU 额外开销 +163.745 us
-```
-
-原始输出：[entry_ticket.txt](results/entry_ticket.txt) ｜ [entry_session.txt](results/entry_session.txt) ｜ [ds_allocator.txt](results/ds_allocator.txt) ｜ [jip_resync.txt](results/jip_resync.txt)
+历史原件保持原字节：[entry_ticket.txt](results/entry_ticket.txt)、[entry_session.txt](results/entry_session.txt)、[ds_allocator.txt](results/ds_allocator.txt)、[jip_resync.txt](results/jip_resync.txt)。旧分组应读为：T1–T8算法/分块功能，T9–T20票据选定行为，T21–T24比较布尔功能。旧A20只判断数字为1，并未证明跨DS隔离；旧E15/E16只清座位，不是实体销毁。
 
 ## 结论
 
-1. **功能检查与副作用分开**：本模型顺序为格式→MAC→时间窗→归属→消费；T10–T19覆盖列出的输入，不证明解析器/所有异常安全。时间由签发/验证服务器解释，客户端时钟不是信任源；分类错误码用于诊断，不是唯一根因证明。
-2. **功能断言不证明常量时间**：T21–T24只断言相等/不等结果，没有采集首字节/末字节差异的耗时，也未审计优化后二进制。源码异或累加不能单独证明侧信道性质；生产采用有明确合同的成熟库并评估完整协议。
-3. **入口必须幂等，且幂等键要覆盖"换 id 重试"**：同一 requestId 重放走幂等表直接返回原会话（E4/E5）；更隐蔽的是客户端重试时**生成了新 requestId**——若只按 requestId 去重就会多占一个名额，必须叠加"玩家维度"的归属复用（E6 实测复用了同一台 ds-1）。
-4. **失败必须立刻终止链路，而不是继续走**：本轮实现里分配失败只置了状态、没有中断循环，于是链路带着**空 DS** 继续走完 Travel/Load/Spawn，产出"状态是 Ready 但从未连上服务器"的会话。测试把它抓了出来（原 E18/E19 失败），修复后 `no_capacity` 的转移日志止于 `Failed(no_capacity)`。这是这类状态机最典型的生产事故形态。
-5. **回滚要幂等、且不能误伤已就绪的会话**：失败时释放名额并打 `rolledBack` 标记，重复回滚不二次释放（E12）；而已经 Ready 的会话在客户端"取消"时必须**不做任何清理**——玩家已在局内，清掉名额会造成对局中突然掉线（E21）。
-6. **租约 + 栅栏令牌是"僵尸 owner"的唯一解**：掉线过宽限期后名额被回收并交给别人，旧持有者带着旧令牌回来提交/续约**必须被拒**（A6/A7）；玩家重新进入拿到新令牌后，旧令牌**永久失效**（A10）。注意令牌是**按 DS 分配**的，ds-1 的令牌不授权 ds-2（A20）。
-7. **容量只能靠单一写者守**：3 台 × 2 名额，第 7 个玩家被 `no_capacity` 拒绝而不是超卖（A14），且任意混合操作序列后"服务器负载 == 活跃租约数"始终成立（A15/A16）。
-8. **JIP 的乱序包必须缓冲重排，不能直接丢**：直接丢弃会永久丢失那次写。本实现用重排缓冲，缺口未补齐前不推进版本（J5），缺口补齐后连续落地并收敛到与权威完全一致的指纹（J1/J2/J9–J11）。
-9. **增量追赶在 CPU 上永远不便宜，它买的是带宽**：追赶 = 快照拷贝 + 重放，所以 p50 必然 ≥ 全量快照。实测缺口与实体数同量级时带宽零收益、CPU 白付（+5.2µs / +92.8µs）；只有缺口远小于世界规模时才有意义——200 000 实体、20 000 条增量时带宽省 **10 倍**，CPU 多付 **163.7µs（约 +8%）**。**给单个进场玩家发最新全量快照通常是最优解**；增量是为"已经在场、只是落后"的客户端省带宽的。
-10. **日志窗口不足必须能回退**：快照版本早于日志左边界时判 `kNeedFullSnapshot` 走全量路径（J6/J7），这条降级路径不做，JIP 会出现静默的状态不一致。
+1. 严格语法是签名协议的一部分：MAC正确不能替代无歧义解析，签发端也要拒绝非法字段
+2. 缓存结果不能绕过当前鉴权；请求键、完整意图和当前资源归属是不同检查
+3. 补偿必须证明“本请求新取得且仍拥有这一代资源”；只用Ready判断或done位不够
+4. grace保留的是一个座位，不是旧owner写权；无Reap也不能Heartbeat复活，裸数字epoch也不能跨资源授权
+5. 真实资源写入需要原子归属条件；本例bool Commit不等于接入生产持久化fencing
+6. 严格runner和负向控制防止证据假绿；有限样本仍不是穷举/形式证明
 
 ## 局限
 
-- **密码学部分是自实现、仅对标准向量校验**：覆盖 SHA-256 与 HMAC-SHA256 的正确性，但**未做**侧信道审计、密钥管理、HSM/KMS 集成、票据吊销列表；生产必须用成熟库（OpenSSL/libsodium/平台 KMS）。
-- **状态机是单线程模型**：未覆盖真实并发下的竞态（两个线程同时为同一玩家建会话），只验证了逻辑上的幂等键与单写者语义。
-- **分配器未接真实平台**：没有 Agones/GameLift 的 Pod 生命周期、没有真实心跳网络、没有 Redis/etcd 作为租约存储；未验证分布式时钟不确定性与脑裂。
-- **JIP 为内存模型**：未接真实序列化/压缩/加密与 MTU 分片，字节数按 `Entity 32B / Delta 32B` 估算而非实测线上包体。
-- **未覆盖**：平台登录（OAuth/渠道 SDK）、角色档案加载与 DB 事务、反外挂校验、跨区路由、排队系统、进入过程中的资源预下载。
-- 单机单线程、`-O2`、16 核 x86_64 下的 p50；**结论应看比例与量级，而非绝对值**。
+- 自实现SHA/HMAC只作教学；无timing、优化后二进制审计、密钥管理、CSPRNG、TLS、真实bearer持有者绑定
+- 无持久化/重启incarnation、分布式消费、并发请求、真实业务事务和异常内存分配故障注入
+- Session的AuthFn/步骤回调按返回Outcome合同工作；未覆盖回调抛异常、异步重入或真实实体资源清理
+- 没有性能/容量结论；2个玩家/DS只是边界fixture
+- JIP仍有零增量未ApplySnapshot缺陷；旧hash忽略/量化部分状态，不是byte-identical证明；旧估算字节不是网络包，旧CPU样本不能推出“增量永远更贵”。日志窗口回退/版本排序的设计动机保留，实现正确性和计量口径另验
+- Windows C++、UE/PIE、真实网关→DS、DB、调度平台、弱网、压力、脑裂未运行
 
 ## 关联知识文档
 
