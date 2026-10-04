@@ -8,7 +8,7 @@ maturity: L4
 
 # 05-AOI与InterestManagement
 
-> 知识基线：AOI（Area of Interest）与 Interest Management 的运行时语义（Enter/Leave/Update、限流、批量）；算法层数据结构见 [游戏算法/01-寻路与图论](../../../游戏算法/01-寻路与图论/README.md)（九宫格/十字链表/Quadtree）；UE 对照为 ReplicationGraph（interest management 的 UE 实现）。
+> 知识基线：AOI（Area of Interest）与 Interest Management 的运行时语义（Enter/Leave/Update、限流、批量）；算法层数据结构见 [游戏算法/01-寻路与图论](../../../00_Index/学习路线/数学与游戏算法.md)（九宫格/十字链表/Quadtree）；UE 对照为 ReplicationGraph（interest management 的 UE 实现）。
 > 版本基准：UE5.8（ReplicationGraph 为本机源码可核对）；本层不绑定具体引擎，讲真实服务器 Tick/Scene/send 流程中的 AOI。
 > 适用范围：MMO/实时服务器的大规模场景同步；与 [01-ServerMainLoop与TickScheduler](../运行调度与过载保护/01-ServerMainLoop与TickScheduler.md) 的 Tick 预算配合。
 > 官方参考：[UE5.8 ReplicationGraph 文档](https://dev.epicgames.com/documentation/en-us/unreal-engine/replication-graph-in-unreal-engine)、[UE5.8 官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine)。

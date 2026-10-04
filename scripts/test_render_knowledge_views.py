@@ -28,6 +28,14 @@ class RendererTests(unittest.TestCase):
         self.assertEqual(before, sorted(str(p) for p in self.root.rglob('*')))
         self.assertIn('知识/01-编程/README.md', a)
 
+    def test_generated_metadata_does_not_invent_content_update_date(self):
+        outputs = render(self.root, self.graph)
+        for text in outputs.values():
+            frontmatter = text.split('---', 2)[1]
+            self.assertNotIn('updated:', frontmatter)
+            self.assertIn('maturity: L0', frontmatter)
+        self.assertEqual(outputs, render(self.root, self.graph))
+
     def test_protected_book_log_and_source_outputs_rejected(self):
         for path in ['工作日志/README.md', '读书笔记/README.md', 'topic.md', '00_Index/UE专题.md', '../escape.md', '/tmp/escape.md']:
             with self.subTest(path=path):

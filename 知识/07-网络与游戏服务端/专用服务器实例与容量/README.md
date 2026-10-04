@@ -4,7 +4,6 @@ title: "专用服务器实例与容量"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 专用服务器实例与容量

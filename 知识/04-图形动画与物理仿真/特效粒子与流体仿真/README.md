@@ -4,7 +4,6 @@ title: "特效粒子与流体仿真"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 特效粒子与流体仿真

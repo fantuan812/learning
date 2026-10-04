@@ -4,7 +4,6 @@ title: "状态复制与兴趣管理"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 状态复制与兴趣管理

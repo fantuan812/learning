@@ -4,7 +4,6 @@ title: "世界权威与故障恢复"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 世界权威与故障恢复

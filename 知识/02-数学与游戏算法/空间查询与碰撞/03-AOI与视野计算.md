@@ -333,7 +333,7 @@ void updateVision(Player* p, const std::vector<TileCoord>& oldTiles,
 - [01-随机数与洗牌算法](../随机采样与程序化生成/01-随机数与洗牌算法.md)：掉落/刷怪分布与 AOI 刷怪圈结合；
 - [04-路径平滑与转向行为](../路径搜索与导航/04-路径平滑与转向行为.md)：单位移动频率与 AOI 位置同步的配合；
 - [05-位运算与性能优化技巧](../数据结构与编码/05-位运算与性能优化技巧.md)：迷雾位图、SoA 实体数组、SIMD 视野判定；
-- [01-寻路与图论](../../../游戏算法/01-寻路与图论/README.md)：空间分区（四叉树/网格）与 AOI 的异同；
+- [01-寻路与图论](../../../00_Index/学习路线/数学与游戏算法.md)：空间分区（四叉树/网格）与 AOI 的异同；
 - 《Game Programming Gems 4》：Interest Management 相关章节；
 - 云风《游戏之旅：我的编程感悟》及博客（AOI 十字链表、服务端架构讨论）；
 - MMO 同步综述：Bernier, "Latency Compensating Methods in Client/Server In-game Protocol Design"。

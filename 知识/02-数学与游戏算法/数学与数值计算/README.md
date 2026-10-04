@@ -4,7 +4,6 @@ title: "数学与数值计算"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 数学与数值计算

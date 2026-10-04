@@ -508,10 +508,10 @@ cl /nologo /utf-8 /std:c++17 /EHsc scope_guard.cpp /Fe:scope_guard.exe
 ## 8. 关联阅读
 
 - [02-Copy-Move与值语义](02-Copy-Move与值语义.md)：特殊成员函数、移动语义与容器扩容（含本机实验）。
-- [00-计算机与工程基础](../../../00-计算机与工程基础/README.md)：本层规划与门禁。
+- [00-计算机与工程基础](../../../00_Index/学习路线/编程与计算机基础.md)：本层规划与门禁。
 - [游戏知识/01-引擎基础](../../../游戏知识/01-引擎基础/README.md)：UObject/反射/World 生命周期。
 - [游戏知识/12-引擎源码分析](../../../游戏知识/12-引擎源码分析/README.md)：UObject/GC 源码深度。
-- [游戏服务端/01-架构与网络](../../../游戏服务端/01-架构与网络/README.md)：服务端连接/会话生命周期的 RAII 实践。
+- [游戏服务端/01-架构与网络](../../../00_Index/学习路线/网络与游戏服务端.md)：服务端连接/会话生命周期的 RAII 实践。
 
 - [Smart Pointers in Unreal Engine](https://dev.epicgames.com/documentation/en-us/unreal-engine/smart-pointers-in-unreal-engine)：可选线程安全模式与普通对象所有权
 - [C++异常规格](https://eel.is/c%2B%2Bdraft/except.spec)：析构异常规格的推导与非抛出承诺

@@ -1,7 +1,7 @@
 ---
 type: Index
 title: "Domain MOC 索引"
-description: "六大知识领域的学习路径与领域边界入口。"
+description: "旧领域入口的兼容索引；当前分类与学习路线从知识图视图进入。"
 tags:
   - moc
   - navigation
@@ -9,18 +9,13 @@ tags:
 status: stable
 verified: []
 maturity: L2
-updated: 2026-08-20
+updated: 2026-10-04
 ---
 
 # Domain MOC 索引
 
-本目录只保存领域导航，不保存知识正文。各领域 README 仍是物理目录清单，正文仍留在原 Canonical 路径。
+本页保留旧导航引用的兼容入口。当前分类以[八域知识体系](../../知识/README.md)为准，学习顺序从[学习路线](../学习路线/README.md)进入，主责关系从[知识图视图](../跨域关系.md)进入。
 
-- [计算机与工程基础](计算机与工程基础.md)
-- [游戏知识](游戏知识.md)
-- [游戏服务端](游戏服务端.md)
-- [游戏算法](游戏算法.md)
-- [游戏 AI](游戏AI.md)
-- [游戏测试与质量](游戏测试与质量.md)
+旧六域目录可能对应多个当前职责域，不作一对一目录替换，也不接收新正文。知识正文已经按职责迁入 `知识/`，本页不维护第二份分类或 Canonical 清单。
 
 返回：[Global MOC](../MOC.md) · [横向视图](../axes/README.md) · [Knowledge.base](../Knowledge.base)

@@ -1,0 +1,15 @@
+__cplusplus=202302
+__cpp_lib_expected=202211
+__GLIBCXX__=20250315
+_GLIBCXX_RELEASE=14
+layout char,char max_payload=1 expected=2 alignment=1 difference=1
+layout int,int max_payload=4 expected=8 alignment=4 difference=4
+layout aligned64,char max_payload=64 expected=128 alignment=64 difference=64
+wrapper_storage static=3 thread=4 automatic=5 dynamic=6
+value_payload elements=1024 allocations=1 deallocations=1 requested_bytes=4096
+error_payload elements=1024 allocations=1 deallocations=1 requested_bytes=4096
+value_ctor caught=1 destroyed=2 unwinding=2 incomplete_destroyed=0
+error_ctor caught=1 destroyed=2 unwinding=2 incomplete_destroyed=0
+guarded_error code=17 success_value=42
+value_on_error caught=1 destroyed=1 unwinding=1
+checks=28 failures=0

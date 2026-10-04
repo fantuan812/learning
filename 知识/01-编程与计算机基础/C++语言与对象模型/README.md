@@ -4,7 +4,6 @@ title: "C++语言与对象模型"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # C++语言与对象模型

@@ -4,7 +4,6 @@ title: "工程设计与协作"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 工程设计与协作

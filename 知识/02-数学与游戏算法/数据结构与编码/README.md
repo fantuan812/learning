@@ -4,7 +4,6 @@ title: "数据结构与编码"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 数据结构与编码

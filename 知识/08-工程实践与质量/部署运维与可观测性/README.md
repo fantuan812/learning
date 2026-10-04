@@ -4,7 +4,6 @@ title: "部署运维与可观测性"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 部署运维与可观测性

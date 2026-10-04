@@ -4,7 +4,6 @@ title: "学习适应与社会行为"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 学习适应与社会行为

@@ -4,7 +4,6 @@ title: "任务活动与经济规则"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 任务活动与经济规则

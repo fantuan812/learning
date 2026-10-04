@@ -4,7 +4,6 @@ title: "会话身份与在线服务"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 会话身份与在线服务

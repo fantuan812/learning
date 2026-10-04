@@ -1,0 +1,89 @@
+{
+  "created_utc": "2026-10-04T08:18:56.606626+00:00",
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "python_version": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "source_path": "/tmp/learning-expected-recovery/evidence/cpp/expected-contract/expected_contract.cpp",
+  "source_sha256": "d9d61e42f21e4fb64cc4dc8e14de85b9305383dd6f4578e29b29c75b4460835c",
+  "runner_path": "/tmp/learning-expected-recovery/evidence/cpp/expected-contract/run_expected_contract.py",
+  "runner_sha256": "57e2148cc97ae29f04ae6c312ac332e1736537ec0ef81c248be8ad6ff0d90f94",
+  "output_path": "/tmp/learning-expected-recovery/evidence/cpp/expected-contract/observed-gcc14-2026-10-04",
+  "compiler_version": {
+    "command": [
+      "/usr/bin/g++-14",
+      "--version"
+    ],
+    "returncode": 0,
+    "stdout": "g++-14 (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+    "stderr": ""
+  },
+  "compiler_target": {
+    "command": [
+      "/usr/bin/g++-14",
+      "-dumpmachine"
+    ],
+    "returncode": 0,
+    "stdout": "x86_64-linux-gnu\n",
+    "stderr": ""
+  },
+  "runs": [
+    {
+      "mode": "O0",
+      "compile": {
+        "command": [
+          "/usr/bin/g++-14",
+          "-std=c++23",
+          "-Wall",
+          "-Wextra",
+          "-Wpedantic",
+          "-Werror",
+          "-O0",
+          "/tmp/learning-expected-recovery/evidence/cpp/expected-contract/expected_contract.cpp",
+          "-o",
+          "/tmp/learning-expected-recovery/evidence/cpp/expected-contract/observed-gcc14-2026-10-04/build-tayq_r0w/expected-O0"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "passed": true,
+      "execute": {
+        "command": [
+          "/tmp/learning-expected-recovery/evidence/cpp/expected-contract/observed-gcc14-2026-10-04/build-tayq_r0w/expected-O0"
+        ],
+        "returncode": 0,
+        "stdout": "__cplusplus=202302\n__cpp_lib_expected=202211\n__GLIBCXX__=20250315\n_GLIBCXX_RELEASE=14\nlayout char,char max_payload=1 expected=2 alignment=1 difference=1\nlayout int,int max_payload=4 expected=8 alignment=4 difference=4\nlayout aligned64,char max_payload=64 expected=128 alignment=64 difference=64\nwrapper_storage static=3 thread=4 automatic=5 dynamic=6\nvalue_payload elements=1024 allocations=1 deallocations=1 requested_bytes=4096\nerror_payload elements=1024 allocations=1 deallocations=1 requested_bytes=4096\nvalue_ctor caught=1 destroyed=2 unwinding=2 incomplete_destroyed=0\nerror_ctor caught=1 destroyed=2 unwinding=2 incomplete_destroyed=0\nguarded_error code=17 success_value=42\nvalue_on_error caught=1 destroyed=1 unwinding=1\nchecks=28 failures=0\n",
+        "stderr": ""
+      }
+    },
+    {
+      "mode": "O2",
+      "compile": {
+        "command": [
+          "/usr/bin/g++-14",
+          "-std=c++23",
+          "-Wall",
+          "-Wextra",
+          "-Wpedantic",
+          "-Werror",
+          "-O2",
+          "/tmp/learning-expected-recovery/evidence/cpp/expected-contract/expected_contract.cpp",
+          "-o",
+          "/tmp/learning-expected-recovery/evidence/cpp/expected-contract/observed-gcc14-2026-10-04/build-tayq_r0w/expected-O2"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "passed": true,
+      "execute": {
+        "command": [
+          "/tmp/learning-expected-recovery/evidence/cpp/expected-contract/observed-gcc14-2026-10-04/build-tayq_r0w/expected-O2"
+        ],
+        "returncode": 0,
+        "stdout": "__cplusplus=202302\n__cpp_lib_expected=202211\n__GLIBCXX__=20250315\n_GLIBCXX_RELEASE=14\nlayout char,char max_payload=1 expected=2 alignment=1 difference=1\nlayout int,int max_payload=4 expected=8 alignment=4 difference=4\nlayout aligned64,char max_payload=64 expected=128 alignment=64 difference=64\nwrapper_storage static=3 thread=4 automatic=5 dynamic=6\nvalue_payload elements=1024 allocations=1 deallocations=1 requested_bytes=4096\nerror_payload elements=1024 allocations=1 deallocations=1 requested_bytes=4096\nvalue_ctor caught=1 destroyed=2 unwinding=2 incomplete_destroyed=0\nerror_ctor caught=1 destroyed=2 unwinding=2 incomplete_destroyed=0\nguarded_error code=17 success_value=42\nvalue_on_error caught=1 destroyed=1 unwinding=1\nchecks=28 failures=0\n",
+        "stderr": ""
+      }
+    }
+  ],
+  "passed": true
+}

@@ -340,9 +340,9 @@ Component->UpdateCollisionData();
 - 发生分区、LOD Group、材质或变换变化时，应重新验证 HLOD hash 与生成资产。
 
 - [渲染与图形](../../../游戏知识/02-渲染与图形/README.md)：衔接 SceneProxy、材质和渲染性能知识。
-- [世界构建与过场](../../../游戏知识/13-世界构建与过场/README.md)：衔接 World Partition、Landscape 与 HLOD。
+- [世界构建与过场](../../../00_Index/学习路线/图形动画与物理仿真.md)：衔接 World Partition、Landscape 与 HLOD。
 - [引擎基础](../../../游戏知识/01-引擎基础/README.md)：补充 Actor、Component 和生命周期背景。
-- [游戏知识导航](../../../游戏知识/README.md)：返回 13 个游戏知识分类的总导航。
+- [游戏知识导航](../../../00_Index/UE专题.md)：返回 13 个游戏知识分类的总导航。
 - [UE 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)：只作为当前官方入口，版本敏感内容仍以本机源码为准。
 
 ### 最小核验顺序
@@ -390,9 +390,9 @@ flowchart LR
 - [源码覆盖路线图](../../03-引擎架构与资源系统/源码阅读与覆盖基线/19-高优先级源码覆盖路线图.md)：查看本主题的源码覆盖状态与证据。
 - [31-ProceduralVegetationEditor源码](31-ProceduralVegetationEditor源码.md)：植被生成器与 Foliage/World Partition 输出边界。
 - [渲染与图形](../../../游戏知识/02-渲染与图形/README.md)：补充 SceneProxy、材质和 GPU 剔除背景。
-- [世界构建与过场](../../../游戏知识/13-世界构建与过场/README.md)：补充 World Partition、Landscape 和 HLOD 背景。
+- [世界构建与过场](../../../00_Index/学习路线/图形动画与物理仿真.md)：补充 World Partition、Landscape 和 HLOD 背景。
 - [引擎基础](../../../游戏知识/01-引擎基础/README.md)：补充 Actor、Component 和注册生命周期。
-- [游戏知识导航](../../../游戏知识/README.md)：返回游戏知识分类总导航。
+- [游戏知识导航](../../../00_Index/UE专题.md)：返回游戏知识分类总导航。
 - [UE 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)：版本敏感内容仍以本机 5.8 源码为准。
 - 本节的相对链接均指向仓库内已存在的导航或路线图，外部链接仅使用 Epic 官方入口。
 - Mermaid 图是调用关系示意，具体函数边界仍应回到对应 UE5.8 文件核对。

@@ -4,7 +4,6 @@ title: "Gameplay与交互系统"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # Gameplay与交互系统
@@ -94,6 +93,10 @@ updated: 2026-10-03
 
 - [伤害与属性结算可运行证据（修正器聚合 / 减免 / 护盾 / 过量 / DOT / 上限）](<../../evidence/tests/damage-core/README.md>)
 - [Gameplay 核心机制可运行证据（背包事务 / Buff 冲突 / 技能管线 / 属性聚合）](<../../evidence/tests/gameplay-core/README.md>)
+
+## 主题路线
+
+- [Gameplay与交互系统](<../../00_Index/学习路线/Gameplay与交互系统.md>)
 
 ## 边界与扩展
 

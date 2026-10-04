@@ -1301,7 +1301,7 @@ A：是的——`ULyraSimulatedInputWidget::InputKeyValue2D` 调 `UEnhancedPlaye
 - [41-Lyra-Pawn初始化与模块化组件源码.md](../../03-引擎架构与资源系统/模块化框架与对象通信/41-Lyra-Pawn初始化与模块化组件源码.md)：GameFrameworkComponentManager、InitState（`ALyraHUD` 的接收者角色）。
 - [42-Lyra-输入GAS与武器战斗源码.md](../技能战斗与属性结算/42-Lyra-输入GAS与武器战斗源码.md)：WeaponState hit marker 服务器侧（三十三章），本篇补 UI 侧。
 - [43-Lyra-背包装备消息与UI源码.md](../背包装备与存档/43-Lyra-背包装备消息与UI源码.md)：UIExtension/`GameFeatureAction_AddWidget` 注入机制，本篇落终点到 `ULyraHUDLayout::PrimaryLayout`。
-- [07-UI与性能优化](../../../游戏知识/07-UI与性能优化/README.md)与 [14-UMG与Slate源码.md](./14-UMG与Slate源码.md)：UMG/Slate 渲染管线、控件性能。
+- [07-UI与性能优化](../../../00_Index/学习路线/Gameplay与交互系统.md)与 [14-UMG与Slate源码.md](./14-UMG与Slate源码.md)：UMG/Slate 渲染管线、控件性能。
 - [25-EnhancedInput与GameplayTags源码.md](../输入移动与交互/25-EnhancedInput与GameplayTags源码.md)：`ULyraActionWidget` 查询当前按键图标、移动输入注入的底层。
 - [50-Lyra-设置系统与GameSettings源码.md](./50-Lyra-设置系统与GameSettings源码.md)：`ULyraSettingScreen` → `UGameSettingRegistry` 的设置注册表与平台 gating。
 

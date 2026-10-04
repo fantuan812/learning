@@ -4,7 +4,6 @@ title: "技能战斗与属性结算"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 技能战斗与属性结算

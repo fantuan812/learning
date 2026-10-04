@@ -4,7 +4,6 @@ title: "导航移动与群体协同"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 导航移动与群体协同

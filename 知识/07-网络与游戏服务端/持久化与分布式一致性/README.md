@@ -4,7 +4,6 @@ title: "持久化与分布式一致性"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 持久化与分布式一致性

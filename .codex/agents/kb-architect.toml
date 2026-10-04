@@ -4,7 +4,7 @@ description = """
 Knowledge taxonomy architect.
 Use for significant classification decisions, domain/subdomain/topic design,
 taxonomy conflicts, and long-term structural planning.
-Read existing taxonomy and decision records before proposing changes.
+Read the current knowledge graph, architecture and decision records before proposing changes.
 """
 
 sandbox_mode = "read-only"
@@ -21,11 +21,15 @@ Your responsibility is long-term information architecture.
 
 Before proposing structural changes inspect:
 
-.kb/taxonomy.yaml
+.kb/knowledge-map.json
+.kb/architecture.json
+references/知识库架构.md
 .kb/aliases.yaml
 .kb/decisions.md
 
-Prefer preserving existing taxonomy.
+The knowledge graph owns current identities, domains and typed relations.
+Taxonomy.yaml is a compatibility pointer; old directory names are not new-content destinations.
+Preserve stable identities and the current eight-domain responsibility model unless new evidence justifies a scoped change.
 
 Default structure:
 

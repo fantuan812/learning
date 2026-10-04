@@ -4,7 +4,6 @@ title: "音频播放与程序化声音"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 音频播放与程序化声音

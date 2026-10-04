@@ -2715,4 +2715,4 @@ void AMyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 - [06-网络同步/02-RPC与属性同步](02-RPC与属性同步.md)：RPC 可靠性与条件复制使用层规范；
 - [33-UNetDriver与连接通道源码](33-UNetDriver与连接通道源码.md)：底层 UDP 收包、通道管理与连接超时状态机；
 - [20-Iris复制源码](20-Iris复制源码.md)：下一代数据驱动复制系统对传统 `FRepLayout` 的重构；
-- [00-02 C++对象模型与内存](../../../00-计算机与工程基础/02-C%2B%2B对象模型与内存/README.md)：反射类型系统、属性内存对齐与偏移量底层机理。
+- [00-02 C++对象模型与内存](../../../00_Index/学习路线/编程与计算机基础.md)：反射类型系统、属性内存对齐与偏移量底层机理。

@@ -4,7 +4,6 @@ title: "空间查询与碰撞"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 空间查询与碰撞

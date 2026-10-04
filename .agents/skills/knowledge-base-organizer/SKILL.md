@@ -1,6 +1,6 @@
 ---
 name: knowledge-base-organizer
-description: Maintain this knowledge base through scoped edits, topic organization, Inbox processing, metadata maintenance, or architecture audits and refactoring.
+description: Maintain this knowledge base through scoped edits, topic organization, raw-material processing, metadata maintenance, or architecture audits and refactoring.
 ---
 
 # Knowledge Base Organizer
@@ -13,7 +13,7 @@ description: Maintain this knowledge base through scoped edits, topic organizati
 | --- | --- |
 | 单文档或小编辑 | 只读目标与相关 Canonical；按目标修改，不启动全库扫描或结构计划 |
 | 元数据维护 | 读取 references/OKF-兼容规范.md 与 .kb/okf-profile.yaml |
-| Inbox / 主题整理 | 读取 references/知识组织规则.md；盘点目标、找既有主题、分析重复与边界 |
+| 来源材料 / 主题整理 | 读取 references/知识组织规则.md；盘点目标、找既有主题、分析重复与边界 |
 | 审计 | 保持只读，按范围检查并报告 evidence，不因发现问题自动修复 |
 | 全库重构 | 仅在用户要求或有结构失配证据时使用；加载 references/知识库架构.md 与知识组织规则 |
 
@@ -25,9 +25,10 @@ description: Maintain this knowledge base through scoped edits, topic organizati
 内部分析与审核不增加用户确认门槛，用户已授权范围内直接完成。
 独立正文可按不相交 allowlist 并行；共享导航与控制面由指定整合者串行更新。
 
-主题或 Inbox 工作先搜索既有 Canonical，再决定 Extend / Merge / Create / Archive；
-遇到 taxonomy 冲突才进行结构设计。低置信度操作进入 .kb/review-queue.md。
-具体分类、信息保存和迁移规则按知识组织规则执行，不强制移动所有通用内容到 Knowledge。
+主题或来源材料工作先搜索既有 Canonical，再决定 Extend / Merge / Create / Archive；
+读取 .kb/knowledge-map.json 的当前身份、主域与关系，遇到实际职责冲突才进行结构设计。低置信度操作进入 .kb/review-queue.md。
+具体分类、信息保存和迁移规则按知识组织规则执行；taxonomy 仅作兼容指针，不自动重建已移除的通用知识、项目、接收或归档骨架。
+本轮规则重建核对日期：2026-10-04。
 
 完成时运行根 AGENTS 适用检查。内容与导航收敛后由整合者更新 manifest；
 对照基线报告 changes、evidence、risks，明确已执行、未验证、既有失败。

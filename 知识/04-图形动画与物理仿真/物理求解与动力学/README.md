@@ -4,7 +4,6 @@ title: "物理求解与动力学"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 物理求解与动力学

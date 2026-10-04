@@ -4,7 +4,6 @@ title: "评测安全与运行预算"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 评测安全与运行预算

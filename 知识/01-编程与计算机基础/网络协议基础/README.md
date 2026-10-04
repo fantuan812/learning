@@ -4,7 +4,6 @@ title: "网络协议基础"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 网络协议基础

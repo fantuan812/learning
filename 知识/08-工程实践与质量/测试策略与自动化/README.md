@@ -4,7 +4,6 @@ title: "测试策略与自动化"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 测试策略与自动化

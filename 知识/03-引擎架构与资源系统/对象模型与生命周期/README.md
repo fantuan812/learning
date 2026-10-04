@@ -4,7 +4,6 @@ title: "对象模型与生命周期"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 对象模型与生命周期

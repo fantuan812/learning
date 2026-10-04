@@ -4,7 +4,6 @@ title: "持续交付与发布治理"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 持续交付与发布治理

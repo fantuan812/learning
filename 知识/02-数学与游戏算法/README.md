@@ -4,7 +4,6 @@ title: "数学与游戏算法"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 数学与游戏算法
@@ -97,6 +96,10 @@ updated: 2026-10-03
 - [A* 队列、重开与终止合同反例](<../../evidence/algorithms/astar-contract/README.md>)
 - [Evidence · astar：A* 优化前后对比基准](<../../evidence/algorithms/astar/README.md>)
 - [AOI 与大规模场景可运行证据（可见性 / Tick 成本 / 广播带宽 / 动态分线）](<../../evidence/tests/aoi-scale/README.md>)
+
+## 主题路线
+
+- [数学与游戏算法学习路线](<../../00_Index/学习路线/数学与游戏算法.md>)
 
 ## 边界与扩展
 

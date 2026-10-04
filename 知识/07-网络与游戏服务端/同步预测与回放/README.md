@@ -4,7 +4,6 @@ title: "同步预测与回放"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 同步预测与回放

@@ -4,7 +4,6 @@ title: "背包装备与存档"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 背包装备与存档

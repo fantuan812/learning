@@ -153,7 +153,7 @@ TWeakObjectPtr（UE）→ UObject 场景
 | 组件 | `UActorComponent`（反射 + 场景组件） | 普通结构体组件（无反射开销） |
 | 适用 | 客户端/DS 的引擎对象 | 逻辑服的高吞吐实体 |
 
-自研逻辑服（非 UE）通常不需要 UObject 级别的反射与 GC 开销，用轻量 Entity 更合适；UE DS 上则直接使用 Actor/AActor 体系（见 [05-UE Dedicated Server平台化](<../../../游戏服务端/05-UE%20Dedicated%20Server平台化/README.md>)）。
+自研逻辑服（非 UE）通常不需要 UObject 级别的反射与 GC 开销，用轻量 Entity 更合适；UE DS 上则直接使用 Actor/AActor 体系（见 [05-UE Dedicated Server平台化](<../../../00_Index/学习路线/网络与游戏服务端.md>)）。
 
 ### 3.8 生命周期事件契约
 

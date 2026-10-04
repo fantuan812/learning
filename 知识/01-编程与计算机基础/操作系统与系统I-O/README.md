@@ -4,7 +4,6 @@ title: "操作系统与系统I-O"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 操作系统与系统I-O

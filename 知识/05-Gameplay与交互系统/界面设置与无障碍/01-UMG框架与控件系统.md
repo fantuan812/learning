@@ -492,7 +492,7 @@ void UMyListWidget::HandleItemClicked()
 - [07-CommonUI输入路由与焦点管理](07-CommonUI输入路由与焦点管理.md)：跨平台多端输入路由与焦点栈管理；
 - [08-Slate自定义控件与样式系统](08-Slate自定义控件与样式系统.md)：底层 SWidget 声明式绘制与 FSlateStyleSet 定制；
 - [12-14 UMG与Slate源码](14-UMG与Slate源码.md)：SObjectWidget 桥接与 Slate 渲染批次裁剪源码底层；
-- [00-02 C++对象模型与内存](../../../00-计算机与工程基础/02-C%2B%2B对象模型与内存/README.md)：UI 控件树深层递归与虚表派发开销的第一性原理分析；
+- [00-02 C++对象模型与内存](../../../00_Index/学习路线/编程与计算机基础.md)：UI 控件树深层递归与虚表派发开销的第一性原理分析；
 - [UE 5.8 官方文档：UMG UI Designer 快速入门](https://dev.epicgames.com/documentation/en-us/unreal-engine/umg-ui-designer-quick-start-guide-in-unreal-engine)（布局、控件与 Widget Blueprint）
 - [UE 5.8 官方文档：Slate UI Framework](https://dev.epicgames.com/documentation/en-us/unreal-engine/slate-user-interface-programming-framework-for-unreal-engine)（底层架构）
 - [UE 5.8 官方文档：Common UI](https://dev.epicgames.com/documentation/unreal-engine/common-ui-plugin-for-advanced-user-interfaces-in-unreal-engine?lang=en-US)（输入路由与焦点）

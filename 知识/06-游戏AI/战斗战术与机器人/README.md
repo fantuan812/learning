@@ -4,7 +4,6 @@ title: "战斗战术与机器人"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 战斗战术与机器人

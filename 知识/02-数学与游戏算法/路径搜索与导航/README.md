@@ -4,7 +4,6 @@ title: "路径搜索与导航"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 路径搜索与导航
