@@ -5,7 +5,7 @@ description: "知识库维护的核心契约、按需规则入口与最低验收
 status: stable
 verified: []
 maturity: L2
-updated: 2026-09-07
+updated: 2026-10-04
 ---
 
 # Knowledge Base Agent Instructions
@@ -33,23 +33,23 @@ updated: 2026-09-07
 | 当前任务 | 必读入口 |
 | --- | --- |
 | 了解责任层、目录落点、架构边界 | [知识库架构](references/知识库架构.md)、[架构清单](.kb/architecture.json) |
-| 创建主题、归类、去重、合并拆分、结构重构 | [知识组织规则](references/知识组织规则.md)、taxonomy、aliases、decisions |
+| 创建主题、归类、去重、合并拆分、结构重构 | [知识组织规则](references/知识组织规则.md)、[knowledge-map](.kb/knowledge-map.json)、aliases、decisions；taxonomy 仅作兼容指针 |
 | 分派 Agent、执行或验收维护、发布 | [Agent 协作与发布规则](references/agent协作与发布规则.md) |
 | 修改 Markdown 元数据 | [OKF 兼容规范](references/OKF-兼容规范.md)、[OKF profile](.kb/okf-profile.yaml) |
 | 选择维护模式 | [项目 Skill](.agents/skills/knowledge-base-organizer/SKILL.md) |
 | 修改 Agent 配置 | [Agent 配置说明](.codex/README.md) |
 | Obsidian 共享与同步 | [Obsidian 协作指南](references/Obsidian协作指南.md) |
 
-控制面具体文件：[taxonomy](.kb/taxonomy.yaml)、[aliases](.kb/aliases.yaml)、
+控制面具体文件：[knowledge-map](.kb/knowledge-map.json)、[taxonomy兼容指针](.kb/taxonomy.yaml)、[aliases](.kb/aliases.yaml)、
 [decisions](.kb/decisions.md)、[manifest](.kb/manifest.yaml)。
 按任务加载，避免把所有参考全文加入每个 Agent 的上下文。
 
 ## 知识与事实源
 
-- 按已确认的八个知识职责域归类；.kb/knowledge-map.json 维护稳定身份、当前路径、主域与概念关系。旧目录只在迁移期间兼容。
+- 按已确认的八个知识职责域归类；.kb/knowledge-map.json 维护稳定身份、当前路径、主域与概念关系。旧目录只用于必要兼容入口与历史记录，不接收新主题正文。
 - 工作日志原文、日期和附件，以及已有书籍、PDF、图片、笔记与相关工具完整保留；不能只留Git历史。
 - 每个知识概念只有一个 Canonical；其他入口用链接、别名和 MOC，不复制权威正文。
-- knowledge-map 是主题身份与关系事实源；taxonomy 在迁移期间只作旧目录兼容，architecture 管顶层责任，manifest 管文件快照。
+- knowledge-map 是主题身份、主域与关系事实源；taxonomy 只提供现行权威与旧路径兼容指针，architecture 管顶层责任，manifest 管机械文件快照。
 - 来源、年份、AI 提供者不能成为主题分类依据；来源材料可以在自己的责任层保留。
 - mixed 内容是否拆分取决于复用边界与上下文完整性，不强制拆分。
 - 结构变更先检查既有决策并记录计划；置信度低于 0.75 进入 review-queue，不自动执行。

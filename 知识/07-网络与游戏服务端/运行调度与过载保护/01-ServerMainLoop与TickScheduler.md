@@ -10,7 +10,7 @@ maturity: L4
 
 > 知识基线：实时服务器固定步长主循环、accumulator 模式、时间预算；UE 对照以本机 UE5.8 源码为准（`Misc/App.h`、`Engine/Classes/Engine/NetDriver.h`、`Engine/Public/TickTaskManagerInterface.h`）。
 > 版本基准：UE5.8；`UNetDriver::NetServerMaxTickRate` 自 5.3 起推荐使用 `GetNetServerMaxTickRate/SetNetServerMaxTickRate`。
-> 适用范围：MMO/实时游戏服务器（C++ 或脚本语言实现均可套用）；UE Dedicated Server 参见 [05-UE Dedicated Server平台化](<../../../游戏服务端/05-UE%20Dedicated%20Server平台化/README.md>)。
+> 适用范围：MMO/实时游戏服务器（C++ 或脚本语言实现均可套用）；UE Dedicated Server 参见 [05-UE Dedicated Server平台化](<../../../00_Index/学习路线/网络与游戏服务端.md>)。
 > 官方参考：[UE5.8 官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine)、[cppreference - std::chrono](https://en.cppreference.com/w/cpp/chrono)。
 > 最后更新：2026-09-03（深度重构：补齐工业级 C++ 生产级主循环、混合休眠自旋、六阶段执行流水线与滞回自适应降级控制器）。
 > 知识成熟度：L4（模型实验 + 原始结果，见 [evidence/server/tick-scheduler](../../../evidence/server/tick-scheduler/README.md)）。
@@ -273,7 +273,7 @@ stateDiagram-v2
 ## 8. 验证与基准
 
 - **本机模拟验证**：执行 `powershell -NoProfile -ExecutionPolicy Bypass -File evidence/server/tick-scheduler/scripts/build_run.ps1`，校对原始结果 `results/tick_scheduler_win_x64_msvc.txt`。
-- **真实容量验证**：结合 [游戏测试与质量](../../../游戏测试与质量/README.md) 的机器人压测基准（阶梯加压、P99 拐点分析），验证不同业务负载下的服务器承载上限。
+- **真实容量验证**：结合 [游戏测试与质量](../../../00_Index/学习路线/工程实践与质量.md) 的机器人压测基准（阶梯加压、P99 拐点分析），验证不同业务负载下的服务器承载上限。
 - **UE 源码核对入口**：本机 `Engine/Source/Runtime/Core/Public/Misc/App.h`（`SetFixedDeltaTime`）、`Engine/Source/Runtime/Engine/Classes/Engine/NetDriver.h`（`GetNetServerMaxTickRate`）、`Engine/Source/Runtime/Engine/Public/TickTaskManagerInterface.h`。
 
 ### 验收清单（进入生产前）
@@ -304,4 +304,4 @@ stateDiagram-v2
 - [11-AI与寻路时间预算](11-AI与寻路时间预算.md) —— AI Tick 分帧预算片
 - [12-世界时间确定性与GameClock](12-世界时间确定性与GameClock.md) —— 单调时间、游戏时钟与回放确定性
 - [14-运行时背压与过载保护](14-运行时背压与过载保护.md) —— 深入运行时队列水位与多级熔断
-- [05-UE Dedicated Server平台化](<../../../游戏服务端/05-UE%20Dedicated%20Server平台化/README.md>) —— DS 生产级生命周期与容器调度
+- [05-UE Dedicated Server平台化](<../../../00_Index/学习路线/网络与游戏服务端.md>) —— DS 生产级生命周期与容器调度

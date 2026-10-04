@@ -4,7 +4,6 @@ title: "图形动画与物理仿真"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 图形动画与物理仿真
@@ -102,6 +101,10 @@ updated: 2026-10-03
 ## 可复现实验
 
 - [蒙皮坐标与权重契约数值实验](<../../evidence/labs/skinning-contract/README.md>)
+
+## 主题路线
+
+- [图形动画与物理仿真](<../../00_Index/学习路线/图形动画与物理仿真.md>)
 
 ## 边界与扩展
 

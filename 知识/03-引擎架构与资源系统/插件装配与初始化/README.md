@@ -4,7 +4,6 @@ title: "插件装配与初始化"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 插件装配与初始化

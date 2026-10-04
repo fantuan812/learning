@@ -4,14 +4,9 @@
     "知识",
     "00-计算机与工程基础",
     "游戏知识",
-    "游戏服务端",
-    "游戏算法",
-    "游戏AI",
-    "游戏测试与质量",
-    "系统实战",
-    "笔记",
     "工作日志",
-    "读书笔记"
+    "读书笔记",
+    "00_Index/学习路线"
   ],
   "domains": [
     {
@@ -4588,6 +4583,84 @@
       "path": "读书笔记/游戏编程模式/update-method.md",
       "domain": "engine",
       "kind": "reading-note"
+    },
+    {
+      "id": "kb-2a1bbd0fbddc",
+      "path": "00_Index/学习路线/编程与计算机基础.md",
+      "domain": "systems",
+      "kind": "roadmap"
+    },
+    {
+      "id": "kb-f7321e0c080b",
+      "path": "00_Index/学习路线/数学与游戏算法.md",
+      "domain": "algorithms",
+      "kind": "roadmap"
+    },
+    {
+      "id": "kb-201685daafe7",
+      "path": "00_Index/学习路线/引擎架构与资源系统.md",
+      "domain": "engine",
+      "kind": "roadmap",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-310f55fd8962",
+      "path": "00_Index/学习路线/图形动画与物理仿真.md",
+      "domain": "simulation",
+      "kind": "roadmap",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-6aeec3e51c0e",
+      "path": "00_Index/学习路线/Gameplay与交互系统.md",
+      "domain": "gameplay",
+      "kind": "roadmap",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-0c695c92c48e",
+      "path": "00_Index/学习路线/游戏AI.md",
+      "domain": "ai",
+      "kind": "roadmap"
+    },
+    {
+      "id": "kb-21f86f400a5a",
+      "path": "00_Index/学习路线/网络与游戏服务端.md",
+      "domain": "online",
+      "kind": "roadmap"
+    },
+    {
+      "id": "kb-16efdc9d8f62",
+      "path": "00_Index/学习路线/工程实践与质量.md",
+      "domain": "engineering",
+      "kind": "roadmap"
+    },
+    {
+      "id": "kb-c5537b9e23e2",
+      "path": "00_Index/学习路线/UE源码阅读.md",
+      "domain": "engine",
+      "kind": "roadmap",
+      "technologies": [
+        "unreal-engine"
+      ]
+    },
+    {
+      "id": "kb-0ffbdac7f401",
+      "path": "00_Index/学习路线/端到端案例.md",
+      "domain": "engineering",
+      "kind": "roadmap"
+    },
+    {
+      "id": "kb-e7719e843e78",
+      "path": "evidence/cpp/expected-contract/README.md",
+      "domain": "systems",
+      "kind": "experiment"
     }
   ],
   "concepts": [
@@ -4920,6 +4993,11 @@
       "from": "kb-1fc080c7d1e0",
       "to": "kb-e9b6c7f3abad",
       "type": "reads"
+    },
+    {
+      "from": "kb-75ba4957307f",
+      "to": "kb-e7719e843e78",
+      "type": "verified_by"
     }
   ]
 }

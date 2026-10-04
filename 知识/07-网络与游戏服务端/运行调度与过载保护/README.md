@@ -4,7 +4,6 @@ title: "运行调度与过载保护"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 运行调度与过载保护

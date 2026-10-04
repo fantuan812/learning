@@ -4,7 +4,6 @@ title: "并发与同步"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 并发与同步

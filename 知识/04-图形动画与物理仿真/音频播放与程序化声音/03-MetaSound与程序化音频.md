@@ -426,6 +426,6 @@ Master 挂 Limiter；各总线压缩器阈值调低；检查单条总线增益�
 
 - 上一篇：[02-衰减与3D空间音效.md](./02-衰减与3D空间音效.md)：Audio Volume 混响依赖本篇的 Reverb Submix；遮挡与空间化是性能优化的对象。
 - 第 01 篇：[01-音频基础与播放.md](./01-音频基础与播放.md)：播放方式与 Sound Mix 混音。
-- 分类导航：[README.md](../../../游戏知识/10-音频系统/README.md)
+- 分类导航：[README.md](../../../00_Index/学习路线/图形动画与物理仿真.md)
 - 官方文档：Unreal Engine 文档 → Audio：MetaSound、Sound Submix、Submix Effects、Audio Modulation、Sound Concurrency。
 - 相关：Gameplay（技能参数驱动 MetaSound）、性能（Stat Audio / 优化）、美术（音频资产规范）。

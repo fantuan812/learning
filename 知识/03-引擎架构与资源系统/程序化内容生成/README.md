@@ -4,7 +4,6 @@ title: "程序化内容生成"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 程序化内容生成

@@ -4,7 +4,6 @@ title: "硬件体系结构与性能"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 硬件体系结构与性能

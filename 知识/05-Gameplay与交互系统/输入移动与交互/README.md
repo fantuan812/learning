@@ -4,7 +4,6 @@ title: "输入移动与交互"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 输入移动与交互

@@ -4,7 +4,6 @@ title: "动画求值与角色表现"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 动画求值与角色表现

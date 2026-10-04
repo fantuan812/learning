@@ -74,7 +74,7 @@ def link(root, source, target, label=None):
 
 def page(title_, body):
     return (f'---\ntype: Index\ntitle: "{title_}"\nstatus: stable\nverified: []\n'
-            'maturity: L0\nupdated: 2026-10-03\n---\n\n'
+            'maturity: L0\n---\n\n'
             f'# {title_}\n\n> 知识成熟度：L0（导航条目，不代表主题内容已实测）\n\n{body.rstrip()}\n')
 
 

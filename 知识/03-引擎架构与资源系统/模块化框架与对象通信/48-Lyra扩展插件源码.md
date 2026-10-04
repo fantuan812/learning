@@ -437,7 +437,7 @@ EUW 工具与 `ChangeMeshMaterials` 只存在于编辑器流程，打包运行�
 - [13-资源加载与异步加载源码](../世界组织与资源加载/13-资源加载与异步加载源码.md)：FStreamableHandle 与异步加载机制，理解 FAsyncMixin。
 - [26-CommonUI源码](../../05-Gameplay与交互系统/界面设置与无障碍/26-CommonUI源码.md)：CommonUI 与 UI 自动化背景，字幕控件（UUserWidget 封装）的上层背景。
 - [README](../../../游戏知识/12-引擎源码分析/README.md)：本目录索引。
-- [UI与性能优化 README](../../../游戏知识/07-UI与性能优化/README.md)、[世界构建与过场 README](../../../游戏知识/13-世界构建与过场/README.md)：跨分类入口。
+- [UI与性能优化 README](../../../00_Index/学习路线/Gameplay与交互系统.md)、[世界构建与过场 README](../../../00_Index/学习路线/图形动画与物理仿真.md)：跨分类入口。
 
 ## 十四、权威来源
 

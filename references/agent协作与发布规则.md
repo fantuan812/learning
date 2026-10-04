@@ -5,7 +5,7 @@ description: "知识库 Agent 角色、任务合同、并发边界、验收与�
 status: stable
 verified: []
 maturity: L2
-updated: 2026-09-07
+updated: 2026-10-04
 ---
 
 # Agent 协作与发布规则
@@ -20,11 +20,11 @@ updated: 2026-09-07
 | 主线程协调者 | 用户意图、dirty 基线、分解、分配、冲突、最终验收 | 只在明确兼任 executor 或 integrator 时写入其 allowlist |
 | kb_scanner | 目录、文件、元数据和异常盘点 | 只读 |
 | kb_analyzer | 语义、知识类型、复用边界与关系分析 | 只读 |
-| kb_architect | taxonomy 与结构方案，查阅既有决策 | 只读 |
+| kb_architect | 依据知识图提出分类与结构方案，查阅既有决策 | 只读 |
 | kb_curator | 重复、合并拆分、知识单元边界建议 | 只读 |
 | kb_auditor | 独立审核语义、结构、计划合理性与信息保存 | 只读 |
 | kb_executor | 按批准的任务范围修改独立正文或指定文件 | 精确 allowlist，不接管共享文件 |
-| kb_integrator | 维护共享导航、taxonomy、aliases、计划、决策、manifest | 单一指定写者，精确 allowlist，串行 |
+| kb_integrator | 维护知识图、共享导航、taxonomy 兼容指针、aliases、计划、决策、manifest | 单一指定写者，精确 allowlist，串行 |
 | kb_verifier | 运行检查、比较基线、复核产物及发布证据 | 只读，不修复失败 |
 | 单一发布者（流程角色） | 用户授权后暂存、提交与推送 | 仅发布阶段修改 Git index/history/remote，不编辑正文 |
 
@@ -53,7 +53,7 @@ publisher 不注册为自动启动角色。除明确授权发布阶段的单一�
 
 结构任务遵循 Inspect → Analyze → Plan → Review → Execute → Audit，不从搬文件开始。
 独立目录扫描、文档分析、正文编辑可并行，但执行 allowlist 必须不相交。
-共享 README、MOC、taxonomy、aliases、manifest、决策和同一正文只由指定整合者串行写。
+共享知识图、README、MOC、taxonomy 兼容指针、aliases、manifest、决策和同一正文只由指定整合者串行写。
 写入前由协调者在仓库外保存 status、HEAD、staged 基线和每个 dirty 文件的 diff/blob/hash；写者确认基线已存在。
 若用户外部编辑进入分配范围，停下该路径并报告冲突，继续无冲突工作；不覆盖、不自动回退。
 

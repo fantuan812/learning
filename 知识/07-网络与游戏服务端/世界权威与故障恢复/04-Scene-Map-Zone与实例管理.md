@@ -161,7 +161,7 @@ Zone 划分的两种方式：
 - **UWorld = Scene 实例**：`World` 承载 Level、Actor、Tick；
 - **Level = Map 的一部分**：子关卡（`ULevel`）动态加载卸载（Level Streaming）；
 - **World Partition**：UE5 的大世界方案，按网格运行时加载子关卡，与自研 Zone 分层同构；
-- UE DS 上"副本"用独立 World/地图实例运行（见 [05-UE Dedicated Server平台化](<../../../游戏服务端/05-UE%20Dedicated%20Server平台化/README.md>)）。
+- UE DS 上"副本"用独立 World/地图实例运行（见 [05-UE Dedicated Server平台化](<../../../00_Index/学习路线/网络与游戏服务端.md>)）。
 
 补充：UE 的 `ServerTravel` 切换地图（关服/换图）与自研"实例重启"对应；World Partition 的运行时加载与自研 Zone 加载同构，可互相参考预算设计。
 
@@ -303,10 +303,10 @@ Map 的只读数据（实体定义、刷怪表）；Scene 实例只持有"已加
 - [05-AOI与InterestManagement](../状态复制与兴趣管理/05-AOI与InterestManagement.md)：Zone 级 AOI 网格。
 - [12-世界时间确定性与GameClock](../运行调度与过载保护/12-世界时间确定性与GameClock.md)：跨实例时间基准。
 - [13-世界Snapshot与故障恢复](13-世界Snapshot与故障恢复.md)：跨进程迁移的状态快照。
-- [游戏知识/13-世界构建与过场](../../../游戏知识/13-世界构建与过场/README.md)：UE 大世界（World Partition）客户端侧。
-- [05-UE Dedicated Server平台化](<../../../游戏服务端/05-UE%20Dedicated%20Server平台化/README.md>)：DS 实例生命周期。
+- [游戏知识/13-世界构建与过场](../../../00_Index/学习路线/图形动画与物理仿真.md)：UE 大世界（World Partition）客户端侧。
+- [05-UE Dedicated Server平台化](<../../../00_Index/学习路线/网络与游戏服务端.md>)：DS 实例生命周期。
 - [08-跨Zone与跨服迁移](08-跨Zone与跨服迁移.md)：跨进程迁移的协议细节。
-- [游戏服务端/04-平台与可靠性](../../../游戏服务端/04-平台与可靠性/README.md)：实例分配的服务治理视角。
+- [游戏服务端/04-平台与可靠性](../../../00_Index/学习路线/网络与游戏服务端.md)：实例分配的服务治理视角。
 ## 数据流：玩家跨 Zone 迁移
 
 ```mermaid

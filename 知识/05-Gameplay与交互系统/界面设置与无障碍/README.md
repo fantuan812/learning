@@ -4,7 +4,6 @@ title: "界面设置与无障碍"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 界面设置与无障碍

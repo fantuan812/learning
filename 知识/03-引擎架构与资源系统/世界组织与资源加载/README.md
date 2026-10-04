@@ -4,7 +4,6 @@ title: "世界组织与资源加载"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 世界组织与资源加载

@@ -4,7 +4,6 @@ title: "过场渲染与虚拟制片"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 过场渲染与虚拟制片

@@ -4,7 +4,6 @@ title: "模块化框架与对象通信"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 模块化框架与对象通信

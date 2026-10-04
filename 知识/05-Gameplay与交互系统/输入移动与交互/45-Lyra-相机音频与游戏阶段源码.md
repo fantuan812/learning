@@ -1424,7 +1424,7 @@ rg -n 'ShooterGame.GamePhase' "$Lyra\Plugins\GameFeatures\ShooterCore\Config\Tag
 - [07-相机系统与视口](07-相机系统与视口.md)：玩法层相机系统建模。
 - [01-GameplayAbilitySystem能力系统](../技能战斗与属性结算/01-GameplayAbilitySystem能力系统.md)：GAS 玩法层概念。
 - [13-背包与装备系统](../背包装备与存档/13-背包与装备系统.md)：玩法层对象与装备建模对照。
-- [README](../../../游戏知识/README.md)：知识库导航。
+- [README](../../../00_Index/UE专题.md)：知识库导航。
 
 ## 二十二、权威来源
 

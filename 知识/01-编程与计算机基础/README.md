@@ -4,7 +4,6 @@ title: "编程与计算机基础"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 编程与计算机基础
@@ -83,11 +82,16 @@ updated: 2026-10-03
 
 ## 可复现实验
 
+- [std::expected 的内嵌存储与异常边界实验](<../../evidence/cpp/expected-contract/README.md>)
 - [Evidence · atomic-memory-order：Atomic 与 C++ 内存模型实验](<../../evidence/labs/atomic-memory-order/README.md>)
 - [Evidence · cpp-move：Copy/Move 计数实验](<../../evidence/labs/cpp-move/README.md>)
 - [Evidence · epoll-reactor：LT/ET、部分写与背压契约](<../../evidence/labs/epoll-reactor/README.md>)
 - [Evidence · false-sharing：缓存行竞争 Benchmark](<../../evidence/labs/false-sharing/README.md>)
 - [匹配到对局可运行证据（匹配池窗口 / 房间生命周期 / 分队平衡）](<../../evidence/tests/match-core/README.md>)
+
+## 主题路线
+
+- [编程与计算机基础学习路线](<../../00_Index/学习路线/编程与计算机基础.md>)
 
 ## 边界与扩展
 

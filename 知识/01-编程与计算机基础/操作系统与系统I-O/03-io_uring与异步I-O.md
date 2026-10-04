@@ -337,5 +337,5 @@ perf stat -r 5 -e cycles,instructions,syscalls:sys_enter_io_uring_enter,context-
 - **游戏服务端落地**：
   - [游戏服务端/01-架构与网络/05-并发与高性能](../../07-网络与游戏服务端/运行调度与过载保护/05-并发与高性能.md)：服务器高吞吐持久化与网络前沿。
 - **分类与领域入口**：
-  - [07-Linux系统编程 README](../../../00-计算机与工程基础/07-Linux系统编程/README.md)
-  - [计算机与工程基础 Domain MOC](../../../00_Index/domains/计算机与工程基础.md)
+  - [07-Linux系统编程 README](../../../00_Index/学习路线/编程与计算机基础.md)
+  - [计算机与工程基础 Domain MOC](../../../00_Index/学习路线/编程与计算机基础.md)

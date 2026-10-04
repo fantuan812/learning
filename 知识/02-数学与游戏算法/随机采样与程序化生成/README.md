@@ -4,7 +4,6 @@ title: "随机采样与程序化生成"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 随机采样与程序化生成

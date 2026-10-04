@@ -4,7 +4,6 @@ title: "服务架构与消息通信"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 服务架构与消息通信

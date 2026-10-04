@@ -4,7 +4,6 @@ title: "确定性与基准"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 确定性与基准

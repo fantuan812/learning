@@ -346,7 +346,7 @@ R --> P
 ### 关联阅读
 
 - [高优先级源码覆盖路线图](../../03-引擎架构与资源系统/源码阅读与覆盖基线/19-高优先级源码覆盖路线图.md)
-- [AI 系统目录](../../../游戏知识/05-AI系统/README.md)
+- [AI 系统目录](../../../00_Index/学习路线/游戏AI.md)
 - [Unreal Engine 官方文档入口](https://dev.epicgames.com/documentation/en-us/unreal-engine)
 
 ### 验收要点

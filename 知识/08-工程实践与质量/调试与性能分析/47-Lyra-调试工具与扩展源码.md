@@ -1198,7 +1198,7 @@ Spec 用 AutomationDriver 驱动真实 UI 点击（前端路径）；ShooterTest
 - [28-UnrealInsights与Trace源码](28-UnrealInsights与Trace源码.md)：把调试命令与加载过程变成可观测证据。
 - [32-UE Dedicated Server启动与监听源码](<../../07-网络与游戏服务端/专用服务器实例与容量/32-UE%20Dedicated%20Server启动与监听源码.md>)：服务器进程与 Cheat 的服务器侧行为。
 - [README](../../../游戏知识/12-引擎源码分析/README.md)：本目录索引。
-- [游戏玩法编程 README](../../../游戏知识/03-游戏玩法编程/README.md)、[AI系统 README](../../../游戏知识/05-AI系统/README.md)、[网络同步 README](../../../游戏知识/06-网络同步/README.md)、[UI与性能优化 README](../../../游戏知识/07-UI与性能优化/README.md)、[工具链与打包发布 README](../../../游戏知识/08-工具链与打包发布/README.md)、[世界构建与过场 README](../../../游戏知识/13-世界构建与过场/README.md)：跨分类入口。
+- [游戏玩法编程 README](../../../游戏知识/03-游戏玩法编程/README.md)、[AI系统 README](../../../00_Index/学习路线/游戏AI.md)、[网络同步 README](../../../00_Index/学习路线/网络与游戏服务端.md)、[UI与性能优化 README](../../../00_Index/学习路线/Gameplay与交互系统.md)、[工具链与打包发布 README](../../../00_Index/学习路线/工程实践与质量.md)、[世界构建与过场 README](../../../00_Index/学习路线/图形动画与物理仿真.md)：跨分类入口。
 
 ## 二十三、权威来源
 

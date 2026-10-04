@@ -4,47 +4,24 @@
     {
       "id": "content",
       "roots": [
-        "知识",
-        "00-计算机与工程基础",
-        "游戏知识",
-        "游戏服务端",
-        "游戏算法",
-        "游戏AI",
-        "游戏测试与质量",
-        "Knowledge"
+        "知识"
       ],
       "entrypoints": [
-        "知识/README.md",
-        "00_Index/domains/README.md",
-        "Knowledge/README.md"
-      ]
-    },
-    {
-      "id": "practice",
-      "roots": [
-        "系统实战",
-        "Projects"
-      ],
-      "entrypoints": [
-        "系统实战/README.md",
-        "Projects/README.md"
+        "知识/README.md"
       ]
     },
     {
       "id": "sources",
       "roots": [
         "读书笔记",
-        "笔记",
         "工作日志",
-        "Inbox",
-        "Archive"
+        "00-计算机与工程基础",
+        "游戏知识"
       ],
       "entrypoints": [
         "读书笔记/README.md",
-        "笔记/README.md",
         "工作日志/README.md",
-        "Inbox/README.md",
-        "Archive/README.md"
+        "游戏知识/12-引擎源码分析/README.md"
       ]
     },
     {
@@ -64,7 +41,8 @@
       "entrypoints": [
         "index.md",
         "README.md",
-        "00_Index/MOC.md"
+        "00_Index/MOC.md",
+        "00_Index/学习路线/README.md"
       ]
     },
     {

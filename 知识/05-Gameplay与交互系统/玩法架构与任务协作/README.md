@@ -4,7 +4,6 @@ title: "玩法架构与任务协作"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 玩法架构与任务协作

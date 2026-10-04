@@ -68,4 +68,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_run.ps1
 
 - [05-AOI与InterestManagement](../../../知识/07-网络与游戏服务端/状态复制与兴趣管理/05-AOI与InterestManagement.md)
 - [01-ServerMainLoop与TickScheduler](../../../知识/07-网络与游戏服务端/运行调度与过载保护/01-ServerMainLoop与TickScheduler.md)
-- [游戏算法 AOI 专题](../../../游戏算法/01-寻路与图论/README.md)（算法层："AOI 是什么"）
+- [游戏算法 AOI 专题](../../../00_Index/学习路线/数学与游戏算法.md)（算法层："AOI 是什么"）

@@ -6,7 +6,7 @@ tags: [okf, knowledge-management, interoperability]
 status: stable
 verified: []
 maturity: L2
-updated: 2026-08-20
+updated: 2026-10-04
 sources:
   - id: okf-spec
     title: Open Knowledge Format Specification
@@ -26,25 +26,27 @@ sources:
 
 OKF 强制字段只有 `type`；本库模板推荐同时提供 `title`、`description`、`tags`、`status`、`verified`、`maturity`、`updated`、`sources`。`verified` 是验证事件列表（或单一 mapping），每项至少 `{by, at}`；trust tier `unverified|machine-confirmed|human-reviewed` 由 actor 推导，与 `maturity` 正交。
 
-正文优先使用标准 Markdown 相对链接（例如 `[概念](../concepts/概念.md)`）；需要稳定标识时，在 YAML 增加 `canonical`（本库唯一权威相对路径或显式 ID），不要把 Obsidian 专有语法作为唯一链接。
+正文优先使用标准 Markdown 相对链接；稳定身份在 `.kb/knowledge-map.json` 登记。可选 YAML `canonical` 保留兼容用途，填写时必须与图中的文档 ID 或当前路径一致，不成为第二份身份源；不要把 Obsidian 专有语法作为唯一链接。
 
 ## 2.1 provenance、trust 与 lifecycle
 
 `resource` 是条目的主要外部资源（适用时）；`sources` 非空时，每项至少提供 `resource`，可附 `id`、`title`、`author`。`generated` 仅在真实生成时填写，`by` 必填；可选 `at` 若存在必须是 ISO 8601 datetime。actor 使用 `human:`、`process:` 或 `producer/version`。`verified` 事件的 `by`/`at` 都必填，不得冒充人工复核。`status` 仅 `draft|stable|deprecated`（缺省 stable）；可选 `stale_after` 表达过期复核。上述字段按适用填写，本库只强制 `type`。
 
-## 3. canonical、taxonomy、manifest
+## 3. 身份、分类与文件快照
 
-- `canonical`：本库定义的唯一权威路径/身份锚点；迁移或改名时保持不变，不强制为 URI。
-- `taxonomy`：主题分类/标签体系；`tags` 可多值，分类调整不应改变 canonical。
-- `manifest`：当前只做文件快照（path/kind/maturity/bytes/lines），不声称记录 canonical/type/status/updated。OKF 迁移状态由 `check_okf` Audit 报告；未来扩展 manifest 需另行决策。
+- `knowledge-map`：唯一维护文档稳定 ID、当前路径、主域、内容类型、技术栈与概念关系。稳定 ID 不随改名变化；当前路径随迁移更新，旧路径保存在 `legacy_paths`。
+- `canonical`：可选的兼容声明，须与知识图一致；已有字段不因整理被机械覆盖。路径形式的值不能被当作永不变化的 ID。
+- `taxonomy`：现行权威与历史路径的兼容指针，不维护第二套域清单。`aliases` 只规范术语，不分配文档身份；`tags` 是可多值的描述属性。
+- 正文 frontmatter：标题、来源、状态、成熟度与验证事件的事实来源；知识图不复制正文标题、maturity 或 verified。
+- `manifest`：机械文件快照（path/kind/maturity/bytes/lines），其中 maturity 是从正文取得的派生值，不能独立编辑。OKF 迁移状态由 `check_okf` Audit 报告；未来扩展 manifest 需另行决策。
 
-三者关系是“身份—分类—清单”：canonical 由条目、aliases 与 decision 维护，taxonomy 解释分类，manifest 仅盘点文件快照；不得把 manifest 行号或目录路径当作 canonical。
+不得把 manifest 行号或目录路径当作文档稳定身份。各事实源的分工见[知识库架构](知识库架构.md)。
 
 ## 4. 迁移与未来 legacy 导入流程（hybrid）
 
 1. 盘点现有 Markdown，保留 `index.md`（导航）和 `log.md`（变更日志），建立路径到 canonical 的映射。
 2. 为新建或修改条目补齐最小 YAML；未来导入的旧条目先分批审查再纳入 Strict，欠账由 `check_okf` Audit 报告。
-3. 新旧链接均保留：改名时先加重定向条目或兼容链接，再移动文件；禁止孤立旧入口。
+3. 迁移时保持稳定 ID，更新图中的当前路径、legacy_paths 与标准 Markdown 入链。只保留经审计确有必要的兼容入口；不能复制第二份正文，也不能孤立受保护资料的旧引用。
 4. 重建 manifest 并运行 Changed + `check_repo`；canonical/sources 语义由人工 review。
 5. 在 `log.md` 记录迁移批次、范围和校验结果；审核通过后追加 `{by: human:<id>, at: <ISO8601>}` 验证事件。
 

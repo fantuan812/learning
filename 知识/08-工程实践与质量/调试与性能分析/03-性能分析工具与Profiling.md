@@ -442,7 +442,7 @@ void AMyGameMode::Tick(float DeltaSeconds)
 - [UE 5.8 官方文档：RenderDoc](https://dev.epicgames.com/documentation/en-us/unreal-engine/using-renderdoc-with-unreal-engine)（GPU 单帧捕获）
 - 本知识库：`01-UMG框架与控件系统.md`（UI 机制与 stat 关联命令）
 - 本知识库：`04-渲染与加载性能优化.md`（基于分析结论的优化手段）
-- 本知识库：[08-工具链与打包发布](../../../游戏知识/08-工具链与打包发布/README.md)（控制台命令、打包与工具链）
+- 本知识库：[08-工具链与打包发布](../../../00_Index/学习路线/工程实践与质量.md)（控制台命令、打包与工具链）
 
 ---
 

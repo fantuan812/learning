@@ -4,7 +4,6 @@ title: "渲染管线与光照"
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-03
 ---
 
 # 渲染管线与光照
