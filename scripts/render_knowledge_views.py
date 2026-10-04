@@ -16,6 +16,13 @@ LABELS = {
 
 
 FIXED_VIEWS = {'00_Index/跨域关系.md', '00_Index/UE专题.md'}
+# Match the migration tool's portable component rules without importing its dependencies.
+BAD_COMPONENT = re.compile(r'[<>:"\\|?*\x00-\x1f\x7f-\x9f]|[. ]$')
+DEVICE = re.compile(r'^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)', re.I)
+
+
+def folded(value):
+    return unicodedata.normalize('NFC', value).casefold()
 
 
 def safe_path(root, value, output=False):
@@ -25,17 +32,29 @@ def safe_path(root, value, output=False):
     parts = PurePosixPath(value).parts
     if value.startswith('/') or any(part in ('', '..', '.') for part in value.split('/')) or ':' in value:
         raise ValueError('path outside repository')
+    if any(BAD_COMPONENT.search(part) or DEVICE.match(part) for part in parts):
+        raise ValueError('nonportable knowledge view path component')
     if output and value not in FIXED_VIEWS:
         if not 3 <= len(parts) <= 6 or parts[0] != '知识' or parts[-1] != 'README.md':
             raise ValueError('output is not an approved knowledge view')
     target = root / value
-    for part in [target, *target.parents]:
-        if part == root:
+    cursor = root
+    for part in parts:
+        if cursor.is_dir():
+            with os.scandir(cursor) as entries:
+                if any(entry.name != part and folded(entry.name) == folded(part) for entry in entries):
+                    raise ValueError('knowledge view path collides with disk spelling by case or Unicode normalization')
+        cursor = cursor / part
+        try:
+            info = cursor.lstat()
+        except FileNotFoundError:
             break
-        if part.exists() or part.is_symlink():
-            info = part.lstat()
-            if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
-                raise ValueError('symlink/reparse point in knowledge view path')
+        if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
+            raise ValueError('symlink/reparse point in knowledge view path')
+        if cursor != target and not stat.S_ISDIR(info.st_mode):
+            raise ValueError('knowledge view parent must be a directory')
+        if cursor == target and output and not stat.S_ISREG(info.st_mode):
+            raise ValueError('knowledge view output must be a regular file')
     if not target.resolve().is_relative_to(root.resolve()):
         raise ValueError('path outside repository')
     if not output and (not target.is_file() or target.suffix != '.md'):
@@ -43,21 +62,76 @@ def safe_path(root, value, output=False):
     return target
 
 
+def nested_documents(domain, nodes):
+    domain_root = str(PurePosixPath(domain['entrypoint']).parent)
+    nested = {}
+    for node in nodes:
+        if node['domain'] != domain['id'] or not node['path'].startswith(domain_root + '/'):
+            continue
+        parent = PurePosixPath(node['path']).parent
+        while str(parent) != domain_root:
+            nested.setdefault(str(parent), [])
+            if str(parent) == str(PurePosixPath(node['path']).parent):
+                nested[str(parent)].append(node)
+            parent = parent.parent
+    return nested
+
+
+def path_keys(root, value, target):
+    """Include hardlinks and missing leaves below filesystem-aliased parents."""
+    keys = {('path', folded(value))}
+    suffix = []
+    cursor = target
+    while cursor != root:
+        try:
+            info = cursor.stat()
+        except FileNotFoundError:
+            pass
+        else:
+            keys.add(('inode', info.st_dev, info.st_ino, folded('/'.join(suffix))))
+        suffix.insert(0, cursor.name)
+        cursor = cursor.parent
+    return keys
+
+
 def preflight(root, graph):
-    paths = [domain['entrypoint'] for domain in graph['domains']]
-    folded_paths = [unicodedata.normalize('NFC', path).casefold() for path in paths]
-    if len(paths) != len(set(folded_paths)):
-        raise ValueError('duplicate domain output')
-    for path in paths:
+    """Reject the complete plan before any writes, including predictable FS errors.
+
+    This is not a multi-file transaction: concurrent filesystem changes or I/O
+    failures after preflight can still interrupt the subsequent write loop.
+    """
+    paths = []
+    for domain in graph['domains']:
+        path = domain['entrypoint']
+        safe_path(root, path, output=True)
         if len(PurePosixPath(path).parts) != 3:
             raise ValueError('domain entrypoint must be a direct knowledge-domain README')
         if path in FIXED_VIEWS:
             raise ValueError('domain output cannot replace another view')
-        safe_path(root, path, output=True)
-    for path in FIXED_VIEWS:
-        safe_path(root, path, output=True)
+        paths.append(path)
+    source_keys = set()
     for node in graph['documents']:
-        safe_path(root, node['path'])
+        path = node['path']
+        source_keys.update(path_keys(root, path, safe_path(root, path)))
+    nested_views = [nested_documents(domain, graph['documents']) for domain in graph['domains']]
+    paths.extend(directory + '/README.md' for nested in nested_views for directory in sorted(nested))
+    paths.extend(sorted(FIXED_VIEWS))
+    output_keys = set()
+    linked_outputs = []
+    for path in paths:
+        target = safe_path(root, path, output=True)
+        keys = path_keys(root, path, target)
+        if keys & source_keys:
+            raise ValueError(f'generated view cannot overwrite a knowledge document: {path}')
+        if keys & output_keys:
+            raise ValueError(f'generated output paths collide by case, Unicode normalization or filesystem alias: {path}')
+        output_keys.update(keys)
+        if target.exists() and target.stat().st_nlink > 1:
+            linked_outputs.append(path)
+    # An unregistered (or out-of-root) alias must not lose authored bytes either.
+    if linked_outputs:
+        raise ValueError(f'generated output has hardlink aliases outside the output plan: {linked_outputs[0]}')
+    return nested_views
 
 
 def title(root, path):
@@ -79,28 +153,15 @@ def page(title_, body):
 
 
 def render(root, graph):
-    preflight(root, graph)
+    nested_views = preflight(root, graph)
     result = {}
     nodes = graph['documents']
     by_id = {node['id']: node for node in nodes}
-    for domain in graph['domains']:
+    for domain, nested in zip(graph['domains'], nested_views):
         path = domain['entrypoint']
         domain_root = str(PurePosixPath(path).parent)
-        nested = {}
-        for node in nodes:
-            if node['domain'] != domain['id'] or not node['path'].startswith(domain_root + '/'):
-                continue
-            parent = PurePosixPath(node['path']).parent
-            while str(parent) != domain_root:
-                nested.setdefault(str(parent), [])
-                if str(parent) == str(PurePosixPath(node['path']).parent):
-                    nested[str(parent)].append(node)
-                parent = parent.parent
         for directory, local_nodes in sorted(nested.items()):
             index = directory + '/README.md'
-            safe_path(root, index, output=True)
-            if index in {node['path'] for node in nodes}:
-                raise ValueError('generated index cannot overwrite a knowledge document')
             section = '本分类只提供标准链接，正文、来源与证据仍各自维护。\n\n'
             children = sorted(key for key in nested if str(PurePosixPath(key).parent) == directory)
             if children:
@@ -149,11 +210,6 @@ def render(root, graph):
              'Markdown整理保留准确来源与版本，原创解释、引用和示例应可区分。历史版本声明不等于本次运行过对应引擎。\n\n'
              '[八域总览](../知识/README.md) · [源码原始总索引](../游戏知识/12-引擎源码分析/README.md)\n')
     result[path] = page('UE专题、官方来源与源码总览', body)
-    folded_outputs = [unicodedata.normalize('NFC', value).casefold() for value in result]
-    if len(result) != len(set(folded_outputs)):
-        raise ValueError('generated output paths collide by case or Unicode normalization')
-    for value in result:
-        safe_path(root, value, output=True)
     return result
 
 
