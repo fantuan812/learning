@@ -1,33 +1,54 @@
-// Gameplay core evidence: attribute / modifier aggregation benchmark.
-// Compares full recomputation against dirty-flag incremental recomputation for an
-// attribute pipeline (base + additive + multiplicative + override modifiers).
-// Build: g++ -std=c++17 -O2 -o attr_modifier_bench.exe attr_modifier_bench.cpp
+// Gameplay core evidence: ordered attribute aggregation and explicit cache publication.
+// Default main is bounded semantics; --benchmark explicitly opts into historical timing.
+// Single-threaded teaching model, not a Buff lifecycle or dependency propagation service.
 #include <cstdio>
 #include <cstdint>
 #include <vector>
 #include <string>
 #include <chrono>
 #include <algorithm>
+#include <cmath>
+#include <limits>
+
+#if defined(__FAST_MATH__) || (defined(__FINITE_MATH_ONLY__) && __FINITE_MATH_ONLY__ > 0)
+#error Attribute contracts require finite checks and ordered floating-point evaluation
+#endif
+static_assert(std::numeric_limits<double>::is_iec559 && std::numeric_limits<double>::digits == 53,
+              "This teaching contract requires binary64 double");
 
 namespace {
-
-enum ModOp { kAdd = 0, kMul = 1, kOverride = 2 };
+// A fixed underlying type makes unknown int operations representable and rejectable.
+enum ModOp : int { kAdd = 0, kMul = 1, kOverride = 2 };
+enum class EvalError { kNone, kNonfiniteInput, kInvalidOp, kRange };
 
 struct Modifier {
     ModOp op;
     double value;
-    uint64_t source;
+    uint64_t source; // Identity metadata only; no dedup/revoke/order policy.
 };
 
 struct Attribute {
     double base = 100.0;
     std::vector<Modifier> mods;
-    double cached = 0.0;
+    double cached = 0.0; // Old bytes may survive failure: not a current-value accessor.
     bool dirty = true;
+    EvalError error = EvalError::kNone;
 };
 
-// Deterministic evaluation: last override wins over base, then additive sum, then product.
-double Evaluate(const Attribute& a) {
+struct Evaluation {
+    EvalError error;
+    double value; // Meaningful only on kNone, never an old cache fallback.
+};
+
+// Newly selected teaching policy: validate ALL inputs, even ones masked by Override.
+// Preserve the original ordered formula and double rounding/underflow behavior.
+Evaluation TryEvaluate(const Attribute& a) {
+    if (!std::isfinite(a.base)) return {EvalError::kNonfiniteInput, 0.0};
+    for (const Modifier& m : a.mods) {
+        if (!std::isfinite(m.value)) return {EvalError::kNonfiniteInput, 0.0};
+        if (m.op != kAdd && m.op != kMul && m.op != kOverride)
+            return {EvalError::kInvalidOp, 0.0};
+    }
     double value = a.base;
     for (const Modifier& m : a.mods) {
         if (m.op == kOverride) value = m.value;
@@ -35,29 +56,49 @@ double Evaluate(const Attribute& a) {
     double add = 0.0;
     double mul = 1.0;
     for (const Modifier& m : a.mods) {
-        if (m.op == kAdd) add += m.value;
-        else if (m.op == kMul) mul *= m.value;
+        if (m.op == kAdd) {
+            add += m.value;
+            if (!std::isfinite(add)) return {EvalError::kRange, 0.0};
+        } else if (m.op == kMul) {
+            mul *= m.value;
+            if (!std::isfinite(mul)) return {EvalError::kRange, 0.0};
+        }
     }
-    return (value + add) * mul;
+    const double sum = value + add;
+    if (!std::isfinite(sum)) return {EvalError::kRange, 0.0};
+    const double result = sum * mul;
+    if (!std::isfinite(result)) return {EvalError::kRange, 0.0};
+    return {EvalError::kNone, result};
 }
 
-void Refresh(Attribute& a) {
-    a.cached = Evaluate(a);
+// Does not roll back caller-owned base/mods and is not a whole-batch transaction.
+EvalError TryRefresh(Attribute& a) {
+    const Evaluation candidate = TryEvaluate(a);
+    a.error = candidate.error;
+    if (candidate.error != EvalError::kNone) {
+        a.dirty = true;
+        return candidate.error;
+    }
+    a.cached = candidate.value;
     a.dirty = false;
+    return EvalError::kNone;
 }
 
+// Caller MUST mark every raw source mutation dirty. This seam cannot discover
+// unmarked edits, synchronize threads, or implement dependency/event ordering.
+bool TryReadCurrent(const Attribute& a, double& out) {
+    if (a.dirty || a.error != EvalError::kNone || !std::isfinite(a.cached)) return false;
+    out = a.cached;
+    return true;
+}
+
+#ifndef ATTRIBUTE_MODEL_ONLY
 struct XorShift {
     uint64_t s;
     explicit XorShift(uint64_t seed) : s(seed ? seed : 0x9E3779B97F4A7C15ULL) {}
     uint64_t next() { s ^= s << 13; s ^= s >> 7; s ^= s << 17; return s; }
     double unit() { return static_cast<double>(next() >> 11) / 9007199254740992.0; }
 };
-
-std::string Fmt(const char* fmt, double a, double b, double c) {
-    char buf[200];
-    std::snprintf(buf, sizeof(buf), fmt, a, b, c);
-    return std::string(buf);
-}
 
 void Report(const char* label, std::vector<double>& us, double opsPerCall) {
     std::sort(us.begin(), us.end());
@@ -67,17 +108,15 @@ void Report(const char* label, std::vector<double>& us, double opsPerCall) {
                 opsPerCall / (pct(0.50) / 1e6));
 }
 
-}  // namespace
-
-int main() {
+int HistoricalBenchmark() {
     constexpr int kEntities = 20000;
     constexpr int kModsPerEntity = 16;
     constexpr int kRounds = 200;
-    constexpr int kDirtyPercent = 10;   // 10% of entities dirty per round
+    constexpr int kDirtyPercent = 10;   // Attempts with replacement; NOT 10% distinct entities
 
     std::printf("gameplay-core | attribute modifier aggregation benchmark\n");
-    std::printf("compiler=%s c++17 O2\n", __VERSION__);
-    std::printf("config entities=%d mods_per_entity=%d rounds=%d dirty_percent=%d\n",
+    std::printf("compiler=%s (actual build flags belong in the run manifest)\n", __VERSION__);
+    std::printf("config entities=%d mods_per_entity=%d rounds=%d mutation_attempt_percent=%d\n",
                 kEntities, kModsPerEntity, kRounds, kDirtyPercent);
 
     XorShift rng(20260911ULL);
@@ -91,24 +130,11 @@ int main() {
             else if (roll < 4)  a.mods.push_back(Modifier{kMul, 1.0 + rng.unit() * 0.5, rng.next()});
             else                a.mods.push_back(Modifier{kAdd, rng.unit() * 20.0, rng.next()});
         }
-        Refresh(a);
+        if (TryRefresh(a) != EvalError::kNone) return 1;
     }
 
-    // Correctness: incremental path must agree with a full recompute.
-    constexpr int kSamples = 400;
-    int mismatch = 0;
-    for (int i = 0; i < kSamples; ++i) {
-        const Attribute& probe = attrs[static_cast<size_t>(rng.next() % kEntities)];
-        const double incremental = probe.cached;
-        const double full = Evaluate(probe);
-        if (std::abs(incremental - full) > 1e-9) {
-            ++mismatch;
-            std::printf("FAIL  correctness sample %d cached=%.4f full=%.4f\n", i, incremental, full);
-        }
-    }
-    std::printf("samples=%d mismatch=%d\n", kSamples, mismatch);
-    std::printf("%s  incremental equals full recompute on %d samples\n",
-                mismatch == 0 ? "PASS " : "FAIL ", kSamples);
+    // This retained timing path is not independent post-mutation validation.
+    std::puts("HISTORICAL_TIMING_ONLY: no correctness or current speed claim; full-table dirty scan O(N+kM)");
 
     std::vector<double> fullUs, incUs;
     fullUs.reserve(kRounds);
@@ -117,7 +143,7 @@ int main() {
     for (int r = 0; r < kRounds; ++r) {
         // Full recompute: touch every entity.
         const auto t0 = std::chrono::steady_clock::now();
-        for (Attribute& a : attrs) Refresh(a);
+        for (Attribute& a : attrs) if (TryRefresh(a) != EvalError::kNone) return 1;
         const auto t1 = std::chrono::steady_clock::now();
         fullUs.push_back(std::chrono::duration<double, std::micro>(t1 - t0).count());
 
@@ -132,7 +158,7 @@ int main() {
         const auto t2 = std::chrono::steady_clock::now();
         int refreshed = 0;
         for (Attribute& a : attrs) {
-            if (a.dirty) { Refresh(a); ++refreshed; }
+            if (a.dirty) { if (TryRefresh(a) != EvalError::kNone) return 1; ++refreshed; }
         }
         const auto t3 = std::chrono::steady_clock::now();
         incUs.push_back(std::chrono::duration<double, std::micro>(t3 - t2).count());
@@ -145,8 +171,46 @@ int main() {
     std::vector<double> sortedFull = fullUs, sortedInc = incUs;
     std::sort(sortedFull.begin(), sortedFull.end());
     std::sort(sortedInc.begin(), sortedInc.end());
-    const double ratio = sortedInc[sortedInc.size() / 2] / sortedFull[sortedFull.size() / 2];
-    std::printf("[bench] p50_speedup=%.2fx (dirty=%d%% of entities)\n", 1.0 / ratio, kDirtyPercent);
-    std::printf("RESULT pass=%d fail=%d\n", mismatch == 0 ? kSamples + 1 : kSamples, mismatch);
-    return mismatch == 0 ? 0 : 1;
+    const size_t p50 = static_cast<size_t>(0.50 * (sortedFull.size() - 1));
+    const double ratio = sortedInc[p50] / sortedFull[p50];
+    std::printf("[bench] p50_speedup=%.2fx (mutation attempts=%d%% of N; replacement sampling)\n", 1.0 / ratio, kDirtyPercent);
+    std::puts("BENCHMARK_COMPLETED correctness=not_established");
+    return 0;
 }
+
+int Examples() {
+    Attribute a;
+    int checks = 0, failures = 0;
+    auto check = [&](bool good) { ++checks; if (!good) { ++failures; std::printf("FAIL example=%d\n", checks); } };
+    double out = -1.0;
+    check(!TryReadCurrent(a, out) && out == -1.0);
+    check(TryRefresh(a) == EvalError::kNone);
+    check(TryReadCurrent(a, out) && out == 100.0);
+    a.mods.push_back({kAdd, 10.0, 1}); a.dirty = true;
+    check(!TryReadCurrent(a, out) && out == 100.0);
+    check(TryRefresh(a) == EvalError::kNone);
+    check(TryReadCurrent(a, out) && out == 110.0);
+    a.base = std::numeric_limits<double>::infinity(); a.dirty = true;
+    check(TryRefresh(a) == EvalError::kNonfiniteInput && a.cached == 110.0 && a.dirty);
+    check(!TryReadCurrent(a, out) && out == 110.0);
+    a.base = 120.0; a.dirty = true;
+    check(TryRefresh(a) == EvalError::kNone);
+    check(TryReadCurrent(a, out) && out == 130.0);
+    std::printf("EXAMPLE_RESULT version=1 checks=%d fail=%d benchmark=off\n", checks, failures);
+    return failures ? 1 : 0;
+}
+#endif
+} // namespace
+
+#ifndef ATTRIBUTE_MODEL_ONLY
+int main(int argc, char** argv) {
+    if (argc == 1) return Examples();
+    if (argc == 2 && std::string(argv[1]) == "--benchmark") return HistoricalBenchmark();
+    if (argc == 2 && std::string(argv[1]) == "--help") {
+        std::puts("usage: attr_modifier_bench [--benchmark|--help]; default runs bounded examples");
+        return 0;
+    }
+    std::fputs("usage: attr_modifier_bench [--benchmark|--help]\n", stderr);
+    return 2;
+}
+#endif

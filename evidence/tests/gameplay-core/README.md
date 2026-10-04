@@ -40,7 +40,7 @@ sources:
 - 背包容量与堆叠上限是硬约束，事务必须**全成功或全回滚**，不允许部分写入。
 - Buff 的"高层覆盖低级"是压制（suppressed）而非删除，被压制者继续消耗自身剩余时长；高层结束后低级按剩余时长恢复。
 - 技能请求携带唯一 `requestId`，重复投递按幂等处理。
-- 属性聚合的语义为：`(base 或最后一个 Override) + ΣAdd` 再乘以 `ΠMul`。
+- 属性聚合保留最后Override，再按列表原顺序累加Add和连乘Mul，最后做加/乘；浮点运算不能任意重关联。当前有限输入/失败cache合同见下方修订。
 
 ## 历史环境（2026-09-11）
 
@@ -85,7 +85,7 @@ python3 -B evidence/tests/gameplay-core/scripts/run_inventory_contract.py \
 - 历史背包基准输入：40 槽、单堆叠上限 99、单次批量上限 999；400 000 次增删操作（2/3 为移除）。当前聚焦合同不运行这段基准；其它模型输入仍按各自历史条目理解。
 - 历史Buff：11个定义的12场景；当前独立合同另覆盖33场景，详见下方修订，不把旧输入与新覆盖混计。
 - 技能：3 个技能定义（瞬发攻击 / 不可打断长吟唱 / 免费自增益）；确定性重放为 4 000 次伪随机请求（xorshift64 固定种子 12345）。
-- 属性：20 000 个实体 × 16 个修正器，200 轮，每轮 10% 实体变脏。
+- 历史属性基准：20000实体×16修正器、200轮，每轮2000次有放回mutation尝试，不是恰好10%不同实体变脏；当前聚焦41场景不运行该基准。
 
 ## 指标与原始结果
 
@@ -94,7 +94,7 @@ python3 -B evidence/tests/gameplay-core/scripts/run_inventory_contract.py \
 | `inventory_txn` | T1–T7 | **pass=7 fail=0** |
 | `buff_conflict` | R1–R9 + E1–E3 | **pass=12 fail=0** |
 | `skill_pipeline` | S1–S10 | **pass=10 fail=0** |
-| `attr_modifier_bench` | 400 抽样一致性 | **mismatch=0（pass=401）** |
+| 历史 `attr_modifier_bench` | 首次mutation前400次同求值器抽样 | **历史mismatch=0（pass=401），非变更后合同** |
 
 关键数据（单次运行，原始值见 `results/`）：
 
@@ -119,16 +119,111 @@ python3 -B evidence/tests/gameplay-core/scripts/run_inventory_contract.py \
 2. **历史Buff十二场景只覆盖有限交互**：R6/E2仍有剩余时长与不过期复活的价值，但未覆盖受压刷新、三层赢家和可叠child周期事件；旧全绿不能证明九类交互的组合正确。R7只验证本模型按school删除所有匹配条目（含被压制者），不是所有游戏驱散都须全删。2026-10-04修订在下方补出具体反例、组内不变量、全状态oracle和明确政策。
 3. **技能请求管线的拒绝路径必须无副作用**：`S2`/`S4` 显示冷却与蓝量拒绝都不扣蓝、不写冷却；`S7` 显示网络重传只结算一次；`S9` 显示客户端预测在服务端拒绝后能回滚到权威值——这三条共同构成"客户端预测 + 服务端权威"的最小正确性骨架。
 4. **技能管线可确定重放**：相同 4 000 次请求流两次运行得到同一状态哈希，换种子则不同，满足回放/帧同步对确定性的基本要求。
-5. **属性聚合的增量化收益显著且值得**：在本机 20 000 实体 × 16 修正器下，脏标记增量重算的 p50 是全量重算的约 **1/7.5**（p99 同样约为 1/5.3）。服务端若每 Tick 全量刷新属性，成本随实体数线性上升；改用"修正器变更即置脏 + Tick 末批量刷新"能把属性预算压回与**变更量**而非**实体总量**相关的量级。
+5. **属性旧计时不是收益保证**：保留单次p50/p99与7.47x历史标签，撤回据此保证项目收益及“成本只与变更量相关”的结论。旧incremental仍全表扫dirty，O(N+kM)，且400检查在mutation前；当前源码加入新拒绝政策与成功后cache发布，旧计时不代表它的成本。变更后正确性和读屏障由下方独立合同另证。
 
 ## 局限
 
 - **不是 UE GAS**：这里验证的是算法与状态机语义，不涉及 `UAbilitySystemComponent`、`FGameplayEffectSpec`、属性捕获与网络预测的具体实现；UE 映射关系见关联文档。
 - **单机单线程**：所有断言在单线程内串行执行，未覆盖多线程竞争、跨服迁移、断线重连后的状态对账。
 - **背包历史计时的边界**：旧 raw 报告 p50/p95/p99 为 100/200 ns、max 为 185600 ns；它没有独立时钟分辨率测量或 max 样本的调用链证据，不能由分位数取整推定 100 ns 粒度，也撤回“max 由首次分配造成”的未证归因。新代码的成功记录、固定 Result 和异常准备已改变，旧数字不为新实现的性能背书。
-- **存在运行间波动**：同一程序重复运行，属性基准 p50 在 1750–1760 µs 之间、加速比在 7.4–7.8x 之间波动；`results/` 中保存的是某一次的真实输出，不取多次最优值。
+- **历史波动结论缺少可复核样本**：先前文字的1750–1760µs、7.4–7.8x范围没有在此附上完整多轮输出，本批不继续以它作为可重复收益结论。现有属性raw保留为历史单次记录；本轮没有重跑旧基准或用功能通过推断性能。
 - **模型简化**：背包为槽位模型（无绑定/唯一物品/耐久），Buff 为离散时长模型（无属性快照/快照重算），技能无目标筛选与命中判定，属性无依赖链与脏传播。
 - 本目录**不主张**线上容量结论；线上预算仍需在真实 DS 环境复测。
+
+## 2026-10-04 属性求值与 dirty-cache 合同修订
+
+### 为什么旧400次一致性检查会漏错
+
+旧检查发生在首次mutation之前，并把cache与同一个Evaluate再次调用的结果比较。它既看不到之后漏置dirty/漏Refresh，也可能让“期望输入和DUT一起丢了同一修正器”继续相等。正常有限输入、正确置脏并刷新的原路径本来就是正确的；本批没有把这种覆盖缺口描述成原数学公式全部错误。
+
+当前实验把调用方的意图账本和DUT字段分别更新，再与字面答案核对。添加Add15到base120后应为135；漏掉DUT的那次添加不能同时抹去期望。清dirty前需成功刷新；需要本次变更后的值时先刷新再取结算快照，只有明确的延迟可见设计才能统一等到Tick末。
+
+### 选定合同、代价和边界
+
+保留原列表语义：最后一个Override替代base；Add按原顺序累加、Mul按原顺序连乘，最终 `(basis + add) * mul`。不能混序逐项apply；source只是身份元数据，不提供自动去重/撤销/优先级。正负有限值、零/负Mul与通常binary64舍入/下溢仍允许，玩法数值下限另定。
+
+新增教学政策明确拒绝非有限base/所有operand、未知op与每阶段非有限中间结果，连被后续Override遮蔽的项也拒绝。不能先溢出再用抵消或乘零“救回”。TryEvaluate计算候选，TryRefresh仅在成功时更新cache/清dirty；失败旧cache字节保留，但dirty/error令TryReadCurrent拒读且保持调用者out不变。源字段不回滚，一批可部分成功。公开字段仍要求调用方置dirty，getter无法发现漏标的修改；它不是事件/依赖系统，也不是线程或整批事务。
+
+这三个显式错误/读取入口取代原toy Evaluate/Refresh接口，不是生产工程的无缝替换。默认main只跑10个小例；原计时形状须显式--benchmark才执行，本批未运行该选项。旧原始输出及7.47x标签保留为历史，不能绑定新校验代码：原每轮2000次有放回mutation并非2000个不同实体；增量阶段仍全表扫dirty，O(N+kM)，非O(kM)，且计时不含此前mutation。原固定先full后incremental、数据阶段不同、batch分位与旧p50索引差异都限制收益推断；功能合同通过不为历史性能背书。
+
+构建记录固定实际flags：禁止fast-math、finite-only假设、重关联，关闭FP contraction；源码宏只检查能检测到的两类模式，不能认证全部编译器/运行时浮点环境。依据[GCC14.2优化选项](https://gcc.gnu.org/onlinedocs/gcc-14.2.0/gcc/Optimize-Options.html)，这些变换可改变NaN/Inf及舍入语义。本次限定Linux/GCC14.2二进制64位double，不承诺UE/GAS或跨平台逐位一致。
+
+### 实际验证与复现
+
+Linux / GCC14.2 / C++17，O0+NDEBUG、O2、UBSan各41场景/679显式检查零失败，默认main的10例通过。7个真实变体分为3个调用方漏标/漏刷/丢修正器，以及4个求值/错误处理变体；都须编译成功、跑完完整版本化清单，在指定场景失败且exit1，编译失败和崩溃不算杀死语义变体。另有2种故意不兼容的浮点构建，须命中指定宏守卫而编译拒绝，单独统计。
+
+独立预冻结probe保留正常有限路径288检查；旧实现就能通过正常路径，而旧400次自比较见不到随后漏标/漏刷/丢项。新源码三构建各正常288/0、新拒绝政策315/0；另加真实current读取与失败cache的304/0，验证错误时out与旧cache字节保持、修正后恢复、逐属性成功/失败隔离。额外5个模型错误变体在三模式编译后均出现语义失败。各数字来自不同清单，不相加充当业务场景数或“全输入证明”。
+
+最终v3作者与独立审者的focused/runner均实际运行；Python -O runner自测112/0。它实际拒绝低检查数、空/缺/重复/畸形/错版本/FAIL却exit0报告，验证编译失败不运行遗留二进制、运行/超时/写日志失败、路径拒覆盖、原始非法UTF8/CRLF/NUL捕获与中文/空格路径。selected --root的源码身份和真正执行的runner/helper分别记录；被忽略的CXXFLAGS等只记存在布尔，不披露未使用的环境值。v1/v2的旧字段均为null并已核对，旧版本和中间检查失败原样保留。
+
+本地实际执行CI相同PowerShell块，正例exit0；合成首命令exit23即时返回23，第二命令未执行。没有为归档改名再重跑相同套件；后续相同源码哈希的最终门禁引用这次完整运行，旧模型的适用回归另跑。未运行本模型的Windows/MSVC、UE/GAS、事件/网络/真实属性依赖集成或新属性性能基准。
+
+```bash
+python3 -B evidence/tests/gameplay-core/scripts/run_attribute_contract.py \
+  --output-dir /tmp/attribute-contract-NEW --cxx g++-14 --mode all --negative-controls --timeout-seconds 120
+python3 -O -B evidence/tests/gameplay-core/scripts/run_attribute_contract.py \
+  --output-dir /tmp/attribute-runner-NEW --self-test --timeout-seconds 120
+```
+
+目标须是尚不存在的仓库外目录。只读导入Inventory捕获helper，不运行Inventory suite/五模型默认入口；真实运行/编译/超时/日志错误非零，已有目录/文件/别名拒绝。完整版本化case/check与退出状态须一致；报告协议不防程序故意伪造测试。base64/bytes/SHA为权威原流；有限文件快照不保证已逃逸后代全部终止或未来输出已捕尽。
+
+[Linux-only CI](../../../.github/workflows/knowledge.yml)两条命令即时传播退出码并保留诊断；本地实际执行同一PowerShell块的结果另列，不提前替远端CI背书。Windows仓库检查不会被当成Windows属性模型验证。背包主文仅修属性段，框架08仅补读屏障一段，不把它们重复计为两篇完整重写。
+
+[人读摘要](results/attribute_contract_20261004.txt)不是完整raw；[完整归档](results/attribute_contract_20261004.raw.jsonl.gz)保留必要原技术输入/命令/输出与所有既有失败阶段，旧73raw及282原件原字节不变。归档含1,963个原技术文件（1,964条JSONL含头记录），作者六轮均保留，仅run-v3-focused/run-v3-selftest代表冻结版本。原文件共23,523,877字节，JSONL 31,767,474字节，确定性gzip 5,226,388字节（mtime=0）。包含原独立意图输入、旧反例、新正常/拒绝/可见性测试、真实负控与明确标注的准备/中间链接检查失败；没有把它们改写为通过。归档不包含编译二进制或重复的完整fixture仓源码。
+
+- gzip SHA256：`ece45f29722d9fdcc038fc5caa3355a288317c9eb3dca2a3542999903ea3e5b4`
+- JSONL SHA256：`0afb7964ee851596085df75895d049f7b842a5875dc08319dd9da89c41a49ec7`
+
+配方只校验，不解包落盘或执行归档命令。每个file记录以data_base64保存原bytes，并核长度/SHA；外层摘要、记录数、重复/危险路径、坏长度/hash、压缩损坏/截断均显式失败，`-O`不移除。正常/-O共18项真实配方正负检查已通过，内层负例重算外层摘要以避免只测试第一关。
+
+```bash
+python3 -O - evidence/tests/gameplay-core/results/attribute_contract_20261004.raw.jsonl.gz <<'PY'
+import base64, gzip, hashlib, json, sys
+from pathlib import Path, PurePosixPath
+
+GZIP_SHA256 = 'ece45f29722d9fdcc038fc5caa3355a288317c9eb3dca2a3542999903ea3e5b4'
+JSONL_SHA256 = '0afb7964ee851596085df75895d049f7b842a5875dc08319dd9da89c41a49ec7'
+FILE_COUNT = 1963
+
+def require(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+def verify(path, gzip_sha256=GZIP_SHA256, jsonl_sha256=JSONL_SHA256, count=FILE_COUNT):
+    packed = Path(path).read_bytes()
+    require(hashlib.sha256(packed).hexdigest() == gzip_sha256, 'gzip SHA mismatch')
+    data = gzip.decompress(packed)
+    require(hashlib.sha256(data).hexdigest() == jsonl_sha256, 'JSONL SHA mismatch')
+    require(data.endswith(b'\n'), 'missing final JSONL newline')
+    rows = [json.loads(line) for line in data.decode('utf-8').splitlines()]
+    require(len(rows) == count + 1, 'record count mismatch')
+    require(rows[0].get('kind') == 'archive_header' and
+            rows[0].get('format') == 'learning.attribute.evidence.v1' and
+            rows[0].get('author_attempts') == 6 and
+            rows[0].get('accepted_author_runs') == ['author/run-v3-focused', 'author/run-v3-selftest'], 'bad header')
+    names = set()
+    total = 0
+    for row in rows[1:]:
+        require(row.get('kind') == 'file', 'non-file record')
+        name = row.get('path')
+        require(isinstance(name, str) and name and '\\' not in name and '\0' not in name, 'bad path')
+        q = PurePosixPath(name)
+        require(not q.is_absolute() and '..' not in q.parts and name == q.as_posix() and name != '.', 'unsafe path')
+        require(name not in names, 'duplicate record: ' + name)
+        names.add(name)
+        raw = base64.b64decode(row['data_base64'], validate=True)
+        require(type(row['bytes']) is int and row['bytes'] >= 0 and len(raw) == row['bytes'], 'length mismatch: ' + name)
+        require(hashlib.sha256(raw).hexdigest() == row['sha256'], 'file SHA mismatch: ' + name)
+        total += len(raw)
+    return {'files': len(names), 'original_file_bytes': total, 'jsonl_bytes': len(data)}
+
+if __name__ == '__main__':
+    require(len(sys.argv) == 2, 'usage: python [-O] verify.py ARCHIVE.raw.jsonl.gz')
+    print(json.dumps(verify(sys.argv[1]), sort_keys=True))
+PY
+```
+
+
 
 ## 2026-10-04 Buff 组内仲裁与刷新合同修订
 
