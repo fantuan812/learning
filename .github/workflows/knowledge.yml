@@ -61,7 +61,7 @@ jobs:
         run: |
           python -B evidence/server/tick-scheduler/scripts/run_policy.py --output-dir "$env:RUNNER_TEMP/tick-policy-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" --compiler g++-14 --timeout 120
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Synthetic entry isolation contracts and runner negative controls (Linux)
+      - name: Synthetic entry and JIP contracts and runner negative controls (Linux)
         if: ${{ !cancelled() && runner.os == 'Linux' }}
         timeout-minutes: 8
         run: |

@@ -1,7 +1,7 @@
 ---
 type: Evidence
 title: "进入游戏可运行证据（登录票据 / 会话状态机 / DS 租约 / JIP 追赶）"
-description: "三个独立的串行入口合同模型、严格runner与负向控制；保留JIP历史证据及已知未修边界。"
+description: "四个独立串行教学模型：票据、Session、DS租约及有界JIP；严格runner、完整状态oracle与语义负向控制。"
 tags:
   - evidence
   - entry
@@ -17,8 +17,8 @@ updated: 2026-10-04
 
 # 进入游戏可运行证据
 
-> **当前范围：三个独立C++17教学模型，不是票据→网关→DS端到端系统。** 2026-10-04严格GCC14/UBSan运行票据解析、Session主体/意图隔离和DS座位/写权合同；Auth与全部凭据均合成，不读取真实secret、不调用真实认证服务。
-> **已知未修：`jip_resync.cpp` 在“最新快照+零增量”时返回成功却没有ApplySnapshot。** JIP不在本批默认runner内。2026-09-11的83条（24+27+20+12）是历史选定用例，不能证明全部不变量。原4份raw及旧PASS行原样保留。
+> **当前范围：四个独立C++17教学模型，不是票据→网关→DS端到端系统。** 2026-10-04票据解析、Session主体/意图隔离和DS座位/写权证据保留；本次增加固定复制scope的JIP快照/增量合同。Auth与身份上下文均合成，不读取真实secret、不调用真实认证服务。
+> **JIP零增量漏装、缺口误报成功、身份/实体代次与无界缓存等问题已在有限串行模型中修复。** 默认runner纳入JIP；新JIP strict/UBSan raw与旧安全模型raw分开归档。2026-09-11的83条（24+27+20+12）仅是历史选定用例，原4份raw及旧PASS行原样保留，不能据此证明全部不变量。
 > 本README的L0是证据基础设施分类，不是对局部测试深度的分级；对应主文继续区分设计核对与局部运行，不用总PASS提升整篇成熟度。
 
 ## 问题
@@ -29,11 +29,12 @@ updated: 2026-10-04
 2. 同字符串requestId能否跨主体取到旧成功结果？同键变更match/character/region怎么办？
 3. 新请求借用旧Ready资源失败，或旧取消迟到，能否误释放新资源？
 4. 保留座位与写权到期如何分离？满DS中包含本人的座位时如何重连？
-5. 编译失败、超时、假RESULT或写盘失败能否被runner误记成通过？
+5. 快照已安装、追到固定目标、ACK获准和实时输入可用是不是不同状态？
+6. 编译失败、超时、假RESULT或写盘失败能否被runner误记成通过？
 
 ## 假设
 
-- 三程序各自有main、各自状态；没有跨程序票据传递或真实会话服务
+- 四程序各自有main、各自状态；没有跨程序票据传递或真实会话服务。JIP身份比较只绑定已由可信应用会话提供的上下文，不实现认证
 - 串行单进程调用；AuthFn是可信认证层的测试替身，客户端自报player不是可信主体
 - `entry_session`检验请求/资源代次补偿，没有租约时钟；`ds_allocator`独立检验时间/容量，不实现认证服务。不能把各自局部保证自动拼成集成保证
 - 所有now参数由可信服务端时钟提供；DS模型拒绝观察到的倒退，票据模型仅计算合法窗口
@@ -64,7 +65,7 @@ PYTHONDONTWRITEBYTECODE=1 bash evidence/tests/entry-core/scripts/run_all.sh \
   --output-dir "$RUN_ROOT/ubsan" --cxx g++-14 --ubsan --with-self-test
 ```
 
-只跑runner合同与三项真实语义mutation（另建目录，不嵌套自身self-test）：
+只跑runner合同与六项真实语义mutation（3项安全模型、3项JIP；另建目录，不嵌套自身self-test）：
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 -B evidence/tests/entry-core/scripts/test_runner_contract.py \
@@ -77,7 +78,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 -B evidence/tests/entry-core/scripts/test_runn
 ./evidence/tests/entry-core/scripts/build_run.ps1 -OutputDir <不存在的输出目录> -Cxx <实际编译器> -Ubsan
 ```
 
-`--timeout`与`--compile-timeout`分别限制运行和编译（默认15/60秒）；可用`--targets entry_ticket`选择已定义目标。`--source-dir`只用于显式替代源码/故障夹具。runner：
+`--timeout`与`--compile-timeout`分别限制运行和编译（默认15/60秒）；可用`--targets jip_resync`选择单个已定义目标；默认四模型。`--source-dir`只用于显式替代源码/故障夹具。runner：
 
 - 每目标复制固定源字节到全新临时build，记录原SHA；编译失败/未产生binary绝不执行旧binary
 - 只看本run stdout的一条规范RESULT，要求exit=0、pass>0、fail=0、PASS逐项数一致且无FAIL；不扫描历史raw
@@ -115,16 +116,62 @@ Expired待清扫的记录可以还占物理账，但不能写。对正常返回�
 
 固定序列/边界覆盖1029/1030/1031/1039/1040/1041/2000含/不含Reap，1DS×1满座本人重连、跨DS旧句柄、伪造player/ds/epoch、迟到释放、时钟回拨、TTL/grace溢出和UINT64_MAX耗尽。通过输入/配置前检、进入Observe后，即使拒绝旧句柄也推进可信时间水位，以防到期判断后回拨复活；空player/null输出/非法配置的前检失败不采样时间。在上述前置条件成立且正常返回错误码时，除此之外保持资源、load、epoch和独立输出不变；不对bad_alloc等异常或内部容器别名输出作强保证。该水位是时间观察状态，不是新的写授权。
 
+### JIP：身份、连续前缀和有界交接
+
+[jip_resync.cpp](src/jip_resync.cpp)不再复用含另一份rev的World，也不靠量化hash宣称byte-identical。`State`只有一个已提交seq；完整比较installed、world/incarnation/scope/schema/session、seq、实体数量和每条记录的id/generation/x/y/hp/alive，死亡记录也保留。double按数值比较，+0与-0相等；它不是序列化字节比较。期望状态是人工固定向量，不通过同一Apply推导。
+
+**身份与切点。** `Context = {Stream{world, incarnation, scope, schema}, session}`来自可信应用，`Identity`再加transfer。schema只接受1；非零整数只是合成ID，不是密码学能力凭证。`Begin(Plan{identity,R,T})`固定目标T，要求R≤T、T−R≤32。连续的是此复制scope的seq：筛选掉其他AOI事件后应有自己的连续序列，不能拿全世界rev的自然空号当丢包。改变scope/实例生命周期或重启编号必须由应用显式`Rebind`并重建基线，包不能自行切流。Rebind拒绝与当前完全相同的Context，不允许靠清空本地历史重放旧transfer；不同Context还必须在应用生命周期内不复用，这个跨进程/重启唯一性前提由外部保证，本模型不保存无限历史Context。
+
+`Window.first`只在非空日志中表示包含式保留左界，head表示已知上界。空日志的first不参与判断（允许first=head+1；head为UINT64_MAX时不计算这个值）；只有R==T且head≥T才可零增量安装，R<T空窗仍NeedSnapshot。非空日志逐条检查identity及[first,head]范围。**批CatchUp对seq≤R的已覆盖记录在这两项检查后直接忽略payload，不调用Deliver，不保证检查其grammar、field或NaN/Inf等数值。** 这些旧payload不再参与快照状态重建；不要把整批CaughtUp解释为所有历史载荷均通过语法验证。R后的记录（含T后记录）进入Deliver的字段/有限数检查并有界保留，槽/代次/生命周期在实际应用前验证。
+
+**安装与应用。** 固定0..N−1实体槽（N≤16），不支持增量扩容；新增槽需新基线。快照校验集合、全部字段与身份，R==T也完整安装。`Hp/Position`只作用于存活且generation匹配的实体；Despawn保留字段并置dead；Spawn要求dead且generation恰+1，位置取载荷、HP重置100。Install校验快照字段；Deliver对入队记录校验field、数值和未使用载荷，实际应用前还校验槽/代次/生命周期。相应数据域为位置绝对值≤1,000,000、HP在[0,1,000,000]且全部有限，未知field、NaN/Inf及非规范未使用载荷在Deliver拒绝，非法槽/代次在相应检查点拒绝。这些保证也适用于批helper送入Deliver的R后记录，不适用于它跳过的seq≤R旧payload。seq/generation/deadline耗尽拒绝，不回绕。
+
+| 状态/输入 | 已实现行为 | 输入资格 |
+| --- | --- | --- |
+| ReceivingSnapshot | R之后增量先入有界pending；世界尚未替换 | 关闭 |
+| Install成功但缺next | 安装基线或保留已提交合法前缀，WaitingForGap | 关闭 |
+| 连续到固定T | CaughtUp，T之后增量仍缓冲，不追逐移动终点 | 关闭 |
+| 当前identity+T的ACK | 接入实时流，再排出已收到的T+1及以后；仍有洞返回Buffered | 仅无洞时Live/Ready |
+| 实时流出现缺口 | WaitingForGap且输入关闭；补齐恢复Live，超时NeedSnapshot | 关闭 |
+| 错world/incarnation/scope/schema/session/transfer | WrongIdentity，不改变世界、游标、合法pending和阶段 | 原阶段不变 |
+| Install/Deliver数据或生命周期错误、载荷冲突、缓存/span超限或期限到达 | 错误码并锁到NeedSnapshot；用新transfer恢复 | 关闭 |
+
+`Install`/`Deliver`每次先复制候选世界、队列和最近记录，校验这一次可排出的完整连续段，再发布。正常错误返回不改调用前世界/seq/合法pending；可改变显式错误阶段。**CatchUp批helper采用合法前缀策略**：较早成功的Install/Deliver已提交，随后失败不倒回批次开始，但绝不Ready；它不是全批事务。分配异常、外部直接篡改public状态、别名调用/异步重入不在此保证内，未注入bad_alloc。
+
+**重发不是任意覆盖。** 同transfer/计划Begin、同内容快照Install和相同pending增量都是no-op，不清缓存、不延长期限。迟到旧快照不能回退已提交seq；同baseline身份异内容冲突。pending同seq异payload拒绝且保留原件；已应用的最近8条同样检查。更早或快照覆盖的seq返回Stale且不应用，因不无限保存旧payload，无法检测所有历史冲突；依赖受信来源为每个seq只发布一个内容。
+
+`Begin`是可信控制面请求；参数、旧transfer或同transfer异计划拒绝保留原活动transfer，不把既有Live任意降级（可能观察可信时间）。真正恢复NeedSnapshot必须用更大的新transfer；同计划重复Begin不会清除错误或重新开启等待。
+
+**明确上限。** pending最多8条；未来跨度≤32；已应用重发记忆最多8条；批日志最多64条；每轮目标跨度≤32。满pending时缺失的next仍可直接排出，不要求第9个常驻槽。传输从Begin到ACK总期限为10个合成时钟单位，重复包不延期；实时流新缺口再开10单位期限，恰到期失败。now由可信应用传入；通过当前identity/阶段与时钟前检的调用（包括重复、Stale及随后数据错误）推进观察水位，不能倒退；不延长期限。错误身份/已终止阶段不采样。Begin通过身份、范围、期限前检后也观察时间，后续重复/旧transfer拒绝可推进水位。需要调用方按时Tick，模型没有后台定时器。超限/过期不偷偷丢旧包继续，保留有界诊断状态直到新transfer清理；本地应用负责限流和何时重新发起。
+
+**可手算轨迹。** R10时slot0为gen1/hp100/位置(0,0)，slot1为gen4/hp80/(2,−3)，slot2为dead/gen9/hp0/(7,8)。11改slot0 HP73.5；12移动slot1到(12,−4.5)；13删除slot0；14以gen2在(3,4)重生；15改HP42；16删除slot1。T16预期三个槽依次为`{gen2,(3,4),42,alive}`、`{gen4,(12,−4.5),80,dead}`、`{gen9,(7,8),0,dead}`，逆序/固定seed乱序也必须一致。
+
+| 修复前反例 | 现在的oracle |
+| --- | --- |
+| 最新快照+零增量返回Ok却保留空世界；窗口回退换了另一个client才验 | 同一个client失败→新transfer→最新快照零增量，逐字段收敛 |
+| 中洞/缺尾返回Ok；缺尾pending甚至为空 | 完成必须seq==固定T，缺口NeedSnapshot且ACK不可打开输入 |
+| 非法id/field被跳过却推进rev | 数据/生命周期先验，整次连续排出失败不消费游标 |
+| 同seq新payload覆盖pending；旧快照清缓存/回退 | 完全重复幂等，冲突拒绝，迟到快照不回退 |
+| 没有stream/session/transfer/实体generation | 各身份错配均拒绝；显式应用Rebind才换上下文 |
+| hash忽略dead、量化0.001，Inf转整数可UB | 删除hash；独立全状态向量及字段敏感性测试，无浮点→整数状态转换 |
+
 ## 指标与原始结果
 
-本批使用显式断言，不从断言总数推导安全证明。权威运行元数据和源码hash见[run-manifest.json](results/2026-10-04-entry-isolation/run-manifest.json)：
+所有模型使用显式断言，不从断言总数推导安全证明。先前票据/Session/DS的权威运行元数据和源码hash见[run-manifest.json](results/2026-10-04-entry-isolation/run-manifest.json)：
 
 - [票据严格GCC14 + UBSan raw](results/2026-10-04-entry-isolation/entry_ticket-linux.txt)
 - [Session严格GCC14 + UBSan raw](results/2026-10-04-entry-isolation/entry_session-linux.txt)
 - [DS严格GCC14 + UBSan raw](results/2026-10-04-entry-isolation/ds_allocator-linux.txt)
 - [Bash/Linux pwsh故障fixture及语义mutation raw](results/2026-10-04-entry-isolation/runner-contract-linux.txt)
 
-负向控制分别移除票据合法区间检查、Session acquired-new判断、以及故意给grace重连多加load。它们的FAIL和非0是被预期捕获的证据，不能删掉后只展示绿行。
+本次JIP单目标`--targets jip_resync --with-self-test --pwsh pwsh`归档为：
+
+- [strict JIP raw](results/2026-10-04-jip-contract/strict/jip_resync-linux.txt)、[strict runner raw](results/2026-10-04-jip-contract/strict/runner-contract-linux.txt)、[strict manifest](results/2026-10-04-jip-contract/strict/run-manifest.json)
+- [UBSan JIP raw](results/2026-10-04-jip-contract/ubsan/jip_resync-linux.txt)、[UBSan runner raw](results/2026-10-04-jip-contract/ubsan/runner-contract-linux.txt)、[UBSan manifest](results/2026-10-04-jip-contract/ubsan/run-manifest.json)
+
+正例涵盖零增量、空/非空快照、精确窗口/头中尾缺失、同客户端回退、12组逆序/固定seed置换、安装期间收包、旧/重复快照、完整身份及错误ACK、T后增量、槽生命周期、坏数据、count/span/期限/耗尽边界和oracle字段敏感性。runner自测继续保留全部既有Bash/Linux pwsh故障fixture。
+
+六项真实编译负向控制：移除票据合法区间检查、Session acquired-new判断、grace重连多加load；JIP跳过零增量安装、跳过目标连续性终检、跳过incarnation比较。它们必须编译成功，运行出现FAIL且非0。完整破坏后输出保留在runner raw，不能删掉后只展示绿行。默认四模型回归另外在仓外输出目录运行，不能把这里正例scope只有JIP的manifest说成四模型正例归档。
 
 历史原件保持原字节：[entry_ticket.txt](results/entry_ticket.txt)、[entry_session.txt](results/entry_session.txt)、[ds_allocator.txt](results/ds_allocator.txt)、[jip_resync.txt](results/jip_resync.txt)。旧分组应读为：T1–T8算法/分块功能，T9–T20票据选定行为，T21–T24比较布尔功能。旧A20只判断数字为1，并未证明跨DS隔离；旧E15/E16只清座位，不是实体销毁。
 
@@ -135,7 +182,8 @@ Expired待清扫的记录可以还占物理账，但不能写。对正常返回�
 3. 补偿必须证明“本请求新取得且仍拥有这一代资源”；只用Ready判断或done位不够
 4. grace保留的是一个座位，不是旧owner写权；无Reap也不能Heartbeat复活，裸数字epoch也不能跨资源授权
 5. 真实资源写入需要原子归属条件；本例bool Commit不等于接入生产持久化fencing
-6. 严格runner和负向控制防止证据假绿；有限样本仍不是穷举/形式证明
+6. JIP完成需要正确基线、连续到固定T与身份匹配的ACK；“pending为空”不够，缺尾仍可能未完成
+7. 严格runner和负向控制防止证据假绿；有限样本仍不是穷举/形式证明
 
 ## 局限
 
@@ -143,7 +191,8 @@ Expired待清扫的记录可以还占物理账，但不能写。对正常返回�
 - 无持久化/重启incarnation、分布式消费、并发请求、真实业务事务和异常内存分配故障注入
 - Session的AuthFn/步骤回调按返回Outcome合同工作；未覆盖回调抛异常、异步重入或真实实体资源清理
 - 没有性能/容量结论；2个玩家/DS只是边界fixture
-- JIP仍有零增量未ApplySnapshot缺陷；旧hash忽略/量化部分状态，不是byte-identical证明；旧估算字节不是网络包，旧CPU样本不能推出“增量永远更贵”。日志窗口回退/版本排序的设计动机保留，实现正确性和计量口径另验
+- JIP只实现固定有限scope的串行内存接收器，没有真实编码/认证/分包/压缩/日志持久化/AOI变更事务；ACK比较只是应用门禁，不是服务端证明客户端诚实的密码学证据
+- 旧JIP基准全量路径停在R、追赶路径到T，且析构与采样边界不对称；旧32字节乘数量不是编码后网络字节。fresh JIP必须计S(R)+D(R,T)，只有确有可用基线的warm resume才可讨论只发D。撤回“CPU必然更贵”和泛化10×节省；默认程序移除计时，本批没有新CPU或网络性能结论
 - Windows C++、UE/PIE、真实网关→DS、DB、调度平台、弱网、压力、脑裂未运行
 
 ## 关联知识文档
