@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-04 (JIP snapshot contracts and current evidence corrections; mechanically recalculated).
+# Generated: 2026-10-04 (Damage numerical, field and DOT contracts; mechanically recalculated).
 version: 4
 
 okf:
@@ -44,13 +44,13 @@ documents:
   ".kb/audit.md":
     kind: doc
     maturity: L2
-    bytes: 61143
-    lines: 439
+    bytes: 63641
+    lines: 450
   ".kb/decisions.md":
     kind: doc
     maturity: L2
-    bytes: 59707
-    lines: 971
+    bytes: 61299
+    lines: 980
   ".kb/plans/2026-09-03-combat-ai.md":
     kind: doc
     maturity: L2
@@ -74,8 +74,8 @@ documents:
   ".kb/review-queue.md":
     kind: doc
     maturity: L2
-    bytes: 33272
-    lines: 599
+    bytes: 34082
+    lines: 602
   "00-计算机与工程基础/01-C++核心/README.md":
     kind: README
     maturity: L0
@@ -204,7 +204,7 @@ documents:
   "evidence/README.md":
     kind: README
     maturity: L0
-    bytes: 8100
+    bytes: 8167
     lines: 53
   "evidence/algorithms/aoi/README.md":
     kind: README
@@ -284,8 +284,8 @@ documents:
   "evidence/tests/damage-core/README.md":
     kind: README
     maturity: L0
-    bytes: 8234
-    lines: 113
+    bytes: 14498
+    lines: 173
   "evidence/tests/entry-core/README.md":
     kind: README
     maturity: L0
@@ -1313,9 +1313,9 @@ documents:
     lines: 324
   "知识/05-Gameplay与交互系统/技能战斗与属性结算/11-伤害与属性结算完整链路.md":
     kind: doc
-    maturity: L4
-    bytes: 22175
-    lines: 333
+    maturity: L2
+    bytes: 22546
+    lines: 228
   "知识/05-Gameplay与交互系统/技能战斗与属性结算/42-Lyra-输入GAS与武器战斗源码.md":
     kind: doc
     maturity: L2
@@ -2224,7 +2224,7 @@ documents:
   "知识/08-工程实践与质量/调试与性能分析/10-性能问题定位完整链路.md":
     kind: doc
     maturity: L4
-    bytes: 21136
+    bytes: 21391
     lines: 329
   "知识/08-工程实践与质量/调试与性能分析/28-UnrealInsights与Trace源码.md":
     kind: doc

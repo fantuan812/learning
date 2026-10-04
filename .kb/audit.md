@@ -437,3 +437,14 @@ updated: 2026-09-14
 - 最终JIP strict与UBSan各143项通过，runner各42项；3个既有安全模型负控与3个JIP语义负控均真实编译并产生预期FAIL/非零。原始结果见[strict manifest](../evidence/tests/entry-core/results/2026-10-04-jip-contract/strict/run-manifest.json)与[UBSan manifest](../evidence/tests/entry-core/results/2026-10-04-jip-contract/ubsan/run-manifest.json)，不从测试数推出所有输入正确。
 - 撤回上文旧CPU必然更贵、泛化10倍带宽和指纹等同byte-identical的结论：旧对照终点/析构/采样口径不一致，32字节乘数量不是实际网络编码。新模型比较完整字段，不再运行旧计时；fresh JIP与warm resume分开讨论，本次没有新CPU/网络性能结论。
 - 原4份历史raw、先前安全模型raw和用户书籍/日志/附件保留。尚未验证真实网络、UE、并发快照捕获、持久化、跨进程身份唯一性或客户端ACK诚实性；仓库检查仍单列26项已知保护来源缺陷，不能写成零缺陷或全质量通过。
+
+
+# 伤害结算字段、数值与DOT合同纠正（2026-10-04）
+
+- 保留KD-028及上文历史记录原文，但旧15条局部断言未覆盖同实例DOT小步丢相位、toHp虚报请求伤害、raw/mitigated阶段错位、非有限/中间溢出与极大护甲问题；已原位修订[模型与独立测试](../evidence/tests/damage-core/README.md)。主文以L2表达设计范围，局部实验不代替完整技能/引擎链路。
+- 当前模型区分名义命中/盾分流、实际存储盾损和HP差、过量及有符号舍入残差；护甲直接稳定计算剩余系数。完整输入/状态和中间范围校验后才提交状态与临时RNG。保留真伤只跳护甲、减伤后盾前cap、lastOverride胜、最终半跳弃掉等原玩法选择，不把纠错当重平衡。
+- DOT采用微秒uint64相位/计数，避免phase+active和总跳数溢出，整批计划后提交；double秒适配以精确binary64值量化，双limb整数积修复二次舍入。相同整数时间轴的分块不变性不外推到每次独立量化的任意double，也不把DOT原额汇总说成逐跳伤害管线。
+- 本轮实际严格O0+NDEBUG、O2、UBSan各185项通过，原28项反例期望经薄适配仍28/0；Python优化模式及Bash/Linux pwsh等运行器故障/拒覆盖合同106项通过，四种实际源码变异被非零捕获。原始阶段流与必要复现夹具按字节范围及SHA保存在[本次manifest](../evidence/tests/damage-core/results/2026-10-04-damage-contract/run-manifest.json)，测试数只表示这套有界输入，不是全域或形式证明。
+- 新增Linux CI步骤，要求执行三构建与运行器负控，必需g++-14、失败向上返回并留独立诊断/时限。本地同一PowerShell命令块已重跑；编译器合成return23使整步非零且后续命令不执行。Linux pwsh不代表Windows C++通过。
+- 历史[damage_pipeline.txt](../evidence/tests/damage-core/results/damage_pipeline.txt)保持原字节。旧500×1000计时的分位数属于批均摊成本，撤回单次P99、线上一万次0.14ms与公式通常不是瓶颈的推断；本轮不新增CPU数字。20Hz对应50ms，实际子预算仍需完整工作负载测量。
+- 所有既存实验raw和282份书籍/日志/附件保留；没有访问私有UE源码或真实服务。尚未验证UE/GAS/PIE、真实网络/持久化/归属、并发、Windows、跨平台确定性或生产容量；仓库机械检查仍单列26项已知保护来源缺陷，不是零缺陷或全质量通过。

@@ -1,0 +1,1672 @@
+# damage-contract transcript bundle before.txt
+# Framing is archival metadata, not program output. Payload bytes are unmodified.
+
+===== BEGIN baseline/evidence/tests/damage-core/README.md bytes=8234 sha256=c764a2a5427d7d75080644fec0ac5d43173d073a605184b11e69c403f23d3bc1 =====
+---
+type: Evidence
+title: "伤害与属性结算可运行证据（修正器聚合 / 减免 / 护盾 / 过量 / DOT / 上限）"
+description: "用可编译运行的 C++ 最小实现固定伤害结算的公式顺序与边界，并给出结算性能基线。"
+tags:
+  - evidence
+  - gameplay
+  - damage
+  - attribute
+  - combat
+status: stable
+verified: []
+maturity: L0
+updated: 2026-09-11
+---
+
+# 伤害与属性结算可运行证据
+
+> 证据范围：本机可编译运行的 1 个测试 + 基准程序，**15 条断言全部通过**，含 P50/P95/P99 结算耗时；不涉及 UE GAS 运行时、网络与线上环境。按本仓库约定，`evidence/` 属维护基础设施，其 README 的 maturity 字段不参与知识成熟度门禁。
+
+伤害结算是 Gameplay 里"数字最容易对不上"的地方：策划表、客户端表现、服务端结算、战斗日志四方任意一处顺序不同，玩家就会看到"打出的数字和掉的血不一样"。本目录把结算顺序与边界固化成断言，并给出单次结算的真实耗时。
+
+## 问题
+
+1. 属性修正器的求值顺序（Override / Add / Multiply）到底是什么？换插入顺序会不会改变结果？
+2. 暴击、增伤、护甲、按类型抗性、受伤加成这五个乘区，谁先谁后？能否叠加成"减伤 100%"？
+3. 护盾与血量谁先扣？护盾大于一次伤害时余额怎么算？过量伤害（overkill）要不要单独记？
+4. 目标已死亡/免疫时，该次结算是否应当"整段拦截"（不消耗护盾、不改血量）？
+5. 单次命中上限（per-hit cap）应该放在减伤之前还是之后？
+6. DOT 在多跳与半跳（剩余时长不足一个间隔）时如何取整？
+7. 相同随机种子重放，结算结果是否逐次一致（回放与帧同步的前提）？
+
+## 假设
+
+- 结算在服务端单线程内是**确定性**的：同一种子 + 同一输入 → 同一结果。
+- 修正器语义：最后一个 Override 覆盖 base，Add 求和，Mul 连乘；三者对插入顺序不敏感（Add/Mul 交换机律）。
+- 乘区顺序固定为：`基础 × 攻击属性 → 暴击 → 增伤 → 护甲 → 按类型抗性 → 受伤加成 → 单次上限 → 护盾 → 生命`。
+- 护甲减伤采用 `armor / (armor + K)` 曲线，数学上恒小于 1。
+- 真实伤害（true damage）跳过护甲，但仍受抗性/受伤加成/上限影响。
+
+## 环境
+
+| 项目 | 值 |
+| --- | --- |
+| 主机 | Windows（MINGW64_NT-10.0-26200，x86_64，16 逻辑核） |
+| 工具链 | MSYS2 MinGW-w64 `g++` 16.1.0，`-std=c++17 -O2` |
+| 依赖 | 仅 C++ 标准库 |
+| 未使用 | UE5.8 GAS、Dedicated Server、网络层、数据库 |
+
+## 运行方式
+
+```powershell
+& (Join-Path $RepoRoot 'evidence/tests/damage-core/scripts/build_run.ps1')
+```
+
+```bash
+bash evidence/tests/damage-core/scripts/run_all.sh
+```
+
+脚本重新编译并把**未经修改的原始输出**写入 `results/damage_pipeline.txt`。
+
+## 输入
+
+- 公式断言：固定攻击力、护甲 100/900、抗性 50%、受伤加成 +25%、护盾 30/500、血量 40、上限 150 等构造用例。
+- 重放：5 000 次伪随机命中（xorshift64，种子 777），每次命中前重置血量，累加结算哈希。
+- 基准：500 轮 × 1 000 次命中 = 500 000 次完整结算（物理/魔法交替，护盾极大以保持每次工作量一致）。
+
+## 指标与原始结果
+
+**断言：pass=15 fail=0**（A1–A2 聚合语义；D1–D13 结算语义与边界）
+
+```text
+[bench] damage_settlement rounds=500 batch=1000 hits_total=500000
+[bench] per_hit_ns p50=14.2 p95=16.3 p99=16.8 max=28.1 mean=13.0
+[bench] throughput_hits_per_sec=77161685
+
+[D13] determinism a=95762bd05ab49684 b=95762bd05ab49684 c=32ca34d3eba1d979  (种子 777/777/778)
+```
+
+原始输出：[results/damage_pipeline.txt](results/damage_pipeline.txt)
+
+## 结论
+
+1. **乘区顺序必须写死在代码里，而不是靠"谁先调用谁先算"**。A1/A2 证明聚合语义可被精确定义且对插入顺序不敏感；D1–D5 证明五个乘区按固定顺序相乘时结果可被单值断言。
+2. **护甲曲线天然免疫"减伤 100%"**：D2 显示即使护甲取到 10⁹，剩余伤害系数仍为正（`residualAtArmor1e9≈1e-7`）。用加法式减伤（`damage × (1 - armor%)`）则会在护甲堆叠后出现 0 伤害，是常见的数值事故来源。
+3. **真伤必须显式跳过护甲**（D3），且要明确它是否仍受抗性与上限约束——这两条最容易被含糊处理。
+4. **护盾必须先于血量结算，且不得为负**（D6/D7）：护盾大于伤害时余额保留（500 → 420），不会溢出扣血。
+5. **过量必须单独记录**（D8）：血量向下取到 0，`overkill` 单独返回。战斗日志与击杀归属（最后一击/过量伤害统计）都依赖这个字段，混进 `toHp` 会让伤害统计虚高。
+6. **死亡/免疫应整段拦截**（D9）：返回被拦截且不消耗护盾、不改血量；否则会出现"打尸体掉护盾"的诡异日志。
+7. **单次上限放在减伤之后、护盾之前**（D10）。放在减伤之前会让"高减伤 + 低上限"的目标受到超过上限的伤害，放在护盾之后则等于上限失效。
+8. **DOT 需要精确取整**（D12）：按 `floor(有效时长 / 间隔)` 计跳，剩余时长不足一跳时不结算但保留余量，避免"最后一跳丢失"或"多打一跳"。
+9. **同种子可重放**（D13）：两次相同种子得到同一哈希，换种子则不同，满足回放/帧同步对确定性的基本要求。
+10. **单次结算成本极低**：P50 ≈ 14 ns、P99 ≈ 17 ns（约 7.7 × 10⁷ 次/秒）。按 20 Hz Tick 计算，单 Tick 处理 1 万次结算约耗 0.14 ms，**结算本身通常不是性能瓶颈**；真正的开销在属性快照获取、范围查询与网络广播。
+
+## 局限
+
+- **不是 UE GAS**：未使用 `FGameplayEffectSpec`/`AttributeSet`/`GameplayCue`；属性捕获（snapshot）时机、PredictionKey 与网络复制的具体实现不在本证据范围。
+- **单线程**：未覆盖并发结算、批量 AOE 的遍历顺序影响、服务端分帧。
+- **公式为参考实现**：`armor/(armor+K)` 与乘区顺序是可辩护的工程选择，不代表某个具体项目的策划公式；接入时需按项目数值重新标定。
+- **基准是纯逻辑上限**：护盾设为极大以消除分支差异，且完全不涉及内存分配、随机数质量、属性快照与日志；线上数字必然更高。
+- **计时方法**：单次结算低于 `steady_clock` 分辨率（约 100 ns），因此采用"分批计时再归一"的方式取每跳成本；结果存在运行间波动，`results/` 保存的是某一次的真实输出。
+- 未覆盖：持续伤害的来源归属与叠加策略、伤害反弹、致死护盾、伤害上限与减伤上限的组合、跨服转移中的伤害重放。
+
+## 关联知识文档
+
+- [系统实战/11-伤害与属性结算完整链路](../../../知识/05-Gameplay与交互系统/技能战斗与属性结算/11-伤害与属性结算完整链路.md)（本证据的主要使用者）
+- [系统实战/03-技能释放完整链路](../../../知识/05-Gameplay与交互系统/技能战斗与属性结算/03-技能释放完整链路.md)（技能触发与伤害管线的上层）
+- [系统实战/04-Buff系统完整链路](../../../知识/05-Gameplay与交互系统/技能战斗与属性结算/04-Buff系统完整链路.md)（修正器的主要来源）
+- [系统实战/05-背包道具完整链路](../../../知识/05-Gameplay与交互系统/背包装备与存档/05-背包道具完整链路.md)（装备带来的属性修正器）
+- [evidence/tests/gameplay-core](../gameplay-core/README.md)（属性聚合基准与背包/Buff/技能语义）
+- [游戏服务端/03-业务系统设计/06-战斗结算与验证](../../../知识/05-Gameplay与交互系统/技能战斗与属性结算/06-战斗结算与验证.md)
+- [游戏知识/03-游戏玩法编程/01-GameplayAbilitySystem能力系统](../../../知识/05-Gameplay与交互系统/技能战斗与属性结算/01-GameplayAbilitySystem能力系统.md)
+- [游戏知识/12-引擎源码分析/05-GAS能力系统源码](../../../知识/05-Gameplay与交互系统/技能战斗与属性结算/05-GAS能力系统源码.md)
+
+===== END baseline/evidence/tests/damage-core/README.md =====
+
+===== BEGIN baseline/evidence/tests/damage-core/results/damage_pipeline.txt bytes=2362 sha256=148f5fb8595e40537bf4797e3c09b924858ad11546801c1a17c6921891fcd0c8 =====
+# evidence   : tests/damage-core/damage_pipeline
+# generated  : 2026-09-11T11:23:47+0800
+# host       : MINGW64_NT-10.0-26200 x86_64 (cores=16)
+# target     : x86_64-w64-mingw32
+# compiler   : g++.exe (Rev6, Built by MSYS2 project) 16.1.0
+# command    : g++ -std=c++17 -O2 -o build/damage_pipeline.exe src/damage_pipeline.cpp && ./build/damage_pipeline.exe
+#
+gameplay-core | damage & attribute settlement test suite
+compiler=16.1.0 c++17 O2
+--------------------------------------------------------------------------------
+PASS  A1 aggregation order: override base, sum adds, then multiply value=120.0000 expected=120.0000
+PASS  A2 add/mul are order independent (10+5)*3                v1=45.0000 v2=45.0000
+PASS  D1 crit multiplies before armor mitigation               toHp=100.0000 expected=100.0000 crit=1
+PASS  D2 armor curve is asymptotic (never reaches 100% reduction) toHp=100.0000 residualAtArmor1e9=0.000000100
+PASS  D3 true damage bypasses armor                            toHp=100.0000 expected=100.0000
+PASS  D4 armor and typed resistance multiply (no additive stacking) toHp=100.0000 expected=100.0000
+PASS  D5 damage-taken modifier applies after mitigation        toHp=125.0000 expected=125.0000
+PASS  D6 shield absorbs before HP and never goes negative      absorbed=30.00 toHp=70.00 shieldLeft=0.00
+PASS  D7 shield larger than the hit absorbs everything and keeps the remainder absorbed=80.00 shieldLeft=420.00
+PASS  D8 overkill reported separately, HP floors at zero, target dies overkill=60.00 hp=0.00 alive=0
+PASS  D9 dead or immune target is blocked without consuming shield deadBlocked=1 immuneBlocked=1 shieldLeft=50.00
+PASS  D10 per-hit cap applies after mitigation, before shields toHp=150.00 expected=150.00
+PASS  D11 zero/negative damage is rejected, no HP change       zeroBlocked=1 negBlocked=1 hp=1000000000.00
+PASS  D12 DOT totals are exact and clamp at remaining duration first=16.00 total=62.00 expected=62.00
+PASS  D13 identical seed replays to identical settlement hash  a=95762bd05ab49684 b=95762bd05ab49684 c=32ca34d3eba1d979
+
+[bench] damage_settlement rounds=500 batch=1000 hits_total=500000
+[bench] per_hit_ns p50=14.2 p95=16.3 p99=16.8 max=28.1 mean=13.0
+[bench] throughput_hits_per_sec=77161685 sink=0
+--------------------------------------------------------------------------------
+RESULT pass=15 fail=0
+# exit_code  : 0
+
+===== END baseline/evidence/tests/damage-core/results/damage_pipeline.txt =====
+
+===== BEGIN baseline/evidence/tests/damage-core/scripts/build_run.ps1 bytes=2064 sha256=c8475dbe073f396a0f00a7022a793997fda3f619740d2f51b8ae4356a2d7f9a6 =====
+# Damage-core evidence builder (Windows).
+# Compiles the programme and writes raw output into results/.
+# Toolchain: MSYS2 MinGW-w64 g++ (default C:\msys64\mingw64\bin\g++.exe).
+[CmdletBinding()]
+param(
+    [string]$Root = (Split-Path -Parent $PSScriptRoot),
+    [string]$Gxx = 'C:\msys64\mingw64\bin\g++.exe'
+)
+
+$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+
+$repo = (Resolve-Path -LiteralPath (Join-Path $Root '.')).Path
+$here = Join-Path $repo 'evidence\tests\damage-core'
+$resDir = Join-Path $here 'results'
+New-Item -ItemType Directory -Force -Path (Join-Path $here 'build'), $resDir | Out-Null
+
+# native tools need the compiler directory on PATH for cc1plus / libstdc++.
+$env:PATH = (Split-Path -Parent $Gxx) + ';' + $env:PATH
+
+$stamp = (Get-Date).ToString('yyyy-MM-ddTHH:mm:sszzz')
+$target = (& $Gxx -dumpmachine 2>&1 | Select-Object -First 1)
+$compiler = (& $Gxx --version 2>&1 | Select-Object -First 1)
+
+$status = 0
+foreach ($t in @('damage_pipeline')) {
+    Push-Location $here
+    try {
+        & $Gxx -std=c++17 -O2 -o "build/$t.exe" "src/$t.cpp"
+        if ($LASTEXITCODE -ne 0) { Write-Warning "compile failed: $t"; $status = 1; continue }
+        $lines = New-Object System.Collections.Generic.List[string]
+        $lines.Add("# evidence   : tests/damage-core/$t")
+        $lines.Add("# generated  : $stamp")
+        $lines.Add("# host       : $([System.Environment]::OSVersion.VersionString) (cpu_count=$([System.Environment]::ProcessorCount))")
+        $lines.Add("# target     : $target")
+        $lines.Add("# compiler   : $compiler")
+        $lines.Add("# command    : g++ -std=c++17 -O2 -o build/$t.exe src/$t.cpp ; ./build/$t.exe")
+        $lines.Add("#")
+        $lines.AddRange([string[]](& "./build/$t.exe" 2>&1))
+        $lines.Add("# exit_code  : $LASTEXITCODE")
+        [System.IO.File]::WriteAllLines((Join-Path $resDir "$t.txt"), $lines, [System.Text.UTF8Encoding]::new($false))
+        Write-Host "wrote results/$t.txt"
+    } finally {
+        Pop-Location
+    }
+}
+
+exit $status
+
+===== END baseline/evidence/tests/damage-core/scripts/build_run.ps1 =====
+
+===== BEGIN baseline/evidence/tests/damage-core/scripts/run_all.sh bytes=1226 sha256=56474982e115465068a591e42a0ff18a123c629246b0e305d44efaa85b285b5e =====
+#!/usr/bin/env bash
+# Damage-core evidence runner.
+# Toolchain used on the reference machine: MSYS2 MinGW-w64 g++ (C:\msys64\mingw64).
+# Writes the raw, unedited program output into results/.
+set -u
+
+BASH_HERE="$(cd "$(dirname "$0")/.." && pwd)"
+if [ -x /c/msys64/mingw64/bin/g++.exe ]; then
+  export PATH="/c/msys64/mingw64/bin:$PATH"
+fi
+CXX="${CXX:-g++}"
+
+cd "$BASH_HERE" || exit 1
+mkdir -p build results
+
+STAMP="$(date +%Y-%m-%dT%H:%M:%S%z)"
+TARGET="$("$CXX" -dumpmachine 2>/dev/null || echo unknown)"
+CORES="$(nproc 2>/dev/null || echo unknown)"
+OSLINE="$(uname -s -m 2>/dev/null || echo unknown)"
+
+status=0
+for t in damage_pipeline; do
+  if ! "$CXX" -std=c++17 -O2 -o "build/$t.exe" "src/$t.cpp"; then
+    echo "compile failed: $t" >&2
+    status=1
+    continue
+  fi
+  {
+    echo "# evidence   : tests/damage-core/$t"
+    echo "# generated  : $STAMP"
+    echo "# host       : $OSLINE (cores=$CORES)"
+    echo "# target     : $TARGET"
+    echo "# compiler   : $("$CXX" --version | head -1)"
+    echo "# command    : $CXX -std=c++17 -O2 -o build/$t.exe src/$t.cpp && ./build/$t.exe"
+    echo "#"
+    ./"build/$t.exe"
+    echo "# exit_code  : $?"
+  } > "results/$t.txt" 2>&1
+  echo "wrote results/$t.txt"
+done
+
+exit $status
+
+===== END baseline/evidence/tests/damage-core/scripts/run_all.sh =====
+
+===== BEGIN baseline/evidence/tests/damage-core/src/damage_pipeline.cpp bytes=18992 sha256=c39169e50852c4a86e24c33cd328cac8b66b4bb53d977679a59b943e259f3fa5 =====
+// Gameplay core evidence: damage & attribute settlement pipeline.
+// Covers modifier aggregation order, crit, armor/resistance mitigation, shield
+// absorption, overkill clamping, immunity, damage caps, DOT aggregation,
+// determinism replay, plus a settlement micro-benchmark.
+// Build: g++ -std=c++17 -O2 -o damage_pipeline.exe damage_pipeline.cpp
+#include <cstdio>
+#include <cstdint>
+#include <cstdarg>
+#include <cmath>
+#include <string>
+#include <vector>
+#include <chrono>
+#include <algorithm>
+
+namespace {
+
+// ---------------------------------------------------------------------------
+// Attribute aggregation: last Override wins over base, then additive, then multiplicative.
+// ---------------------------------------------------------------------------
+enum ModOp { kAdd = 0, kMul = 1, kOverride = 2 };
+
+struct Modifier {
+    ModOp op;
+    double value;
+    uint64_t source;
+};
+
+struct Attribute {
+    double base = 0.0;
+    std::vector<Modifier> mods;
+
+    double Value() const {
+        double v = base;
+        for (const Modifier& m : mods) if (m.op == kOverride) v = m.value;
+        double add = 0.0, mul = 1.0;
+        for (const Modifier& m : mods) {
+            if (m.op == kAdd) add += m.value;
+            else if (m.op == kMul) mul *= m.value;
+        }
+        return (v + add) * mul;
+    }
+};
+
+// ---------------------------------------------------------------------------
+// Combat state
+// ---------------------------------------------------------------------------
+struct DamageType { enum E { kPhysical = 0, kMagic = 1, kTrue = 2, kCount = 3 }; };
+
+struct Combatant {
+    Attribute attack;                       // 攻击力（含修正器）
+    double critChance = 0.0;                // 0..1
+    double critMultiplier = 2.0;
+    Attribute damageBonus;                  // 增伤：作为 (1 + value) 的乘区
+    double armor = 0.0;                     // 护甲值，按 armor/(armor+K) 折算减伤
+    double resistance[DamageType::kCount] = {0.0, 0.0, 0.0};  // 按伤害类型的减伤比例
+    Attribute damageTaken;                  // 受到伤害加成
+    double shield[DamageType::kCount] = {0.0, 0.0, 0.0};
+    double hp = 1000.0;
+    double hpMax = 1000.0;
+    bool alive = true;
+    bool immune = false;
+};
+
+struct HitResult {
+    double raw = 0.0;        // 暴击与增伤后的伤害
+    double mitigated = 0.0;  // 护甲/抗性/受伤加成后、命中上限前的伤害
+    double absorbed = 0.0;   // 被护盾吸收的部分
+    double toHp = 0.0;       // 真正扣到血量上的部分
+    double overkill = 0.0;   // 超出剩余血量的过量部分
+    bool crit = false;
+    bool blocked = false;    // 目标已死亡/免疫被整段拦截
+};
+
+struct DamageSpec {
+    double amount = 0.0;                 // 基础伤害（技能表数值）
+    int type = DamageType::kPhysical;
+    double armorConstantK = 100.0;       // 减伤曲线常数
+    double perHitCap = 0.0;              // 0 表示不限制；否则为单次命中上限（在减伤后、护盾前生效）
+};
+
+// Deterministic PRNG so replays are reproducible.
+struct XorShift {
+    uint64_t s;
+    explicit XorShift(uint64_t seed) : s(seed ? seed : 0x2545F4914F6CDD1DULL) {}
+    uint64_t next() { s ^= s << 13; s ^= s >> 7; s ^= s << 17; return s; }
+    double unit() { return static_cast<double>(next() >> 11) / 9007199254740992.0; }
+};
+
+double ArmorReduction(double armor, double k) {
+    if (armor <= 0.0) return 0.0;
+    return armor / (armor + k);   // 恒小于 1，天然免疫"减伤到 100%"
+}
+
+HitResult Settle(Combatant& attacker, Combatant& target, const DamageSpec& spec, XorShift& rng) {
+    HitResult r;
+    if (!target.alive || target.immune) { r.blocked = true; return r; }
+    if (spec.amount <= 0.0) { r.blocked = true; return r; }
+
+    // 1) base damage * attacker attack attribute
+    r.raw = spec.amount * attacker.attack.Value();
+
+    // 2) crit (rolled once per hit)
+    if (attacker.critChance > 0.0 && rng.unit() < attacker.critChance) {
+        r.raw *= attacker.critMultiplier;
+        r.crit = true;
+    }
+
+    // 3) attacker damage bonus
+    r.raw *= (1.0 + attacker.damageBonus.Value());
+
+    // 4) armor mitigation (true damage ignores armor)
+    if (spec.type != DamageType::kTrue) {
+        r.raw *= (1.0 - ArmorReduction(target.armor, spec.armorConstantK));
+    }
+
+    // 5) typed resistance
+    r.raw *= (1.0 - std::min(1.0, std::max(0.0, target.resistance[spec.type])));
+
+    // 6) target damage taken modifier
+    r.raw *= (1.0 + target.damageTaken.Value());
+
+    // 7) per-hit cap applied after mitigation, before shields
+    r.mitigated = r.raw;
+    if (spec.perHitCap > 0.0) r.mitigated = std::min(r.mitigated, spec.perHitCap);
+
+    // 8) shield absorbs first (never below zero)
+    const double absorb = std::min(target.shield[spec.type], r.mitigated);
+    target.shield[spec.type] -= absorb;
+    r.absorbed = absorb;
+    r.toHp = r.mitigated - absorb;
+
+    // 9) HP floor at zero, overkill reported separately
+    const double before = target.hp;
+    target.hp = std::max(0.0, target.hp - r.toHp);
+    if (r.toHp > before) r.overkill = r.toHp - before;
+    if (target.hp <= 0.0) target.alive = false;
+    return r;
+}
+
+int gPass = 0;
+int gFail = 0;
+
+void Check(bool ok, const char* name, const std::string& detail) {
+    if (ok) { ++gPass; std::printf("PASS  %-56s %s\n", name, detail.c_str()); }
+    else    { ++gFail; std::printf("FAIL  %-56s %s\n", name, detail.c_str()); }
+}
+
+std::string Fmt(const char* fmt, ...) {
+    char buf[256];
+    va_list args;
+    va_start(args, fmt);
+    std::vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    return std::string(buf);
+}
+
+bool Near(double a, double b, double eps = 1e-6) { return std::fabs(a - b) <= eps; }
+
+// A no-crit, no-mitigation attacker for formula assertions.
+Combatant PlainAttacker() {
+    Combatant c;
+    c.attack.base = 1.0;          // attack.Value() == 1 -> raw == spec.amount
+    c.critChance = 0.0;
+    c.damageBonus.base = 0.0;     // (1 + 0)
+    return c;
+}
+
+Combatant DummyTarget() {
+    Combatant c;
+    c.hp = c.hpMax = 1e9;         // never dies during formula assertions
+    return c;
+}
+
+void TestModifierOrder() {
+    Attribute a;
+    a.base = 100.0;
+    a.mods.push_back(Modifier{kAdd, 50.0, 1});        // +50
+    a.mods.push_back(Modifier{kMul, 2.0, 1});         // x2
+    a.mods.push_back(Modifier{kOverride, 10.0, 1});   // base replaced by 10
+    // (10 + 50) * 2 = 120
+    Check(Near(a.Value(), 120.0), "A1 aggregation order: override base, sum adds, then multiply",
+          Fmt("value=%.4f expected=120.0000", a.Value()));
+}
+
+void TestValueSemantics() {
+    Attribute a;
+    a.base = 10.0;
+    Modifier add{kAdd, 5.0, 1};
+    Modifier mul{kMul, 3.0, 1};
+    // insertion order must not matter for commutative ops
+    a.mods = {mul, add};
+    const double v1 = a.Value();
+    a.mods = {add, mul};
+    const double v2 = a.Value();
+    Check(Near(v1, v2) && Near(v1, 45.0), "A2 add/mul are order independent (10+5)*3",
+          Fmt("v1=%.4f v2=%.4f", v1, v2));
+}
+
+void TestCritBeforeMitigation() {
+    Combatant atk = PlainAttacker();
+    atk.critChance = 1.0;         // always crit
+    atk.critMultiplier = 2.0;
+    Combatant tgt = DummyTarget();
+    tgt.armor = 100.0;            // K=100 -> 50% reduction
+    XorShift rng(1);
+    DamageSpec spec; spec.amount = 100.0; spec.type = DamageType::kPhysical; spec.armorConstantK = 100.0;
+    const HitResult r = Settle(atk, tgt, spec, rng);
+    // 100 * 1 * 2 (crit) * (1 - 0.5) = 100
+    Check(r.crit && Near(r.toHp, 100.0), "D1 crit multiplies before armor mitigation",
+          Fmt("toHp=%.4f expected=100.0000 crit=%d", r.toHp, r.crit ? 1 : 0));
+}
+
+void TestArmorCurve() {
+    Combatant atk = PlainAttacker();
+    Combatant tgt = DummyTarget();
+    tgt.armor = 900.0;            // K=100 -> 90%
+    XorShift rng(1);
+    DamageSpec spec; spec.amount = 1000.0; spec.armorConstantK = 100.0;
+    const HitResult r = Settle(atk, tgt, spec, rng);
+    const double huge = ArmorReduction(1e9, 100.0);
+    Check(Near(r.toHp, 100.0) && huge < 1.0,
+          "D2 armor curve is asymptotic (never reaches 100% reduction)",
+          Fmt("toHp=%.4f residualAtArmor1e9=%.9f", r.toHp, 1.0 - huge));
+}
+
+void TestTrueDamageIgnoresArmor() {
+    Combatant atk = PlainAttacker();
+    Combatant tgt = DummyTarget();
+    tgt.armor = 900.0;
+    XorShift rng(1);
+    DamageSpec spec; spec.amount = 100.0; spec.type = DamageType::kTrue;
+    const HitResult r = Settle(atk, tgt, spec, rng);
+    Check(Near(r.toHp, 100.0), "D3 true damage bypasses armor",
+          Fmt("toHp=%.4f expected=100.0000", r.toHp));
+}
+
+void TestResistanceStacksMultiplicativelyWithArmor() {
+    Combatant atk = PlainAttacker();
+    Combatant tgt = DummyTarget();
+    tgt.armor = 100.0;                          // 50%
+    tgt.resistance[DamageType::kMagic] = 0.5;   // 50%
+    tgt.damageTaken.base = 0.0;
+    XorShift rng(1);
+    DamageSpec spec; spec.amount = 400.0; spec.type = DamageType::kMagic; spec.armorConstantK = 100.0;
+    const HitResult r = Settle(atk, tgt, spec, rng);
+    // 400 * 0.5 * 0.5 = 100
+    Check(Near(r.toHp, 100.0), "D4 armor and typed resistance multiply (no additive stacking)",
+          Fmt("toHp=%.4f expected=100.0000", r.toHp));
+}
+
+void TestDamageTakenModifier() {
+    Combatant atk = PlainAttacker();
+    Combatant tgt = DummyTarget();
+    tgt.damageTaken.base = 0.25;   // +25% taken
+    XorShift rng(1);
+    DamageSpec spec; spec.amount = 100.0;
+    const HitResult r = Settle(atk, tgt, spec, rng);
+    Check(Near(r.toHp, 125.0), "D5 damage-taken modifier applies after mitigation",
+          Fmt("toHp=%.4f expected=125.0000", r.toHp));
+}
+
+void TestShieldAbsorbsFirst() {
+    Combatant atk = PlainAttacker();
+    Combatant tgt = DummyTarget();
+    tgt.shield[DamageType::kPhysical] = 30.0;
+    XorShift rng(1);
+    DamageSpec spec; spec.amount = 100.0;
+    const HitResult r = Settle(atk, tgt, spec, rng);
+    const bool ok = Near(r.absorbed, 30.0) && Near(r.toHp, 70.0) &&
+                    Near(tgt.shield[DamageType::kPhysical], 0.0);
+    Check(ok, "D6 shield absorbs before HP and never goes negative",
+          Fmt("absorbed=%.2f toHp=%.2f shieldLeft=%.2f", r.absorbed, r.toHp,
+              tgt.shield[DamageType::kPhysical]));
+}
+
+void TestShieldOverkill() {
+    Combatant atk = PlainAttacker();
+    Combatant tgt = DummyTarget();
+    tgt.shield[DamageType::kPhysical] = 500.0;
+    XorShift rng(1);
+    DamageSpec spec; spec.amount = 80.0;
+    const HitResult r = Settle(atk, tgt, spec, rng);
+    const bool ok = Near(r.absorbed, 80.0) && Near(r.toHp, 0.0) &&
+                    Near(tgt.shield[DamageType::kPhysical], 420.0);
+    Check(ok, "D7 shield larger than the hit absorbs everything and keeps the remainder",
+          Fmt("absorbed=%.2f shieldLeft=%.2f", r.absorbed, tgt.shield[DamageType::kPhysical]));
+}
+
+void TestOverkillAndDeath() {
+    Combatant atk = PlainAttacker();
+    Combatant tgt = DummyTarget();
+    tgt.hp = 40.0;
+    XorShift rng(1);
+    DamageSpec spec; spec.amount = 100.0;
+    const HitResult r = Settle(atk, tgt, spec, rng);
+    const bool ok = Near(r.overkill, 60.0) && Near(tgt.hp, 0.0) && !tgt.alive;
+    Check(ok, "D8 overkill reported separately, HP floors at zero, target dies",
+          Fmt("overkill=%.2f hp=%.2f alive=%d", r.overkill, tgt.hp, tgt.alive ? 1 : 0));
+}
+
+void TestDeadAndImmune() {
+    Combatant atk = PlainAttacker();
+    Combatant dead = DummyTarget();
+    dead.alive = false;
+    dead.shield[DamageType::kPhysical] = 50.0;
+    XorShift rng(1);
+    DamageSpec spec; spec.amount = 100.0;
+    const HitResult r1 = Settle(atk, dead, spec, rng);
+    Combatant imm = DummyTarget();
+    imm.immune = true;
+    const HitResult r2 = Settle(atk, imm, spec, rng);
+    const bool ok = r1.blocked && r2.blocked && Near(dead.shield[DamageType::kPhysical], 50.0) &&
+                    Near(dead.hp, dead.hpMax);
+    Check(ok, "D9 dead or immune target is blocked without consuming shield",
+          Fmt("deadBlocked=%d immuneBlocked=%d shieldLeft=%.2f", r1.blocked ? 1 : 0,
+              r2.blocked ? 1 : 0, dead.shield[DamageType::kPhysical]));
+}
+
+void TestPerHitCap() {
+    Combatant atk = PlainAttacker();
+    Combatant tgt = DummyTarget();
+    XorShift rng(1);
+    DamageSpec spec; spec.amount = 1000.0; spec.perHitCap = 150.0;
+    const HitResult r = Settle(atk, tgt, spec, rng);
+    Check(Near(r.toHp, 150.0), "D10 per-hit cap applies after mitigation, before shields",
+          Fmt("toHp=%.2f expected=150.00", r.toHp));
+}
+
+void TestInvalidAmount() {
+    Combatant atk = PlainAttacker();
+    Combatant tgt = DummyTarget();
+    XorShift rng(1);
+    DamageSpec zero; zero.amount = 0.0;
+    DamageSpec neg; neg.amount = -25.0;
+    const HitResult r1 = Settle(atk, tgt, zero, rng);
+    const HitResult r2 = Settle(atk, tgt, neg, rng);
+    Check(r1.blocked && r2.blocked, "D11 zero/negative damage is rejected, no HP change",
+          Fmt("zeroBlocked=%d negBlocked=%d hp=%.2f", r1.blocked ? 1 : 0, r2.blocked ? 1 : 0, tgt.hp));
+}
+
+// ---------------------------------------------------------------------------
+// DOT aggregation: ticks are summed exactly, and partial ticks are honoured.
+// ---------------------------------------------------------------------------
+struct Dot {
+    double perTick;
+    double intervalSec;
+    double remainingSec;
+    int type;
+};
+
+double AdvanceDots(std::vector<Dot>& dots, double dt, int* ticksOut) {
+    double total = 0.0;
+    int ticks = 0;
+    for (Dot& d : dots) {
+        if (d.remainingSec <= 0.0) continue;
+        const double active = std::min(dt, d.remainingSec);
+        const double t = active / d.intervalSec;
+        const int whole = static_cast<int>(t);
+        total += whole * d.perTick;
+        ticks += whole;
+        d.remainingSec -= active;
+    }
+    if (ticksOut) *ticksOut = ticks;
+    return total;
+}
+
+void TestDotAggregation() {
+    std::vector<Dot> dots = {{10.0, 1.0, 5.0, DamageType::kMagic}, {3.0, 0.5, 2.0, DamageType::kPhysical}};
+    int ticks = 0;
+    const double first = AdvanceDots(dots, 1.0, &ticks);   // 10 + 3*2 = 16
+    const double second = AdvanceDots(dots, 10.0, &ticks); // consumes remainder: 4 ticks + 2 ticks
+    const bool ok = Near(first, 16.0) && Near(first + second, 10.0 * 5 + 3.0 * 4);
+    Check(ok, "D12 DOT totals are exact and clamp at remaining duration",
+          Fmt("first=%.2f total=%.2f expected=%.2f", first, first + second, 10.0 * 5 + 3.0 * 4));
+}
+
+// ---------------------------------------------------------------------------
+// Determinism replay
+// ---------------------------------------------------------------------------
+uint64_t RunReplay(uint64_t seed, int hits) {
+    XorShift rng(seed);
+    Combatant atk = PlainAttacker();
+    atk.attack.base = 12.0;
+    atk.critChance = 0.35;
+    atk.critMultiplier = 1.8;
+    atk.damageBonus.base = 0.15;
+    Combatant tgt = DummyTarget();
+    tgt.armor = 220.0;
+    tgt.resistance[DamageType::kMagic] = 0.2;
+    uint64_t hash = 1469598103934665603ULL;
+    for (int i = 0; i < hits; ++i) {
+        tgt.hp = tgt.hpMax;
+        DamageSpec spec;
+        spec.amount = 40.0 + static_cast<double>(rng.next() % 60);
+        spec.type = (i % 4 == 0) ? DamageType::kMagic : DamageType::kPhysical;
+        const HitResult r = Settle(atk, tgt, spec, rng);
+        uint64_t h = static_cast<uint64_t>(r.toHp * 1000.0) ^ (r.crit ? 0x9E3779B97F4A7C15ULL : 0ULL);
+        hash ^= h;
+        hash *= 1099511628211ULL;
+    }
+    return hash;
+}
+
+void TestDeterminism() {
+    const uint64_t a = RunReplay(777, 5000);
+    const uint64_t b = RunReplay(777, 5000);
+    const uint64_t c = RunReplay(778, 5000);
+    Check(a == b && a != c, "D13 identical seed replays to identical settlement hash",
+          Fmt("a=%016llx b=%016llx c=%016llx", static_cast<unsigned long long>(a),
+              static_cast<unsigned long long>(b), static_cast<unsigned long long>(c)));
+}
+
+// ---------------------------------------------------------------------------
+// Micro benchmark
+// ---------------------------------------------------------------------------
+void BenchSettlement() {
+    // steady_clock resolution is ~100 ns, so a single hit is below the noise floor.
+    // Measure in batches and normalise to per-hit cost.
+    constexpr int kBatchHits = 1000;
+    constexpr int kRounds = 500;
+    XorShift rng(4242);
+    Combatant atk = PlainAttacker();
+    atk.attack.base = 15.0;
+    atk.critChance = 0.3;
+    atk.damageBonus.base = 0.2;
+    atk.damageBonus.mods.push_back(Modifier{kAdd, 0.1, 1});
+    Combatant tgt = DummyTarget();
+    tgt.armor = 300.0;
+    tgt.resistance[DamageType::kMagic] = 0.25;
+    tgt.damageTaken.base = 0.1;
+    tgt.shield[DamageType::kPhysical] = 1e12;   // keep HP stable so each hit is identical work
+    tgt.shield[DamageType::kMagic] = 1e12;
+
+    std::vector<double> perHitNs;
+    perHitNs.reserve(kRounds);
+    DamageSpec spec;
+    spec.amount = 50.0;
+    double sink = 0.0;
+
+    for (int r = 0; r < kRounds; ++r) {
+        const auto t0 = std::chrono::steady_clock::now();
+        for (int i = 0; i < kBatchHits; ++i) {
+            spec.type = (i & 1) ? DamageType::kMagic : DamageType::kPhysical;
+            const HitResult hit = Settle(atk, tgt, spec, rng);
+            sink += hit.toHp;
+        }
+        const auto t1 = std::chrono::steady_clock::now();
+        const double totalNs = std::chrono::duration<double, std::nano>(t1 - t0).count();
+        perHitNs.push_back(totalNs / kBatchHits);
+    }
+
+    std::sort(perHitNs.begin(), perHitNs.end());
+    auto pct = [&](double p) { return perHitNs[static_cast<size_t>(p * (perHitNs.size() - 1))]; };
+    double sum = 0.0;
+    for (double v : perHitNs) sum += v;
+    std::printf("\n[bench] damage_settlement rounds=%d batch=%d hits_total=%d\n",
+                kRounds, kBatchHits, kRounds * kBatchHits);
+    std::printf("[bench] per_hit_ns p50=%.1f p95=%.1f p99=%.1f max=%.1f mean=%.1f\n",
+                pct(0.50), pct(0.95), pct(0.99), perHitNs.back(), sum / perHitNs.size());
+    std::printf("[bench] throughput_hits_per_sec=%.0f sink=%.0f\n",
+                1e9 / (sum / perHitNs.size()), sink);
+}
+
+}  // namespace
+
+int main() {
+    std::printf("gameplay-core | damage & attribute settlement test suite\n");
+    std::printf("compiler=%s c++17 O2\n", __VERSION__);
+    std::printf("--------------------------------------------------------------------------------\n");
+    TestModifierOrder();
+    TestValueSemantics();
+    TestCritBeforeMitigation();
+    TestArmorCurve();
+    TestTrueDamageIgnoresArmor();
+    TestResistanceStacksMultiplicativelyWithArmor();
+    TestDamageTakenModifier();
+    TestShieldAbsorbsFirst();
+    TestShieldOverkill();
+    TestOverkillAndDeath();
+    TestDeadAndImmune();
+    TestPerHitCap();
+    TestInvalidAmount();
+    TestDotAggregation();
+    TestDeterminism();
+    BenchSettlement();
+    std::printf("--------------------------------------------------------------------------------\n");
+    std::printf("RESULT pass=%d fail=%d\n", gPass, gFail);
+    return gFail == 0 ? 0 : 1;
+}
+
+===== END baseline/evidence/tests/damage-core/src/damage_pipeline.cpp =====
+
+===== BEGIN reproduction/probes.cpp bytes=4658 sha256=d6cba877a2bca6aff61e26637507505fb34da697195252e1b94b60f7996868c2 =====
+#define main damage_baseline_main
+#include "baseline/evidence/tests/damage-core/src/damage_pipeline.cpp"
+#undef main
+#include <limits>
+#include <cstring>
+#include <iomanip>
+#include <iostream>
+
+int main(int argc,char**argv) {
+ const char* mode=argc>1?argv[1]:"observe";
+ std::cout<<std::setprecision(17);
+ if(std::strcmp(mode,"original-tests")==0){
+  TestModifierOrder(); TestValueSemantics(); TestCritBeforeMitigation(); TestArmorCurve(); TestTrueDamageIgnoresArmor(); TestResistanceStacksMultiplicativelyWithArmor(); TestDamageTakenModifier(); TestShieldAbsorbsFirst(); TestShieldOverkill(); TestOverkillAndDeath(); TestDeadAndImmune(); TestPerHitCap(); TestInvalidAmount(); TestDotAggregation(); TestDeterminism();
+  std::printf("RESULT pass=%d fail=%d benchmark=not_run\n",gPass,gFail);return gFail?1:0;
+ }
+ if(std::strcmp(mode,"bad-type")==0){auto a=PlainAttacker(); auto t=DummyTarget(); XorShift rng(1); DamageSpec s; s.amount=100;s.type=-1; Settle(a,t,s,rng);return 0;}
+ if(std::strcmp(mode,"dot-zero-interval")==0){std::vector<Dot>d={{1,0,1,0}};AdvanceDots(d,1,nullptr);return 0;}
+ if(std::strcmp(mode,"dot-tick-overflow")==0){std::vector<Dot>d={{1,1,2147483648.0,0}};AdvanceDots(d,2147483648.0,nullptr);return 0;}
+ if(std::strcmp(mode,"dot-total-overflow")==0){std::vector<Dot>d={{1,1,2147483647.0,0},{1,1,1,0}};AdvanceDots(d,2147483647.0,nullptr);return 0;}
+ if(std::strcmp(mode,"dot-nan-time")==0){std::vector<Dot>d={{1,1,1,0}};AdvanceDots(d,std::numeric_limits<double>::quiet_NaN(),nullptr);return 0;}
+ const auto hit=[](const char*name, Combatant a, Combatant t, DamageSpec s){XorShift rng(1);auto r=Settle(a,t,s,rng);std::cout<<name<<" raw="<<r.raw<<" mitigated="<<r.mitigated<<" absorbed="<<r.absorbed<<" toHp="<<r.toHp<<" overkill="<<r.overkill<<" hp="<<t.hp<<" shield="<<t.shield[0]<<" alive="<<t.alive<<" blocked="<<r.blocked<<'\n';};
+ const double max=std::numeric_limits<double>::max(), nan=std::numeric_limits<double>::quiet_NaN();
+ DamageSpec s;s.amount=100;
+ auto a=PlainAttacker(),t=DummyTarget();t.hp=40;hit("hp40_hit100",a,t,s);
+ a.damageBonus.base=.2;t=DummyTarget();t.armor=100;t.resistance[0]=.25;t.damageTaken.base=.1;s.perHitCap=30;hit("diagnostic_stages",a,t,s);
+ a=PlainAttacker();t=DummyTarget();s.perHitCap=0;t.armor=1e20;hit("armor1e20",a,t,s);std::cout<<"armor1e20_reduction="<<ArmorReduction(1e20,100)<<" independently_expected_residual="<<(100.0L/(1e20L+100.0L))<<'\n';
+ t.armor=max;s.armorConstantK=max;hit("armor_max_k_max",a,t,s);s.armorConstantK=100;
+ t=DummyTarget();a.attack.base=-1;hit("negative_attack",a,t,s);
+ a=PlainAttacker();t.shield[0]=-5;hit("negative_shield",a,t,s);
+ t=DummyTarget();s.amount=nan;hit("nan_amount",a,t,s);
+ s.amount=std::numeric_limits<double>::infinity();hit("infinite_amount",a,t,s);
+ a.attack.base=max;s.amount=2;t.resistance[0]=1;hit("finite_overflow_at_full_resistance",a,t,s);
+ a=PlainAttacker();t=DummyTarget();s.amount=1000;s.perHitCap=150;t.armor=100;t.shield[0]=50;hit("cap_after_mitigation_before_shield",a,t,s);
+ t=DummyTarget();t.armor=900;t.resistance[2]=.5;t.damageTaken.base=.25;t.shield[2]=20;s.amount=1000;s.type=2;s.perHitCap=150;hit("true_resistance_cap_shield",a,t,s);
+ s.type=0;s.amount=100;s.perHitCap=0;t=DummyTarget();t.hp=40;t.shield[0]=10;XorShift rng(1);a.critChance=1;const auto r1=Settle(a,t,s,rng);const auto rngAfter=rng.s;const auto r2=Settle(a,t,s,rng);std::cout<<"serial_after_death first_toHp="<<r1.toHp<<" second_blocked="<<r2.blocked<<" hp="<<t.hp<<" rng_unchanged="<<(rngAfter==rng.s)<<'\n';
+ t=DummyTarget();a=PlainAttacker();Settle(a,t,s,rng);Settle(a,t,s,rng);std::cout<<"repeat_alive_input hp="<<t.hp<<" no_event_id=true (each call is separate hit)\n";
+ Attribute x;x.mods={{kOverride,10,1},{kOverride,20,2}};const auto before=x.Value();std::reverse(x.mods.begin(),x.mods.end());std::cout<<"override_order first="<<before<<" reversed="<<x.Value()<<'\n';
+ x.mods={{kAdd,1e16,1},{kAdd,-1e16,2},{kAdd,1,3}};const auto addBefore=x.Value();std::reverse(x.mods.begin(),x.mods.end());std::cout<<"add_float_order first="<<addBefore<<" reversed="<<x.Value()<<'\n';
+ const auto dot=[](const char*name,std::vector<double> steps,double interval=1,double duration=1){std::vector<Dot>d={{10,interval,duration,0}};double damage=0;int count=0;for(const auto dt:steps){int ticks=0;damage+=AdvanceDots(d,dt,&ticks);count+=ticks;}std::cout<<name<<" total="<<damage<<" ticks="<<count<<" remaining="<<d[0].remainingSec<<'\n';};
+ dot("dot_whole",{1});dot("dot_quarters",{.25,.25,.25,.25});dot("dot_six_four",{.6,.4});dot("dot_half_terminal",{1.5},1,1.5);dot("dot_decimal",{.3},.1,.3);dot("dot_negative_dt",{-.5});dot("dot_negative_interval",{1},-1,1);
+ return 0;
+}
+
+===== END reproduction/probes.cpp =====
+
+===== BEGIN reproduction/acceptance_gate.cpp bytes=5369 sha256=a7797aba05e4778c9f9108c23b71000ece2611af6caa9daeb3c3d535b763baa5 =====
+#ifndef DAMAGE_SOURCE
+#define DAMAGE_SOURCE "baseline/evidence/tests/damage-core/src/damage_pipeline.cpp"
+#endif
+#define main damage_model_original_main
+#include DAMAGE_SOURCE
+#undef main
+#include <limits>
+#include <iostream>
+
+int main() {
+ int passed=0,failed=0;
+ const auto check=[&](bool ok,const char*id){std::cout<<(ok?"PASS ":"FAIL ")<<id<<'\n';(ok?passed:failed)++;};
+ const auto close=[](double actual,double expected){return std::isfinite(actual) && (expected==0 ? actual==0 : std::fabs((actual-expected)/expected)<=1e-12);};
+ const auto unchanged=[](const Combatant&a,const Combatant&b){return a.hp==b.hp && a.alive==b.alive && a.immune==b.immune && a.shield[0]==b.shield[0] && a.shield[1]==b.shield[1] && a.shield[2]==b.shield[2];};
+ DamageSpec s;s.amount=100;XorShift rng(77);auto a=PlainAttacker(),t=DummyTarget();t.hp=40;
+ auto r=Settle(a,t,s,rng);check(close(r.toHp,40)&&close(r.overkill,60)&&t.hp==0&&!t.alive,"HP01_actual_loss40_overkill60");
+ t=DummyTarget();t.hp=40;t.shield[0]=30;r=Settle(a,t,s,rng);check(close(r.absorbed,30)&&close(r.toHp,40)&&close(r.overkill,30)&&t.hp==0,"HP02_shield30_actual40_overkill30");
+ t=DummyTarget();t.hp=40;s.amount=40;r=Settle(a,t,s,rng);check(r.toHp==40&&r.overkill==0&&t.hp==0&&!t.alive,"HP03_exact_lethal");
+ auto snap=t;const auto rs=rng.s;r=Settle(a,t,s,rng);check(r.blocked&&unchanged(t,snap)&&rng.s==rs,"HP04_serial_dead_no_second_mutation_or_rng");
+ t=DummyTarget();t.immune=true;t.shield[0]=50;snap=t;const auto rs2=rng.s;r=Settle(a,t,s,rng);check(r.blocked&&unchanged(t,snap)&&rng.s==rs2,"HP05_immune_no_mutation_or_rng");
+ s.amount=1000;s.perHitCap=150;t=DummyTarget();t.armor=100;t.shield[0]=50;r=Settle(a,t,s,rng);check(close(r.toHp,100)&&close(r.absorbed,50),"CAP01_armor_cap_shield_distinguishing_case");
+ s.amount=1000;s.perHitCap=150;s.type=2;t=DummyTarget();t.armor=900;t.resistance[2]=.5;t.damageTaken.base=.25;t.shield[2]=20;r=Settle(a,t,s,rng);check(close(r.toHp,130)&&close(r.absorbed,20),"TRUE01_resistance_taken_cap_shield_preserved");
+ s.type=0;s.amount=100;s.perHitCap=30;t=DummyTarget();a.damageBonus.base=.2;t.armor=100;t.resistance[0]=.25;t.damageTaken.base=.1;r=Settle(a,t,s,rng);check(close(r.raw,120)&&close(r.mitigated,49.5)&&close(r.toHp,30),"STAGE01_raw120_mitigated49point5_cap30");
+ a=PlainAttacker();t=DummyTarget();s.perHitCap=0;t.armor=1e20;r=Settle(a,t,s,rng);check(close(r.mitigated,1e-16),"ARMOR01_representable_residual_large_armor");
+ t=DummyTarget();t.armor=std::numeric_limits<double>::max();s.armorConstantK=std::numeric_limits<double>::max();r=Settle(a,t,s,rng);check(close(r.mitigated,50),"ARMOR02_max_plus_max_no_denominator_overflow");s.armorConstantK=100;
+ t=DummyTarget();t.resistance[0]=1;r=Settle(a,t,s,rng);check(r.toHp==0&&r.absorbed==0&&t.hp==t.hpMax,"RES01_full_resistance_zero_damage");
+ t=DummyTarget();snap=t;s.amount=0;r=Settle(a,t,s,rng);check(r.blocked&&unchanged(t,snap),"INPUT01_zero_amount_rejected");s.amount=-25;r=Settle(a,t,s,rng);check(r.blocked&&unchanged(t,snap),"INPUT02_negative_amount_rejected");
+ s.amount=std::numeric_limits<double>::quiet_NaN();r=Settle(a,t,s,rng);check(r.blocked&&unchanged(t,snap),"INPUT03_nan_amount_no_mutation");
+ t=DummyTarget();snap=t;s.amount=std::numeric_limits<double>::infinity();r=Settle(a,t,s,rng);check(r.blocked&&unchanged(t,snap),"INPUT04_inf_amount_no_mutation");
+ t=DummyTarget();t.resistance[0]=1;snap=t;a.attack.base=std::numeric_limits<double>::max();s.amount=2;r=Settle(a,t,s,rng);check(r.blocked&&unchanged(t,snap),"INPUT05_intermediate_range_failure_no_mutation");
+ a=PlainAttacker();a.attack.base=-1;t=DummyTarget();snap=t;s.amount=100;r=Settle(a,t,s,rng);check(r.blocked&&unchanged(t,snap),"INPUT06_negative_evaluated_attack_rejected");
+ a=PlainAttacker();t=DummyTarget();t.shield[0]=-5;snap=t;r=Settle(a,t,s,rng);check(r.blocked&&unchanged(t,snap),"INPUT07_negative_state_shield_rejected");
+ Attribute x;x.base=100;x.mods={{kAdd,50,1},{kMul,2,1},{kOverride,10,1}};check(x.Value()==120,"ATTR01_preserve_grouped_formula");x.mods={{kOverride,10,1},{kOverride,20,2}};check(x.Value()==20,"ATTR02_last_override20");std::reverse(x.mods.begin(),x.mods.end());check(x.Value()==10,"ATTR03_reordered_override10_is_valid_policy");
+ x.base=0;x.mods={{kAdd,1e16,1},{kAdd,-1e16,2},{kAdd,1,3}};const auto f1=x.Value();std::reverse(x.mods.begin(),x.mods.end());check(f1==1&&x.Value()==0,"ATTR04_document_no_universal_float_permutation_invariance");
+ std::vector<Dot>d={{10,1,1,0}};int ticks=0;double total=AdvanceDots(d,.25,&ticks);total+=AdvanceDots(d,.25,&ticks);total+=AdvanceDots(d,.25,&ticks);total+=AdvanceDots(d,.25,&ticks);check(total==10&&d[0].remainingSec==0,"DOT01_same_instance_quarter_partitions_total10");
+ d={{10,1,1,0}};total=AdvanceDots(d,.6,&ticks);total+=AdvanceDots(d,.4,&ticks);check(total==10,"DOT02_same_instance_point6_point4_total10");
+ d={{10,1,1.5,0}};total=AdvanceDots(d,1.5,&ticks);check(total==10&&ticks==1&&d[0].remainingSec==0,"DOT03_terminal_half_tick_discard_policy");
+ d={{10,.1,.3,0}};total=AdvanceDots(d,.3,&ticks);check(total==30&&ticks==3,"DOT04_declared_decimal_time_units_exact3");
+ d={{10,1,1,0}};total=AdvanceDots(d,0,&ticks);check(total==0&&ticks==0&&d[0].remainingSec==1,"DOT05_zero_dt_noop");
+ check(RunReplay(777,5000)==RunReplay(777,5000),"REPLAY01_same_build_same_inputs_only");
+ std::cout<<"RESULT pass="<<passed<<" fail="<<failed<<'\n';return failed?1:0;
+}
+
+===== END reproduction/acceptance_gate.cpp =====
+
+===== BEGIN reproduction/arithmetic_oracles.py bytes=1813 sha256=ebec9b2ca80843eb72540ed555a6c87b934b0e2a4eaaacb6d072381dbffd3e81 =====
+#!/usr/bin/env python3
+"""Independent exact-arithmetic examples. No import or translation of production code."""
+from fractions import Fraction as Q
+from decimal import Decimal, getcontext
+import json
+getcontext().prec=100
+base, mitigation, cap, shield = Q(1000), Q(1,2), Q(150), Q(50)
+policies={
+ 'cap_after_mitigation_before_shield':{'shield_loss':str(min(min(base*mitigation,cap),shield)),'hp_request':str(max(Q(0),min(base*mitigation,cap)-shield))},
+ 'cap_before_mitigation':{'shield_loss':str(min(min(base,cap)*mitigation,shield)),'hp_request':str(max(Q(0),min(base,cap)*mitigation-shield))},
+ 'hp_only_cap_after_shield':{'shield_loss':str(min(base*mitigation,shield)),'hp_request':str(min(max(Q(0),base*mitigation-shield),cap))}}
+# Demonstrates different gameplay contracts, not that every cap placement is incorrect.
+# Per-hit cap before mitigation: min(D,C)*m <= C for D,C>=0 and 0<=m<=1.
+whole=sum([Q(1)]); pieces=sum([Q(1,4)]*4)
+print(json.dumps({'arithmetic':'exact rational and 100-digit decimal, independent of C++ model',
+ 'cap_cases':policies,
+ 'dot_same_lifetime_total':{'whole_ticks':str(whole//1),'quarters_ticks':str(pieces//1),'terminal_1point5_seconds_full_ticks':str(Q(3,2)//1),'decimal_0point3_over_0point1_ticks':str(Q(3,10)//Q(1,10))},
+ 'hp40_damage100':{'requested_hp_damage':100,'actual_hp_loss':40,'overkill':60},
+ 'armor1e20_k100':{'remaining_factor':str(Decimal(100)/(Decimal('1e20')+100)),'damage100_after_armor':str(Decimal(10000)/(Decimal('1e20')+100))},
+ 'armor_equal_k_max':'Remaining factor is exactly 1/2 by A=K, without adding large doubles',
+ 'batch_quantile_counterexample':{'samples_per_batch':1000,'fast_hits_ns':[0,980],'slow_hits_ns':[1000,20],'each_batch_mean_ns':20,'single_hit_p99_ns':1000,'batch_mean_p99_ns':20},
+ 'tick_20Hz_period_ms':str(Q(1000,20))},indent=2))
+
+===== END reproduction/arithmetic_oracles.py =====
+
+===== BEGIN reproduction/reproduce.py bytes=4118 sha256=1d790b0f38df969989c9d4adab7c77a40ad64f6a9af0555bbcbd2ef4a906bdcc =====
+#!/usr/bin/env python3
+"""Reproduce this read-only baseline audit in a fresh directory under this preparation folder."""
+import argparse, datetime, hashlib, json, os, pathlib, platform, re, shutil, subprocess, sys
+root=pathlib.Path(__file__).resolve().parent
+ap=argparse.ArgumentParser();ap.add_argument('--output-dir',required=True);ap.add_argument('--cxx',default='/usr/bin/g++-14');args=ap.parse_args()
+out=pathlib.Path(args.output_dir).resolve()
+if root not in out.parents: sys.exit('Output must be a new child of the preparation directory')
+try:out.mkdir(parents=True,exist_ok=False)
+except FileExistsError:sys.exit('Refusing existing output directory')
+src=root/'baseline/evidence/tests/damage-core/src/damage_pipeline.cpp'
+expected_sha='c39169e50852c4a86e24c33cd328cac8b66b4bb53d977679a59b943e259f3fa5'
+if hashlib.sha256(src.read_bytes()).hexdigest()!=expected_sha:sys.exit('Pinned baseline source SHA mismatch')
+records=[];failures=[]
+def run(name,cmd,expect=0,contains=None,env=None):
+ try:r=subprocess.run([str(x) for x in cmd],cwd=root,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=60,env=env)
+ except (OSError,subprocess.TimeoutExpired) as e: failures.append(name+': '+str(e));return None
+ (out/(name+'.stdout.txt')).write_text(r.stdout);(out/(name+'.stderr.txt')).write_text(r.stderr)
+ ok=r.returncode==expect and (contains is None or contains in r.stdout+r.stderr)
+ records.append({'name':name,'command':[str(x) for x in cmd],'exit':r.returncode,'expected_exit':expect,'passed':ok})
+ if not ok:failures.append(name)
+ return r
+flags=['-std=c++17','-Wall','-Wextra','-Werror','-pedantic']
+run('compiler',[args.cxx,'--version'])
+for profile,extra in [('strict',['-O2']),('unoptimized',['-O0','-DNDEBUG']),('ubsan',['-O1','-g','-fsanitize=undefined,float-cast-overflow','-fno-sanitize-recover=all','-fno-omit-frame-pointer'])]:
+ bin=out/('probes-'+profile); gate=out/('gate-'+profile)
+ if not run('compile-probes-'+profile,[args.cxx,*flags,*extra,root/'probes.cpp','-o',bin]):continue
+ run('original-tests-'+profile,[bin,'original-tests'],contains='RESULT pass=15 fail=0 benchmark=not_run')
+ run('observations-'+profile,[bin,'observe'],contains='dot_quarters total=0 ticks=0 remaining=0')
+ if run('compile-gate-'+profile,[args.cxx,*flags,*extra,root/'acceptance_gate.cpp','-o',gate]):
+  run('future-gate-on-baseline-'+profile,[gate],expect=1,contains='RESULT pass=15 fail=13')
+ if profile=='ubsan':
+  for mode,diagnostic in [('bad-type','index -1 out of bounds'),('dot-zero-interval','inf is outside the range'),('dot-tick-overflow','outside the range'),('dot-total-overflow','signed integer overflow'),('dot-nan-time','nan is outside the range')]:
+   run(mode,[bin,mode],expect=1,contains=diagnostic)
+run('arithmetic-oracles',[sys.executable,root/'arithmetic_oracles.py'])
+fixture=out/'runner-fixture';shutil.copytree(root/'baseline/evidence/tests/damage-core',fixture)
+(fixture/'src/damage_pipeline.cpp').write_text('#include <cstdio>\nint main(){std::puts("RESULT pass=0 fail=1 fixture_intentional_failure");return 23;}\n')
+raw=fixture/'results/damage_pipeline.txt';before=hashlib.sha256(raw.read_bytes()).hexdigest()
+r=run('old-bash-runner',[ 'bash',fixture/'scripts/run_all.sh'],expect=0,contains='wrote results/damage_pipeline.txt',env={**os.environ,'CXX':args.cxx})
+after=hashlib.sha256(raw.read_bytes()).hexdigest()
+if before==after or '# exit_code  : 23' not in raw.read_text():failures.append('old runner did not reproduce overwrite/false green')
+manifest={'utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'baseline':'a7e96e2cd0f2f4a2d33a57c02210b65dc5f134f2','source_sha256':expected_sha,'os':platform.platform(),'records':records,'runner_copy_oldraw_sha_before':before,'runner_copy_sha_after':after,'failures':failures,'interpretation':'PASS means historical defects reproduced; this is not a repaired-model pass. No new CPU benchmark was executed.'}
+(out/'run-manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n')
+print(json.dumps({'checks':len(records),'failures':failures,'output':str(out)},indent=2));sys.exit(1 if failures else 0)
+
+===== END reproduction/reproduce.py =====
+
+===== BEGIN historical-run/arithmetic-oracles.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/arithmetic-oracles.stderr.txt =====
+
+===== BEGIN historical-run/arithmetic-oracles.stdout.txt bytes=1362 sha256=20305d9800e7eb75033dce5dea5ad58dd156868322ea24ba3ba71c9c55f5f212 =====
+{
+  "arithmetic": "exact rational and 100-digit decimal, independent of C++ model",
+  "cap_cases": {
+    "cap_after_mitigation_before_shield": {
+      "shield_loss": "50",
+      "hp_request": "100"
+    },
+    "cap_before_mitigation": {
+      "shield_loss": "50",
+      "hp_request": "25"
+    },
+    "hp_only_cap_after_shield": {
+      "shield_loss": "50",
+      "hp_request": "150"
+    }
+  },
+  "dot_same_lifetime_total": {
+    "whole_ticks": "1",
+    "quarters_ticks": "1",
+    "terminal_1point5_seconds_full_ticks": "1",
+    "decimal_0point3_over_0point1_ticks": "3"
+  },
+  "hp40_damage100": {
+    "requested_hp_damage": 100,
+    "actual_hp_loss": 40,
+    "overkill": 60
+  },
+  "armor1e20_k100": {
+    "remaining_factor": "9.999999999999999990000000000000000009999999999999999990000000000000000009999999999999999990000000000E-19",
+    "damage100_after_armor": "9.999999999999999990000000000000000009999999999999999990000000000000000009999999999999999990000000000E-17"
+  },
+  "armor_equal_k_max": "Remaining factor is exactly 1/2 by A=K, without adding large doubles",
+  "batch_quantile_counterexample": {
+    "samples_per_batch": 1000,
+    "fast_hits_ns": [
+      0,
+      980
+    ],
+    "slow_hits_ns": [
+      1000,
+      20
+    ],
+    "each_batch_mean_ns": 20,
+    "single_hit_p99_ns": 1000,
+    "batch_mean_p99_ns": 20
+  },
+  "tick_20Hz_period_ms": "50"
+}
+
+===== END historical-run/arithmetic-oracles.stdout.txt =====
+
+===== BEGIN historical-run/bad-type.stderr.txt bytes=209 sha256=d936d72d48c141841b3fd97039ff7bba856162e2028e4b453431f6d1158abfc6 =====
+/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/baseline/evidence/tests/damage-core/src/damage_pipeline.cpp:117:76: runtime error: index -1 out of bounds for type 'double [3]'
+
+===== END historical-run/bad-type.stderr.txt =====
+
+===== BEGIN historical-run/bad-type.stdout.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/bad-type.stdout.txt =====
+
+===== BEGIN historical-run/compile-gate-strict.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/compile-gate-strict.stderr.txt =====
+
+===== BEGIN historical-run/compile-gate-strict.stdout.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/compile-gate-strict.stdout.txt =====
+
+===== BEGIN historical-run/compile-gate-ubsan.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/compile-gate-ubsan.stderr.txt =====
+
+===== BEGIN historical-run/compile-gate-ubsan.stdout.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/compile-gate-ubsan.stdout.txt =====
+
+===== BEGIN historical-run/compile-gate-unoptimized.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/compile-gate-unoptimized.stderr.txt =====
+
+===== BEGIN historical-run/compile-gate-unoptimized.stdout.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/compile-gate-unoptimized.stdout.txt =====
+
+===== BEGIN historical-run/compile-probes-strict.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/compile-probes-strict.stderr.txt =====
+
+===== BEGIN historical-run/compile-probes-strict.stdout.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/compile-probes-strict.stdout.txt =====
+
+===== BEGIN historical-run/compile-probes-ubsan.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/compile-probes-ubsan.stderr.txt =====
+
+===== BEGIN historical-run/compile-probes-ubsan.stdout.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/compile-probes-ubsan.stdout.txt =====
+
+===== BEGIN historical-run/compile-probes-unoptimized.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/compile-probes-unoptimized.stderr.txt =====
+
+===== BEGIN historical-run/compile-probes-unoptimized.stdout.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/compile-probes-unoptimized.stdout.txt =====
+
+===== BEGIN historical-run/compiler.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/compiler.stderr.txt =====
+
+===== BEGIN historical-run/compiler.stdout.txt bytes=235 sha256=c064927ebf13f118600430b79a36d3f2a52cb8fe3c097eb4aa6e10e25cde5075 =====
+g++-14 (Debian 14.2.0-19) 14.2.0
+Copyright (C) 2024 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+
+===== END historical-run/compiler.stdout.txt =====
+
+===== BEGIN historical-run/dot-nan-time.stderr.txt bytes=227 sha256=6eebf15d253301f3e47c0a83515cd595cdd8ac768496e3c400a9c47580504cd8 =====
+/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/baseline/evidence/tests/damage-core/src/damage_pipeline.cpp:358:44: runtime error: nan is outside the range of representable values of type 'int'
+
+===== END historical-run/dot-nan-time.stderr.txt =====
+
+===== BEGIN historical-run/dot-nan-time.stdout.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/dot-nan-time.stdout.txt =====
+
+===== BEGIN historical-run/dot-tick-overflow.stderr.txt bytes=235 sha256=6d619fcb6da16dd1468c4ee1db20b7aab12844d026089065a856083deceb3844 =====
+/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/baseline/evidence/tests/damage-core/src/damage_pipeline.cpp:358:44: runtime error: 2.14748e+09 is outside the range of representable values of type 'int'
+
+===== END historical-run/dot-tick-overflow.stderr.txt =====
+
+===== BEGIN historical-run/dot-tick-overflow.stdout.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/dot-tick-overflow.stdout.txt =====
+
+===== BEGIN historical-run/dot-total-overflow.stderr.txt bytes=240 sha256=b1a8fe142fceb5c006006e65d9c971e78e7e634a6af1bb9082cb68a222ef48d9 =====
+/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/baseline/evidence/tests/damage-core/src/damage_pipeline.cpp:360:15: runtime error: signed integer overflow: 1 + 2147483647 cannot be represented in type 'int'
+
+===== END historical-run/dot-total-overflow.stderr.txt =====
+
+===== BEGIN historical-run/dot-total-overflow.stdout.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/dot-total-overflow.stdout.txt =====
+
+===== BEGIN historical-run/dot-zero-interval.stderr.txt bytes=227 sha256=a2dda72bdaedcef89077eb673959ed27872f77095b43e6f8c4b2f6749978d16f =====
+/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/baseline/evidence/tests/damage-core/src/damage_pipeline.cpp:358:44: runtime error: inf is outside the range of representable values of type 'int'
+
+===== END historical-run/dot-zero-interval.stderr.txt =====
+
+===== BEGIN historical-run/dot-zero-interval.stdout.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/dot-zero-interval.stdout.txt =====
+
+===== BEGIN historical-run/future-gate-on-baseline-strict.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/future-gate-on-baseline-strict.stderr.txt =====
+
+===== BEGIN historical-run/future-gate-on-baseline-strict.stdout.txt bytes=1204 sha256=d21b7b04a44e60694fab99046ae32a4b42c7738e3653e5255580f9ba292cf077 =====
+FAIL HP01_actual_loss40_overkill60
+FAIL HP02_shield30_actual40_overkill30
+PASS HP03_exact_lethal
+PASS HP04_serial_dead_no_second_mutation_or_rng
+PASS HP05_immune_no_mutation_or_rng
+PASS CAP01_armor_cap_shield_distinguishing_case
+PASS TRUE01_resistance_taken_cap_shield_preserved
+FAIL STAGE01_raw120_mitigated49point5_cap30
+FAIL ARMOR01_representable_residual_large_armor
+FAIL ARMOR02_max_plus_max_no_denominator_overflow
+PASS RES01_full_resistance_zero_damage
+PASS INPUT01_zero_amount_rejected
+PASS INPUT02_negative_amount_rejected
+FAIL INPUT03_nan_amount_no_mutation
+FAIL INPUT04_inf_amount_no_mutation
+FAIL INPUT05_intermediate_range_failure_no_mutation
+FAIL INPUT06_negative_evaluated_attack_rejected
+FAIL INPUT07_negative_state_shield_rejected
+PASS ATTR01_preserve_grouped_formula
+PASS ATTR02_last_override20
+PASS ATTR03_reordered_override10_is_valid_policy
+PASS ATTR04_document_no_universal_float_permutation_invariance
+FAIL DOT01_same_instance_quarter_partitions_total10
+FAIL DOT02_same_instance_point6_point4_total10
+PASS DOT03_terminal_half_tick_discard_policy
+FAIL DOT04_declared_decimal_time_units_exact3
+PASS DOT05_zero_dt_noop
+PASS REPLAY01_same_build_same_inputs_only
+RESULT pass=15 fail=13
+
+===== END historical-run/future-gate-on-baseline-strict.stdout.txt =====
+
+===== BEGIN historical-run/future-gate-on-baseline-ubsan.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/future-gate-on-baseline-ubsan.stderr.txt =====
+
+===== BEGIN historical-run/future-gate-on-baseline-ubsan.stdout.txt bytes=1204 sha256=d21b7b04a44e60694fab99046ae32a4b42c7738e3653e5255580f9ba292cf077 =====
+FAIL HP01_actual_loss40_overkill60
+FAIL HP02_shield30_actual40_overkill30
+PASS HP03_exact_lethal
+PASS HP04_serial_dead_no_second_mutation_or_rng
+PASS HP05_immune_no_mutation_or_rng
+PASS CAP01_armor_cap_shield_distinguishing_case
+PASS TRUE01_resistance_taken_cap_shield_preserved
+FAIL STAGE01_raw120_mitigated49point5_cap30
+FAIL ARMOR01_representable_residual_large_armor
+FAIL ARMOR02_max_plus_max_no_denominator_overflow
+PASS RES01_full_resistance_zero_damage
+PASS INPUT01_zero_amount_rejected
+PASS INPUT02_negative_amount_rejected
+FAIL INPUT03_nan_amount_no_mutation
+FAIL INPUT04_inf_amount_no_mutation
+FAIL INPUT05_intermediate_range_failure_no_mutation
+FAIL INPUT06_negative_evaluated_attack_rejected
+FAIL INPUT07_negative_state_shield_rejected
+PASS ATTR01_preserve_grouped_formula
+PASS ATTR02_last_override20
+PASS ATTR03_reordered_override10_is_valid_policy
+PASS ATTR04_document_no_universal_float_permutation_invariance
+FAIL DOT01_same_instance_quarter_partitions_total10
+FAIL DOT02_same_instance_point6_point4_total10
+PASS DOT03_terminal_half_tick_discard_policy
+FAIL DOT04_declared_decimal_time_units_exact3
+PASS DOT05_zero_dt_noop
+PASS REPLAY01_same_build_same_inputs_only
+RESULT pass=15 fail=13
+
+===== END historical-run/future-gate-on-baseline-ubsan.stdout.txt =====
+
+===== BEGIN historical-run/future-gate-on-baseline-unoptimized.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/future-gate-on-baseline-unoptimized.stderr.txt =====
+
+===== BEGIN historical-run/future-gate-on-baseline-unoptimized.stdout.txt bytes=1204 sha256=d21b7b04a44e60694fab99046ae32a4b42c7738e3653e5255580f9ba292cf077 =====
+FAIL HP01_actual_loss40_overkill60
+FAIL HP02_shield30_actual40_overkill30
+PASS HP03_exact_lethal
+PASS HP04_serial_dead_no_second_mutation_or_rng
+PASS HP05_immune_no_mutation_or_rng
+PASS CAP01_armor_cap_shield_distinguishing_case
+PASS TRUE01_resistance_taken_cap_shield_preserved
+FAIL STAGE01_raw120_mitigated49point5_cap30
+FAIL ARMOR01_representable_residual_large_armor
+FAIL ARMOR02_max_plus_max_no_denominator_overflow
+PASS RES01_full_resistance_zero_damage
+PASS INPUT01_zero_amount_rejected
+PASS INPUT02_negative_amount_rejected
+FAIL INPUT03_nan_amount_no_mutation
+FAIL INPUT04_inf_amount_no_mutation
+FAIL INPUT05_intermediate_range_failure_no_mutation
+FAIL INPUT06_negative_evaluated_attack_rejected
+FAIL INPUT07_negative_state_shield_rejected
+PASS ATTR01_preserve_grouped_formula
+PASS ATTR02_last_override20
+PASS ATTR03_reordered_override10_is_valid_policy
+PASS ATTR04_document_no_universal_float_permutation_invariance
+FAIL DOT01_same_instance_quarter_partitions_total10
+FAIL DOT02_same_instance_point6_point4_total10
+PASS DOT03_terminal_half_tick_discard_policy
+FAIL DOT04_declared_decimal_time_units_exact3
+PASS DOT05_zero_dt_noop
+PASS REPLAY01_same_build_same_inputs_only
+RESULT pass=15 fail=13
+
+===== END historical-run/future-gate-on-baseline-unoptimized.stdout.txt =====
+
+===== BEGIN historical-run/observations-strict.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/observations-strict.stderr.txt =====
+
+===== BEGIN historical-run/observations-strict.stdout.txt bytes=1814 sha256=57f9eaab6fafce1159ddc4587c5bc824cab139591d65a74b661c175ea81a2659 =====
+hp40_hit100 raw=100 mitigated=100 absorbed=0 toHp=100 overkill=60 hp=0 shield=0 alive=0 blocked=0
+diagnostic_stages raw=49.500000000000007 mitigated=30 absorbed=0 toHp=30 overkill=0 hp=999999970 shield=0 alive=1 blocked=0
+armor1e20 raw=0 mitigated=0 absorbed=0 toHp=0 overkill=0 hp=1000000000 shield=0 alive=1 blocked=0
+armor1e20_reduction=1 independently_expected_residual=1e-18
+armor_max_k_max raw=100 mitigated=100 absorbed=0 toHp=100 overkill=0 hp=999999900 shield=0 alive=1 blocked=0
+negative_attack raw=-100 mitigated=-100 absorbed=-100 toHp=0 overkill=0 hp=1000000000 shield=100 alive=1 blocked=0
+negative_shield raw=100 mitigated=100 absorbed=-5 toHp=105 overkill=0 hp=999999895 shield=0 alive=1 blocked=0
+nan_amount raw=nan mitigated=nan absorbed=0 toHp=nan overkill=0 hp=0 shield=0 alive=0 blocked=0
+infinite_amount raw=inf mitigated=inf absorbed=0 toHp=inf overkill=inf hp=0 shield=0 alive=0 blocked=0
+finite_overflow_at_full_resistance raw=-nan mitigated=-nan absorbed=0 toHp=-nan overkill=0 hp=0 shield=0 alive=0 blocked=0
+cap_after_mitigation_before_shield raw=500 mitigated=150 absorbed=50 toHp=100 overkill=0 hp=999999900 shield=0 alive=1 blocked=0
+true_resistance_cap_shield raw=625 mitigated=150 absorbed=20 toHp=130 overkill=0 hp=999999870 shield=0 alive=1 blocked=0
+serial_after_death first_toHp=190 second_blocked=1 hp=0 rng_unchanged=1
+repeat_alive_input hp=999999800 no_event_id=true (each call is separate hit)
+override_order first=20 reversed=10
+add_float_order first=1 reversed=0
+dot_whole total=10 ticks=1 remaining=0
+dot_quarters total=0 ticks=0 remaining=0
+dot_six_four total=0 ticks=0 remaining=0
+dot_half_terminal total=10 ticks=1 remaining=0
+dot_decimal total=20 ticks=2 remaining=0
+dot_negative_dt total=0 ticks=0 remaining=1.5
+dot_negative_interval total=-10 ticks=-1 remaining=0
+
+===== END historical-run/observations-strict.stdout.txt =====
+
+===== BEGIN historical-run/observations-ubsan.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/observations-ubsan.stderr.txt =====
+
+===== BEGIN historical-run/observations-ubsan.stdout.txt bytes=1814 sha256=57f9eaab6fafce1159ddc4587c5bc824cab139591d65a74b661c175ea81a2659 =====
+hp40_hit100 raw=100 mitigated=100 absorbed=0 toHp=100 overkill=60 hp=0 shield=0 alive=0 blocked=0
+diagnostic_stages raw=49.500000000000007 mitigated=30 absorbed=0 toHp=30 overkill=0 hp=999999970 shield=0 alive=1 blocked=0
+armor1e20 raw=0 mitigated=0 absorbed=0 toHp=0 overkill=0 hp=1000000000 shield=0 alive=1 blocked=0
+armor1e20_reduction=1 independently_expected_residual=1e-18
+armor_max_k_max raw=100 mitigated=100 absorbed=0 toHp=100 overkill=0 hp=999999900 shield=0 alive=1 blocked=0
+negative_attack raw=-100 mitigated=-100 absorbed=-100 toHp=0 overkill=0 hp=1000000000 shield=100 alive=1 blocked=0
+negative_shield raw=100 mitigated=100 absorbed=-5 toHp=105 overkill=0 hp=999999895 shield=0 alive=1 blocked=0
+nan_amount raw=nan mitigated=nan absorbed=0 toHp=nan overkill=0 hp=0 shield=0 alive=0 blocked=0
+infinite_amount raw=inf mitigated=inf absorbed=0 toHp=inf overkill=inf hp=0 shield=0 alive=0 blocked=0
+finite_overflow_at_full_resistance raw=-nan mitigated=-nan absorbed=0 toHp=-nan overkill=0 hp=0 shield=0 alive=0 blocked=0
+cap_after_mitigation_before_shield raw=500 mitigated=150 absorbed=50 toHp=100 overkill=0 hp=999999900 shield=0 alive=1 blocked=0
+true_resistance_cap_shield raw=625 mitigated=150 absorbed=20 toHp=130 overkill=0 hp=999999870 shield=0 alive=1 blocked=0
+serial_after_death first_toHp=190 second_blocked=1 hp=0 rng_unchanged=1
+repeat_alive_input hp=999999800 no_event_id=true (each call is separate hit)
+override_order first=20 reversed=10
+add_float_order first=1 reversed=0
+dot_whole total=10 ticks=1 remaining=0
+dot_quarters total=0 ticks=0 remaining=0
+dot_six_four total=0 ticks=0 remaining=0
+dot_half_terminal total=10 ticks=1 remaining=0
+dot_decimal total=20 ticks=2 remaining=0
+dot_negative_dt total=0 ticks=0 remaining=1.5
+dot_negative_interval total=-10 ticks=-1 remaining=0
+
+===== END historical-run/observations-ubsan.stdout.txt =====
+
+===== BEGIN historical-run/observations-unoptimized.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/observations-unoptimized.stderr.txt =====
+
+===== BEGIN historical-run/observations-unoptimized.stdout.txt bytes=1814 sha256=57f9eaab6fafce1159ddc4587c5bc824cab139591d65a74b661c175ea81a2659 =====
+hp40_hit100 raw=100 mitigated=100 absorbed=0 toHp=100 overkill=60 hp=0 shield=0 alive=0 blocked=0
+diagnostic_stages raw=49.500000000000007 mitigated=30 absorbed=0 toHp=30 overkill=0 hp=999999970 shield=0 alive=1 blocked=0
+armor1e20 raw=0 mitigated=0 absorbed=0 toHp=0 overkill=0 hp=1000000000 shield=0 alive=1 blocked=0
+armor1e20_reduction=1 independently_expected_residual=1e-18
+armor_max_k_max raw=100 mitigated=100 absorbed=0 toHp=100 overkill=0 hp=999999900 shield=0 alive=1 blocked=0
+negative_attack raw=-100 mitigated=-100 absorbed=-100 toHp=0 overkill=0 hp=1000000000 shield=100 alive=1 blocked=0
+negative_shield raw=100 mitigated=100 absorbed=-5 toHp=105 overkill=0 hp=999999895 shield=0 alive=1 blocked=0
+nan_amount raw=nan mitigated=nan absorbed=0 toHp=nan overkill=0 hp=0 shield=0 alive=0 blocked=0
+infinite_amount raw=inf mitigated=inf absorbed=0 toHp=inf overkill=inf hp=0 shield=0 alive=0 blocked=0
+finite_overflow_at_full_resistance raw=-nan mitigated=-nan absorbed=0 toHp=-nan overkill=0 hp=0 shield=0 alive=0 blocked=0
+cap_after_mitigation_before_shield raw=500 mitigated=150 absorbed=50 toHp=100 overkill=0 hp=999999900 shield=0 alive=1 blocked=0
+true_resistance_cap_shield raw=625 mitigated=150 absorbed=20 toHp=130 overkill=0 hp=999999870 shield=0 alive=1 blocked=0
+serial_after_death first_toHp=190 second_blocked=1 hp=0 rng_unchanged=1
+repeat_alive_input hp=999999800 no_event_id=true (each call is separate hit)
+override_order first=20 reversed=10
+add_float_order first=1 reversed=0
+dot_whole total=10 ticks=1 remaining=0
+dot_quarters total=0 ticks=0 remaining=0
+dot_six_four total=0 ticks=0 remaining=0
+dot_half_terminal total=10 ticks=1 remaining=0
+dot_decimal total=20 ticks=2 remaining=0
+dot_negative_dt total=0 ticks=0 remaining=1.5
+dot_negative_interval total=-10 ticks=-1 remaining=0
+
+===== END historical-run/observations-unoptimized.stdout.txt =====
+
+===== BEGIN historical-run/old-bash-runner.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/old-bash-runner.stderr.txt =====
+
+===== BEGIN historical-run/old-bash-runner.stdout.txt bytes=34 sha256=8f10f1360b8ca619983db9e507e7faad0a36eebbd5e2cb8c9cf0c7f280d710a3 =====
+wrote results/damage_pipeline.txt
+
+===== END historical-run/old-bash-runner.stdout.txt =====
+
+===== BEGIN historical-run/original-tests-strict.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/original-tests-strict.stderr.txt =====
+
+===== BEGIN historical-run/original-tests-strict.stdout.txt bytes=1580 sha256=adf347e5286aa3ea55544e9713bafe507d37d7d2374509d78aacd38ec466aae7 =====
+PASS  A1 aggregation order: override base, sum adds, then multiply value=120.0000 expected=120.0000
+PASS  A2 add/mul are order independent (10+5)*3                v1=45.0000 v2=45.0000
+PASS  D1 crit multiplies before armor mitigation               toHp=100.0000 expected=100.0000 crit=1
+PASS  D2 armor curve is asymptotic (never reaches 100% reduction) toHp=100.0000 residualAtArmor1e9=0.000000100
+PASS  D3 true damage bypasses armor                            toHp=100.0000 expected=100.0000
+PASS  D4 armor and typed resistance multiply (no additive stacking) toHp=100.0000 expected=100.0000
+PASS  D5 damage-taken modifier applies after mitigation        toHp=125.0000 expected=125.0000
+PASS  D6 shield absorbs before HP and never goes negative      absorbed=30.00 toHp=70.00 shieldLeft=0.00
+PASS  D7 shield larger than the hit absorbs everything and keeps the remainder absorbed=80.00 shieldLeft=420.00
+PASS  D8 overkill reported separately, HP floors at zero, target dies overkill=60.00 hp=0.00 alive=0
+PASS  D9 dead or immune target is blocked without consuming shield deadBlocked=1 immuneBlocked=1 shieldLeft=50.00
+PASS  D10 per-hit cap applies after mitigation, before shields toHp=150.00 expected=150.00
+PASS  D11 zero/negative damage is rejected, no HP change       zeroBlocked=1 negBlocked=1 hp=1000000000.00
+PASS  D12 DOT totals are exact and clamp at remaining duration first=16.00 total=62.00 expected=62.00
+PASS  D13 identical seed replays to identical settlement hash  a=95762bd05ab49684 b=95762bd05ab49684 c=32ca34d3eba1d979
+RESULT pass=15 fail=0 benchmark=not_run
+
+===== END historical-run/original-tests-strict.stdout.txt =====
+
+===== BEGIN historical-run/original-tests-ubsan.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/original-tests-ubsan.stderr.txt =====
+
+===== BEGIN historical-run/original-tests-ubsan.stdout.txt bytes=1580 sha256=adf347e5286aa3ea55544e9713bafe507d37d7d2374509d78aacd38ec466aae7 =====
+PASS  A1 aggregation order: override base, sum adds, then multiply value=120.0000 expected=120.0000
+PASS  A2 add/mul are order independent (10+5)*3                v1=45.0000 v2=45.0000
+PASS  D1 crit multiplies before armor mitigation               toHp=100.0000 expected=100.0000 crit=1
+PASS  D2 armor curve is asymptotic (never reaches 100% reduction) toHp=100.0000 residualAtArmor1e9=0.000000100
+PASS  D3 true damage bypasses armor                            toHp=100.0000 expected=100.0000
+PASS  D4 armor and typed resistance multiply (no additive stacking) toHp=100.0000 expected=100.0000
+PASS  D5 damage-taken modifier applies after mitigation        toHp=125.0000 expected=125.0000
+PASS  D6 shield absorbs before HP and never goes negative      absorbed=30.00 toHp=70.00 shieldLeft=0.00
+PASS  D7 shield larger than the hit absorbs everything and keeps the remainder absorbed=80.00 shieldLeft=420.00
+PASS  D8 overkill reported separately, HP floors at zero, target dies overkill=60.00 hp=0.00 alive=0
+PASS  D9 dead or immune target is blocked without consuming shield deadBlocked=1 immuneBlocked=1 shieldLeft=50.00
+PASS  D10 per-hit cap applies after mitigation, before shields toHp=150.00 expected=150.00
+PASS  D11 zero/negative damage is rejected, no HP change       zeroBlocked=1 negBlocked=1 hp=1000000000.00
+PASS  D12 DOT totals are exact and clamp at remaining duration first=16.00 total=62.00 expected=62.00
+PASS  D13 identical seed replays to identical settlement hash  a=95762bd05ab49684 b=95762bd05ab49684 c=32ca34d3eba1d979
+RESULT pass=15 fail=0 benchmark=not_run
+
+===== END historical-run/original-tests-ubsan.stdout.txt =====
+
+===== BEGIN historical-run/original-tests-unoptimized.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END historical-run/original-tests-unoptimized.stderr.txt =====
+
+===== BEGIN historical-run/original-tests-unoptimized.stdout.txt bytes=1580 sha256=adf347e5286aa3ea55544e9713bafe507d37d7d2374509d78aacd38ec466aae7 =====
+PASS  A1 aggregation order: override base, sum adds, then multiply value=120.0000 expected=120.0000
+PASS  A2 add/mul are order independent (10+5)*3                v1=45.0000 v2=45.0000
+PASS  D1 crit multiplies before armor mitigation               toHp=100.0000 expected=100.0000 crit=1
+PASS  D2 armor curve is asymptotic (never reaches 100% reduction) toHp=100.0000 residualAtArmor1e9=0.000000100
+PASS  D3 true damage bypasses armor                            toHp=100.0000 expected=100.0000
+PASS  D4 armor and typed resistance multiply (no additive stacking) toHp=100.0000 expected=100.0000
+PASS  D5 damage-taken modifier applies after mitigation        toHp=125.0000 expected=125.0000
+PASS  D6 shield absorbs before HP and never goes negative      absorbed=30.00 toHp=70.00 shieldLeft=0.00
+PASS  D7 shield larger than the hit absorbs everything and keeps the remainder absorbed=80.00 shieldLeft=420.00
+PASS  D8 overkill reported separately, HP floors at zero, target dies overkill=60.00 hp=0.00 alive=0
+PASS  D9 dead or immune target is blocked without consuming shield deadBlocked=1 immuneBlocked=1 shieldLeft=50.00
+PASS  D10 per-hit cap applies after mitigation, before shields toHp=150.00 expected=150.00
+PASS  D11 zero/negative damage is rejected, no HP change       zeroBlocked=1 negBlocked=1 hp=1000000000.00
+PASS  D12 DOT totals are exact and clamp at remaining duration first=16.00 total=62.00 expected=62.00
+PASS  D13 identical seed replays to identical settlement hash  a=95762bd05ab49684 b=95762bd05ab49684 c=32ca34d3eba1d979
+RESULT pass=15 fail=0 benchmark=not_run
+
+===== END historical-run/original-tests-unoptimized.stdout.txt =====
+
+===== BEGIN historical-run/run-manifest.json bytes=8984 sha256=d40adad5072c1d937a0da7817585bfd362aca0ad00780e18640224c93b9d8dab =====
+{
+  "utc": "2026-10-04T16:01:15.682835+00:00",
+  "baseline": "a7e96e2cd0f2f4a2d33a57c02210b65dc5f134f2",
+  "source_sha256": "c39169e50852c4a86e24c33cd328cac8b66b4bb53d977679a59b943e259f3fa5",
+  "os": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "records": [
+    {
+      "name": "compiler",
+      "command": [
+        "/usr/bin/g++-14",
+        "--version"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true
+    },
+    {
+      "name": "compile-probes-strict",
+      "command": [
+        "/usr/bin/g++-14",
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-O2",
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/probes.cpp",
+        "-o",
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/replay-20261004-1600/probes-strict"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true
+    },
+    {
+      "name": "original-tests-strict",
+      "command": [
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/replay-20261004-1600/probes-strict",
+        "original-tests"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true
+    },
+    {
+      "name": "observations-strict",
+      "command": [
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/replay-20261004-1600/probes-strict",
+        "observe"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true
+    },
+    {
+      "name": "compile-gate-strict",
+      "command": [
+        "/usr/bin/g++-14",
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-O2",
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/acceptance_gate.cpp",
+        "-o",
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/replay-20261004-1600/gate-strict"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true
+    },
+    {
+      "name": "future-gate-on-baseline-strict",
+      "command": [
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/replay-20261004-1600/gate-strict"
+      ],
+      "exit": 1,
+      "expected_exit": 1,
+      "passed": true
+    },
+    {
+      "name": "compile-probes-unoptimized",
+      "command": [
+        "/usr/bin/g++-14",
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-O0",
+        "-DNDEBUG",
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/probes.cpp",
+        "-o",
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/replay-20261004-1600/probes-unoptimized"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true
+    },
+    {
+      "name": "original-tests-unoptimized",
+      "command": [
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/replay-20261004-1600/probes-unoptimized",
+        "original-tests"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true
+    },
+    {
+      "name": "observations-unoptimized",
+      "command": [
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/replay-20261004-1600/probes-unoptimized",
+        "observe"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true
+    },
+    {
+      "name": "compile-gate-unoptimized",
+      "command": [
+        "/usr/bin/g++-14",
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-O0",
+        "-DNDEBUG",
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/acceptance_gate.cpp",
+        "-o",
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/replay-20261004-1600/gate-unoptimized"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true
+    },
+    {
+      "name": "future-gate-on-baseline-unoptimized",
+      "command": [
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/replay-20261004-1600/gate-unoptimized"
+      ],
+      "exit": 1,
+      "expected_exit": 1,
+      "passed": true
+    },
+    {
+      "name": "compile-probes-ubsan",
+      "command": [
+        "/usr/bin/g++-14",
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-O1",
+        "-g",
+        "-fsanitize=undefined,float-cast-overflow",
+        "-fno-sanitize-recover=all",
+        "-fno-omit-frame-pointer",
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/probes.cpp",
+        "-o",
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/replay-20261004-1600/probes-ubsan"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true
+    },
+    {
+      "name": "original-tests-ubsan",
+      "command": [
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/replay-20261004-1600/probes-ubsan",
+        "original-tests"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true
+    },
+    {
+      "name": "observations-ubsan",
+      "command": [
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/replay-20261004-1600/probes-ubsan",
+        "observe"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true
+    },
+    {
+      "name": "compile-gate-ubsan",
+      "command": [
+        "/usr/bin/g++-14",
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-O1",
+        "-g",
+        "-fsanitize=undefined,float-cast-overflow",
+        "-fno-sanitize-recover=all",
+        "-fno-omit-frame-pointer",
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/acceptance_gate.cpp",
+        "-o",
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/replay-20261004-1600/gate-ubsan"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true
+    },
+    {
+      "name": "future-gate-on-baseline-ubsan",
+      "command": [
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/replay-20261004-1600/gate-ubsan"
+      ],
+      "exit": 1,
+      "expected_exit": 1,
+      "passed": true
+    },
+    {
+      "name": "bad-type",
+      "command": [
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/replay-20261004-1600/probes-ubsan",
+        "bad-type"
+      ],
+      "exit": 1,
+      "expected_exit": 1,
+      "passed": true
+    },
+    {
+      "name": "dot-zero-interval",
+      "command": [
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/replay-20261004-1600/probes-ubsan",
+        "dot-zero-interval"
+      ],
+      "exit": 1,
+      "expected_exit": 1,
+      "passed": true
+    },
+    {
+      "name": "dot-tick-overflow",
+      "command": [
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/replay-20261004-1600/probes-ubsan",
+        "dot-tick-overflow"
+      ],
+      "exit": 1,
+      "expected_exit": 1,
+      "passed": true
+    },
+    {
+      "name": "dot-total-overflow",
+      "command": [
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/replay-20261004-1600/probes-ubsan",
+        "dot-total-overflow"
+      ],
+      "exit": 1,
+      "expected_exit": 1,
+      "passed": true
+    },
+    {
+      "name": "dot-nan-time",
+      "command": [
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/replay-20261004-1600/probes-ubsan",
+        "dot-nan-time"
+      ],
+      "exit": 1,
+      "expected_exit": 1,
+      "passed": true
+    },
+    {
+      "name": "arithmetic-oracles",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/arithmetic_oracles.py"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true
+    },
+    {
+      "name": "old-bash-runner",
+      "command": [
+        "bash",
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-repair-preparation/replay-20261004-1600/runner-fixture/scripts/run_all.sh"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true
+    }
+  ],
+  "runner_copy_oldraw_sha_before": "148f5fb8595e40537bf4797e3c09b924858ad11546801c1a17c6921891fcd0c8",
+  "runner_copy_sha_after": "5cdfd5b97c3ec96ed63e4afbbd98f6147cf16d4808b0fb6968d787486023ad60",
+  "failures": [],
+  "interpretation": "PASS means historical defects reproduced; this is not a repaired-model pass. No new CPU benchmark was executed."
+}
+
+===== END historical-run/run-manifest.json =====
+
+===== BEGIN historical-run/runner-fixture/results/damage_pipeline.txt bytes=406 sha256=5cdfd5b97c3ec96ed63e4afbbd98f6147cf16d4808b0fb6968d787486023ad60 =====
+# evidence   : tests/damage-core/damage_pipeline
+# generated  : 2026-10-04T09:01:15-0700
+# host       : Linux x86_64 (cores=9)
+# target     : x86_64-linux-gnu
+# compiler   : g++-14 (Debian 14.2.0-19) 14.2.0
+# command    : /usr/bin/g++-14 -std=c++17 -O2 -o build/damage_pipeline.exe src/damage_pipeline.cpp && ./build/damage_pipeline.exe
+#
+RESULT pass=0 fail=1 fixture_intentional_failure
+# exit_code  : 23
+
+===== END historical-run/runner-fixture/results/damage_pipeline.txt =====

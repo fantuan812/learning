@@ -1,0 +1,853 @@
+# damage-contract transcript bundle strict.txt
+# Framing is archival metadata, not program output. Payload bytes are unmodified.
+
+===== BEGIN author/compile-o0.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END author/compile-o0.stderr.txt =====
+
+===== BEGIN author/compile-o0.stdout.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END author/compile-o0.stdout.txt =====
+
+===== BEGIN author/compile-o2.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END author/compile-o2.stderr.txt =====
+
+===== BEGIN author/compile-o2.stdout.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END author/compile-o2.stdout.txt =====
+
+===== BEGIN author/compiler.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END author/compiler.stderr.txt =====
+
+===== BEGIN author/compiler.stdout.txt bytes=235 sha256=c064927ebf13f118600430b79a36d3f2a52cb8fe3c097eb4aa6e10e25cde5075 =====
+g++-14 (Debian 14.2.0-19) 14.2.0
+Copyright (C) 2024 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+
+===== END author/compiler.stdout.txt =====
+
+===== BEGIN author/run-o0.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END author/run-o0.stderr.txt =====
+
+===== BEGIN author/run-o0.stdout.txt bytes=8050 sha256=dd82e97005985e589387fa80bd449ad501e712531f317e17c9e21ad2429f01dc =====
+PASS HP_actual40_overkill60
+PASS HP_shield30_loss40_overkill30
+PASS HP_exact_lethal_then_dead
+PASS shield500_hit80
+PASS stages_raw120_mitigated49_5_cap30
+PASS cap_position_armor_then_cap_then_shield
+PASS true_only_bypasses_armor
+PASS dead_no_rng_or_shield
+PASS immune_no_rng_or_shield
+PASS invalid_precedes_immune
+PASS serial_equal_calls_are_two_hits
+PASS typed_exact_break_0
+PASS typed_exact_break_1
+PASS typed_exact_break_2
+PASS crit0_zero_rng_full_resist
+PASS crit1_one_rng_even_full_resist
+PASS finite_resistance_clamp_low
+PASS finite_resistance_clamp_high
+PASS negative_armor_no_reduction
+PASS legal_negative_debuffs
+PASS zero_attack_valid
+PASS zero_crit_multiplier_valid
+PASS armor_zero
+PASS armor_equal
+PASS armor_900
+PASS armor_1e9
+PASS armor_1e20
+PASS armor_max_equal
+PASS armor_less_branch
+PASS armor_denorm_equal
+PASS armor_factor_underflow
+PASS armor_small_armor
+PASS hp_rounding_positive_residual
+PASS hp_rounding_negative_residual_tie_even
+PASS shield_storage_rounding_reported
+PASS worked_table_shield500
+PASS worked_table_hp150
+PASS invalid_amount_0.000000_atomic_and_following_hit
+PASS invalid_amount_-1.000000_atomic_and_following_hit
+PASS invalid_amount_nan_atomic_and_following_hit
+PASS invalid_amount_inf_atomic_and_following_hit
+PASS invalid_amount_-inf_atomic_and_following_hit
+PASS invalid_type_-1_atomic_and_following_hit
+PASS invalid_type_3_atomic_and_following_hit
+PASS invalid_type_-2147483648_atomic_and_following_hit
+PASS invalid_type_2147483647_atomic_and_following_hit
+PASS invalid_K_0.000000_atomic_and_following_hit
+PASS invalid_K_-1.000000_atomic_and_following_hit
+PASS invalid_K_nan_atomic_and_following_hit
+PASS invalid_K_inf_atomic_and_following_hit
+PASS invalid_K_-inf_atomic_and_following_hit
+PASS invalid_cap_-1.000000_atomic_and_following_hit
+PASS invalid_cap_nan_atomic_and_following_hit
+PASS invalid_cap_inf_atomic_and_following_hit
+PASS invalid_cap_-inf_atomic_and_following_hit
+PASS invalid_chance_-0.000000_atomic_and_following_hit
+PASS invalid_chance_1.000000_atomic_and_following_hit
+PASS invalid_chance_nan_atomic_and_following_hit
+PASS invalid_chance_inf_atomic_and_following_hit
+PASS invalid_chance_-inf_atomic_and_following_hit
+PASS invalid_crit_multiplier_-1.000000_atomic_and_following_hit
+PASS invalid_crit_multiplier_nan_atomic_and_following_hit
+PASS invalid_crit_multiplier_inf_atomic_and_following_hit
+PASS invalid_crit_multiplier_-inf_atomic_and_following_hit
+PASS nonfinite_attribute_0_nan_atomic_and_following_hit
+PASS nonfinite_attribute_1_nan_atomic_and_following_hit
+PASS nonfinite_attribute_2_nan_atomic_and_following_hit
+PASS nonfinite_modifier_0_nan_atomic_and_following_hit
+PASS nonfinite_modifier_1_nan_atomic_and_following_hit
+PASS nonfinite_modifier_2_nan_atomic_and_following_hit
+PASS invalid_resistance_0_nan_atomic_and_following_hit
+PASS invalid_resistance_1_nan_atomic_and_following_hit
+PASS invalid_resistance_2_nan_atomic_and_following_hit
+PASS nonfinite_armor_nan_atomic_and_following_hit
+PASS nonfinite_attribute_0_inf_atomic_and_following_hit
+PASS nonfinite_attribute_1_inf_atomic_and_following_hit
+PASS nonfinite_attribute_2_inf_atomic_and_following_hit
+PASS nonfinite_modifier_0_inf_atomic_and_following_hit
+PASS nonfinite_modifier_1_inf_atomic_and_following_hit
+PASS nonfinite_modifier_2_inf_atomic_and_following_hit
+PASS invalid_resistance_0_inf_atomic_and_following_hit
+PASS invalid_resistance_1_inf_atomic_and_following_hit
+PASS invalid_resistance_2_inf_atomic_and_following_hit
+PASS nonfinite_armor_inf_atomic_and_following_hit
+PASS nonfinite_attribute_0_-inf_atomic_and_following_hit
+PASS nonfinite_attribute_1_-inf_atomic_and_following_hit
+PASS nonfinite_attribute_2_-inf_atomic_and_following_hit
+PASS nonfinite_modifier_0_-inf_atomic_and_following_hit
+PASS nonfinite_modifier_1_-inf_atomic_and_following_hit
+PASS nonfinite_modifier_2_-inf_atomic_and_following_hit
+PASS invalid_resistance_0_-inf_atomic_and_following_hit
+PASS invalid_resistance_1_-inf_atomic_and_following_hit
+PASS invalid_resistance_2_-inf_atomic_and_following_hit
+PASS nonfinite_armor_-inf_atomic_and_following_hit
+PASS invalid_modifier_op_-1_atomic_and_following_hit
+PASS invalid_modifier_op_3_atomic_and_following_hit
+PASS invalid_modifier_op_-2147483648_atomic_and_following_hit
+PASS invalid_modifier_op_2147483647_atomic_and_following_hit
+PASS negative_evaluated_factor_0_atomic_and_following_hit
+PASS negative_evaluated_factor_1_atomic_and_following_hit
+PASS negative_evaluated_factor_2_atomic_and_following_hit
+PASS invalid_hp_-1.000000_atomic_and_following_hit
+PASS invalid_hpMax_-1.000000_atomic_and_following_hit
+PASS invalid_shield_0_-1.000000_atomic_and_following_hit
+PASS invalid_shield_1_-1.000000_atomic_and_following_hit
+PASS invalid_shield_2_-1.000000_atomic_and_following_hit
+PASS invalid_hp_nan_atomic_and_following_hit
+PASS invalid_hpMax_nan_atomic_and_following_hit
+PASS invalid_shield_0_nan_atomic_and_following_hit
+PASS invalid_shield_1_nan_atomic_and_following_hit
+PASS invalid_shield_2_nan_atomic_and_following_hit
+PASS invalid_hp_inf_atomic_and_following_hit
+PASS invalid_hpMax_inf_atomic_and_following_hit
+PASS invalid_shield_0_inf_atomic_and_following_hit
+PASS invalid_shield_1_inf_atomic_and_following_hit
+PASS invalid_shield_2_inf_atomic_and_following_hit
+PASS invalid_hp_-inf_atomic_and_following_hit
+PASS invalid_hpMax_-inf_atomic_and_following_hit
+PASS invalid_shield_0_-inf_atomic_and_following_hit
+PASS invalid_shield_1_-inf_atomic_and_following_hit
+PASS invalid_shield_2_-inf_atomic_and_following_hit
+PASS hpMax_zero_atomic_and_following_hit
+PASS hp_above_max_atomic_and_following_hit
+PASS dead_positive_hp_atomic_and_following_hit
+PASS alive_zero_hp_atomic_and_following_hit
+PASS amount_attack_overflow_atomic_and_following_hit
+PASS overflow_before_full_resistance_atomic_and_following_hit
+PASS modifier_add_overflow_atomic_and_following_hit
+PASS modifier_mul_overflow_atomic_and_following_hit
+PASS base_add_overflow_atomic_and_following_hit
+PASS crit_overflow_rng_rollback_atomic_and_following_hit
+PASS bonus_overflow_rng_rollback_atomic_and_following_hit
+PASS taken_overflow_rng_rollback_atomic_and_following_hit
+PASS attacker_state_validated_atomic_and_following_hit
+PASS unused_target_attribute_validated_atomic_and_following_hit
+PASS attribute_grouped_120
+PASS attribute_categories_interleaved_120
+PASS last_override20
+PASS last_override10
+PASS same_category_float_order_matters
+PASS replay_5000_per_field_same_build_seed_order
+PASS dot_integer_partition_1_1000000
+PASS dot_integer_partition_2_500000
+PASS dot_integer_partition_4_250000
+PASS dot_integer_partition_2_600000
+PASS dot_terminal_half_discarded
+PASS dot_decimal_units_three
+PASS dot_boundary_99
+PASS dot_boundary_100
+PASS dot_boundary_101
+PASS dot_dt_zero_preserves_phase
+PASS dot_overshoot_clamps_lifetime
+PASS dot_original_two_first16_total62
+PASS dot_event_timeline_step_1
+PASS dot_event_timeline_step_7
+PASS dot_event_timeline_step_19
+PASS dot_event_timeline_step_1000
+PASS dot_count_2pow31_wide
+PASS dot_phase_plus_active_no_uint_overflow
+PASS dot_total_count_overflow_atomic
+PASS dot_amount_multiply_overflow_atomic
+PASS dot_amount_sum_overflow_atomic
+PASS dot_invalid_state_0_0_1.000000_0_atomic
+PASS dot_invalid_state_2_2_1.000000_0_atomic
+PASS dot_invalid_state_2_1_1.000000_0_atomic
+PASS dot_invalid_state_1_0_nan_0_atomic
+PASS dot_invalid_state_1_0_inf_0_atomic
+PASS dot_invalid_state_1_0_-1.000000_0_atomic
+PASS dot_invalid_state_1_0_0.000000_0_atomic
+PASS dot_invalid_state_1_0_1.000000_-1_atomic
+PASS dot_invalid_state_1_0_1.000000_3_atomic
+PASS legacy_quarter_partition
+PASS legacy_point6_point4_null_count
+PASS legacy_decimal_quantization
+PASS legacy_invalid_dt_-1.000000
+PASS legacy_invalid_dt_nan
+PASS legacy_invalid_dt_inf
+PASS legacy_invalid_dt_-inf
+PASS legacy_int_count_overflow_atomic
+PASS seconds_2pow64_boundary_rejected_before_cast
+PASS seconds_exact_binary64_oracle_above_2pow53
+PASS seconds_half_up_quantization
+PASS seconds_subunit_rounds_zero
+PASS seconds_partition_not_invariant_counterexample
+PASS dot_raw_batch_not_per_tick_pipeline
+RESULT pass=185 fail=0
+
+===== END author/run-o0.stdout.txt =====
+
+===== BEGIN author/run-o2.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END author/run-o2.stderr.txt =====
+
+===== BEGIN author/run-o2.stdout.txt bytes=8050 sha256=dd82e97005985e589387fa80bd449ad501e712531f317e17c9e21ad2429f01dc =====
+PASS HP_actual40_overkill60
+PASS HP_shield30_loss40_overkill30
+PASS HP_exact_lethal_then_dead
+PASS shield500_hit80
+PASS stages_raw120_mitigated49_5_cap30
+PASS cap_position_armor_then_cap_then_shield
+PASS true_only_bypasses_armor
+PASS dead_no_rng_or_shield
+PASS immune_no_rng_or_shield
+PASS invalid_precedes_immune
+PASS serial_equal_calls_are_two_hits
+PASS typed_exact_break_0
+PASS typed_exact_break_1
+PASS typed_exact_break_2
+PASS crit0_zero_rng_full_resist
+PASS crit1_one_rng_even_full_resist
+PASS finite_resistance_clamp_low
+PASS finite_resistance_clamp_high
+PASS negative_armor_no_reduction
+PASS legal_negative_debuffs
+PASS zero_attack_valid
+PASS zero_crit_multiplier_valid
+PASS armor_zero
+PASS armor_equal
+PASS armor_900
+PASS armor_1e9
+PASS armor_1e20
+PASS armor_max_equal
+PASS armor_less_branch
+PASS armor_denorm_equal
+PASS armor_factor_underflow
+PASS armor_small_armor
+PASS hp_rounding_positive_residual
+PASS hp_rounding_negative_residual_tie_even
+PASS shield_storage_rounding_reported
+PASS worked_table_shield500
+PASS worked_table_hp150
+PASS invalid_amount_0.000000_atomic_and_following_hit
+PASS invalid_amount_-1.000000_atomic_and_following_hit
+PASS invalid_amount_nan_atomic_and_following_hit
+PASS invalid_amount_inf_atomic_and_following_hit
+PASS invalid_amount_-inf_atomic_and_following_hit
+PASS invalid_type_-1_atomic_and_following_hit
+PASS invalid_type_3_atomic_and_following_hit
+PASS invalid_type_-2147483648_atomic_and_following_hit
+PASS invalid_type_2147483647_atomic_and_following_hit
+PASS invalid_K_0.000000_atomic_and_following_hit
+PASS invalid_K_-1.000000_atomic_and_following_hit
+PASS invalid_K_nan_atomic_and_following_hit
+PASS invalid_K_inf_atomic_and_following_hit
+PASS invalid_K_-inf_atomic_and_following_hit
+PASS invalid_cap_-1.000000_atomic_and_following_hit
+PASS invalid_cap_nan_atomic_and_following_hit
+PASS invalid_cap_inf_atomic_and_following_hit
+PASS invalid_cap_-inf_atomic_and_following_hit
+PASS invalid_chance_-0.000000_atomic_and_following_hit
+PASS invalid_chance_1.000000_atomic_and_following_hit
+PASS invalid_chance_nan_atomic_and_following_hit
+PASS invalid_chance_inf_atomic_and_following_hit
+PASS invalid_chance_-inf_atomic_and_following_hit
+PASS invalid_crit_multiplier_-1.000000_atomic_and_following_hit
+PASS invalid_crit_multiplier_nan_atomic_and_following_hit
+PASS invalid_crit_multiplier_inf_atomic_and_following_hit
+PASS invalid_crit_multiplier_-inf_atomic_and_following_hit
+PASS nonfinite_attribute_0_nan_atomic_and_following_hit
+PASS nonfinite_attribute_1_nan_atomic_and_following_hit
+PASS nonfinite_attribute_2_nan_atomic_and_following_hit
+PASS nonfinite_modifier_0_nan_atomic_and_following_hit
+PASS nonfinite_modifier_1_nan_atomic_and_following_hit
+PASS nonfinite_modifier_2_nan_atomic_and_following_hit
+PASS invalid_resistance_0_nan_atomic_and_following_hit
+PASS invalid_resistance_1_nan_atomic_and_following_hit
+PASS invalid_resistance_2_nan_atomic_and_following_hit
+PASS nonfinite_armor_nan_atomic_and_following_hit
+PASS nonfinite_attribute_0_inf_atomic_and_following_hit
+PASS nonfinite_attribute_1_inf_atomic_and_following_hit
+PASS nonfinite_attribute_2_inf_atomic_and_following_hit
+PASS nonfinite_modifier_0_inf_atomic_and_following_hit
+PASS nonfinite_modifier_1_inf_atomic_and_following_hit
+PASS nonfinite_modifier_2_inf_atomic_and_following_hit
+PASS invalid_resistance_0_inf_atomic_and_following_hit
+PASS invalid_resistance_1_inf_atomic_and_following_hit
+PASS invalid_resistance_2_inf_atomic_and_following_hit
+PASS nonfinite_armor_inf_atomic_and_following_hit
+PASS nonfinite_attribute_0_-inf_atomic_and_following_hit
+PASS nonfinite_attribute_1_-inf_atomic_and_following_hit
+PASS nonfinite_attribute_2_-inf_atomic_and_following_hit
+PASS nonfinite_modifier_0_-inf_atomic_and_following_hit
+PASS nonfinite_modifier_1_-inf_atomic_and_following_hit
+PASS nonfinite_modifier_2_-inf_atomic_and_following_hit
+PASS invalid_resistance_0_-inf_atomic_and_following_hit
+PASS invalid_resistance_1_-inf_atomic_and_following_hit
+PASS invalid_resistance_2_-inf_atomic_and_following_hit
+PASS nonfinite_armor_-inf_atomic_and_following_hit
+PASS invalid_modifier_op_-1_atomic_and_following_hit
+PASS invalid_modifier_op_3_atomic_and_following_hit
+PASS invalid_modifier_op_-2147483648_atomic_and_following_hit
+PASS invalid_modifier_op_2147483647_atomic_and_following_hit
+PASS negative_evaluated_factor_0_atomic_and_following_hit
+PASS negative_evaluated_factor_1_atomic_and_following_hit
+PASS negative_evaluated_factor_2_atomic_and_following_hit
+PASS invalid_hp_-1.000000_atomic_and_following_hit
+PASS invalid_hpMax_-1.000000_atomic_and_following_hit
+PASS invalid_shield_0_-1.000000_atomic_and_following_hit
+PASS invalid_shield_1_-1.000000_atomic_and_following_hit
+PASS invalid_shield_2_-1.000000_atomic_and_following_hit
+PASS invalid_hp_nan_atomic_and_following_hit
+PASS invalid_hpMax_nan_atomic_and_following_hit
+PASS invalid_shield_0_nan_atomic_and_following_hit
+PASS invalid_shield_1_nan_atomic_and_following_hit
+PASS invalid_shield_2_nan_atomic_and_following_hit
+PASS invalid_hp_inf_atomic_and_following_hit
+PASS invalid_hpMax_inf_atomic_and_following_hit
+PASS invalid_shield_0_inf_atomic_and_following_hit
+PASS invalid_shield_1_inf_atomic_and_following_hit
+PASS invalid_shield_2_inf_atomic_and_following_hit
+PASS invalid_hp_-inf_atomic_and_following_hit
+PASS invalid_hpMax_-inf_atomic_and_following_hit
+PASS invalid_shield_0_-inf_atomic_and_following_hit
+PASS invalid_shield_1_-inf_atomic_and_following_hit
+PASS invalid_shield_2_-inf_atomic_and_following_hit
+PASS hpMax_zero_atomic_and_following_hit
+PASS hp_above_max_atomic_and_following_hit
+PASS dead_positive_hp_atomic_and_following_hit
+PASS alive_zero_hp_atomic_and_following_hit
+PASS amount_attack_overflow_atomic_and_following_hit
+PASS overflow_before_full_resistance_atomic_and_following_hit
+PASS modifier_add_overflow_atomic_and_following_hit
+PASS modifier_mul_overflow_atomic_and_following_hit
+PASS base_add_overflow_atomic_and_following_hit
+PASS crit_overflow_rng_rollback_atomic_and_following_hit
+PASS bonus_overflow_rng_rollback_atomic_and_following_hit
+PASS taken_overflow_rng_rollback_atomic_and_following_hit
+PASS attacker_state_validated_atomic_and_following_hit
+PASS unused_target_attribute_validated_atomic_and_following_hit
+PASS attribute_grouped_120
+PASS attribute_categories_interleaved_120
+PASS last_override20
+PASS last_override10
+PASS same_category_float_order_matters
+PASS replay_5000_per_field_same_build_seed_order
+PASS dot_integer_partition_1_1000000
+PASS dot_integer_partition_2_500000
+PASS dot_integer_partition_4_250000
+PASS dot_integer_partition_2_600000
+PASS dot_terminal_half_discarded
+PASS dot_decimal_units_three
+PASS dot_boundary_99
+PASS dot_boundary_100
+PASS dot_boundary_101
+PASS dot_dt_zero_preserves_phase
+PASS dot_overshoot_clamps_lifetime
+PASS dot_original_two_first16_total62
+PASS dot_event_timeline_step_1
+PASS dot_event_timeline_step_7
+PASS dot_event_timeline_step_19
+PASS dot_event_timeline_step_1000
+PASS dot_count_2pow31_wide
+PASS dot_phase_plus_active_no_uint_overflow
+PASS dot_total_count_overflow_atomic
+PASS dot_amount_multiply_overflow_atomic
+PASS dot_amount_sum_overflow_atomic
+PASS dot_invalid_state_0_0_1.000000_0_atomic
+PASS dot_invalid_state_2_2_1.000000_0_atomic
+PASS dot_invalid_state_2_1_1.000000_0_atomic
+PASS dot_invalid_state_1_0_nan_0_atomic
+PASS dot_invalid_state_1_0_inf_0_atomic
+PASS dot_invalid_state_1_0_-1.000000_0_atomic
+PASS dot_invalid_state_1_0_0.000000_0_atomic
+PASS dot_invalid_state_1_0_1.000000_-1_atomic
+PASS dot_invalid_state_1_0_1.000000_3_atomic
+PASS legacy_quarter_partition
+PASS legacy_point6_point4_null_count
+PASS legacy_decimal_quantization
+PASS legacy_invalid_dt_-1.000000
+PASS legacy_invalid_dt_nan
+PASS legacy_invalid_dt_inf
+PASS legacy_invalid_dt_-inf
+PASS legacy_int_count_overflow_atomic
+PASS seconds_2pow64_boundary_rejected_before_cast
+PASS seconds_exact_binary64_oracle_above_2pow53
+PASS seconds_half_up_quantization
+PASS seconds_subunit_rounds_zero
+PASS seconds_partition_not_invariant_counterexample
+PASS dot_raw_batch_not_per_tick_pipeline
+RESULT pass=185 fail=0
+
+===== END author/run-o2.stdout.txt =====
+
+===== BEGIN author/run-manifest.json bytes=6769 sha256=c6d18b2b84e029987d3e6982e7b9b5a0fbd3ef68cff801f363903b39179b0746 =====
+{
+  "schema": 1,
+  "run_id": "92aba6eb-ee88-439a-ad04-1b6b68043a62",
+  "started_utc": "2026-10-04T17:00:46.006900+00:00",
+  "os": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "runner_sha256": "d25f50f1196087f094b391fc3d73d407d8b630c85ef7332515c814606ecfe5e1",
+  "out": "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-author-runs/strict-final",
+  "mode": "strict",
+  "stages": [
+    {
+      "stage": "compiler",
+      "command": [
+        "/usr/bin/g++-14",
+        "--version"
+      ],
+      "cwd": "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-author-runs/strict-final",
+      "started_utc": "2026-10-04T17:00:46.009846+00:00",
+      "returncode": 0,
+      "elapsed_seconds": 0.0011325310042593628,
+      "finished_utc": "2026-10-04T17:00:46.010986+00:00",
+      "stdout": {
+        "file": "compiler.stdout.txt",
+        "sha256": "c064927ebf13f118600430b79a36d3f2a52cb8fe3c097eb4aa6e10e25cde5075",
+        "bytes": 235
+      },
+      "stderr": {
+        "file": "compiler.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    },
+    {
+      "stage": "compile-o0",
+      "command": [
+        "/usr/bin/g++-14",
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-O0",
+        "-DNDEBUG",
+        "-DDAMAGE_SOURCE=\"/workspace/scratch/234c8048d85d/learning-damage-contract-quality-20261004/evidence/tests/damage-core/src/damage_pipeline.cpp\"",
+        "/workspace/scratch/234c8048d85d/learning-damage-contract-quality-20261004/evidence/tests/damage-core/tests/damage_contract.cpp",
+        "-o",
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-author-runs/strict-final/damage-o0"
+      ],
+      "cwd": "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-author-runs/strict-final",
+      "started_utc": "2026-10-04T17:00:46.011140+00:00",
+      "returncode": 0,
+      "elapsed_seconds": 0.7379264140035957,
+      "finished_utc": "2026-10-04T17:00:46.749078+00:00",
+      "stdout": {
+        "file": "compile-o0.stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "stderr": {
+        "file": "compile-o0.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    },
+    {
+      "stage": "run-o0",
+      "command": [
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-author-runs/strict-final/damage-o0"
+      ],
+      "cwd": "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-author-runs/strict-final",
+      "started_utc": "2026-10-04T17:00:46.749525+00:00",
+      "returncode": 0,
+      "elapsed_seconds": 0.009176323001156561,
+      "finished_utc": "2026-10-04T17:00:46.758713+00:00",
+      "stdout": {
+        "file": "run-o0.stdout.txt",
+        "sha256": "dd82e97005985e589387fa80bd449ad501e712531f317e17c9e21ad2429f01dc",
+        "bytes": 8050
+      },
+      "stderr": {
+        "file": "run-o0.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "result": {
+        "pass": 185,
+        "fail": 0
+      }
+    },
+    {
+      "stage": "compile-o2",
+      "command": [
+        "/usr/bin/g++-14",
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-O2",
+        "-DDAMAGE_SOURCE=\"/workspace/scratch/234c8048d85d/learning-damage-contract-quality-20261004/evidence/tests/damage-core/src/damage_pipeline.cpp\"",
+        "/workspace/scratch/234c8048d85d/learning-damage-contract-quality-20261004/evidence/tests/damage-core/tests/damage_contract.cpp",
+        "-o",
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-author-runs/strict-final/damage-o2"
+      ],
+      "cwd": "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-author-runs/strict-final",
+      "started_utc": "2026-10-04T17:00:46.759272+00:00",
+      "returncode": 0,
+      "elapsed_seconds": 2.116727938002441,
+      "finished_utc": "2026-10-04T17:00:48.876012+00:00",
+      "stdout": {
+        "file": "compile-o2.stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "stderr": {
+        "file": "compile-o2.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    },
+    {
+      "stage": "run-o2",
+      "command": [
+        "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-author-runs/strict-final/damage-o2"
+      ],
+      "cwd": "/workspace/scratch/234c8048d85d/content-audit-20261004/damage-author-runs/strict-final",
+      "started_utc": "2026-10-04T17:00:48.876360+00:00",
+      "returncode": 0,
+      "elapsed_seconds": 0.0034099119948223233,
+      "finished_utc": "2026-10-04T17:00:48.879776+00:00",
+      "stdout": {
+        "file": "run-o2.stdout.txt",
+        "sha256": "dd82e97005985e589387fa80bd449ad501e712531f317e17c9e21ad2429f01dc",
+        "bytes": 8050
+      },
+      "stderr": {
+        "file": "run-o2.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "result": {
+        "pass": 185,
+        "fail": 0
+      }
+    }
+  ],
+  "outcome": "passed",
+  "inputs": {
+    "source": {
+      "path": "/workspace/scratch/234c8048d85d/learning-damage-contract-quality-20261004/evidence/tests/damage-core/src/damage_pipeline.cpp",
+      "sha256": "c8021d124c345fa14486ee3105bec4d1190a89ca3e430290c4e03900200e4635"
+    },
+    "test": {
+      "path": "/workspace/scratch/234c8048d85d/learning-damage-contract-quality-20261004/evidence/tests/damage-core/tests/damage_contract.cpp",
+      "sha256": "06e17ba8ed757ed23afa3e3a59b243ea74428b1a807c6055ec350439a3520c89"
+    }
+  },
+  "source_revision": "0a8ce63bf375f93a087120d39002917f2ab8fe07",
+  "source_revision_note": "worktree source/test hashes identify actual inputs; HEAD alone does not",
+  "compiler": "g++-14 (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+  "binaries": {
+    "o0": {
+      "file": "damage-o0",
+      "sha256": "6b55477eea4ad2424eeae16a4a91e827508c6a63d748ec3406a15f52e2782bb8"
+    },
+    "o2": {
+      "file": "damage-o2",
+      "sha256": "3ac2bf69d813d20d4cfa7c8601784d22c336fd071e94e97f60d17f158d31892d"
+    }
+  },
+  "finished_utc": "2026-10-04T17:00:48.880068+00:00"
+}
+
+===== END author/run-manifest.json =====
+
+===== BEGIN author/console.txt bytes=343 sha256=9673373fd2623f7526a2dca50ffb0ca38d6dd807d453d1a7ec9ec268d91c4e31 =====
+STAGE compiler returncode=0 error=
+STAGE compile-o0 returncode=0 error=
+STAGE run-o0 returncode=0 error=
+STAGE compile-o2 returncode=0 error=
+STAGE run-o2 returncode=0 error=
+COMPLETED run_id=92aba6eb-ee88-439a-ad04-1b6b68043a62 manifest=/workspace/scratch/234c8048d85d/content-audit-20261004/damage-author-runs/strict-final/run-manifest.json
+
+===== END author/console.txt =====
+
+===== BEGIN original-28/compile-o0.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END original-28/compile-o0.stderr.txt =====
+
+===== BEGIN original-28/compile-o0.stdout.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END original-28/compile-o0.stdout.txt =====
+
+===== BEGIN original-28/run-o0.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END original-28/run-o0.stderr.txt =====
+
+===== BEGIN original-28/run-o0.stdout.txt bytes=1203 sha256=8abeb4eae792a5c906cc52c7d35ec59e29618b5a2005827ba7411186a37a24d0 =====
+PASS HP01_actual_loss40_overkill60
+PASS HP02_shield30_actual40_overkill30
+PASS HP03_exact_lethal
+PASS HP04_serial_dead_no_second_mutation_or_rng
+PASS HP05_immune_no_mutation_or_rng
+PASS CAP01_armor_cap_shield_distinguishing_case
+PASS TRUE01_resistance_taken_cap_shield_preserved
+PASS STAGE01_raw120_mitigated49point5_cap30
+PASS ARMOR01_representable_residual_large_armor
+PASS ARMOR02_max_plus_max_no_denominator_overflow
+PASS RES01_full_resistance_zero_damage
+PASS INPUT01_zero_amount_rejected
+PASS INPUT02_negative_amount_rejected
+PASS INPUT03_nan_amount_no_mutation
+PASS INPUT04_inf_amount_no_mutation
+PASS INPUT05_intermediate_range_failure_no_mutation
+PASS INPUT06_negative_evaluated_attack_rejected
+PASS INPUT07_negative_state_shield_rejected
+PASS ATTR01_preserve_grouped_formula
+PASS ATTR02_last_override20
+PASS ATTR03_reordered_override10_is_valid_policy
+PASS ATTR04_document_no_universal_float_permutation_invariance
+PASS DOT01_same_instance_quarter_partitions_total10
+PASS DOT02_same_instance_point6_point4_total10
+PASS DOT03_terminal_half_tick_discard_policy
+PASS DOT04_declared_decimal_time_units_exact3
+PASS DOT05_zero_dt_noop
+PASS REPLAY01_same_build_same_inputs_only
+RESULT pass=28 fail=0
+
+===== END original-28/run-o0.stdout.txt =====
+
+===== BEGIN original-28/compile-o2.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END original-28/compile-o2.stderr.txt =====
+
+===== BEGIN original-28/compile-o2.stdout.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END original-28/compile-o2.stdout.txt =====
+
+===== BEGIN original-28/run-o2.stderr.txt bytes=0 sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 =====
+
+===== END original-28/run-o2.stderr.txt =====
+
+===== BEGIN original-28/run-o2.stdout.txt bytes=1203 sha256=8abeb4eae792a5c906cc52c7d35ec59e29618b5a2005827ba7411186a37a24d0 =====
+PASS HP01_actual_loss40_overkill60
+PASS HP02_shield30_actual40_overkill30
+PASS HP03_exact_lethal
+PASS HP04_serial_dead_no_second_mutation_or_rng
+PASS HP05_immune_no_mutation_or_rng
+PASS CAP01_armor_cap_shield_distinguishing_case
+PASS TRUE01_resistance_taken_cap_shield_preserved
+PASS STAGE01_raw120_mitigated49point5_cap30
+PASS ARMOR01_representable_residual_large_armor
+PASS ARMOR02_max_plus_max_no_denominator_overflow
+PASS RES01_full_resistance_zero_damage
+PASS INPUT01_zero_amount_rejected
+PASS INPUT02_negative_amount_rejected
+PASS INPUT03_nan_amount_no_mutation
+PASS INPUT04_inf_amount_no_mutation
+PASS INPUT05_intermediate_range_failure_no_mutation
+PASS INPUT06_negative_evaluated_attack_rejected
+PASS INPUT07_negative_state_shield_rejected
+PASS ATTR01_preserve_grouped_formula
+PASS ATTR02_last_override20
+PASS ATTR03_reordered_override10_is_valid_policy
+PASS ATTR04_document_no_universal_float_permutation_invariance
+PASS DOT01_same_instance_quarter_partitions_total10
+PASS DOT02_same_instance_point6_point4_total10
+PASS DOT03_terminal_half_tick_discard_policy
+PASS DOT04_declared_decimal_time_units_exact3
+PASS DOT05_zero_dt_noop
+PASS REPLAY01_same_build_same_inputs_only
+RESULT pass=28 fail=0
+
+===== END original-28/run-o2.stdout.txt =====
+
+===== BEGIN original-28/run-manifest.json bytes=5945 sha256=b39de796d114a502310f6e85db8a776889ce0429b2b4da466815f97b9af35ae6 =====
+{
+  "gate_sha256": "a7797aba05e4778c9f9108c23b71000ece2611af6caa9daeb3c3d535b763baa5",
+  "adapter_sha256": "7faa4509cdd4d2246cf61132743324621e97b9855e7fe2f73c593297e9f92f94",
+  "source_sha256": "c8021d124c345fa14486ee3105bec4d1190a89ca3e430290c4e03900200e4635",
+  "records": [
+    {
+      "name": "compile-o0",
+      "command": [
+        "/usr/bin/g++-14",
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-O0",
+        "-DNDEBUG",
+        "-DDAMAGE_SOURCE=\"/workspace/scratch/234c8048d85d/learning-damage-contract-quality-20261004/../content-audit-20261004/damage-author-runs/acceptance_adapter_portable.cpp\"",
+        "-DDAMAGE_MODEL_SOURCE=\"/workspace/scratch/234c8048d85d/learning-damage-contract-quality-20261004/evidence/tests/damage-core/src/damage_pipeline.cpp\"",
+        "/workspace/scratch/234c8048d85d/learning-damage-contract-quality-20261004/../content-audit-20261004/damage-repair-preparation/acceptance_gate.cpp",
+        "-o",
+        "/workspace/scratch/234c8048d85d/learning-damage-contract-quality-20261004/../content-audit-20261004/damage-author-runs/gate-portable-final/o0"
+      ],
+      "utc": "2026-10-04T17:02:55.290602+00:00",
+      "exit": 0,
+      "stdout": {
+        "file": "compile-o0.stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "file": "compile-o0.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "run-o0",
+      "command": [
+        "/workspace/scratch/234c8048d85d/learning-damage-contract-quality-20261004/../content-audit-20261004/damage-author-runs/gate-portable-final/o0"
+      ],
+      "utc": "2026-10-04T17:02:55.834803+00:00",
+      "exit": 0,
+      "stdout": {
+        "file": "run-o0.stdout.txt",
+        "sha256": "8abeb4eae792a5c906cc52c7d35ec59e29618b5a2005827ba7411186a37a24d0"
+      },
+      "stderr": {
+        "file": "run-o0.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "compile-o2",
+      "command": [
+        "/usr/bin/g++-14",
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-O2",
+        "-DDAMAGE_SOURCE=\"/workspace/scratch/234c8048d85d/learning-damage-contract-quality-20261004/../content-audit-20261004/damage-author-runs/acceptance_adapter_portable.cpp\"",
+        "-DDAMAGE_MODEL_SOURCE=\"/workspace/scratch/234c8048d85d/learning-damage-contract-quality-20261004/evidence/tests/damage-core/src/damage_pipeline.cpp\"",
+        "/workspace/scratch/234c8048d85d/learning-damage-contract-quality-20261004/../content-audit-20261004/damage-repair-preparation/acceptance_gate.cpp",
+        "-o",
+        "/workspace/scratch/234c8048d85d/learning-damage-contract-quality-20261004/../content-audit-20261004/damage-author-runs/gate-portable-final/o2"
+      ],
+      "utc": "2026-10-04T17:02:55.842213+00:00",
+      "exit": 0,
+      "stdout": {
+        "file": "compile-o2.stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "file": "compile-o2.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "run-o2",
+      "command": [
+        "/workspace/scratch/234c8048d85d/learning-damage-contract-quality-20261004/../content-audit-20261004/damage-author-runs/gate-portable-final/o2"
+      ],
+      "utc": "2026-10-04T17:02:56.640208+00:00",
+      "exit": 0,
+      "stdout": {
+        "file": "run-o2.stdout.txt",
+        "sha256": "8abeb4eae792a5c906cc52c7d35ec59e29618b5a2005827ba7411186a37a24d0"
+      },
+      "stderr": {
+        "file": "run-o2.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "compile-ubsan",
+      "command": [
+        "/usr/bin/g++-14",
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-O1",
+        "-g",
+        "-fsanitize=undefined,float-cast-overflow",
+        "-fno-sanitize-recover=all",
+        "-fno-omit-frame-pointer",
+        "-DDAMAGE_SOURCE=\"/workspace/scratch/234c8048d85d/learning-damage-contract-quality-20261004/../content-audit-20261004/damage-author-runs/acceptance_adapter_portable.cpp\"",
+        "-DDAMAGE_MODEL_SOURCE=\"/workspace/scratch/234c8048d85d/learning-damage-contract-quality-20261004/evidence/tests/damage-core/src/damage_pipeline.cpp\"",
+        "/workspace/scratch/234c8048d85d/learning-damage-contract-quality-20261004/../content-audit-20261004/damage-repair-preparation/acceptance_gate.cpp",
+        "-o",
+        "/workspace/scratch/234c8048d85d/learning-damage-contract-quality-20261004/../content-audit-20261004/damage-author-runs/gate-portable-final/ubsan"
+      ],
+      "utc": "2026-10-04T17:02:56.642964+00:00",
+      "exit": 0,
+      "stdout": {
+        "file": "compile-ubsan.stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "file": "compile-ubsan.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "run-ubsan",
+      "command": [
+        "/workspace/scratch/234c8048d85d/learning-damage-contract-quality-20261004/../content-audit-20261004/damage-author-runs/gate-portable-final/ubsan"
+      ],
+      "utc": "2026-10-04T17:02:57.560953+00:00",
+      "exit": 0,
+      "stdout": {
+        "file": "run-ubsan.stdout.txt",
+        "sha256": "8abeb4eae792a5c906cc52c7d35ec59e29618b5a2005827ba7411186a37a24d0"
+      },
+      "stderr": {
+        "file": "run-ubsan.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ]
+}
+
+===== END original-28/run-manifest.json =====
+
+===== BEGIN original-28/acceptance_adapter.cpp bytes=696 sha256=7faa4509cdd4d2246cf61132743324621e97b9855e7fe2f73c593297e9f92f94 =====
+#include DAMAGE_MODEL_SOURCE
+using namespace damage;
+Combatant PlainAttacker() {Combatant a;a.attack.base=1;return a;}
+Combatant DummyTarget() {Combatant t;t.hp=t.hpMax=1e9;return t;}
+uint64_t RunReplay(uint64_t seed,int hits) {
+ XorShift rng(seed);auto a=PlainAttacker(),t=DummyTarget();a.attack.base=12;a.critChance=.35;a.critMultiplier=1.8;a.damageBonus.base=.15;t.armor=220;t.resistance[1]=.2;
+ uint64_t hash=1469598103934665603ULL;
+ for(int i=0;i<hits;++i){t.hp=t.hpMax;DamageSpec s;s.amount=40+static_cast<double>(rng.next()%60);s.type=(i%4==0)?1:0;auto r=Settle(a,t,s,rng);hash^=static_cast<uint64_t>(r.toHp*1000)^(r.crit?0x9E3779B97F4A7C15ULL:0ULL);hash*=1099511628211ULL;}return hash;
+}
+
+===== END original-28/acceptance_adapter.cpp =====
