@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-04 (Buff group-wide winner and refresh contracts; mechanically recalculated).
+# Generated: 2026-10-04 (Attribute ordered evaluation and dirty-cache contracts; mechanically recalculated).
 version: 4
 
 okf:
@@ -294,8 +294,8 @@ documents:
   "evidence/tests/gameplay-core/README.md":
     kind: README
     maturity: L0
-    bytes: 39539
-    lines: 413
+    bytes: 49311
+    lines: 508
   "evidence/tests/match-core/README.md":
     kind: README
     maturity: L0
@@ -1309,7 +1309,7 @@ documents:
   "知识/05-Gameplay与交互系统/技能战斗与属性结算/08-技能与战斗框架.md":
     kind: doc
     maturity: L2
-    bytes: 18249
+    bytes: 18676
     lines: 324
   "知识/05-Gameplay与交互系统/技能战斗与属性结算/11-伤害与属性结算完整链路.md":
     kind: doc
@@ -1439,8 +1439,8 @@ documents:
   "知识/05-Gameplay与交互系统/背包装备与存档/05-背包道具完整链路.md":
     kind: doc
     maturity: L2
-    bytes: 36117
-    lines: 359
+    bytes: 39554
+    lines: 362
   "知识/05-Gameplay与交互系统/背包装备与存档/12-SaveGame存档系统与序列化.md":
     kind: doc
     maturity: L2

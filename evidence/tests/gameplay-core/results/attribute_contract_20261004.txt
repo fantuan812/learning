@@ -1,0 +1,102 @@
+Attribute contract evidence 2026-10-04
+SUMMARY ONLY; complete exact diagnostic files are in attribute_contract_20261004.raw.jsonl.gz.
+
+Ordered formula preserved: last Override; list-order Add reduction and Mul reduction; final (basis+add)*mul. Signed finite inputs and ordinary binary64 rounding/underflow allowed. New explicit teaching policy rejects every nonfinite source operand (even masked), invalid op, nonfinite intermediates. Per-attribute cache publishes only on success; failure preserves cache bytes, keeps dirty/error and denies current reads without overwriting out. No source rollback or batch transaction. Caller must dirty; getter cannot discover unmarked mutation.
+
+Finalaccepted author runs: run-v3-focused and run-v3-selftest. Three modes each41cases/679checks/0; default10 examples;7 real model/caller mutants compile then fail intended case/exit1;2 incompatible builds rejected by explicit guard. v3 -O runner112/0. 29 focused native commands.
+Independent normal288/0, new-policy315/0 and current-read304/0 in each of3modes; additional5 actual model mutants fail semantically. Old finite algorithm already passed normal input; old400 pre-mutation self-comparisons missed omission wiring defects. Counts from distinct lists are not a combined scenario count.
+Exact local PowerShell CI block positive0; synthetic first Python failure23 stops second command. No new Attribute benchmark, Windows/MSVC, UE/GAS, lifecycle/network/dependency or production certification. Repository regressions may run older unrelated experiments.
+
+Six actual author attempts retained, v1/v2 superseded. Initial actual-code identity and unused-env-value provenance refined in v2/v3; all old ignored values verified null. Intermediate author link checks were run before integration raw existed and are not final gate success. Independent preparation failures labelled separately. A symlink deliberately constructed by a log-protection fixture is not represented as a regular raw file; its real failure/commands/sentinel checks are retained.
+
+Final source hashes:
+[
+  {
+    "path": "evidence/tests/gameplay-core/src/attr_modifier_bench.cpp",
+    "bytes": 9201,
+    "sha256": "054098690f4d64029b8a3f23b491e9ad401f8cf426b9cdee4d26a1a3a17cc9f7"
+  },
+  {
+    "path": "知识/05-Gameplay与交互系统/背包装备与存档/05-背包道具完整链路.md",
+    "bytes": 39554,
+    "sha256": "02fa7ed8bd9262149cab3cd403c012b620b8a9990549adaa912d3b94409f4470"
+  },
+  {
+    "path": "知识/05-Gameplay与交互系统/技能战斗与属性结算/08-技能与战斗框架.md",
+    "bytes": 18676,
+    "sha256": "48461239a20c9c0bf965033a672541f773fde0d7fd9fef30920eefab64c84b57"
+  },
+  {
+    "path": "evidence/tests/gameplay-core/tests/attribute_contract.cpp",
+    "bytes": 14348,
+    "sha256": "1c6a4d71672ef5bd5f0339e0fa618b303be4150195640dcb68b4ac378b2529bd"
+  },
+  {
+    "path": "evidence/tests/gameplay-core/scripts/run_attribute_contract.py",
+    "bytes": 27281,
+    "sha256": "174b9a5988e4e14fcb91e3cd2f014beb060bb51757cc7d553bc5373e265e33a3"
+  }
+]
+
+Archive metadata:
+{
+  "archive_path": "evidence/tests/gameplay-core/results/attribute_contract_20261004.raw.jsonl.gz",
+  "files": 1963,
+  "jsonl_records": 1964,
+  "author_attempts": 6,
+  "compressed_bytes": 5226388,
+  "uncompressed_bytes": 31767474,
+  "source_file_bytes": 23523877,
+  "gzip_sha256": "ece45f29722d9fdcc038fc5caa3355a288317c9eb3dca2a3542999903ea3e5b4",
+  "jsonl_sha256": "0afb7964ee851596085df75895d049f7b842a5875dc08319dd9da89c41a49ec7",
+  "deterministic_mtime": 0,
+  "original_bytes_roundtrip_all": true
+}
+
+Historical73 raw and282 originals retained byte-for-byte. Exact compiler argv/stdout/stderr/exit and source identity are in file records; binary streams use base64/length/SHA. Technical input and output only; no compiled executables. Current getter still trusts caller dirty discipline; this is a teaching model, not automatic dependency tracking.
+
+Verification only, no extraction or archived-command execution:
+python3 -O - evidence/tests/gameplay-core/results/attribute_contract_20261004.raw.jsonl.gz <<'PY'
+import base64, gzip, hashlib, json, sys
+from pathlib import Path, PurePosixPath
+
+GZIP_SHA256 = 'ece45f29722d9fdcc038fc5caa3355a288317c9eb3dca2a3542999903ea3e5b4'
+JSONL_SHA256 = '0afb7964ee851596085df75895d049f7b842a5875dc08319dd9da89c41a49ec7'
+FILE_COUNT = 1963
+
+def require(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+def verify(path, gzip_sha256=GZIP_SHA256, jsonl_sha256=JSONL_SHA256, count=FILE_COUNT):
+    packed = Path(path).read_bytes()
+    require(hashlib.sha256(packed).hexdigest() == gzip_sha256, 'gzip SHA mismatch')
+    data = gzip.decompress(packed)
+    require(hashlib.sha256(data).hexdigest() == jsonl_sha256, 'JSONL SHA mismatch')
+    require(data.endswith(b'\n'), 'missing final JSONL newline')
+    rows = [json.loads(line) for line in data.decode('utf-8').splitlines()]
+    require(len(rows) == count + 1, 'record count mismatch')
+    require(rows[0].get('kind') == 'archive_header' and
+            rows[0].get('format') == 'learning.attribute.evidence.v1' and
+            rows[0].get('author_attempts') == 6 and
+            rows[0].get('accepted_author_runs') == ['author/run-v3-focused', 'author/run-v3-selftest'], 'bad header')
+    names = set()
+    total = 0
+    for row in rows[1:]:
+        require(row.get('kind') == 'file', 'non-file record')
+        name = row.get('path')
+        require(isinstance(name, str) and name and '\\' not in name and '\0' not in name, 'bad path')
+        q = PurePosixPath(name)
+        require(not q.is_absolute() and '..' not in q.parts and name == q.as_posix() and name != '.', 'unsafe path')
+        require(name not in names, 'duplicate record: ' + name)
+        names.add(name)
+        raw = base64.b64decode(row['data_base64'], validate=True)
+        require(type(row['bytes']) is int and row['bytes'] >= 0 and len(raw) == row['bytes'], 'length mismatch: ' + name)
+        require(hashlib.sha256(raw).hexdigest() == row['sha256'], 'file SHA mismatch: ' + name)
+        total += len(raw)
+    return {'files': len(names), 'original_file_bytes': total, 'jsonl_bytes': len(data)}
+
+if __name__ == '__main__':
+    require(len(sys.argv) == 2, 'usage: python [-O] verify.py ARCHIVE.raw.jsonl.gz')
+    print(json.dumps(verify(sys.argv[1]), sort_keys=True))
+PY
