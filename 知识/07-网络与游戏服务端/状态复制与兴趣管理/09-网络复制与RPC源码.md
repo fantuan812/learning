@@ -4,22 +4,24 @@ title: "UE 引擎源码分析 09：网络复制与 RPC 源码剖析"
 status: stable
 verified: []
 maturity: L2
-updated: 2026-09-14
+updated: 2026-10-04
 ---
 
 # UE 引擎源码分析 09：网络复制与 RPC 源码剖析
-> 知识成熟度：L2（已按 UE5.8 源码基线全面补齐真实源码段落、FRepLayout 属性反射比较、UActorChannel 序列化与 RPC 派发全调用链）。
+> 知识成熟度：L2（历史源码阅读材料与公共契约的静态分析；不是引擎编译或运行验证等级）。
 > 对应知识点：[06-网络同步/01 网络架构与复制基础](01-网络架构与复制基础.md)、[06-网络同步/02 RPC 与属性同步](02-RPC与属性同步.md)
 
-> 以本机 UE5.8 源码为准，逐行深度剖析服务器端 `ServerReplicateActors` 调度循环、`UActorChannel::ReplicateActor` 数据打包、`FRepLayout` 脏属性比较、Bunch 网络流封装，以及客户端反序列化触发 `OnRep` 与 RPC 双向调用的完整底层源码实现。
+> 本文沿用旧稿标为 UE5.8 的源码阅读材料，分析 `ServerReplicateActors` 调度、`UActorChannel::ReplicateActor` 打包、`FRepLayout` 变化跟踪以及 RPC/OnRep 接收链路。节选有明确省略，不能视为完整调用图或全部后端实现。
 
-> 本文所有代码均逐字摘自 UE 5.8 源码 checkout（`C:\Users\zhaozhiqi\Documents\GitHub\UnrealEngine`），行号以该 checkout 为准，安装版 5.8.0 可能相差数行。超过约 120 行的函数按「节选」处理，截断处标注 `// …（节选：省略 N 行）`。
+> 历史来源记录：旧稿称源码节选来自 `C:\Users\zhaozhiqi\Documents\GitHub\UnrealEngine`，行号以当时 checkout 为准；长函数用 `// …（节选：省略 N 行）` 标出省略。这是保留的历史归属说明，本次未访问或认证该私有 checkout、安装目录、revision 或 CL，不能据公共文档页反向证明其逐字真实性。
+> 本次事实边界（2026-10-04）：完整复读仓内本文及 RPC 使用篇；以明确显示 UE5.8 的 Epic 公开文档/API 核对行为合同，用仓内节选检验相邻解释的控制流/位运算。既有 40 个历史源码 fence 保留，不补造缺失的私有实现；本库教学例与解释则按合同修订。下文历史行号、函数长度与旧检索记录是定位线索，不是本次复现结果。
+> 后端边界：下文 ActorChannel / FRepLayout 机制主要讨论经典复制路径；Iris 分支仅作边界定位，迁移见 [Iris 使用与迁移](07-Iris复制使用与迁移.md)。UHT、UE 构建、PIE、弱网、网络 trace 和性能实验均 **NOT_RUN**；普通控制流算例不能代替它们。
 
 ---
 
 ## 元数据
 
-- **版本基准**：UE 5.8.0 / CL 55116800 / 分支 `++UE5+Release-5.8`（本机安装目录 `C:\Program Files\Epic Games\UE_5.8\Engine`）。
+- **历史版本基准（本次未认证）**：UE 5.8.0 / CL 55116800 / 分支 `++UE5+Release-5.8`（旧稿安装目录 `C:\Program Files\Epic Games\UE_5.8\Engine`）。公开 UE5.8 文档只能支持公开契约，不证明这个 CL 或本机安装。
 - **源码依据**：
   - `Engine\Source\Runtime\Engine\Private\NetDriver.cpp`（`UNetDriver::TickFlush`、`ServerReplicateActors`、`ProcessRemoteFunction`）
   - `Engine\Source\Runtime\Engine\Private\DataChannel.cpp`（`UActorChannel::ReplicateActor`、`ReceivedBunch`、`ProcessBunch`）
@@ -28,7 +30,7 @@ updated: 2026-09-14
   - `Engine\Source\Runtime\CoreUObject\Public\UObject\CoreNetTypes.h`（`ELifetimeCondition` 复制条件）
   - `Engine\Source\Runtime\Engine\Private\Components\CharacterMovementComponent.cpp`（`ServerMove`、`ClientAdjustPosition`）
 - **官方参考**：[Unreal Engine 属性复制与 RPC 官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
-- **源码依据（本轮补深新增，逐字摘录并经 ripgrep 核对存在）**：
+- **历史补深来源目录（旧稿记录为逐字摘录并经 ripgrep 核对；本次未重跑该私有源码检索）**：
   - `Engine\Source\Runtime\Engine\Private\NetDriver.cpp`（`ServerReplicateActors` 第 6277 行、`ServerReplicateActors_PrepConnections` 第 5198 行、`ServerReplicateActors_BuildConsiderList` 第 5303 行、`ServerReplicateActors_PrioritizeActors` 第 5528 行、`ServerReplicateActors_ProcessPrioritizedActorsRange` 第 5687 行、`ServerReplicateActors_ForConnection` 第 5938 行、`ProcessRemoteFunction` 第 8125 行、`InternalProcessRemoteFunctionPrivate` 第 3083 行、`ProcessRemoteFunctionForChannelPrivate` 第 3223 行）
   - `Engine\Source\Runtime\Engine\Private\DataReplication.cpp`（`FObjectReplicator::ReceivedRPC` 第 1323 行（本节引其第 1429~1453 行分支）、`CallProcessEventForReceivedRPC` 第 1479 行、`PostReceivedBunch` 第 1592 行、`QueueRemoteFunctionBunch` 第 2293 行、`CallRepNotifies` 第 2431 行、`QueuePropertyRepNotify` 第 2737 行、`net.MaxRPCPerNetUpdate` 第 38 行）
   - `Engine\Source\Runtime\Engine\Public\Net\DataReplication.h`（`FObjectReplicator` 类声明第 73 行、`CallRepNotifies` 声明第 221 行）
@@ -39,13 +41,15 @@ updated: 2026-09-14
   - `Engine\Source\Runtime\Engine\Private\Actor.cpp`（`AActor::CallRemoteFunction` 第 5668 行）
   - `Engine\Source\Runtime\Engine\Private\ActorReplication.cpp`（`AActor::GetNetPriority` 第 48 行、`AActor::IsWithinNetRelevancyDistance` 第 383 行）
   - `Engine\Source\Programs\Shared\EpicGames.UHT\Exporters\CodeGen\UhtHeaderCodeGeneratorCppFile.cs`（`_Validate` 派发代码生成第 3506~3513 行）
-- **最后更新**：2026-09-14（补深：收录服务器复制主循环四阶段真实源码、`FObjectReplicator` 现代替身与客户端反序列化链路、`FRepLayout` 影子缓冲与 changelist 比较的真实实现、OnRep 派发时序，以及 RPC 从 `UObject::CallFunction` 到 `_Validate` 代码生成的完整链路；并修正既有段落中与 5.8 实际命名/行号不符的引用）。
+- **历史整理日期**：2026-09-14（旧稿补充服务器主循环、复制状态、OnRep 与 RPC/UHT 节选及定位信息）。
+- **最后更新**：2026-10-04（公共行为合同与仓内静态因果校订；保持既有源码材料，未新增 UE 运行证据）。
+- **阅读证据分层**：公开合同回答“应用能依赖什么”；仓内节选回答“这些可见语句怎样衔接”；被省略实现、确切现代阈值及真实运行结果需在获授权、可定位的目标版本另外验证。两者相冲突时先缩小结论，不用历史摘录压过明确公开合同。
 
 ---
 
 ## 概述与网络复制全链路时序
 
-在 C/S 架构中，属性同步（Replication）与远程调用（RPC）在底层均依托于 **FOutBunch / FInBunch** 数据块传输：
+在本篇讨论的经典复制路径中，属性同步与 RPC 经 **FOutBunch / FInBunch** 等数据块组织。下图是教学概览，省略 `FObjectReplicator`、调度与历史合并细节，不是 Iris 内部管线或实测时序：
 
 ```mermaid
 sequenceDiagram
@@ -63,16 +67,16 @@ sequenceDiagram
     ServerGame->>ServerGame: 修改带 UPROPERTY(Replicated) 的变量
     NetDriver->>NetDriver: ServerReplicateActors(DeltaSeconds)
     NetDriver->>ActorCh: UActorChannel::ReplicateActor()
-    ActorCh->>RepLayout: FRepLayout::ReplicateProperties (影子内存对比)
-    RepLayout-->>ActorCh: 收集变化属性位图 (ChangeList) 并写入 FOutBunch
-    ActorCh->>NetConn: SendBunch(FOutBunch, bForce=false)
+    ActorCh->>RepLayout: 经 FObjectReplicator 处理变化与本连接历史
+    RepLayout-->>ActorCh: 按 changelist handles 写需要恢复的当前属性
+    ActorCh->>NetConn: SendBunch 与发送历史记录
     NetConn->>ClientConn: UDP 底层传输 (Socket Send)
 
     Note over ClientConn,ClientActor: 客户端收包循环 (TickDispatch)
     ClientConn->>ClientCh: ReceivedBunch(FInBunch)
     ClientCh->>RepLayout: FRepLayout::ReceiveProperties (反序列化)
     RepLayout->>ClientActor: 写入客户端本地内存
-    RepLayout->>ClientActor: 触发 OnRep_XXX 回调函数
+    RepLayout->>ClientActor: 接收后按通知条件派发 OnRep（顺序不构成事务）
 ```
 
 ---
@@ -112,11 +116,11 @@ sequenceDiagram
 			// …（节选：省略 bReplicateTransactionally 事务包裹分支）
 ```
 
-可见 5.8 的入口有两条互斥路径：启用 Iris 时走 `InternalIrisUpdateTransactional` 并直接返回，传统的「按 Actor 遍历」路径只在 `ReplicationSystem == nullptr` 时执行。下文全部讨论传统路径。
+可见这一分支在存在 ReplicationSystem 时调用 `InternalIrisUpdateTransactional`，否则才进入所示传统复制分支。此节选没有展示整个 TickFlush 的退出流程，不能据此添加“立即返回”的动作。下文主要讨论传统路径。
 
 ### 2. `ServerReplicateActors` 主函数（节选）
 
-以下代码逐字摘自 `Engine\Source\Runtime\Engine\Private\NetDriver.cpp`（第 6277 行起，函数共约 210 行，此处为节选）：
+以下为旧稿标注的源码摘录，历史来源为 `Engine\Source\Runtime\Engine\Private\NetDriver.cpp`（第 6277 行起，函数共约 210 行，此处为节选）：
 
 ```cpp
 int32 UNetDriver::ServerReplicateActors(float DeltaSeconds)
@@ -252,7 +256,7 @@ int32 UNetDriver::ServerReplicateActors(float DeltaSeconds)
 3. **`ServerTickTime` 与 `bCPUSaturated`（第 6340~6350 行）**：`GEngine->GetMaxTickRate(DeltaSeconds)` 给出目标 tick 率；若实际 `DeltaSeconds` 超过目标帧时长的 **1.2 倍**，本帧被标记为 CPU 饱和。注意此处的 `bCPUSaturated` 只是传给 `ServerReplicateActors_ForConnection` 的参数。
 4. **`CurrentConsiderList` 生命周期**：`ON_SCOPE_EXIT` 保证函数退出时清空，`ensureMsgf` 检查它进入时必须为空——这是「主循环不可重入 / 不可跨帧持有」的硬约束。
 5. **每帧上限不在主函数里**：主函数不设「每帧最多复制 N 个 Actor」的硬截断，真正的上限来自 `PrepareConnections` 的客户端节流（下节）与 `ServerReplicateActors_ProcessPrioritizedActorsRange` 的**连接饱和**判定（见第 4 小节）。
-6. **`NumClientsToTick` 之后的 `i >= NumClientsToTick` 分支**：本帧未被调度到的连接，其 ConsiderList 中相关 Actor 被打上 `bPendingNetUpdate = true`，从而在下一帧被强制重新考虑——这就是「客户端限流不会永久丢失复制」的机制。
+6. **`i >= NumClientsToTick` 分支的后续责任**：旧稿定位其省略循环为相关对象设置 `bPendingNetUpdate`，用于后续继续考虑；可见代码还清除该连接的 TimeSensitive。待更新标记不是下一帧送达保证，仍需对象/连接有效、条件允许并得到预算；不能由标记动作推导连接限流、断线或生命周期结束都不会造成缺失。
 
 ### 3. 阶段一：`ServerReplicateActors_PrepConnections` —— 客户端节流
 
@@ -292,10 +296,10 @@ int32 UNetDriver::ServerReplicateActors_PrepConnections( const float DeltaSecond
 	}
 ```
 
-1. **首个真正的「每帧上限」就是这里**：`GEngine->NetClientTicksPerSecond × DeltaSeconds` 给出本帧允许 tick 的客户端数量，`FMath::TruncToInt` 向下取整。不足 1 个连接时把时间累积进 `DeltaTimeOverflow`（函数内 `static`），下一帧补上——因此平均速率正确，但单帧存在抖动。
-2. **`limitclientticks` / listen server**：该节流默认只对 listen server 生效（或命令行强制），dedicated server 不节流。
-3. **`NetCmds::MaxConnectionsToTickPerServerFrame`**：显式配置项，`> 0` 时对所有 net mode 生效，与上一条件取更小值。
-4. 该函数在末尾返回 `bFoundReadyConnection ? NumClientsToTick : 0`（第 5300 行）——「没有任何 ready 连接」时直接归零，主函数随即早退。
+1. **第一分支有两个门**：只有 `(bForceClientTickingThrottle || NetMode == ListenServer) && bTickingThrottleEnabled` 成立，才计算速率限制。Listen 模式本身不充分；强制 `limitclientticks` 也不绕过 `bTickingThrottleEnabled`。Dedicated 可以经强制分支进入，不能统一称为“不节流”。
+2. **第一分支的计算与早退**：使用速率、`DeltaSeconds + DeltaTimeOverflow` 和 LAN 倍率计算，再截断为整数并与连接数取较小值。结果为零时累加 overflow 后立即返回，后面的显式 cap 根本不会执行。这里只说明所示控制流，不宣称真实负载下平均速率已测准。
+3. **第二分支是覆盖赋值**：代码到达独立的正 `MaxConnectionsToTickPerServerFrame` 分支后，重新赋 `min(ClientConnections.Num(), configured_cap)`；它没有再与前一计算值取 min。一个纯算术反例是：20 个连接，前一非零结果 2，配置 cap=10，后式得到 10，而不是 2。若前式为 0 则已经返回，也不能套这个反例。两分支的效果必须按实际配置/路径分别记录。
+4. **ready 检查仍是另一层**：旧稿另记录函数末尾为 `bFoundReadyConnection ? NumClientsToTick : 0`（历史第 5300 行，未在此节选展开）。因此数量计算不是连接已被成功复制的证据。目标版本完整函数、实际模式、开关值和每连接调度结果都需另外验证。
 
 ### 4. 阶段二：`ServerReplicateActors_BuildConsiderList` —— 候选集与自适应频率
 
@@ -661,7 +665,7 @@ int32 UNetDriver::ServerReplicateActors_PrioritizeActors( UNetConnection* Connec
 3. **休眠在这里被消费**：`GSetNetDormancyEnabled != 0` 时，`IsActorDormant`（查 `FNetworkObjectInfo::DormantConnections`）为真则 `continue`，整条 Actor 完全不参与本连接本帧复制；`ShouldActorGoDormant` 为真则 `Channel->StartBecomingDormant()`。
 4. **`NetTag` 去重**：`SentTemporaries` 先被打上本帧 `NetTag`，随后 `Actor->NetTag != NetTag` 才入列——防止同一 Actor 被重复排程。
 5. **排序**：`Algo::SortBy(..., TGreater<>())` 按 `Priority` 降序。优先级取自 `AActor::GetNetPriority`（`Engine\Source\Runtime\Engine\Private\ActorReplication.cpp` 第 48~92 行），其返回值在 `FActorPriority` 构造时被 `RoundToInt(65536.0f * ...)` 定点化。
-6. **注意**：形参 `bCPUSaturated` 在该函数体内**未被使用**（已 rg 核对），CPU 饱和的实际作用点在阶段四的 `bIgnoreSaturation`。
+6. **注意**：形参 `bCPUSaturated` 在该函数体内**未被使用**（旧稿 rg 核对记录，本次未复现），CPU 饱和的实际作用点在阶段四的 `bIgnoreSaturation`。
 
 ### 6. 阶段四：`ServerReplicateActors_ProcessPrioritizedActorsRange` —— 饱和、通道与 `ReplicateActor`
 
@@ -799,29 +803,29 @@ int32 UNetDriver::ServerReplicateActors_ProcessPrioritizedActorsRange( UNetConne
 }
 ```
 
-1. **连接级饱和是硬闸门**：`!Connection->IsNetReady() && !bIgnoreSaturation` 时**整条连接本帧一个 Actor 都不处理**并直接 `return 0`，`GNumSaturatedConnections` 计数递增。这与「每帧 N 个 Actor」的直觉不同：5.8 的粒度是「连接是否还能发包」，而不是 Actor 配额。
-2. **相关性重检节流**：已可见 Actor 只在 `ElapsedTime - Channel->RelevantTime >= Min(RelevantTimeout, 1.0f)` 时才重新计算可见性，`bTearOff` 的 Actor 永不重检。这解释了「相关性变化有 1 秒级延迟」的现象。
-3. **`bIsRecentlyRelevant` 是通道存活的滞后窗口**：`bIsRelevant || (Channel && ElapsedTime - Channel->RelevantTime < RelevantTimeout) || ActorInfo->ForceRelevantFrame >= Connection->LastProcessedFrame`。三者任一为真即继续发送，是为了避免在相关性边界抖动时反复开关通道。
-4. **`ReplicateActor` 的调用点**在该函数中段（第 5815~5830 行区域），只有 `Channel->IsNetReady() || bIgnoreSaturation` 为真才进入——即「Actor 级饱和检查」。这是 `UActorChannel::ReplicateActor` 在传统路径上唯一的调用来源。
+1. **本次调用的连接饱和门**：`!Connection->IsNetReady() && !bIgnoreSaturation` 时计数递增并返回 0，所以本次调用不会进入下面的 Actor 范围循环。该节选不能排除同帧其他调用/路径已做工作，不应扩述为“整条连接本帧一个 Actor 都不处理”。它展示的是入口门控，不是全系统配额或已送达计数。
+2. **相关性重检的局部分支**：关卡就绪且未 TearOff 时，代码在没有 Channel 或经过所示时间阈值后执行相关性检查。阈值用 `Min(RelevantTimeout, 1.0f)`，但实际响应还受何时再次调度影响；不能把此条件直接当作实测或固定“1 秒延迟”，也不由这一分支穷尽所有检查路径。
+3. **`bIsRecentlyRelevant` 提供继续处理的资格**：当前相关、通道处于最近相关窗口，或 ForceRelevantFrame 条件满足，都会进入后续处理分支。这可减少相关性边界抖动造成的开关，但还要经过后续对象/通道就绪、预算等检查，不能把“三者任一为真”写成已经发送或收到。
+4. **`ReplicateActor` 的调用点**在该函数中段（第 5815~5830 行区域），只有 `Channel->IsNetReady() || bIgnoreSaturation` 为真才进入——即「Actor 级饱和检查」。这是本文展示的常规调度入口；并不是全部调用来源。后文还记录了 RPC 为建立初始状态而强制序列化的入口，不能由局部节选推导完整调用图。
 5. **后半段的 `GNumSaturatedConnections > LocalNumSaturated` 早退**（第 5867~5873 行）返回 `j`，配合 `ServerReplicateActors_MarkRelevantActors`（第 5896 行）把未处理区间标记为相关，下一帧继续。
-6. **通道关闭**：`!bIsRecentlyRelevant && Channel != nullptr` 且 `(!bLevelInitializedForActor || !IsNetStartupActor())` 时，按 `TearOff` / `Relevancy` 原因关闭通道。**Map Actor（非 startup actor）立即关通道即立刻销毁**，startup actor 保留通道。
+6. **Close 不等于同步销毁所有副本**：可见尾段在不再 recently relevant 的分支中，按某些条件调用 `Channel->Close` 并选择 TearOff/Relevancy 原因；确切关闭判定的 14 行已省略，不能由此认证完整条件。服务器发起关闭、接收端处理、Actor 销毁/保留与后来重建是不同步骤。关卡对象和动态对象的具体生命周期须查目标实现并记录，不能给 Map Actor 加上“非 startup”括注，也不能从一次 Close 推导立刻销毁或必定保留。
 
-### 7. 参数与阈值对照（严格按源码，无外部推测）
+### 7. 历史节选中的参数与阈值（目标版本须另核）
 
 | 名称 | 真实位置 | 源码中的真实语义 |
 | --- | --- | --- |
 | `ReplicationFrame` | `NetDriver.cpp` 第 6303 行递增 | 使「本帧已比较过」的属性失效，供 changelist 比较 early-out |
 | `bCPUSaturated` | `NetDriver.cpp` 第 6349 行 | `DeltaSeconds > 1.2 * ServerTickTime`；在 `PrioritizeActors` 中未被使用 |
-| `NumClientsToTick` | `NetDriver.cpp` 第 5214、5227 行 | 每帧允许 tick 的客户端数上限（`NetClientTicksPerSecond × DeltaSeconds`，或 `net.MaxConnectionsToTickPerServerFrame`） |
+| `NumClientsToTick` | 历史 `NetDriver.cpp` 第 5214、5227 行 | 第一条件分支计算可早退；后续正 cap 若被执行则覆盖前值，见上一节的分支算例 |
 | `ScaleDownStartTime = 2.0f` | `NetDriver.cpp` 第 5391 行 | 距上次复制超过 2 秒才开始降频 |
 | `ScaleDownTimeRange = 5.0f` | `NetDriver.cpp` 第 5392 行 | 降频插值的 5 秒过渡区间 |
 | `MinNetUpdateFrequency` 兜底 | `NetDriver.cpp` 第 5400 行 | 为 0 时被就地设为 `2.0f` |
 | `MinVisibilityTimeout` | `NetDriver.cpp` 第 5746 行 | `FMath::Min(RelevantTimeout, 1.0f)`，相关性重检的最小间隔 |
 | `Priority` | `NetDriver.cpp` 第 5160 行 | `RoundToInt(65536.0f * GetNetPriority(...))`，多 viewer 取 `FMath::Max` |
 | `DORM_*` 判定 | `NetDriver.cpp` 第 5505~5526 行 | `NetDormancy <= DORM_Awake` 不动；`DORM_DormantPartial` 逐个 viewer 查 `GetNetDormancy` |
-| `net.MaxRPCPerNetUpdate` | `DataReplication.cpp` 第 38~42 行 | 默认 **2**，单个不可靠 multicast RPC 每次网络更新最多队列次数 |
+| `net.MaxRPCPerNetUpdate` | 历史 `DataReplication.cpp` 第 38~42 行 | 旧稿记录默认2；实际阈值、计数窗口和后端按目标版本核验，不等于每游戏帧上限 |
 
-**关于 `MaxReplicationDistanceSquared`**：该标识符在 UE 5.8 的 `Engine\Source` 中**不存在**（ripgrep 全库零命中）。距离裁剪的真实来源是 `AActor::IsWithinNetRelevancyDistance`（`Engine\Source\Runtime\Engine\Private\ActorReplication.cpp` 第 383~386 行），比较对象为 `GetNetCullDistanceSquared()`。
+**关于 `MaxReplicationDistanceSquared`**：该标识符在 UE 5.8 的 `Engine\Source` 中**不存在**（旧稿 ripgrep 全库零命中记录，本次未复现）。距离裁剪的真实来源是 `AActor::IsWithinNetRelevancyDistance`（`Engine\Source\Runtime\Engine\Private\ActorReplication.cpp` 第 383~386 行），比较对象为 `GetNetCullDistanceSquared()`。
 
 ---
 
@@ -833,7 +837,7 @@ int32 UNetDriver::ServerReplicateActors_ProcessPrioritizedActorsRange( UNetConne
 
 （2026-09-14：原示意块已替换为 5.8 源码逐字版）
 
-`ReplicateActor` 在 5.8 中是一个约 **382 行**的长函数（第 3602~3983 行），远超前文的直觉印象。以下代码逐字摘自 `Engine\Source\Runtime\Engine\Private\DataChannel.cpp`（第 3602 行起），按真实顺序保留关键区段，省略处标注省略行数：
+`ReplicateActor` 在 5.8 中是一个约 **382 行**的长函数（第 3602~3983 行），远超前文的直觉印象。以下为旧稿标注的源码摘录，历史来源为 `Engine\Source\Runtime\Engine\Private\DataChannel.cpp`（第 3602 行起），按真实顺序保留关键区段，省略处标注省略行数：
 
 ```cpp
 int64 UActorChannel::ReplicateActor()
@@ -1124,20 +1128,36 @@ int64 UActorChannel::ReplicateActor()
 
 ### 2. 逐行技术深度解构
 
-1. **`ActorReplicator->ReplicateProperties(Bunch, RepFlags)` 是真实调用点（第 3882 行）**：`FRepLayout::ReplicateProperties` 并不被 `UActorChannel` 直接调用，而是经由该 Actor 的 `FObjectReplicator` 转发；且包了一层 `CanSkipUpdate(RepFlags)` 提前退出——这是 Push Model（`UPROPERTY(Replicated, PushModel)`）省 CPU 的关键开关。若 `UE::Net::bPushModelValidateSkipUpdate` 打开，跳过更新却仍写出数据会被 `ensureMsgf` 抓出，属于开发期一致性校验。
-2. **影子内存对比原理（真实位置：`FRepLayout` 的 changelist 比较路径，见下文「核心源码深入剖析五」）**：
-   - 5.8 中**不存在** `FRepState::DynamicBuffer`、`LastProperty`、`SendingProxy` 等成员（ripgrep 核对零命中）。发送侧的历史状态由 `FRepChangelistState`（环形 changelist 历史）+ `FSendingRepState::ChangeHistory[]` 共同承担，接收侧的最新状态才是 `FReceivingRepState::StaticBuffer`；
-   - `FRepLayout::CompareProperties` 在比较时使用的影子缓冲是 `RepChangelistState->StaticBuffer.GetData()`（`RepLayout.cpp` 第 1834 行），比较与写回发生在 `CompareProperties_r` 第 1682~1684 行的 `PropertiesAreIdentical(...)` / `StoreProperty(...)`；
-   - 因而是「逐条 Cmd 比较 + 命中则写回影子并追加 Handle 到 changelist」，不是「无条件逐字节 memcmp 整块对象内存」。
+1. **经由 `FObjectReplicator` 调用**：可见代码是 `ActorReplicator->ReplicateProperties(Bunch, RepFlags)`，不是 ActorChannel 直接调用 `FRepLayout`。`CanSkipUpdate` 是跳过工作的门控，不能据此发明 `UPROPERTY(Replicated, PushModel)` 作为接入 specifier。公开的属性注册参数是 `FDoRepLifetimeParams::bIsPushBased`，还需要目标工程的 Push Model 构建/配置以及正确标脏；开了选项不意味着引擎能发现任意未标记的写入。可见 `bPushModelValidateSkipUpdate` 分支与 `ensureMsgf` 用于发现“判定可跳过却仍写出数据”的不一致，这是开发期校验，不等于本项目已通过运行验证。示例见本节末尾。
+2. **共享比较与每连接发送状态不同**：
+   - `FRepLayout` 是类型的布局/命令描述；对象的 `FRepChangelistState::StaticBuffer` 用于比较当前状态，changelist 记录变化 Handle。不能把类型共享布局误说成所有对象/连接共享同一份发送确认状态。
+   - 可见 `CompareProperties_r` 先 `PropertiesAreIdentical`，命中差异即 `StoreProperty` 并追加 Handle。这是比较阶段，尚不能证明任何具体连接发送、接收或 ACK。
+   - `FRepState` 明确是每对象、每连接的状态，`FSendingRepState` 保存发送/条件历史。经典普通属性的历史主要追踪 changelist 与包标识；Custom Delta 另有基准/retirement 状态。接收侧 `FReceivingRepState::StaticBuffer` 又是不同用途。完整双连接时间线见“核心源码深入剖析五”。
+   - 因而是类型化命令比较、变化记录、连接历史与序列化共同工作，不是对整块 Actor 内存无条件 `memcmp`，也不是“共享缓存已更新，所以所有连接已同步”。
 3. **SubObject 动态挂载复制（第 4007 行，`Actor->ReplicateSubobjects(...)` 调用点）**：真实调用链是 `ReplicateActor` → `DoSubObjectReplication`（第 3888 行）→ 二选一：
    - `Actor->IsUsingRegisteredSubObjectList()` 为真时走 `ReplicateRegisteredSubObjects`（5.8 的推荐路径，配合 `AddReplicatedSubObject`）；
    - 否则才回调虚函数 `Actor->ReplicateSubobjects(this, &Bunch, &OutRepFlags)`（第 4007 行，即在 `DoSubObjectReplication` 第 3985 行起函数的 `else` 分支内）；
    - 单个子对象实际写入由 `UActorChannel::ReplicateSubobject`（第 4256 行）→ `WriteSubObjectInBunch` 完成，并受 `SUBOBJECT_TRANSITION_VALIDATION`（第 4263~4287 行）与 `GCVarDetectDeprecatedReplicateSubObjects` 的开发期校验约束；`UE::Net::GCVarCompareSubObjectsReplicated` 会触发 `ValidateReplicatedSubObjects()` 对比新旧两条路径的结果。
-4. **可靠性与重发路径**：`bWroteSomethingImportant` 才调用 `SendBunch(&Bunch, 1)`（注意第二个参数传 **1**，即 `bForce` 为真）；随后对每个 `ReplicationMap` 中的 replicator 调 `PostSendBunch(PacketRange, Bunch.bReliable)`，把「已发出但未 ACK」的属性值记入 retire 历史——这是不可靠属性在丢包后能被 NAK 重发的依据。
+4. **发送与恢复的衔接**：可见 `bWroteSomethingImportant` 才进入 `SendBunch(&Bunch, 1)`，然后调用各 replicator 的 `PostSendBunch(PacketRange, Bunch.bReliable)`。这把本次写出与包范围/可靠性关联起来，不能笼统称为把全部属性值存进同一 retire 缓存。普通 RepLayout 历史追踪 changelist/包标识，Custom Delta 有自己的基准与 retirement；收到 NAK 后可以把仍需恢复的变化合入后续发送，传送当前值，而非逐次重播业务赋值。
 5. **`OpenPacketId.First != INDEX_NONE` 分支**：通道已建立时，一旦 spawn 包被 ACK（`!SpawnAcked && OpenAcked`）就对所有 replicator 调用 `ForceRefreshUnreliableProperties()`，强制把此前发出的不可靠属性重新置脏——因为 spawn 之前的不可靠包可能已丢。这是「连接建立瞬间的一波重发」的真实来源。
 6. **`RepFlags` 的关键语义**：`bNetInitial`（首包，需序列化 spawn 信息）、`bNetOwner`（该连接是否为 NetOwner）、`bNetSimulated`、`bRepPhysics`、`bReplay`、`bForceInitialDirty`、`CondDynamicChangeCounter`。其中 `CondDynamicChangeCounter` 取自 `FSendingRepState::RepChangedPropertyTracker->GetDynamicConditionChangeCounter()`（第 3848~3858 行），供 `COND_*` 动态条件（`DOREPLIFETIME_ACTIVE_OVERRIDE`）判定使用。
 7. **`bIsReplicatingActor` 重入保护（第 3643 行）**：`FGuardValue_Bitfield` 在第 3774 行置位。这正是 `ProcessRemoteFunctionForChannelPrivate` 第 3259 行要检查 `Ch->bIsReplicatingActor` 并在「复制中途触发 RPC」时报错并 `ensureMsgf(false)` 的原因——两者互为约束。
-8. **`ReplicateActor` 由谁调用**：传统路径上只有 `ServerReplicateActors_ProcessPrioritizedActorsRange`（`NetDriver.cpp` 第 5815~5830 行区域，且需 `Channel->IsNetReady()`）与 `ProcessRemoteFunctionForChannelPrivate`（`NetDriver.cpp` 第 3289 行，`SetForcedSerializeFromRPC(true)` 包裹）两处。
+8. **两种已记录的调用场景**：常规调度经 `ServerReplicateActors_ProcessPrioritizedActorsRange`；旧稿另定位 `ProcessRemoteFunctionForChannelPrivate` 在 RPC 需要初始序列化时，以 `SetForcedSerializeFromRPC(true)` 包裹调用。它们分别回答“轮到哪些对象更新”和“远程调用所需对象状态是否已建立”。这里没有重新取得完整目标版本调用图，不能称“唯一来源”或穷尽“只有两处”。
+
+下面是**原创属性注册片段**，不是引擎源码，也不是完整可编译工程。假定 `AMyActor::Health` 已用 `UPROPERTY(ReplicatedUsing=...)` 声明，拥有者复制、类声明/生成头等已配置：
+
+```cpp
+// AMyActor.cpp，需 Net/UnrealNetwork.h
+void AMyActor::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    FDoRepLifetimeParams Params;
+    Params.bIsPushBased = true;
+    DOREPLIFETIME_WITH_PARAMS(AMyActor, Health, Params);
+}
+```
+
+注册只是一步。下一步按目标版本 `PushModel.h` 的公开标脏入口集中封装 Health 修改，检查模块/运行配置，并做“有标脏更新、故意漏标脏负例、初始接收、两连接恢复”测试；Iris 还要核对其 Push Model 模式。此处未运行。依据：[FDoRepLifetimeParams](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/FDoRepLifetimeParams)、[FRepState](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/FRepState)、[FSendingRepState](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/FSendingRepState) 与 [Iris 接入说明](07-Iris复制使用与迁移.md)。
 
 ### 3. 客户端通道入口：`ProcessBunch` 与 `ReceivedBunch`
 
@@ -1167,7 +1187,7 @@ int64 UActorChannel::ReplicateActor()
 
 （2026-09-14：原示意块已替换为 5.8 源码逐字版）
 
-以下代码逐字摘自 `Engine\Source\Runtime\Engine\Private\NetDriver.cpp`（第 8125 行起，函数共 153 行，此处为节选）：
+以下为旧稿标注的源码摘录，历史来源为 `Engine\Source\Runtime\Engine\Private\NetDriver.cpp`（第 8125 行起，函数共 153 行，此处为节选）：
 
 ```cpp
 void UNetDriver::ProcessRemoteFunction(
@@ -1325,8 +1345,8 @@ void UNetDriver::ProcessRemoteFunction(
 2. **通道创建不在本函数、也不在 `Connection->GetConnectionState() == USOCK_Open` 时**：真实的通道懒惰创建在 `InternalProcessRemoteFunctionPrivate`（第 3152~3184 行），条件是 `bIsServer && IsLevelInitializedForActor(Actor, Connection)`，用 `CreateChannelByName(NAME_Actor, EChannelCreateFlags::OpenedLocally)`；客户端侧找不到通道则直接 `return`。这与「客户端对尚未初始同步的 Actor 发 Server RPC 会被静默丢弃」的现象一致，但真实告警不在这里。
 3. **函数索引压缩的真实位置**：`ProcessRemoteFunction` 本身只做分派；紧凑索引由后续的 `NetCache->GetClassNetCache(TargetObj->GetClass())` 取得 `FClassNetCache`，再 `ClassCache->GetFromField(Function)` 取 `FFieldNetCache`（第 3138~3150 行），最终在 `Ch->WriteFieldHeaderAndPayload(...)`（第 3412/3429 行）中写出 `FieldCache->FieldNetIndex`。注意这**不是**「PackageMap 导出的全局编号」，而是**每个类一份**的字段序号。
 4. **`Server` 与 `NetMulticast` 的真实判定**：本函数只显式算 `bIsServerMulticast = bIsServer && (Function->FunctionFlags & FUNC_NetMulticast)`（第 8163 行）。`Server` 与 `Client` 的区分不在这里的 if 里，而是**由 `UObject::GetFunctionCallspace` 在更上游决定本次调用到底是 Local、Remote 还是 Absorbed**（见下节）。`AActor::CallRemoteFunction` 只在 `GetFunctionCallspace` 返回含 `Remote` 位时才被调用。
-5. **多播的真实行为**：`bIsServerMulticast` 时遍历**所有** `ClientConnections`（`Connection->ViewTarget` 非空），逐连接做 `Actor->IsNetRelevantFor(...)`；不可靠多播的相关性检查失败就跳过，**可靠多播**在 `CVarAllowReliableMulticastToNonRelevantChannels` 打开且通道仍存在时可例外发送——源码注释解释了原因：通道可能因滞后（hysteresis）尚未关闭，Actor 也可能重新变相关，此时不能丢可靠 RPC。
-6. **不可靠多播是「排队」而非「立即发送」**：`RepLayout->BuildSharedSerializationForRPC(Parameters, GetNetTokenStore())` 在多播循环外建立共享序列化状态，循环内复用，循环结束后 `ClearSharedSerializationForRPC()`。真正的队列决策在 `ProcessRemoteFunctionForChannelPrivate` 第 3400 行：`QueueBunch = ( !Bunch.bReliable && Function->FunctionFlags & FUNC_NetMulticast )`，入队后由 `Ch->QueueRemoteFunctionBunch(...)`（第 3464 行）→ `FObjectReplicator::QueueRemoteFunctionBunch`（`DataReplication.cpp` 第 2293 行）处理，并在下次属性复制时随 bunch 发出。
+5. **节选中的多播接收集合**：循环候选来自 `ClientConnections`，但还要通过有效连接、ViewTarget、相关性等检查。可见代码另有“Reliable + 对应 cvar 开启 + 通道仍存在”的非当前相关连接分支；这属于该历史节选的后端/生命周期例外，不能推成通用的跨相关性广播保证。它也说明暂时失去相关性不必然关闭通道。公共调用矩阵仍应作为应用的默认合同：服务端及当前相关接收者；未来连接没有本次调用队列，Reliable Multicast 不会为晚加入者重播。
+6. **词法位置、缓存与发送策略是三件事**：在所示代码中，`BuildSharedSerializationForRPC(...)` 的调用位于多播循环内的合格连接分支；注释说明其内部可处理 clear 前的重复调用，不能因为复用缓存就改说调用在循环外。`ClearSharedSerializationForRPC()` 则在循环结束后。下文 `ERemoteFunctionSendPolicy::Default` 才选择将不可靠多播放入队列；ForceQueue/ForceSend 有各自分支，不能把“通常排队”写成所有发送策略都不立即处理。排队后的实际发送仍依赖复制调度和连接状态。
 7. **`FObjectReplicator::QueueRemoteFunctionBunch` 的节流是真实存在的**（第 2302~2332 行，逐字节选）：
 
 ```cpp
@@ -1357,7 +1377,7 @@ void UNetDriver::ProcessRemoteFunction(
 	}
 ```
 
-   对应控制台变量 `net.MaxRPCPerNetUpdate`（`DataReplication.cpp` 第 38~42 行），**默认值 2**，说明为 `Maximum number of unreliable multicast RPC calls allowed per net update, additional ones will be dropped`。因此「同一帧连续调 3 次不可靠多播 RPC，第 3 次被丢弃」是设计行为而非 bug。
+   旧稿记录 `net.MaxRPCPerNetUpdate` 默认值为 2；上面可见代码实际比较的是同函数在该队列统计窗口中的 Calls 与运行配置。**network update period 不是通用的游戏/渲染帧定义**：同一帧是否跨清理点、哪个 replicator/队列、哪种后端/发送策略，都影响解释。只有确认仍处于同一计数窗口、同一函数且实际阈值为 2，才可由递增判断第三次被跳过；不能把它当成 UE 所有多播“每帧最多两次”的合同。复现时应记录后端、send policy、配置值、排队/清理边界和丢弃次数，未测前不要编造结果。
 
 ### 3. 上游：`Server` / `Client` / `NetMulticast` 的真实判定代码
 
@@ -1449,7 +1469,7 @@ sequenceDiagram
 	}
 ```
 
-`AActor::CallRemoteFunction` 全文摘自 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 5668~5688 行，逐字）：
+`AActor::CallRemoteFunction` 旧稿标注为全文摘自 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 5668~5688 行，逐字）：
 
 ```cpp
 bool AActor::CallRemoteFunction( UFunction* Function, void* Parameters, FOutParmRec* OutParms, FFrame* Stack )
@@ -1484,7 +1504,7 @@ bool UNetDriver::ShouldReplicateFunction(AActor* Actor, UFunction* Function) con
 }
 ```
 
-1. **`Local` 与 `Remote` 不是互斥的**：源码先处理 `Remote` 位再处理 `Local` 位，两者可同时置位（例如拥有者本地也执行的 Server RPC）。`SavedCode = Stack.Code` 与回滚注释正是为此存在——远程调用会消耗参数流，本地调用前必须回滚。
+1. **`Local` 与 `Remote` 是位标记，不必互斥**：所示代码先处理 Remote，再处理 Local；一个合适的应用例子是服务器发起 NetMulticast，在本地执行并发送给合格远端接收者。拥有者客户端调用 Server RPC，并不因此自动在客户端执行服务器实现；服务器自己调用 Server RPC 则按矩阵在服务器本地执行。预测要由业务另外实现。`SavedCode` 回滚解释的是参数流可同时用于两个分支，不是对任意 RPC 增加“双端执行”语义。依据：[公开 RPC 执行矩阵](https://dev.epicgames.com/documentation/en-us/unreal-engine/remote-procedure-calls-in-unreal-engine)。
 2. **`Absorbed` 走 `SkipFunction`**：`FunctionCallspace` 既不含 `Remote` 也不含 `Local` 时，参数被 `SkipFunction` 吃掉而不执行。这就是「客户端上对非拥有 Actor 调 Server RPC 什么也不发生」的真实机制。
 3. **原生 RPC 参数在发送前被逐字段搬运到一块本地 `Buffer`**（`UE_VSTACK_ALLOC_ALIGNED` 分配、`Memzero` 清零），`FBoolProperty` 且 `ArrayDim == 1` 时走特殊读取路径，其余走 `Stack.Step`。这说明 RPC 参数是**值拷贝**出去，与调用栈生命周期解耦。
 4. **`ShouldReplicateFunction` 的判据只有 NetDriverName 匹配**（5.8 已简化，不再检查角色/所有权）。**因此「只有 NetOwner 才能发 Server RPC」的权限校验不在此处**，真实拦截点是 `GetFunctionCallspace`（`AActor` 重写版）与 `UObject::ProcessEvent` 的 callspace 判定。是否放行由 `FunctionCallspace` 决定，`ProcessRemoteFunction` 只负责发。
@@ -1517,7 +1537,7 @@ UE 中 `UFUNCTION(Server, Reliable, WithValidation)` 会要求实现 `XXX_Valida
 
 失败原因的记录/读取接口在 `Engine\Source\Runtime\CoreUObject\Private\UObject\CoreNet.cpp`（第 663、667、672 行，声明见 `CoreNet.h` 第 800~802 行）：`RPC_ResetLastFailedReason()`、`RPC_ValidateFailed(const TCHAR* Reason)`、`RPC_GetLastFailedReason()`。
 
-客户端接收侧的调用链摘自 `Engine\Source\Runtime\Engine\Private\DataReplication.cpp`。`FObjectReplicator::ReceivedRPC` 的关键分支（第 1429~1453 行，节选）：
+接收端的历史调用链摘录标为来自 `Engine\Source\Runtime\Engine\Private\DataReplication.cpp`（Server RPC 的接收端是服务器，不应统一称客户端接收侧）。`FObjectReplicator::ReceivedRPC` 的关键分支（第 1429~1453 行，节选）：
 
 ```cpp
 		RPC_ResetLastFailedReason();
@@ -1560,7 +1580,7 @@ void FObjectReplicator::CallProcessEventForReceivedRPC(UObject* Object, UFunctio
 }
 ```
 
-1. **校验失败不返回错误码，而是就地 return**：`RPC_ValidateFailed` 只记录原因（供 `RPC_GetLastFailedReason` 读取，`ReceivedRPC` 第 1465~1469 行据此报 `LogRep, Error`）。发送侧并不知道对端校验失败——这正是「WithValidation 的 RPC 被拒后发送方无感知」的底层原因。
+1. **thunk 退出不等于连接继续存活**：可见生成代码先调用 `RPC_ValidateFailed` 记录原因，再 return，因而不会继续该次 `_Implementation`；这只是函数派发层。接收处理层还会检查失败状态并处理连接，不能从局部 return 推断“发送方永远无感知”。Epic UE5.8 公共合同明确：Server RPC 的 `_Validate` 返回 false 会断开调用客户端。本文未收录完整断连实现，也未运行断连测试，故不补造私有处理链；无 RPC 同步返回值与后来观察到断线是两回事。冷却未结束、弹药不足等正常业务拒绝应在普通结果路径表达，不能把 Validate=false 当常规拒绝按钮。见 [Server RPC Validation](https://dev.epicgames.com/documentation/en-us/unreal-engine/remote-procedure-calls-in-unreal-engine)。
 2. **`_Validate` 校验的是 thunk 收到的参数**，`FunctionThunkParameterNames` 与 `_Implementation` 同签名（除返回值）。UHT 在解析阶段会校验 `_Validate` 是否存在及其签名，缺失时报错（`UhtFunction.cs` 第 923/934 行的 `LogRpcFunctionError`）。
 3. **执行被 `IsExecuteRPCFunctionsEnabled()` 门控**：这是 PlayInEditor / 网络模拟等场景下可以「只收不执行」的开关；关掉后 `ReceivedRPC` 依然完成反序列化与失败原因检查，但不触发 `ProcessEvent`。
 4. **`FScopedNetContextRPC` + `FScopedRemoteRPCMode(Receiving)`** 标记「当前处于接收远端 RPC」的上下文，`UE::Net::Private::FScopedRemoteRPCMode` 会让 `UObject::ProcessEvent` 走接收模式（避免把收到的 RPC 再次当作本地发起并回发）。
@@ -1637,7 +1657,7 @@ void FObjectReplicator::CallProcessEventForReceivedRPC(UObject* Object, UFunctio
 
 （2026-09-14：原示意块已替换为 5.8 源码逐字版）
 
-以下代码逐字摘自 `Engine\Source\Runtime\Engine\Private\RepLayout.cpp`（第 4661 行起，函数共 131 行，此处为节选）：
+以下为旧稿标注的源码摘录，历史来源为 `Engine\Source\Runtime\Engine\Private\RepLayout.cpp`（第 4661 行起，函数共 131 行，此处为节选）：
 
 ```cpp
 void FRepLayout::CallRepNotifies(FReceivingRepState* RepState, UObject* Object) const
@@ -1716,9 +1736,9 @@ void FRepLayout::CallRepNotifies(FReceivingRepState* RepState, UObject* Object) 
    - `case 1`：把 `ShadowData + Parent`（影子缓冲中该属性的**旧值**）作为参数传入，即 `OnRep_XXX(OldValue)`；
    - `case 2`：`check(EnumHasAnyFlags(Parent.Flags, ERepParentFlags::IsCustomDelta))`，从 `RepState->RepNotifyMetaData.Find(RepProperty)` 取元数据（数组索引等）作为第二参数——**仅 Custom Delta 属性（如 `FFastArraySerializer`）才有此形态**；
    - 其他参数个数直接 `checkf(false)` 视为非法。
-3. **`FRepShadowDataBuffer ShadowData(RepState->StaticBuffer.GetData())`**：传给 `OnRep` 的「旧值」读写自 `FReceivingRepState::StaticBuffer`。这就是为什么带参 `OnRep` 能拿到上一个值——影子缓冲在 `ReceiveProperties_r` 写对象内存**之前**保持了旧值（见下节时序）。
+3. **通知需要接收侧保存的状态**：可见 `ShadowData` 引用 `FReceivingRepState::StaticBuffer`，对象数据另由 ObjectData 指向；旧稿省略的带参分支利用相应旧值/元数据。公共 RepNotify 支持旧值参数，但具体在各接收分支何时保存或回写，不能从这里两个 buffer 的构造语句推出统一时点。
 4. **`case 0` 之后的条件性 `CopyCompleteValue`**：只有「含动态数组属性且非 FastArray」的 Parent 才把 `ObjectData` 回抄进 `ShadowData`。源码 TODO 注释直言这对 RepNotify 数组是性能回归，因为回抄的是整个属性而非仅复制字段。
-5. **`RepState->RepNotifies.Empty()` 与 `RepNotifyMetaData.Empty()` 在函数末尾**：通知列表是「一次性消费」的——每次 `CallRepNotifies` 处理完即清空，因此 `OnRep` 不会被重复派发（除非再次收到属性更新）。
+5. **清空只说明本次通知队列被消费**：`RepNotifies.Empty()` / `RepNotifyMetaData.Empty()` 不构成业务事件恰好一次保证。再次接收、其他通知路径或业务手动调用仍可能进入表现逻辑；更新 UI 应按当前状态幂等处理，奖励/掉落不能靠这次队列清空防重。
 6. **通知入队点**：`FObjectReplicator::QueuePropertyRepNotify`（`Engine\Source\Runtime\Engine\Private\DataReplication.cpp` 第 2737 行起，逐字节选）：
 
 ```cpp
@@ -1755,13 +1775,19 @@ void FRepLayout::CallRepNotifies(FReceivingRepState* RepState, UObject* Object) 
 	}
 ```
 
-   注意 `AddUnique` 与源码里那条 `@todo UE - not checking if replicated value is changed from old` 注释：**入队时不判断新旧值是否相等**。「值没变就不触发」这一保守说法在 5.8 的 `QueuePropertyRepNotify` 中并不成立——同一属性在一帧内多次入队会被去重，但跨帧重复收到相同值仍会再次入队。判定是否触发的真实控制项是 `ELifetimeRepNotifyCondition`（`REPNOTIFY_OnChanged` / `REPNOTIFY_Always`），它在 `FRepParentCmd::RepNotifyCondition`（`RepLayout.h` 第 827 行）中保存并在比较阶段生效。
+   `AddUnique` 只在这一待派发列表中对属性去重，不是“每帧”或“每次服务器操作”的通用边界。此 helper 的旧注释确实没有在该入口比较值；但不能把某个队列入口（包括 Custom Delta 等路径）的局部行为推广成所有普通标量的 RepNotify 合同。需要查清谁调用它、之前是否已经判断通知条件，而不是只看最后入队函数。
 
-- **REPNOTIFY_Always vs OnChanged**：`REPNOTIFY_OnChanged`（默认）只在变更比较命中时把属性加入 changelist，从而间接影响 `OnRep` 是否发生；使用 `DOREPLIFETIME_CONDITION_NOTIFY(..., REPNOTIFY_Always)` 时该属性每包都会进入通知列表。二者的判定数据都在 `FRepParentCmd::RepNotifyCondition`，而不是 `CallRepNotifies` 内部。
+将流程拆成三层才不会误用：
+
+1. **是否发送**：对象/连接资格、变化跟踪、复制条件、待恢复历史与调度共同决定。`REPNOTIFY_OnChanged` 不是服务器生成 changelist 的总开关；Always 也不强制每次赋值发送。
+2. **收到并应用什么**：接收端只对本次实际携带/可应用的属性数据处理。服务器多次赋值可以合并，丢包后也可能只恢复当前值。
+3. **是否通知**：普通标量的 OnChanged 依据接收路径新旧值比较；Always 可在该属性实际收到相同值时通知。如果包里只有别的属性，不能要求它也回调。FastArray/自定义 delta 的条目回调与普通标量 OnRep 需分别核对，不能相互替代结论。
+
+一个待测反例：服务器 Health 从 100 改成 90，客户端已预测为 90，然后实际收到 Health=90。比较 OnChanged 与 Always，再发一个只携带别的属性的包作对照；记录 payload、接收前值与通知次数，而不是把“每收到网络包”当成 Health 被接收。来源：[属性 RepNotify 条件](https://dev.epicgames.com/documentation/en-us/unreal-engine/replicate-actor-properties-in-unreal-engine)。此场景未运行。
 
 ### 2. OnRep 为何在属性写入之后才调用（真实时序）
 
-服务器把属性值写入客户端内存的调用链是 `UActorChannel::ReceivedBunch` → `FObjectReplicator::ReceivedBunch`（`DataReplication.cpp` 第 984 行）→ `FRepLayout::ReceiveProperties`（第 3789 行）。`ReceiveProperties` 逐字摘自 `Engine\Source\Runtime\Engine\Private\RepLayout.cpp`（第 3789~3870 行，全函数 82 行）：
+服务器把属性值写入客户端内存的调用链是 `UActorChannel::ReceivedBunch` → `FObjectReplicator::ReceivedBunch`（`DataReplication.cpp` 第 984 行）→ `FRepLayout::ReceiveProperties`（第 3789 行）。`ReceiveProperties` 旧稿标注为摘自 `Engine\Source\Runtime\Engine\Private\RepLayout.cpp`（第 3789~3870 行，全函数 82 行）：
 
 ```cpp
 bool FRepLayout::ReceiveProperties(
@@ -1872,12 +1898,12 @@ void FObjectReplicator::PostReceivedBunch()
 }
 ```
 
-结论（严格对应源码）：
+结论（按可见节选限定，不扩展为跨对象事务）：
 
-1. **`FReceivePropertiesStackParams` 同时持有两块内存**：`FRepObjectDataBuffer(Data)` 指向**真实对象内存**，`FRepShadowDataBuffer(RepState->StaticBuffer.GetData())` 指向**影子缓冲**。`ReceiveProperties_r` 一边把新值从 bunch 读出写入对象内存，一边把**旧值留在影子缓冲**中，并在写完后回写影子。
-2. **通知只是「入队」**：`bEnableRepNotifies ? &RepState->RepNotifies : nullptr` 把通知数组指针传进 `StackParams`；读取过程中只往这个数组里 `AddUnique` 属性（`QueuePropertyRepNotify`），**不执行任何 `OnRep`**。
+1. **可见的是两种数据视图**：StackParams 同时传入对象数据视图与 `FReceivingRepState::StaticBuffer` 影子视图。本文没有展示 `ReceiveProperties_r` 的各类属性/通知分支，因此不统一断言“写完对象就立即回写影子”。旧值保存、数组/自定义 delta 处理和通知后回写的准确时点，需结合目标接收分支与通知参数读取核验。
+2. **接收与派发分层**：所示 `ReceiveProperties` 把通知列表指针交给递归接收过程，本函数没有直接调用 OnRep。普通递归接收和前文 `QueuePropertyRepNotify` 不能仅因都使用通知数组就认定为同一个调用点；完整未展示分支须查目标版本。此处可确认的是接收记录与稍后的通知派发是不同职责。
 3. **派发被推迟到 `PostReceivedBunch`**：`UActorChannel::ReceivedBunch` 处理完整个 bunch 后才调用 `Replicator.PostReceivedBunch()`，其中先 `PostNetReceive()`（`AActor::PostNetReceive` 虚函数）、再 `CallRepNotifies(true)`（`FObjectReplicator::CallRepNotifies`，第 2431 行；形参 `bSkipIfChannelHasQueuedBunches` 对应此处的 `true`）。
-4. **这正是 `OnRep` 能看到完整新值的根本原因**：一个 bunch 内可能有多个相关属性，若在读到第一个属性时就回调，`OnRep` 里读到其它属性仍是旧值。推迟到 bunch 处理完毕，保证 `OnRep` 内看到的是**同一批更新之后的完整一致状态**，且带参 `OnRep` 仍能从影子缓冲取到旧值。
+4. **已应用的一批数据不等于业务完整快照**：推迟派发使回调发生在相应接收处理之后，带参 OnRep 可按其路径取得旧值；但本次 bunch 不一定包含业务依赖的所有字段，未映射引用还可能延迟，其他 Actor/RPC 更不属于这批应用的事务。不同属性 OnRep 没有确定先后，不应依赖“Health 通知先于 Dead”。把关联字段放入一个结构体/通知有助于协调，但不保证收到每次中间赋值，也不创建跨 Actor 或 RPC/属性的原子事务。需要时保存待协调状态，在接收通知后集中应用，参见 [Replicated Object Execution Order](https://dev.epicgames.com/documentation/en-us/unreal-engine/replicated-object-execution-order-in-unreal-engine)。
 5. **`PostNetReceive` 先于 `OnRep`**：`PostNetReceive` 仅在客户端（`!bIsServer`）且本包确实有属性复制（`bHasReplicatedProperties`）时调用一次并复位该标志；随后才是全部 `OnRep`。
 
 ### 3. `GetLifetimeReplicatedProps` 真实签名与 `DOREPLIFETIME` 宏展开
@@ -1959,7 +1985,7 @@ void FObjectReplicator::PostReceivedBunch()
 
 ### 4. 本节事实边界
 
-- 上述结论全部来自静态源码阅读；**未**在运行态用抓包或网络剖析器验证过实际字节数、帧内触发次数或带宽占用。
+- 上述为历史节选及静态解释，受开篇证据边界约束；**未**在运行态用抓包或网络剖析器验证过实际字节数、帧内触发次数或带宽占用。
 - `ELifetimeCondition` 目前有 `COND_None`(0) 到 `COND_Max`(17) 共 17 个可用条件（`COND_Max` 为哨兵）。本文只覆盖示例中出现的 `COND_OwnerOnly` / `COND_SimulatedOnly` / `COND_InitialOnly`，其余条件的判定位置在 `FRepLayout::RebuildConditionalProperties` 与 `FilterChangeList`（`RepLayout.cpp` 中 `ReplicateProperties` 调用它们），本文未逐条展开。
 
 ---
@@ -1970,7 +1996,7 @@ void FObjectReplicator::PostReceivedBunch()
 
 ### 1. 数据结构的真实归属（含 `RepIndex` 与 `COND_*` 的落点）
 
-`FRepLayoutCmd` 全文摘自 `Engine\Source\Runtime\Engine\Public\Net\RepLayout.h`（第 856~886 行，逐字）：
+`FRepLayoutCmd` 旧稿标注为全文摘自 `Engine\Source\Runtime\Engine\Public\Net\RepLayout.h`（第 856~886 行，逐字）：
 
 ```cpp
 class FRepLayoutCmd
@@ -2006,7 +2032,7 @@ public:
 };
 ```
 
-`FRepParentCmd` 全文摘自同一文件（第 780~837 行，逐字）：
+`FRepParentCmd` 旧稿标注为全文摘自同一文件（第 780~837 行，逐字）：
 
 ```cpp
 class FRepParentCmd
@@ -2123,16 +2149,16 @@ public:
 };
 ```
 
-1. **`RepIndex` 不在 `FRepLayoutCmd` 上**：`FRepLayoutCmd` 的成员是 `Property / EndCmd / ElementSize / Offset / ShadowOffset / RelativeHandle / ParentIndex / CompatibleChecksum / Type / Flags` 共 10 个，**没有 `RepIndex`，也没有 `SendingProxy`**（ripgrep 核对零命中）。`RepIndex` 是 `FProperty` 的成员（由 UHT 分配），在 `FRepLayout::CallRepNotifies` 中以 `RepProperty->RepIndex` 作为 `Parents` 的下标使用；`DOREPLIFETIME_DIFFNAMES` 中同样使用 `sp##v->RepIndex`。
+1. **`RepIndex` 不在 `FRepLayoutCmd` 上**：`FRepLayoutCmd` 的成员是 `Property / EndCmd / ElementSize / Offset / ShadowOffset / RelativeHandle / ParentIndex / CompatibleChecksum / Type / Flags` 共 10 个，**没有 `RepIndex`，也没有 `SendingProxy`**（旧稿 ripgrep 零命中记录，本次未复现）。`RepIndex` 是 `FProperty` 的成员（由 UHT 分配），在 `FRepLayout::CallRepNotifies` 中以 `RepProperty->RepIndex` 作为 `Parents` 的下标使用；`DOREPLIFETIME_DIFFNAMES` 中同样使用 `sp##v->RepIndex`。
 2. **`COND_*` 的落点是 `FRepParentCmd::Condition`（第 826 行）**，类型为 `ELifetimeCondition`；`REPNOTIFY_*` 的落点是紧邻的 `RepNotifyCondition`（第 827 行）。二者都在 **Parent Cmd（顶层属性）** 上，不在每个 element 的 `FRepLayoutCmd` 上——这是「条件复制以顶层属性为粒度」的源码依据。
 3. **两套 offset**：`FRepLayoutCmd::Offset` 是对象内存偏移，`ShadowOffset` 是影子内存偏移，二者不必相等（结构体布局差异），这也是不能用一次整块 memcpy 完成同步的原因之一。
 4. **`CompatibleChecksum`**：用于判定客户端与服务器该属性是否兼容（不兼容属性在接收侧被跳过），是「客户端/服务器类定义不一致时不崩、但静默丢属性」的机制来源。
-5. **`FRepState` 是纯容器**：只持有 `TUniquePtr<FReceivingRepState>` 与 `TUniquePtr<FSendingRepState>`，**没有 `StaticBuffer`/`DynamicBuffer` 成员**。因此「`FRepState::DynamicBuffer`」这一说法在 5.8 中不成立（ripgrep 在 `RepLayout.h` 中零命中）；接收侧影子缓冲是 `FReceivingRepState::StaticBuffer`（第 551 行），发送侧比较基准是 `FRepChangelistState::StaticBuffer`。
+5. **`FRepState` 是纯容器**：只持有 `TUniquePtr<FReceivingRepState>` 与 `TUniquePtr<FSendingRepState>`，**没有 `StaticBuffer`/`DynamicBuffer` 成员**。因此「`FRepState::DynamicBuffer`」这一说法在 5.8 中不成立（旧稿在 `RepLayout.h` 中的零命中记录，本次未复现）；接收侧影子缓冲是 `FReceivingRepState::StaticBuffer`（第 551 行），发送侧比较基准是 `FRepChangelistState::StaticBuffer`。
 6. **影子缓冲的存储类型**：`TArray<uint8, TAlignedHeapAllocator<16>>`——按最大类型做 16 字节对齐，源码注释写明 `Properties will be copied in here so memory needs aligned to largest type`。`FRepStateStaticBuffer` 还持有 `TSharedRef<const FRepLayout> RepLayout`，因此它知道自己属于哪个 layout。
 
 ### 2. 比较的真实实现：`CompareProperties_r` 与 `PropertiesAreIdentical`
 
-`CompareProperties_r` 全文摘自 `Engine\Source\Runtime\Engine\Private\RepLayout.cpp`（第 1648~1690 行，逐字）：
+`CompareProperties_r` 旧稿标注为全文摘自 `Engine\Source\Runtime\Engine\Private\RepLayout.cpp`（第 1648~1690 行，逐字）：
 
 ```cpp
 static uint16 CompareProperties_r(
@@ -2238,20 +2264,20 @@ static FORCEINLINE bool PropertiesAreIdenticalNative(
 }
 ```
 
-1. **比较是「按 Cmd 逐条」，不是「整块内存逐字节」**：每条 `FRepLayoutCmd` 代表一个可复制单元（顶层属性或数组内元素），比较用 `PropertiesAreIdentical(Cmd, ShadowData.Data, Data.Data, ...)`，即把 `Cmd` 交给类型化比较函数。所以正确的表述是「逐**属性**比较」，而「逐字节 memcmp」的比喻只在单条 Cmd 的底层实现（`CompareValue<T>`）意义上成立。
+1. **比较按 Cmd 分派到类型化操作**：当前节选显示布尔、数值、对象等走各自比较入口，动态数组另递归；它不是无条件扫描整个 Actor 内存。Cmd 可能对应嵌套字段，不能简单等同顶层属性或业务条目。`CompareValue<T>` 的函数体未展示，所以也不能继续把单条 Cmd 的实现说成逐字节 memcmp。
 2. **命中变更后的两个动作（第 1682~1684 行）**：
    - `StoreProperty(Cmd, ShadowData.Data, Data.Data)`——**把新值写入影子缓冲**；
    - `StackParams.Changed.Add(Handle)`——把该 Cmd 的 Handle 追加进 changelist。
-   因此影子缓冲是「上次已发送状态的镜像」，下一次比较的基准就是它。
-3. **`bForceFail` 是强制重发开关**：`SharedParams.bForceFail || !PropertiesAreIdentical(...)` 使得条件为真时所有 Cmd 都被视为已变更。它对应 `bNetInitial`、`ForceRefreshUnreliableProperties`、`bForceCompareProperties` 等场景。
-4. **动态数组走栈式递归**：`Cmd.Type == ERepLayoutCmdType::DynamicArray` 时用 `CompareProperties_Array_r`，并通过 `CmdIndex = Cmd.EndCmd - 1` 跳过该数组内部的全部 Cmd（外层 for 会再 `++`）。`FLifetimeProperty` 数组元素是独立 Handle，因此数组内单个元素变化只发该元素，不必整数组重发。
-5. **`PropertyObject` 等方法比较的是 NetGUID 而非指针值**：`CompareObject` / `CompareSoftObject` / `CompareWeakObject` / `CompareInterface` 走各自专用函数（而非 `CompareValue<T>`），因为它们需要按网络映射后的标识判定「是否真的需要重发」。
+   因此这里写回的是**对象最近一次比较所采用的状态基准**。StoreProperty 在发送/确认之前就执行，不能称为“每个连接上次已发送或已 ACK 状态的镜像”。变化 Handle 进入共享 changelist 后，还要由各连接跟踪自己的消费、发送与恢复进度。
+3. **`bForceFail` 强制比较命中，不等于已重发**：这个条件为真时，所示非数组分支跳过相等判断，写基准并追加 Handle；数组另走递归。实际哪些调用者设置它、后续条件如何过滤，以及有没有真正发出，不能仅由此函数确定。初始/刷新等场景须结合目标版本上游，而不是把“比较命中”直接写成“客户端收到”。
+4. **动态数组走栈式递归**：`CompareProperties_Array_r` 处理数组子结构，外层用 `Cmd.EndCmd` 跳过已处理的内部命令。这里的 Handle 属于 changelist 层次，不是“每个动态数组元素都有一个 FLifetimeProperty 记录”：FLifetimeProperty 用于 lifetime 属性注册，不能当作元素身份表。公开 FRepLayout 说明数组可有 sub-changelist，Handle 在递归层级内重新解释，并不与 Cmd 一一对应。普通反射数组可以按变化的元素/字段发送；长度、索引移动、头部、NetSerialize/NetDeltaSerialize 与实际后端会改变成本，不能反过来保证“一处修改只发一条元素且没有额外开销”。
+5. **对象类型有专用分派入口**：可见对象、软对象、弱对象和接口分别进入 `CompareObject` 等 helper。它们的函数体未收录，名称本身不能证明比较的是 NetGUID、指针还是其他表示。保留“类型决定比较语义”的结论，具体标识/映射行为须查目标 helper，不替未展示代码补实现。
 6. **类型不支持即 `Fatal`**：`default` 分支直接 `UE_LOGF(LogRep, Fatal, ...)`，说明 `ERepLayoutCmdType` 与比较函数必须一一对应，新增 Cmd 类型而忘记补比较分支会导致致命错误。
 7. **三处不同入参形式的 `PropertiesAreIdentical`**：`USE_CUSTOM_COMPARE` 定义时（第 808~823 行）先调 `PropertiesAreIdenticalNative` 并可选做一致性断言，未定义时（第 825~832 行）退化为 `Cmd.Property->Identical(A, B)` 反射比较。因此「走优化路径还是反射 `Identical`」取决于编译宏。
 
 ### 3. 发送侧：`ReplicateProperties` → `SendProperties` → `SendProperties_r`
 
-`FRepLayout::SendProperties` 全文摘自 `Engine\Source\Runtime\Engine\Private\RepLayout.cpp`（第 2948~2997 行，逐字）：
+`FRepLayout::SendProperties` 旧稿标注为全文摘自 `Engine\Source\Runtime\Engine\Private\RepLayout.cpp`（第 2948~2997 行，逐字）：
 
 ```cpp
 void FRepLayout::SendProperties(
@@ -2449,15 +2475,33 @@ bool FRepLayout::ReplicateProperties(
 
 1. **`ReplicateProperties` 的签名（第 1972~1978 行）与文章早先的想象完全不同**：它接收 `FSendingRepState*`、`FRepChangelistState*`、`FConstRepObjectDataBuffer Data`、`UClass* ObjectClass`、`UActorChannel* OwningChannel`、`FNetBitWriter& Writer`、`const FReplicationFlags& RepFlags`；返回 `bool` 表示「是否真的写出了数据」。整函数 236 行。
 2. **`RebuildConditionalProperties` 的真实位置就在本函数内（第 1992 行）**：当 `RepState->RepFlags.Value != RepFlags.Value` 时重建条件状态。这是 `COND_*` 生效的执行点——`RepFlags` 变化（例如连接从「非拥有者」变为「拥有者」）会触发条件重算。
-3. **`InactiveChangelist` / `InactiveParents` 是条件过滤的载体**：不活跃（条件不满足）的属性变更被暂存在 `RepState->InactiveChangelist`，一旦条件变为满足，`NewlyActiveChangelist` 会把这些属性「补发」出去。这正是 `COND_OwnerOnly` 属性在所有权交接瞬间能补上历史变更的机制。
-4. **`SendProperties` 的 `Writer` 就是 `UActorChannel::ReplicateActor` 传进来的 `Bunch`**：属性数据直接写进 Actor 的 bunch，`FBitWriterMark Mark(Writer)` 记录起始位置；如果最终一个属性都没写出（`NumBits == Writer.GetNumBits()`），`Mark.Pop(Writer)` 回滚位偏移，避免留下空属性区段。写出内容时则在**末尾补一个 0 Handle 终结符**（`WritePropertyHandle(Writer, 0, bDoChecksum)`）。
-5. **`bSomethingSent` 与实际 changelist 的一致性**：若判定「有变更」但条件检查导致一条都没发出，函数会 `Changed.Empty(); RepState->HistoryEnd--;` 回滚历史项——否则该变更会在后续帧被误认为「已经发过」而永久丢失。这是条件复制正确性的关键收尾。
-6. **共享序列化（`FRepSerializationSharedInfo` / `GNetSharedSerializedData`）**：同一属性值在一帧内发给多个连接时，只序列化一次，其余连接用 `Writer.SerializeBitsWithOffset(...)` 引用已有位段（第 2902 行附近的 miss 路径则会走 `Cmd.Property->NetSerializeItem(Writer, Writer.PackageMap, ...)`）。这解释了「多连接场景下的序列化 CPU 优化」来源。
+3. **`InactiveChangelist` / `InactiveParents` 属于本连接条件历史**：代码把此前不活跃的变化重新过滤成仍不活跃与新活跃集合。它为条件恢复后的状态发送提供依据，但不等于所有权交接瞬间立即送达，更不是重播该期间的每次业务操作。后续资格、调度、发送与确认仍需成立；新连接初始状态另有初始化路径。
+4. **Writer 的局部位流合同**：此函数接收一个 `FNetBitWriter&`，最终属性数据进入 Actor 通道的发送内容；不能在省略了中间包装函数时仅凭同名参数认定每层都是同一个 Bunch 对象。可见 `FBitWriterMark` 保存起点，若没有属性写出则回滚；有内容则补 0 Handle 终结符。这说明如何构成一个属性区段，不证明它已经上网或被 ACK。
+5. **`bSomethingSent` 在此处表示 Writer 位数变化**：可见代码以写出位数判断是否回滚刚建立的历史项，维持本地历史与写出内容一致。这个名称不能升级为“接收端已经拿到数据”。完整历史合并和 ACK/NAK 路径没有全部收录，因此不从两行回滚代码反推缺失时所有版本必定永久丢数据。
+6. **共享序列化有资格与命中条件**：可见 `bDoSharedSerialization` 受 SharedInfo 和开关控制，后续共享命中/未命中分支在本文省略。适合共享且命中缓存时可复用已有位段，减少重复工作；不能承诺同一属性值“一帧只序列化一次、其余连接全部复用”。fallback、连接相关映射与缓存失效边界需按目标实现核对，收益须测量。
 7. **`FRepChangedPropertyTracker` 的 5.8 归属**：`RepLayout.h` 第 123 行注释逐字为 `/** FRepChangedPropertyTracker moved to NetCore module */`；真实声明在 `Engine\Source\Runtime\Net\Core\Public\Net\Core\PropertyConditions\RepChangedPropertyTracker.h` 第 22 行（`class FRepChangedPropertyTracker`），提供 `IsParentActive(uint16 ParentIndex)`、`GetDynamicCondition(uint16 ParentIndex)`、`GetDynamicConditionChangeCounter()` 等查询，用于 `COND_*` 动态条件判定。发送侧通过 `FSendingRepState::RepChangedPropertyTracker`（`RepLayout.h` 第 632 行，`TSharedPtr<FRepChangedPropertyTracker>`）持有它。
 
-### 4. 本节事实边界
+### 4. 原创双连接时间线：比较过不等于都送达
 
-- 上述全部为静态源码结论。`CompareProperties` 与 `CallRepNotifies` 的实际调用次数、每帧耗时**未**做运行态测量，本文不给出任何性能数字。
+以下是用于解释职责的状态时间线，**不是 UE 抓包、仿真器或运行结果**。假定同一对象对 A/B 都持续符合复制条件，连接有效；Health 从 100 改成 90 后服务器不再业务赋值。
+
+| 阶段 | 对象共享比较状态 | 连接 A | 连接 B |
+| --- | --- | --- | --- |
+| 起点 | 比较基准为 100 | 已知 100 | 已知 100 |
+| 检出变化 | 当前90与基准不同；StoreProperty写90，记录Health对应Handle | 等待消费变化 | 等待消费变化 |
+| 各自发送 | 共享基准已为90，不是全连接ACK表 | 写出90，随后对应包被确认 | 可能因预算尚未发送，或写出后丢包；两种情况分开记 |
+| 下一次没有新赋值 | 当前仍90，比较可无新增差异 | 已确认的历史可退休 | 尚未消费/未确认或NAK的历史仍需处理，不能以共享比较相等跳过恢复责任 |
+| 链路/预算恢复并继续调度 | 不要求业务反复写同一个90来“催更新” | 保持90 | 后续合并待处理Handle并序列化当前值，最终状态可恢复到90 |
+
+`FRepLayout` 的公开说明把 changelist 描述为 Handle 集合，并不保存每次属性值；`FSendingRepState` 用包标识与历史处理 ACK/NAK。因此如果服务器期间又变为80，恢复时可以得到80，而不是强制补播100→90→80的每一步。条件暂时不满足、尚未完成初始接收与断线后新会话也不是同一个恢复场景；只有新接收生命周期才讨论新的 initial，不能自动期待旧 RPC 队列重放。
+
+读取 [FRepState](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/FRepState) 的“每对象/每连接”职责、[FSendingRepState](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/FSendingRepState) 的 ChangeHistory/InactiveChangelist/PreOpenAckHistory，以及 [FRepLayout](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/FRepLayout) 的 changelist/重试说明时，应把布局共享、对象比较共享和连接历史分开。FRepLayout 概览中的宽泛共享状态句不能覆盖具体状态类的明确职责。
+
+实际验收：先在无损环境确认A/B初值，再仅令B丢包或饱和，服务器改值一次后停止赋值，恢复B；记录真实后端、各连接发送/ACK/NAK/最终值。如果不能观察这些状态，就只能报告未验证或无法判定，不能用此表作为已通过证明。Iris 应测试相同玩法结果，但不能要求其内部必须出现这些经典状态类。
+
+### 5. 本节事实边界
+
+- 上述是公开契约与仓内节选的静态解释。`CompareProperties` 与 `CallRepNotifies` 的实际调用次数、每帧耗时**未**做运行态测量，本文不给出任何性能数字。
 - `FRepLayout::ReplicateProperties` 中段（changelist 历史合并、`UpdateChangelistHistory`、pre-open ack 冲刷）与 `SendProperties_r` 的共享序列化分支共约 220 行未逐字收录，仅按源码结构给出摘要；如需完整逻辑请直接查阅 `Engine\Source\Runtime\Engine\Private\RepLayout.cpp` 第 2072~2192、2847~2936 行。
 - `UE::Net::Metric::*`、`GNumSharedSerializationHit/Miss`、`GNumReplicateActorCalls` 等统计量的运行时数值取决于项目配置与负载，本文不提供任何具体数值。
 
@@ -2538,7 +2582,7 @@ void UCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const F
 			SCOPE_CYCLE_COUNTER(STAT_CharacterMovementCombineNetMove);
 ```
 
-1. **`PC->AcknowledgedPawn != CharacterOwner` 就返回**：源码注释写明原因是 `otherwise we flood the reliable buffer`——角色尚未被服务器确认拥有时狂发 `ServerMove` 会撑爆可靠缓冲（对应本文前述 `RPCReliableBufferOverflow` 断连路径）。
+1. **角色/Controller 就绪门**：可见 `AcknowledgedPawn` 不匹配就返回。保留的旧注释提到 reliable buffer，但单独这条注释不能证明 ServerMove 被声明为 Reliable，也不能据此补造该调用必走哪条溢出断连链。公开 CMC 合同明确 ServerMove 使用 Unreliable，上层通过 SavedMoves、确认/纠正与必要的旧移动重提处理损失；应分别检查就绪条件、RPC flags 与移动协议，不能混为一项。
 2. **`GetPredictionData_Client_Character()` 是客户端预测的中枢**：返回 `FNetworkPredictionData_Client_Character`（`CharacterMovementComponent.h` 第 2347 行声明、第 3152 行类定义），持有 `SavedMoves`（未被 ACK 的移动，最旧到最新）、`PendingMove`、`LastAckedMove`、`MaxSavedMoveCount`、`MaxMoveDeltaTime` 等。
 3. **移动合并（`CanCombineWith`）是带宽优化的核心**：`PendingMove->CanCombineWith(NewMovePtr, ..., MaxMoveDeltaTime * TimeDilation)` 为真时，两次小移动被合并成一次发送。`FSavedMove_Character::CanCombineWith`（第 13085 行起，逐字节选）：
 
@@ -2657,14 +2701,15 @@ void UCharacterMovementComponent::ServerMove_Implementation(
 	ServerData->ServerTimeStamp = MyWorld->GetTimeSeconds();
 ```
 
-1. **`ServerMove_Implementation` 的命名本身就是本文 RPC 章节的实证**：这是 `UFUNCTION(Server, Reliable)` 生成的 `_Implementation` 后缀（UHT 引擎名规则），`ServerMove_Validate` 若存在则由生成的 thunk 先行调用（见前述「RPC 校验」小节）。
-2. **参数全部是量化/紧凑类型**：`FVector_NetQuantize10`（加速度）、`FVector_NetQuantize100`（位置）、`uint8 MoveFlags`、`uint8 ClientRoll`、`uint32 View`（高 16 位 pitch、低 16 位 yaw，代码 `ViewPitch = View & 65535; ViewYaw = View >> 16;`）。这是「移动复制省带宽」的直接证据，不是笼统的「浮点压缩」。
+1. **后缀不是可靠性证据**：`_Implementation` 表示 RPC 实现命名约定，不能推导 Reliable。公开 UE5.8 [CMC 网络移动](https://dev.epicgames.com/documentation/en-us/unreal-engine/understanding-networked-movement-in-the-character-movement-component-for-unreal-engine) 明确 ServerMove 为 **Unreliable**；[ACharacter API](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/ACharacter) 也展示 `ServerMovePacked` 的 Unreliable/Server 标记。SavedMoves、ACK 边界、冗余旧移动及纠正后的重放是移动协议恢复，不能归功于可靠 RPC 队列。
+2. **旧签名的位布局按表达式读**：加速度/位置使用量化向量，flags/roll 使用 uint8；并非所有参数都是固定“压缩后字节数”，对象引用还涉及映射。对所示 `uint32 View`，`View & 65535` 取**低16位给 Pitch**，`View >> 16` 取**高16位给 Yaw**。纯位算例 `View=0xABCD1234` 得到 Pitch=0x1234、Yaw=0xABCD；这是掩码推导，不是 UE 网络测试，也不能推出物理线上总开销。
 3. **时间戳校验是第一道门**：`VerifyClientTimeStamp(TimeStamp, *ServerData)` 失败即 return，并按偏差是否超过 `CharacterMovementCVars::NetServerMoveTimestampExpiredWarningThreshold`（且 `ServerTimeStamp > 1.0f`）选择 Warning 或 Log 级别。这解释了刷 `ServerMove: TimeStamp expired` 日志的真实阈值条件。
 4. **客户端未就绪时把加速度清零**：`PC->NotifyServerReceivedClientData(...)` 返回 false 时 `InAccel = FVector::ZeroVector`，即**仍然处理这次移动但不采纳输入**——避免客户端在服务器尚未准备好时凭输入获得位移优势。
 5. **`ServerData->CurrentClientTimeStamp = TimeStamp;`**：服务器接受这一次的时间戳作为基准，后续 `ServerMoveHandleClientError`（第 10182、10188 行，两个重载）据此判定是否发送 `ClientAdjustPosition` 纠正。
 
 ### 3. 本节事实边界
 
+- 本节 View 布局属于所示旧入口。当前 CMC 还可使用 variable-sized Packed move/response 容器；不能把旧参数表或某个 `_Implementation` 的覆写当成覆盖全部移动，也不能把旧 View 位布局强加给 Packed。先查目标版本实际启用路径，再记录网络行为。使用层见 [客户端预测与延迟补偿](../同步预测与回放/03-客户端预测与延迟补偿.md)。
 - 本节只覆盖 `ReplicateMoveToServer` 开头、`CanCombineWith` 开头与 `ServerMove_Implementation` 开头，**不是**这些函数的全文；`ServerMoveHandleClientError`、`ClientAdjustPosition`、`FSavedMove_Character::SetMoveFor/PrepMoveFor`、`ClientUpdatePosition` 的完整实现未逐字收录。
 - CMC 还包含 `ServerMoveHandleClientError` 的两个重载（`UPrimitiveComponent*` 与 `FMovementBaseInterfaceData*` 版本，`CharacterMovementComponent.h` 第 2421、2429 行），本文未展开其差异。
 - **未**做任何运行态验证：移动纠正频率、`MaxMoveDeltaTime` 的默认值、合并命中率等均取决于项目配置，本文不给出数值。
@@ -2673,23 +2718,23 @@ void UCharacterMovementComponent::ServerMove_Implementation(
 
 ## 属性复制宏体系与条件过滤规范
 
-在 `GetLifetimeReplicatedProps` 中通过宏控制带宽分发：
+在 `GetLifetimeReplicatedProps` 中通过宏配置属性条件。以下为本库原创注册片段，假定类/成员/生成头及宿主复制已配置，未编译运行；不是额外引入的引擎源码：
 
 ```cpp
 void AMyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-    // 1. 全局无条件同步（所有客户端可见）
+    // 1. 无额外属性条件；仍需对象/连接满足复制资格与相关性。
     DOREPLIFETIME(AMyCharacter, Health);
 
-    // 2. 仅拥有者可见（如背包栏、个人金币），不发给其他窥视者
+    // 2. 只向 owning connection 复制；服务器业务权限仍需另外校验。
     DOREPLIFETIME_CONDITION(AMyCharacter, InventoryItems, COND_OwnerOnly);
 
     // 3. 仅模拟代理可见（自主代理采用本地预测，不接收服务器回传）
     DOREPLIFETIME_CONDITION(AMyCharacter, SimulatedTransform, COND_SimulatedOnly);
 
-    // 4. 仅初始生成同步一次（后续静态不变）
+    // 4. 本生命期不变的种子；合格新接收状态在 initial 得到当前值。
     DOREPLIFETIME_CONDITION(AMyCharacter, CharacterCustomSeed, COND_InitialOnly);
 }
 ```
@@ -2705,7 +2750,7 @@ void AMyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 检查 RPC 是否标记为 `Unreliable`（不可靠）。不可靠 RPC 在弱网丢包时不会重发；若是 `Reliable` 仍未执行，检查客户端是否拥有该 Actor 的 NetOwner 权限（只有被当前 PlayerController 拥有的 Actor 才能发送 Server RPC）。
 
 **Q3：频繁触发网络饱和卡顿（Saturated NetDriver）？**
-通常是某一帧复制了庞大的 `TArray` 或巨型字符串。对于列表数据，坚决使用 `FFastArraySerializer` 代替普通 `TArray` 复制；对于高频变量，使用浮点量化压缩减少字节数。
+先用实际 trace 区分大 payload、复制对象/连接数量、可靠队列、更新频率与链路预算；没有证据不能把饱和一概归因某个 TArray。普通反射数组并不必然整块重发，FastArray 也有身份/头部/删除开销。按相同规模与尾增、单项修改、头删、重排负载比较，核对最终状态及 CPU/payload，再选协议；高频数值是否量化由误差预算决定，见 [RPC 与属性同步的选型步骤](02-RPC与属性同步.md#38-fast-array高效复制数组)。
 
 ---
 
