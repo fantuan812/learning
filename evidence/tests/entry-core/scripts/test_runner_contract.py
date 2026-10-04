@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Strict three-model runner and its failure oracle (stdlib only, no assert).
+"""Strict four-model runner and its failure oracle (stdlib only, no assert).
 
 Use --output-dir NEW_DIR [--cxx g++-14] [--ubsan] [--with-self-test].
 --self-test runs only runner fixtures plus deliberate source mutations.
@@ -20,7 +20,7 @@ import subprocess
 import sys
 import tempfile
 
-TARGETS = ('entry_ticket', 'entry_session', 'ds_allocator')
+TARGETS = ('entry_ticket', 'entry_session', 'ds_allocator', 'jip_resync')
 HERE = Path(__file__).resolve().parent
 FLAGS = ['-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-pedantic']
 
@@ -244,26 +244,34 @@ sys.exit(n['main']())
         old_result = execute([python, '-B', str(local_scripts / 'test_runner_contract.py'), '--output-dir', str(root / 'old-result-run'),
             '--source-dir', str(fixture), '--targets', 'entry_ticket', '--cxx', str(fake)], timeout=30)
         check(old_result['exit'] != 0 and '999' not in old_result['stdout'], 'historical PASS is never used to fill a missing current RESULT', old_result)
-        # 真实编译刻意破坏后的三个模型；应编译成功、运行失败并有FAIL断言。
-        mutations = {
-            'entry_ticket': ('t.expireAt <= t.issuedAt ||', 'false ||'),
-            'entry_session': ('if (s.acquiredNew && s.handle)', 'if (s.handle)'),
-            'ds_allocator': ('old->second = next; ++lastEpoch; *out = next;', '++servers.at(next.handle.ds).load; old->second = next; ++lastEpoch; *out = next;'),
-        }
-        for target, (needle, replacement) in mutations.items():
+        # 真实编译3个安全模型和3种JIP语义破坏；须编译成功、运行非零且含FAIL。
+        mutations = [
+            ('entry_ticket', 'entry_ticket', 't.expireAt <= t.issuedAt ||', 'false ||'),
+            ('entry_session', 'entry_session', 'if (s.acquiredNew && s.handle)', 'if (s.handle)'),
+            ('ds_allocator', 'ds_allocator', 'old->second = next; ++lastEpoch; *out = next;', '++servers.at(next.handle.ds).load; old->second = next; ++lastEpoch; *out = next;'),
+            ('jip_zero_install', 'jip_resync',
+             'State candidate{true, expected, snapshot.seq, snapshot.entities};',
+             'if (snapshot.seq == plan.target && pending.empty()) { hasBaseline = true; phase = Phase::CaughtUp; return Result::CaughtUp; } State candidate{true, expected, snapshot.seq, snapshot.entities};'),
+            ('jip_target_finish', 'jip_resync',
+             'if (!hasBaseline || state.seq != plan.target) return Fail(Result::NeedSnapshot);',
+             'if (!hasBaseline) return Fail(Result::NeedSnapshot);'),
+            ('jip_epoch_identity', 'jip_resync',
+             'a.incarnation == b.incarnation', 'true'),
+        ]
+        for mutation, target, needle, replacement in mutations:
             original_source = (args.source_dir / (target + '.cpp')).read_text(encoding='utf-8')
             if original_source.count(needle) != 1:
-                check(False, target + ': mutation anchor must occur exactly once'); continue
-            build = root / ('mutation-' + target); build.mkdir()
+                check(False, mutation + ': mutation anchor must occur exactly once'); continue
+            build = root / ('mutation-' + mutation); build.mkdir()
             source = build / (target + '.cpp'); source.write_text(original_source.replace(needle, replacement), encoding='utf-8')
             flags = FLAGS + (['-fsanitize=undefined', '-fno-sanitize-recover=all'] if args.ubsan else [])
             compile_result = execute([args.cxx] + flags + [source.name, '-o', target], cwd=build, timeout=args.compile_timeout)
-            details.append('# mutation_target: ' + target + '\n# original_source_sha256: ' + sha(original_source.encode('utf-8')) + '\n# mutated_source_sha256: ' + sha(source.read_bytes()))
+            details.append('# mutation_name: ' + mutation + '\n# mutation_target: ' + target + '\n# original_source_sha256: ' + sha(original_source.encode('utf-8')) + '\n# mutated_source_sha256: ' + sha(source.read_bytes()))
             details.append(process_text('mutation_compile', compile_result))
             run = execute(['./' + target], cwd=build, timeout=args.timeout) if compile_result['exit'] == 0 else None
             check(compile_result['exit'] == 0 and run is not None and run['exit'] != 0 and
                   any(line.startswith('FAIL  ') for line in run['stdout'].splitlines()),
-                  target + ': deliberate semantic defect is caught by the test oracle', run or compile_result)
+                  mutation + ': deliberate semantic defect is caught by the test oracle', run or compile_result)
     good = sum(ok for ok, _ in checks); bad = len(checks) - good
     raw = output / ('runner-contract-linux.txt' if platform.system() == 'Linux' else 'runner-contract-host.txt')
     text = common + '# fixtures are synthetic; mutations use the actual compiler\n' + '\n'.join(details) + f'\nRESULT pass={good} fail={bad}\n'
@@ -298,7 +306,8 @@ def main():
         host = {'system': platform.system(), 'release': platform.release(), 'machine': platform.machine(), 'libc': platform.libc_ver()}
         common = '# generated_utc: ' + stamp + '\n# host: ' + json.dumps(host) + '\n# python: ' + sys.version.replace('\n', ' ') + '\n# build_cwd: fresh temporary directory\n'
         manifest = {'schema': 1, 'generated_utc': stamp, 'host': host, 'scope': list(args.targets),
-                    'ubsan': args.ubsan, 'jip': 'not run; known zero-delta snapshot defect remains',
+                    'ubsan': args.ubsan,
+                    'jip': 'selected; see actual run verdict' if not args.self_test and 'jip_resync' in args.targets else 'not selected for a positive model run',
                     'windows_cpp': 'not verified by Linux/pwsh wrapper fixtures',
                     'runner_sha256': {f: sha((HERE / f).read_bytes()) for f in ('run_all.sh', 'build_run.ps1', 'test_runner_contract.py')},
                     'runs': []}
@@ -310,7 +319,7 @@ def main():
         # 历史证据仅记指纹，不读取PASS汇总，不重写。
         historical = HERE.parent / 'results'
         manifest['historical_raw_sha256'] = {target + '.txt': sha((historical / (target + '.txt')).read_bytes())
-                                            for target in (*TARGETS, 'jip_resync') if (historical / (target + '.txt')).is_file()}
+                                            for target in TARGETS if (historical / (target + '.txt')).is_file()}
         write_new(args.output_dir / 'run-manifest.json', json.dumps(manifest, indent=2, ensure_ascii=False) + '\n')
         return 0 if manifest['ok'] else 1
     except (OSError, ValueError) as error:

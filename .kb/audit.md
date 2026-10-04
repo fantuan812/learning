@@ -428,3 +428,12 @@ updated: 2026-09-14
 - 复扫结果：知识域空节 0；重复 H2 0；AOI 全双向。
 - 门禁：`check_okf` Changed 145/145 PASS、Strict 623/623 PASS；`check_repo` FAIL 0 PASS（WARN 36 均为豁免类短正文）；`check_architecture` PASS（manifest 625 精确路径）；`git diff --check` exit=2，仅 15 篇 L143/L146 两处 space-before-tab（与 UE 5.8 World.cpp 逐字一致的既有项，不修）。
 - 未执行（待用户）：`TAXONOMY-PILOT-01`、`R6-UE-ENRICH-01` 仍为 Pending。未提交、未推送。
+
+
+# 进入链路证据纠正与JIP合同复验（2026-10-04）
+
+- 上文2026-09-11记录按原字节保留，但83个选定用例不支持常量时间、跨DS隔离、完整JIP正确性或端到端L4的原结论。当前[进入链路](../知识/07-网络与游戏服务端/会话身份与在线服务/01-角色进入游戏完整链路.md)保持L2；票据/Session/DS的定点修订见[PR23](https://github.com/fantuan812/learning/pull/23)及[证据范围](../evidence/tests/entry-core/README.md)。
+- JIP修订以固定复制scope和R→T为合同：零增量也安装、缺头/中洞/缺尾不假成功、完整同步身份/实体generation、有界pending/span/等待、当前identity+T的ACK。每次Install/Deliver的正常错误不提交部分连续段；批CatchUp保留先前成功前缀，不宣称全批事务或内存异常强保证。
+- 最终JIP strict与UBSan各143项通过，runner各42项；3个既有安全模型负控与3个JIP语义负控均真实编译并产生预期FAIL/非零。原始结果见[strict manifest](../evidence/tests/entry-core/results/2026-10-04-jip-contract/strict/run-manifest.json)与[UBSan manifest](../evidence/tests/entry-core/results/2026-10-04-jip-contract/ubsan/run-manifest.json)，不从测试数推出所有输入正确。
+- 撤回上文旧CPU必然更贵、泛化10倍带宽和指纹等同byte-identical的结论：旧对照终点/析构/采样口径不一致，32字节乘数量不是实际网络编码。新模型比较完整字段，不再运行旧计时；fresh JIP与warm resume分开讨论，本次没有新CPU/网络性能结论。
+- 原4份历史raw、先前安全模型raw和用户书籍/日志/附件保留。尚未验证真实网络、UE、并发快照捕获、持久化、跨进程身份唯一性或客户端ACK诚实性；仓库检查仍单列26项已知保护来源缺陷，不能写成零缺陷或全质量通过。

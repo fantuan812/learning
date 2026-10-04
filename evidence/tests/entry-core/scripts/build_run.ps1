@@ -10,7 +10,7 @@ param(
     [string]$Cxx = 'g++',
     [string]$Python = 'python3',
     [string]$SourceDir = '',
-    [string[]]$Targets = @('entry_ticket', 'entry_session', 'ds_allocator'),
+    [string[]]$Targets = @('entry_ticket', 'entry_session', 'ds_allocator', 'jip_resync'),
     [double]$Timeout = 15,
     [double]$CompileTimeout = 60,
     [switch]$Ubsan,

@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-04 (Entry isolation contracts; mechanically recalculated).
+# Generated: 2026-10-04 (JIP snapshot contracts and current evidence corrections; mechanically recalculated).
 version: 4
 
 okf:
@@ -44,13 +44,13 @@ documents:
   ".kb/audit.md":
     kind: doc
     maturity: L2
-    bytes: 59263
-    lines: 430
+    bytes: 61143
+    lines: 439
   ".kb/decisions.md":
     kind: doc
     maturity: L2
-    bytes: 58245
-    lines: 963
+    bytes: 59707
+    lines: 971
   ".kb/plans/2026-09-03-combat-ai.md":
     kind: doc
     maturity: L2
@@ -74,8 +74,8 @@ documents:
   ".kb/review-queue.md":
     kind: doc
     maturity: L2
-    bytes: 32775
-    lines: 598
+    bytes: 33272
+    lines: 599
   "00-计算机与工程基础/01-C++核心/README.md":
     kind: README
     maturity: L0
@@ -204,7 +204,7 @@ documents:
   "evidence/README.md":
     kind: README
     maturity: L0
-    bytes: 8088
+    bytes: 8100
     lines: 53
   "evidence/algorithms/aoi/README.md":
     kind: README
@@ -289,8 +289,8 @@ documents:
   "evidence/tests/entry-core/README.md":
     kind: README
     maturity: L0
-    bytes: 15647
-    lines: 166
+    bytes: 24790
+    lines: 215
   "evidence/tests/gameplay-core/README.md":
     kind: README
     maturity: L0
@@ -1764,8 +1764,8 @@ documents:
   "知识/07-网络与游戏服务端/会话身份与在线服务/01-角色进入游戏完整链路.md":
     kind: doc
     maturity: L2
-    bytes: 39430
-    lines: 414
+    bytes: 44620
+    lines: 419
   "知识/07-网络与游戏服务端/会话身份与在线服务/01-身份认证与权限模型.md":
     kind: doc
     maturity: L2
@@ -1774,8 +1774,8 @@ documents:
   "知识/07-网络与游戏服务端/会话身份与在线服务/03-DS会话注册与重连实现.md":
     kind: doc
     maturity: L2
-    bytes: 22493
-    lines: 303
+    bytes: 27236
+    lines: 325
   "知识/07-网络与游戏服务端/会话身份与在线服务/04-Gameplay框架与登录流程源码.md":
     kind: doc
     maturity: L2

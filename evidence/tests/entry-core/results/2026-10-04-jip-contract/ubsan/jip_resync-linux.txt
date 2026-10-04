@@ -1,0 +1,179 @@
+# generated_utc: 2026-10-04T15:40:40.420708+00:00
+# host: {"system": "Linux", "release": "6.18.44", "machine": "x86_64", "libc": ["glibc", "2.41"]}
+# python: 3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]
+# build_cwd: fresh temporary directory
+# target: jip_resync
+# compiler_version_command: ["g++-14", "--version"]
+# compiler_version_exit: 0
+# compiler_version_timed_out: False
+--- compiler_version stdout ---
+g++-14 (Debian 14.2.0-19) 14.2.0
+Copyright (C) 2024 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+
+--- compiler_version stderr ---
+
+# source_sha256: 1538df4de16158e09f6f133582e5a42e14ffc9ea0da7640adfacfddc6c768895
+# compile_command: ["g++-14", "-std=c++17", "-O2", "-Wall", "-Wextra", "-Werror", "-pedantic", "-fsanitize=undefined", "-fno-sanitize-recover=all", "-fno-omit-frame-pointer", "jip_resync.cpp", "-o", "jip_resync"]
+# compile_exit: 0
+# compile_timed_out: False
+--- compile stdout ---
+
+--- compile stderr ---
+
+# run_command: ["./jip_resync"]
+# run_exit: 0
+# run_timed_out: False
+--- run stdout ---
+== jip_resync: finite serial scope/transfer snapshot + delta contract ==
+No CPU benchmark, wire-byte estimate, transport, authentication or UE claim.
+PASS  J01 nonempty snapshot with zero deltas installs before CaughtUp
+PASS  J02 only matching completion ACK opens input
+PASS  J03 empty snapshot is also an installed baseline
+PASS  J04 historical log entirely covered by snapshot still installs
+PASS  J05 exact R+1 window converges with HP position generation and dead records
+PASS  J06 missing retained head requires a fresh snapshot
+PASS  J07 same client full-snapshot fallback installs latest zero-delta state
+PASS  J08 missing head/middle/tail cannot silently complete index=0
+PASS  J09 gap failure blocks ACK
+PASS  J08 missing head/middle/tail cannot silently complete index=2
+PASS  J09 gap failure blocks ACK
+PASS  J08 missing head/middle/tail cannot silently complete index=5
+PASS  J09 gap failure blocks ACK
+PASS  J10 truncated empty window with old base fails
+PASS  J11 advertised head below target fails
+PASS  J12 future base above target is rejected
+PASS  J13 reverse/seeded permutation full-state convergence seed=0
+PASS  J13 reverse/seeded permutation full-state convergence seed=1
+PASS  J13 reverse/seeded permutation full-state convergence seed=2
+PASS  J13 reverse/seeded permutation full-state convergence seed=3
+PASS  J13 reverse/seeded permutation full-state convergence seed=4
+PASS  J13 reverse/seeded permutation full-state convergence seed=5
+PASS  J13 reverse/seeded permutation full-state convergence seed=6
+PASS  J13 reverse/seeded permutation full-state convergence seed=7
+PASS  J13 reverse/seeded permutation full-state convergence seed=8
+PASS  J13 reverse/seeded permutation full-state convergence seed=9
+PASS  J13 reverse/seeded permutation full-state convergence seed=10
+PASS  J13 reverse/seeded permutation full-state convergence seed=11
+PASS  J14 arriving R+1/R+2 retained before snapshot install
+PASS  J15 installation drains already received contiguous deltas
+PASS  J16 identical reinstallation preserves buffered work and committed prefix
+PASS  J17 identical Begin does not clear buffers or extend deadline
+PASS  J18 ACK before target completion rejected
+PASS  J19 filling hole commits all contiguous events
+PASS  J20 target T fixed while T+1 waits for ACK
+PASS  J21 ACK target cannot follow moving head
+PASS  J22 old/new transfer ACK mismatch rejected
+PASS  J23 matching ACK hands off and drains T+1 without losing sub-millimeter values
+PASS  J24 repeated ACK is idempotent
+PASS  J25 live updates continue after handoff
+PASS  J26 exact applied duplicate is a no-op
+PASS  J27 wrong world/epoch/scope/schema/session/transfer preserves state index=0
+PASS  J28 wrong snapshot identity preserves buffered work index=0
+PASS  J29 wrong ACK complete identity rejected
+PASS  J30 valid transfer can continue after foreign packet
+PASS  J27 wrong world/epoch/scope/schema/session/transfer preserves state index=1
+PASS  J28 wrong snapshot identity preserves buffered work index=1
+PASS  J29 wrong ACK complete identity rejected
+PASS  J30 valid transfer can continue after foreign packet
+PASS  J27 wrong world/epoch/scope/schema/session/transfer preserves state index=2
+PASS  J28 wrong snapshot identity preserves buffered work index=2
+PASS  J29 wrong ACK complete identity rejected
+PASS  J30 valid transfer can continue after foreign packet
+PASS  J27 wrong world/epoch/scope/schema/session/transfer preserves state index=3
+PASS  J28 wrong snapshot identity preserves buffered work index=3
+PASS  J29 wrong ACK complete identity rejected
+PASS  J30 valid transfer can continue after foreign packet
+PASS  J27 wrong world/epoch/scope/schema/session/transfer preserves state index=4
+PASS  J28 wrong snapshot identity preserves buffered work index=4
+PASS  J29 wrong ACK complete identity rejected
+PASS  J30 valid transfer can continue after foreign packet
+PASS  J27 wrong world/epoch/scope/schema/session/transfer preserves state index=5
+PASS  J28 wrong snapshot identity preserves buffered work index=5
+PASS  J29 wrong ACK complete identity rejected
+PASS  J30 valid transfer can continue after foreign packet
+PASS  J31 exact pending duplicate remains singular
+PASS  J32 conflicting pending duplicate never replaces original
+PASS  J33 recent applied conflict locks handoff without changing world
+PASS  J34 new transfer cannot roll back same-context committed sequence
+PASS  J35 late old baseline rejected
+PASS  J36 same baseline identity with different content conflicts
+PASS  J37 explicit trusted rebind clears unrelated old context
+PASS  J38 new epoch restarts sequence only after trusted rebind
+PASS  J39 old-context packet cannot switch receiver back
+PASS  J40 invalid delta preserves all fields/cursor/other pending index=0
+PASS  J40 invalid delta preserves all fields/cursor/other pending index=1
+PASS  J40 invalid delta preserves all fields/cursor/other pending index=2
+PASS  J40 invalid delta preserves all fields/cursor/other pending index=3
+PASS  J40 invalid delta preserves all fields/cursor/other pending index=4
+PASS  J40 invalid delta preserves all fields/cursor/other pending index=5
+PASS  J40 invalid delta preserves all fields/cursor/other pending index=6
+PASS  J40 invalid delta preserves all fields/cursor/other pending index=7
+PASS  J40 invalid delta preserves all fields/cursor/other pending index=8
+PASS  J40 invalid delta preserves all fields/cursor/other pending index=9
+PASS  J40 invalid delta preserves all fields/cursor/other pending index=10
+PASS  J40 invalid delta preserves all fields/cursor/other pending index=11
+PASS  J40 invalid delta preserves all fields/cursor/other pending index=12
+PASS  J40 invalid delta preserves all fields/cursor/other pending index=13
+PASS  J41 invalid snapshot installs no partial world index=0
+PASS  J41 invalid snapshot installs no partial world index=1
+PASS  J41 invalid snapshot installs no partial world index=2
+PASS  J41 invalid snapshot installs no partial world index=3
+PASS  J41 invalid snapshot installs no partial world index=4
+PASS  J41 invalid snapshot installs no partial world index=5
+PASS  J42 invalid buffered successor rolls back entire current drain call
+PASS  J43 batch failure retains only earlier successful prefix; no whole-batch atomic claim
+PASS  J44 old entity generation cannot write respawned slot
+PASS  J45 pending count exact limit allowed
+PASS  J46 pending limit plus one requests resync without eviction
+PASS  J47 missing next delta can drain a full buffer
+PASS  J48 applied history is bounded; older payload conflict detection is explicitly unavailable
+PASS  J49 exact future sequence span allowed
+PASS  J50 excessive future span fails boundedly
+PASS  J51 trusted time rollback rejected
+PASS  J52 waiting deadline equality fails closed
+PASS  J53 CaughtUp still needs ACK before transfer deadline
+PASS  J54 live idle client has no transfer timeout
+PASS  J55 live gap opens bounded wait and expires at equality
+PASS  J56 sequence exhaustion rejects wrap and preserves output
+PASS  J57 snapshot at maximum sequence installs without R+1 overflow
+PASS  J58 deadline overflow rejected before Begin
+PASS  J59 generation exhaustion cannot wrap on spawn
+PASS  J60 catchup target span is bounded
+PASS  J64 live gap temporarily blocks input then resumes on valid contiguous fill
+PASS  J65 new trusted transfer explicitly abandons bounded old queue
+PASS  J66 old transfer delta and ACK cannot disturb new baseline
+PASS  J67 old Begin rejected while new transfer still completes
+PASS  J68 invalid pre-install buffered suffix prevents entire installation commit
+PASS  J69 source window itself has a finite record cap
+PASS  J70 finite inclusive data boundaries are accepted
+PASS  J71 ACK with buffered live gap never falsely returns Ready
+PASS  J72 duplicate observes trusted clock without extending deadline
+PASS  J73 covered stale event neither rewinds clock nor extends wait
+PASS  J74 batch helper also retains received T+1 without moving target
+PASS  J75 batch T+1 survives until matching ACK handoff
+PASS  J76 same-context rebind cannot clear committed state or transfer history
+PASS  J77 empty window ignores first=head+1 when R equals T
+PASS  J78 empty one-past window still rejects an uncovered R-to-T gap
+PASS  J79 empty window at maximum head never computes unrepresentable head+1
+PASS  J61 full-state oracle detects dead/numeric/identity/count/seq changes field=0
+PASS  J61 full-state oracle detects dead/numeric/identity/count/seq changes field=1
+PASS  J61 full-state oracle detects dead/numeric/identity/count/seq changes field=2
+PASS  J61 full-state oracle detects dead/numeric/identity/count/seq changes field=3
+PASS  J61 full-state oracle detects dead/numeric/identity/count/seq changes field=4
+PASS  J61 full-state oracle detects dead/numeric/identity/count/seq changes field=5
+PASS  J61 full-state oracle detects dead/numeric/identity/count/seq changes field=6
+PASS  J61 full-state oracle detects dead/numeric/identity/count/seq changes field=7
+PASS  J61 full-state oracle detects dead/numeric/identity/count/seq changes field=8
+PASS  J61 full-state oracle detects dead/numeric/identity/count/seq changes field=9
+PASS  J61 full-state oracle detects dead/numeric/identity/count/seq changes field=10
+PASS  J61 full-state oracle detects dead/numeric/identity/count/seq changes field=11
+PASS  J62 comparator also includes entity ID
+PASS  J63 comparator also includes sub-millimeter Y on dead record
+RESULT pass=143 fail=0
+
+--- run stderr ---
+
+# accepted_by_runner: True
