@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-04 (A-star cache contracts and actual observations; mechanically recalculated).
+# Generated: 2026-10-04 (Tick policy contracts and exact model records; mechanically recalculated).
 version: 4
 
 okf:
@@ -204,7 +204,7 @@ documents:
   "evidence/README.md":
     kind: README
     maturity: L0
-    bytes: 7837
+    bytes: 8033
     lines: 53
   "evidence/algorithms/aoi/README.md":
     kind: README
@@ -274,8 +274,8 @@ documents:
   "evidence/server/tick-scheduler/README.md":
     kind: README
     maturity: L0
-    bytes: 3450
-    lines: 63
+    bytes: 9407
+    lines: 137
   "evidence/tests/aoi-scale/README.md":
     kind: README
     maturity: L0
@@ -1694,7 +1694,7 @@ documents:
   "知识/07-网络与游戏服务端/README.md":
     kind: README
     maturity: L0
-    bytes: 8351
+    bytes: 8358
     lines: 112
   "知识/07-网络与游戏服务端/专用服务器实例与容量/01-UE Dedicated Server实例生命周期与平台化.md":
     kind: doc
@@ -1983,9 +1983,9 @@ documents:
     lines: 30
   "知识/07-网络与游戏服务端/运行调度与过载保护/01-ServerMainLoop与TickScheduler.md":
     kind: doc
-    maturity: L4
-    bytes: 16482
-    lines: 307
+    maturity: L2
+    bytes: 17929
+    lines: 272
   "知识/07-网络与游戏服务端/运行调度与过载保护/02-Timer时间轮与延迟任务.md":
     kind: doc
     maturity: L2
@@ -2004,8 +2004,8 @@ documents:
   "知识/07-网络与游戏服务端/运行调度与过载保护/11-AI与寻路时间预算.md":
     kind: doc
     maturity: L2
-    bytes: 35485
-    lines: 493
+    bytes: 37168
+    lines: 507
   "知识/07-网络与游戏服务端/运行调度与过载保护/12-世界时间确定性与GameClock.md":
     kind: doc
     maturity: L2

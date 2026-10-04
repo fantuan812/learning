@@ -1,0 +1,253 @@
+[
+  {
+    "argv": [
+      "/usr/bin/g++",
+      "--version"
+    ],
+    "cwd": null,
+    "started_utc": "2026-10-04T13:05:43.902323+00:00",
+    "timeout_seconds": 120.0,
+    "returncode": 0,
+    "timed_out": false,
+    "stdout": "g++ (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+    "stderr": "",
+    "elapsed_seconds": 0.0011366649996489286,
+    "label": "compiler_version",
+    "expected_returncode": 0
+  },
+  {
+    "argv": [
+      "/usr/bin/g++",
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Wformat=2",
+      "-Werror",
+      "-pedantic",
+      "/workspace/scratch/234c8048d85d/learning-tick-quality-20261004/evidence/server/tick-scheduler/src/tick_scheduler.cpp",
+      "-o",
+      "/tmp/tick-policy-6j1cvqw6/policy"
+    ],
+    "cwd": "/tmp/tick-policy-6j1cvqw6",
+    "started_utc": "2026-10-04T13:05:43.903752+00:00",
+    "timeout_seconds": 120.0,
+    "returncode": 0,
+    "timed_out": false,
+    "stdout": "",
+    "stderr": "",
+    "elapsed_seconds": 1.0440293409992591,
+    "label": "compile_policy",
+    "expected_returncode": 0
+  },
+  {
+    "argv": [
+      "/tmp/tick-policy-6j1cvqw6/policy",
+      "--self-test"
+    ],
+    "cwd": "/tmp/tick-policy-6j1cvqw6",
+    "started_utc": "2026-10-04T13:05:44.948144+00:00",
+    "timeout_seconds": 120.0,
+    "returncode": 0,
+    "timed_out": false,
+    "stdout": "PASS units_20_30_60_one_second\nPASS threshold_and_one_nanosecond\nPASS zero_elapsed_keeps_phase\nPASS cap_checked_before_execution\nPASS fraction_survives_whole_tick_drop\nPASS extra_ticks_and_catch_iterations_differ\nPASS clamp_and_drop_are_separate\nPASS invalid_configuration_rejected\nPASS negative_elapsed_rejected_without_state_change\nPASS int64_max_elapsed_clamped_safely\nPASS checked_arithmetic_boundary_values\nPASS checked_arithmetic_rejects_before_overflow\nPASS partition_without_clamp_or_drop\nPASS partition_changes_cap_work_not_time_account\nPASS partition_can_change_clamped_input\nPASS value_copy_is_independent_phase_snapshot\nPASS deterministic_random_conservation\nSELF_TEST passed=17 failed=0 mode=none\n",
+    "stderr": "",
+    "elapsed_seconds": 0.0030838949969620444,
+    "label": "functional",
+    "expected_returncode": 0
+  },
+  {
+    "argv": [
+      "/usr/bin/g++",
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Wformat=2",
+      "-Werror",
+      "-pedantic",
+      "-DTICK_POLICY_TEST_MUTANT_CAP_AFTER",
+      "/workspace/scratch/234c8048d85d/learning-tick-quality-20261004/evidence/server/tick-scheduler/src/tick_scheduler.cpp",
+      "-o",
+      "/tmp/tick-policy-6j1cvqw6/mutant_cap_after"
+    ],
+    "cwd": "/tmp/tick-policy-6j1cvqw6",
+    "started_utc": "2026-10-04T13:05:44.951765+00:00",
+    "timeout_seconds": 120.0,
+    "returncode": 0,
+    "timed_out": false,
+    "stdout": "",
+    "stderr": "",
+    "elapsed_seconds": 1.0265757980014314,
+    "label": "compile_cap_after",
+    "expected_returncode": 0
+  },
+  {
+    "argv": [
+      "/tmp/tick-policy-6j1cvqw6/mutant_cap_after",
+      "--self-test"
+    ],
+    "cwd": "/tmp/tick-policy-6j1cvqw6",
+    "started_utc": "2026-10-04T13:05:45.978700+00:00",
+    "timeout_seconds": 120.0,
+    "returncode": 1,
+    "timed_out": false,
+    "stdout": "PASS units_20_30_60_one_second\nPASS threshold_and_one_nanosecond\nPASS zero_elapsed_keeps_phase\nFAIL cap_checked_before_execution: cap=3 must not execute 4\nFAIL fraction_survives_whole_tick_drop: half Tick kept after drop\nPASS extra_ticks_and_catch_iterations_differ\nPASS clamp_and_drop_are_separate\nPASS invalid_configuration_rejected\nPASS negative_elapsed_rejected_without_state_change\nFAIL int64_max_elapsed_clamped_safely: large elapsed account\nPASS checked_arithmetic_boundary_values\nPASS checked_arithmetic_rejects_before_overflow\nPASS partition_without_clamp_or_drop\nFAIL partition_changes_cap_work_not_time_account: per-call cap semantics\nPASS partition_can_change_clamped_input\nPASS value_copy_is_independent_phase_snapshot\nFAIL deterministic_random_conservation: pre-execution cap\nSELF_TEST passed=12 failed=5 mode=cap_after\n",
+    "stderr": "",
+    "elapsed_seconds": 0.0021473499982676003,
+    "label": "negative_cap_after",
+    "expected_returncode": 1
+  },
+  {
+    "argv": [
+      "/tmp/tick-policy-6j1cvqw6/mutant_cap_after",
+      "--scenarios",
+      "/tmp/tick-policy-6j1cvqw6/cap_after-must-not-exist.csv"
+    ],
+    "cwd": "/tmp/tick-policy-6j1cvqw6",
+    "started_utc": "2026-10-04T13:05:45.981246+00:00",
+    "timeout_seconds": 120.0,
+    "returncode": 2,
+    "timed_out": false,
+    "stdout": "",
+    "stderr": "ERROR: mutation builds cannot produce evidence scenarios\n",
+    "elapsed_seconds": 0.0014815440008533187,
+    "label": "reject_capture_cap_after",
+    "expected_returncode": 2
+  },
+  {
+    "argv": [
+      "/usr/bin/g++",
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Wformat=2",
+      "-Werror",
+      "-pedantic",
+      "-DTICK_POLICY_TEST_MUTANT_DROP_FRACTION",
+      "/workspace/scratch/234c8048d85d/learning-tick-quality-20261004/evidence/server/tick-scheduler/src/tick_scheduler.cpp",
+      "-o",
+      "/tmp/tick-policy-6j1cvqw6/mutant_drop_fraction"
+    ],
+    "cwd": "/tmp/tick-policy-6j1cvqw6",
+    "started_utc": "2026-10-04T13:05:45.982961+00:00",
+    "timeout_seconds": 120.0,
+    "returncode": 0,
+    "timed_out": false,
+    "stdout": "",
+    "stderr": "",
+    "elapsed_seconds": 1.035317716999998,
+    "label": "compile_drop_fraction",
+    "expected_returncode": 0
+  },
+  {
+    "argv": [
+      "/tmp/tick-policy-6j1cvqw6/mutant_drop_fraction",
+      "--self-test"
+    ],
+    "cwd": "/tmp/tick-policy-6j1cvqw6",
+    "started_utc": "2026-10-04T13:05:47.018672+00:00",
+    "timeout_seconds": 120.0,
+    "returncode": 1,
+    "timed_out": false,
+    "stdout": "PASS units_20_30_60_one_second\nPASS threshold_and_one_nanosecond\nPASS zero_elapsed_keeps_phase\nPASS cap_checked_before_execution\nFAIL fraction_survives_whole_tick_drop: half Tick kept after drop\nPASS extra_ticks_and_catch_iterations_differ\nPASS clamp_and_drop_are_separate\nPASS invalid_configuration_rejected\nPASS negative_elapsed_rejected_without_state_change\nPASS int64_max_elapsed_clamped_safely\nPASS checked_arithmetic_boundary_values\nPASS checked_arithmetic_rejects_before_overflow\nPASS partition_without_clamp_or_drop\nPASS partition_changes_cap_work_not_time_account\nPASS partition_can_change_clamped_input\nPASS value_copy_is_independent_phase_snapshot\nFAIL deterministic_random_conservation: credit conservation\nSELF_TEST passed=15 failed=2 mode=drop_fraction\n",
+    "stderr": "",
+    "elapsed_seconds": 0.0034266200018464588,
+    "label": "negative_drop_fraction",
+    "expected_returncode": 1
+  },
+  {
+    "argv": [
+      "/tmp/tick-policy-6j1cvqw6/mutant_drop_fraction",
+      "--scenarios",
+      "/tmp/tick-policy-6j1cvqw6/drop_fraction-must-not-exist.csv"
+    ],
+    "cwd": "/tmp/tick-policy-6j1cvqw6",
+    "started_utc": "2026-10-04T13:05:47.022420+00:00",
+    "timeout_seconds": 120.0,
+    "returncode": 2,
+    "timed_out": false,
+    "stdout": "",
+    "stderr": "ERROR: mutation builds cannot produce evidence scenarios\n",
+    "elapsed_seconds": 0.002201153001806233,
+    "label": "reject_capture_drop_fraction",
+    "expected_returncode": 2
+  },
+  {
+    "argv": [
+      "/usr/bin/g++",
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Wformat=2",
+      "-Werror",
+      "-pedantic",
+      "-I",
+      "/workspace/scratch/234c8048d85d/learning-tick-quality-20261004/evidence/server/tick-scheduler/src",
+      "/tmp/tick-policy-6j1cvqw6/article_example.cpp",
+      "-o",
+      "/tmp/tick-policy-6j1cvqw6/article_example"
+    ],
+    "cwd": "/tmp/tick-policy-6j1cvqw6",
+    "started_utc": "2026-10-04T13:05:47.024983+00:00",
+    "timeout_seconds": 120.0,
+    "returncode": 0,
+    "timed_out": false,
+    "stdout": "",
+    "stderr": "",
+    "elapsed_seconds": 0.28914075099964975,
+    "label": "compile_article_example",
+    "expected_returncode": 0
+  },
+  {
+    "argv": [
+      "/tmp/tick-policy-6j1cvqw6/article_example"
+    ],
+    "cwd": "/tmp/tick-policy-6j1cvqw6",
+    "started_utc": "2026-10-04T13:05:47.314592+00:00",
+    "timeout_seconds": 120.0,
+    "returncode": 0,
+    "timed_out": false,
+    "stdout": "EXAMPLE total_executed=2 dropped_ticks=1 phase=0\n",
+    "stderr": "",
+    "elapsed_seconds": 0.0031017610017443076,
+    "label": "run_article_example",
+    "expected_returncode": 0
+  },
+  {
+    "argv": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-B",
+      "/workspace/scratch/234c8048d85d/learning-tick-quality-20261004/evidence/server/tick-scheduler/scripts/test_policy.py"
+    ],
+    "cwd": "/tmp/tick-policy-6j1cvqw6",
+    "started_utc": "2026-10-04T13:05:47.318066+00:00",
+    "timeout_seconds": 120.0,
+    "returncode": 0,
+    "timed_out": false,
+    "stdout": "",
+    "stderr": "test_any_failure_is_not_a_successful_mutation (__main__.RunnerContracts.test_any_failure_is_not_a_successful_mutation) ... ok\ntest_complete_reference_fixture_is_accepted (__main__.RunnerContracts.test_complete_reference_fixture_is_accepted) ... ok\ntest_duplicate_identity_does_not_pass (__main__.RunnerContracts.test_duplicate_identity_does_not_pass) ... ok\ntest_existing_directory_is_rejected_and_unchanged (__main__.RunnerContracts.test_existing_directory_is_rejected_and_unchanged) ... ok\ntest_launch_failure_is_a_recorded_failure (__main__.RunnerContracts.test_launch_failure_is_a_recorded_failure) ... ok\ntest_marked_article_example_must_be_unique_and_complete (__main__.RunnerContracts.test_marked_article_example_must_be_unique_and_complete) ... ok\ntest_missing_compiler_is_failure_not_skip (__main__.RunnerContracts.test_missing_compiler_is_failure_not_skip) ... ok\ntest_missing_row_does_not_pass (__main__.RunnerContracts.test_missing_row_does_not_pass) ... ok\ntest_non_integer_fields_and_unexpected_input_are_rejected (__main__.RunnerContracts.test_non_integer_fields_and_unexpected_input_are_rejected) ... ok\ntest_nonzero_does_not_pass (__main__.RunnerContracts.test_nonzero_does_not_pass) ... ok\ntest_reference_has_no_frequency_truncation (__main__.RunnerContracts.test_reference_has_no_frequency_truncation) ... ok\ntest_reference_rejects_invalid_input (__main__.RunnerContracts.test_reference_rejects_invalid_input) ... ok\ntest_timeout_keeps_partial_output_and_fails (__main__.RunnerContracts.test_timeout_keeps_partial_output_and_fails) ... ok\ntest_wrong_counter_denominator_is_rejected (__main__.RunnerContracts.test_wrong_counter_denominator_is_rejected) ... ok\ntest_wrong_fraction_is_rejected (__main__.RunnerContracts.test_wrong_fraction_is_rejected) ... ok\n\n----------------------------------------------------------------------\nRan 15 tests in 1.288s\n\nOK\n",
+    "elapsed_seconds": 1.3672560189988872,
+    "label": "runner_contract_tests",
+    "expected_returncode": 0
+  },
+  {
+    "argv": [
+      "/tmp/tick-policy-6j1cvqw6/policy",
+      "--scenarios",
+      "/workspace/scratch/234c8048d85d/learning-tick-quality-20261004/evidence/server/tick-scheduler/results/tick-policy-2026-10-04/scenarios.csv"
+    ],
+    "cwd": "/tmp/tick-policy-6j1cvqw6",
+    "started_utc": "2026-10-04T13:05:48.685932+00:00",
+    "timeout_seconds": 120.0,
+    "returncode": 0,
+    "timed_out": false,
+    "stdout": "SCENARIOS rows=1074 groups=18 type=pure_policy_model_no_cpu_measurement\n",
+    "stderr": "",
+    "elapsed_seconds": 0.0034205320007458795,
+    "label": "generate_policy_scenarios",
+    "expected_returncode": 0
+  }
+]
