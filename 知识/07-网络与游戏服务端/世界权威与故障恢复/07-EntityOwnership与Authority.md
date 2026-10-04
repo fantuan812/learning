@@ -4,13 +4,14 @@ title: "07 Entity Ownership 与 Authority"
 status: stable
 verified: []
 maturity: L2
+updated: 2026-10-04
 ---
 # 07 Entity Ownership 与 Authority
 
 > 知识基线：实时游戏服务器的权威模拟与实体所有权模型；本文不把网络连接所有权、数据库主从和平台实例租约混为一谈。
 > 版本基线：通用 C++/Go/伪代码示例；接入 UE、ECS 或自研 Actor Runtime 时，以实际线程和复制实现为准。
 > 适用范围：World/Scene/Zone 分片、Entity 生命周期、客户端预测、跨服迁移、并发消息和故障接管。
-> 最后更新：2026-08-18（补齐 Entity generation、权威租约、fencing token 与迁移边界）。
+> 最后更新：2026-10-04（补强资源/owner代次作用域、原子提交和迁移超时恢复合同）。
 > 外部依据：[Kubernetes Lease](https://kubernetes.io/docs/concepts/architecture/leases/)、[Gaffer On Games: Networked Physics](https://gafferongames.com/post/networked_physics_2004/)、[Raft extended paper](https://raft.github.io/raft.pdf)。
 > 知识成熟度：L2（模型、状态机、失败路径和验证矩阵已成文；未宣称具体项目已接管生产实体）。
 
@@ -142,15 +143,15 @@ stateDiagram-v2
     Transferring --> Acquiring: target validates fence
     Acquiring --> Owned: target commits new owner
     Acquiring --> Rollback: target rejects or timeout
-    Rollback --> Owned: source resumes with old fence
+    Rollback --> Owned: durable owner still source and no newer fence committed
     Frozen --> Aborted: deadline/health failure
-    Aborted --> Owned: source unfreezes
+    Aborted --> Owned: durable ownership confirmed before unfreeze
     Owned --> Lost: lease/instance failure
     Lost --> Recovering: snapshot + event replay
     Recovering --> Owned: new owner fenced in
 ```
 
-状态机必须区分 `Preparing`（还可撤销）和 `Frozen`（不再接受普通写入）。目标 owner 在 `Acquiring` 阶段拿到新的 fencing token 后，源 owner 即使网络恢复也不能继续提交。
+状态机必须区分 `Preparing`（还可撤销）和 `Frozen`（不再接受普通写入）。目标 owner 在 `Acquiring` 阶段拿到新的 fencing token 后，源 owner 即使网络恢复也不能继续提交。超时只说明结果未知，不自动赋予旧源恢复资格；先查询持久化归属，只有旧源仍为当前owner且没有新代次提交时才能解冻，否则必须保持fenced。
 
 ## 8. Lease 与 Fencing Token
 
@@ -170,7 +171,9 @@ write(fence=41) -> reject
 write(fence=42) -> accept if version/owner match
 ```
 
-持久化层、跨服代理和目标分片都应检查 fence。若只有内存中的 fence，进程重启后会丢失栅栏效果。
+持久化层、跨服代理和目标分片都应在**受保护资源 + 当前owner generation**的作用域检查fence，而非只比一个裸数字。校验必须与真实副作用的原子提交相连，不能“先读到41仍有效，稍后无条件写”；中间若42已生效，旧写必须被拒。若只有内存中的fence，进程重启后会丢失栅栏效果。
+
+[etcd 3.5 concurrency API 的 LeaderKey.rev](https://etcd.io/docs/v3.5/dev-guide/api_concurrency_reference_v3/)把创建revision作为事务内归属比较条件（2026-10-04核对）；这支持“检查与写入关联”的设计原则，不表示外部数据库因使用etcd就自动获得fencing。外部存储仍须自己的条件写/事务约束。
 
 ### 8.3 时钟不确定性
 
@@ -234,7 +237,7 @@ InputCommand {
 
 ## 12. 典型实现骨架
 
-以下为示意伪代码，展示 fence、generation 和版本检查：
+以下为示意伪代码，展示 fence、generation 和版本检查；**整个Apply需位于同一owner串行执行域/存储事务中**。真实持久化写入必须带相同条件，不能把此先查字段的内存片段当跨进程原子性证明：
 
 ```cpp
 Result EntityStore::Apply(Command cmd) {
@@ -274,13 +277,13 @@ Target -> Source: HandoffAccepted
 Target -> Client: Reconnect/route update + authoritative snapshot
 ```
 
-任何一步超时都要有唯一结果：源继续拥有并解冻，或目标接管并让源失效。禁止两个方向都返回“成功”，也禁止依赖人工查看日志决定谁是 owner。
+任何一步超时都必须通过持久化归属查明结果：若目标fence42已提交，源41即使没收到ACK也不能解冻；若明确仍归源41且新代次未提交，才可执行带条件的撤销/解冻。查不清就保持不可写并重试查询，不能以超时自动恢复旧fence。禁止两个方向都返回“成功”，也不能只依赖最后一条日志决定owner。
 
 ## 14. 失败路径与恢复
 
 | 失败 | 可观察症状 | 安全处理 |
 | --- | --- | --- |
-| 源冻结后目标不可用 | 玩家卡在迁移中 | 过期回滚，源按旧 fence 恢复 |
+| 源冻结后目标不可用 | 玩家卡在迁移中 | 查询持久化归属；旧源仍获授权且无新代次生效才可条件解冻，否则保持fenced |
 | 目标已提交源未收到 ACK | 双方都认为失败 | 以持久化 fence 查询事实，重放确认 |
 | 旧源网络分区 | 旧服继续发包 | 目标/存储拒绝旧 fence |
 | ID 复用 | 旧命令命中新实体 | generation 不匹配即丢弃 |
@@ -377,5 +380,7 @@ Target -> Client: Reconnect/route update + authoritative snapshot
 - [游戏服务端/04-平台与可靠性/03-幂等重试与消息语义](../持久化与分布式一致性/03-幂等重试与消息语义.md)：状态机、租约和消息语义。
 
 ## 20. 更新日志
+
+- 2026-10-04：明确完整资源/owner代次、检查与副作用原子提交、迁移超时不可盲恢复旧fence。[entry-core](../../../evidence/tests/entry-core/README.md)仅验证单进程串行座位与句柄合同，不能支撑本篇跨进程迁移已运行；本文继续L2。
 
 - 2026-08-18：新建 Entity Ownership 与 Authority 专题，补齐单写者、generation、租约/fence、预测边界、迁移封存、故障注入和审计指标；示例均为示意实现。

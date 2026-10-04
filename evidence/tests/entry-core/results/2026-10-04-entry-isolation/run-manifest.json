@@ -1,0 +1,154 @@
+{
+  "schema": 1,
+  "generated_utc": "2026-10-04T14:28:17.936608+00:00",
+  "host": {
+    "system": "Linux",
+    "release": "6.18.44",
+    "machine": "x86_64",
+    "libc": [
+      "glibc",
+      "2.41"
+    ]
+  },
+  "scope": [
+    "entry_ticket",
+    "entry_session",
+    "ds_allocator"
+  ],
+  "ubsan": true,
+  "jip": "not run; known zero-delta snapshot defect remains",
+  "windows_cpp": "not verified by Linux/pwsh wrapper fixtures",
+  "runner_sha256": {
+    "run_all.sh": "05bbd8da28669ebe8988ad18b615e7f26fae998e3d8a8d62d5fa8e113fac4b50",
+    "build_run.ps1": "cd3459dc24e0f548fedd3a240e23871806ff7a07266f0157f9a73b36e64fb2ca",
+    "test_runner_contract.py": "1971e05cd49577e7f9dab2b980fc85d35fccfb785a0edeb27d0469a6caf949a5"
+  },
+  "runs": [
+    {
+      "target": "entry_ticket",
+      "source_sha256": "11462e080300aeecfe05b626ec572bd2275966edc5f84654a34109ce986e4770",
+      "compile": {
+        "command": [
+          "g++-14",
+          "-std=c++17",
+          "-O2",
+          "-Wall",
+          "-Wextra",
+          "-Werror",
+          "-pedantic",
+          "-fsanitize=undefined",
+          "-fno-sanitize-recover=all",
+          "-fno-omit-frame-pointer",
+          "entry_ticket.cpp",
+          "-o",
+          "entry_ticket"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": "",
+        "timed_out": false
+      },
+      "run": {
+        "command": [
+          "./entry_ticket"
+        ],
+        "exit": 0,
+        "stdout": "entry_ticket: synthetic data; selected vectors + bounded protocol, no side-channel claim\nPASS  T1 SHA-256 over empty input matches FIPS 180-4 vector\n        e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\nPASS  T2 SHA-256(\"abc\") matches FIPS 180-4 vector\n        ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\nPASS  T3 SHA-256 over a 56-byte message (padding boundary) matches vector\n        248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1\nPASS  T4 streaming SHA-256 is chunk-boundary independent (1000B in 7B chunks)\n        44f8354494a5ba03ba1792a8d3e9c534c47a9181980fde7a3f44b06ef2ae7c7f\nPASS  T5 HMAC-SHA256 matches RFC 4231 Test Case 1 (20-byte 0x0b key)\n        b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7\nPASS  T6 HMAC-SHA256 matches RFC 4231 Test Case 2 (\"Jefe\")\n        5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843\nPASS  T7 HMAC-SHA256 matches RFC 4231 Test Case 3 (20B key / 50B data)\n        773ea91e36800e46854db8ebd09181a72959098b3ef8c122d9635514ced565fe\nPASS  T8 HMAC-SHA256 hashes a >64-byte key first (RFC 4231 Test Case 6)\n        60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54\nPASS  ticket: legal issue follows the wire grammar\nPASS  ticket: accepted window now=95 without consumption\nPASS  ticket: accepted window now=100 without consumption\nPASS  ticket: accepted window now=159 without consumption\nPASS  ticket: accepted window now=160 without consumption\nPASS  ticket: accepted window now=164 without consumption\nPASS  reject + unchanged nonce/output: one before not-before boundary\nPASS  reject + unchanged nonce/output: exact expiry including skew\nPASS  reject + unchanged nonce/output: after expiry\nPASS  reject + unchanged nonce/output: wrong audience\nPASS  reject + unchanged nonce/output: negative now\nPASS  reject + unchanged nonce/output: audience cannot be skipped\nPASS  reject + unchanged nonce/output: iat ''\nPASS  reject + unchanged nonce/output: exp ''\nPASS  reject + unchanged nonce/output: iat 'not-a-number'\nPASS  reject + unchanged nonce/output: exp 'not-a-number'\nPASS  reject + unchanged nonce/output: iat '9223372036854775808'\nPASS  reject + unchanged nonce/output: exp '9223372036854775808'\nPASS  reject + unchanged nonce/output: iat '999999999999999999999'\nPASS  reject + unchanged nonce/output: exp '999999999999999999999'\nPASS  reject + unchanged nonce/output: iat '100junk'\nPASS  reject + unchanged nonce/output: exp '100junk'\nPASS  reject + unchanged nonce/output: iat '+100'\nPASS  reject + unchanged nonce/output: exp '+100'\nPASS  reject + unchanged nonce/output: iat '-1'\nPASS  reject + unchanged nonce/output: exp '-1'\nPASS  reject + unchanged nonce/output: iat ' 100'\nPASS  reject + unchanged nonce/output: exp ' 100'\nPASS  reject + unchanged nonce/output: iat '100 '\nPASS  reject + unchanged nonce/output: exp '100 '\nPASS  reject + unchanged nonce/output: iat '0100'\nPASS  reject + unchanged nonce/output: exp '0100'\nPASS  reject + unchanged nonce/output: iat '00'\nPASS  reject + unchanged nonce/output: exp '00'\nPASS  reject + unchanged nonce/output: signed invalid grammar/interval v1|player=p1|player=p2|server=ds-1|nonce=0123456789abcdef|iat=100|exp=160\nPASS  reject + unchanged nonce/output: signed invalid grammar/interval v1|server=ds-1|player=p1|nonce=0123456789abcdef|iat=100|exp=160\nPASS  reject + unchanged nonce/output: signed invalid grammar/interval v1|player=p1|server=ds-1|iat=100|exp=160\nPASS  reject + unchanged nonce/output: signed invalid grammar/interval v1|player=p1|server=ds-1|nonce=0123456789abcdef|iat=100|exp=160|x=1\nPASS  reject + unchanged nonce/output: signed invalid grammar/interval v1|player=p=1|server=ds-1|nonce=0123456789abcdef|iat=100|exp=160\nPASS  reject + unchanged nonce/output: signed invalid grammar/interval v2|player=p1|server=ds-1|nonce=0123456789abcdef|iat=100|exp=160\nPASS  reject + unchanged nonce/output: signed invalid grammar/interval v1|player=p1|server=ds-1|nonce=0123456789abcdef|iat=104|exp=96\nPASS  reject + unchanged nonce/output: signed invalid grammar/interval v1|player=p1|server=ds-1|nonce=0123456789abcdef|iat=100|exp=100\nPASS  reject + unchanged nonce/output: signed invalid grammar/interval v1|player=p1|server=ds-1|nonce=0123456789abcdef|iat=100|exp=401\nPASS  reject + unchanged nonce/output: embedded NUL\nPASS  reject + unchanged nonce/output: wire exceeds bound\nPASS  reject + unchanged nonce/output: signature encoding/length\nPASS  reject + unchanged nonce/output: signature encoding/length\nPASS  reject + unchanged nonce/output: signature encoding/length\nPASS  reject + unchanged nonce/output: signature encoding/length\nPASS  reject + unchanged nonce/output: signature encoding/length\nPASS  reject + unchanged nonce/output: payload changed without MAC\nPASS  reject wrong synthetic key without side effects\nPASS  parse output commits only after full grammar validation\nPASS  parse output commits only after full grammar validation\nPASS  first consumption publishes authenticated fields\nPASS  reject + unchanged nonce/output: replay\nPASS  new nonce supports explicit reissue\nPASS  issue rejects invalid player without partial output\nPASS  issue rejects invalid server without partial output\nPASS  issue rejects invalid player without partial output\nPASS  issue rejects invalid server without partial output\nPASS  issue rejects invalid player without partial output\nPASS  issue rejects invalid server without partial output\nPASS  issue rejects invalid player without partial output\nPASS  issue rejects invalid server without partial output\nPASS  issue rejects invalid player without partial output\nPASS  issue rejects invalid server without partial output\nPASS  issue enforces nonce grammar\nPASS  issue enforces nonce grammar\nPASS  issue enforces nonce grammar\nPASS  issue enforces nonce grammar\nPASS  issue rejects invalid or overflowing clock input\nPASS  issue rejects invalid or overflowing clock input\nPASS  issue rejects out-of-policy TTL\nPASS  issue rejects out-of-policy TTL\nPASS  issue rejects out-of-policy TTL\nPASS  reject + unchanged nonce/output: invalid skew\nPASS  issue also rejects invalid skew configuration\nPASS  reject + unchanged nonce/output: invalid skew\nPASS  issue also rejects invalid skew configuration\nPASS  INT64_MAX expiry boundary without signed overflow\nPASS  max time plus skew compared without addition\nPASS  canonical zero timestamp accepted\nPASS  maximum legal identifier/nonce/TTL/skew bounds are accepted with exact expiry\nPASS  bounded consumption table fails closed without partial output\nPASS  compare boolean: equal\nPASS  compare boolean: first byte differs (not timing evidence)\nPASS  compare boolean: last byte differs (not timing evidence)\nPASS  compare boolean: unequal length\nRESULT pass=97 fail=0\n",
+        "stderr": "",
+        "timed_out": false
+      },
+      "ok": true,
+      "raw": "entry_ticket-linux.txt",
+      "raw_sha256": "cd10d9ba35c2ff95eb3a65323a8d883e88e881a9ec038aeacb2ee3c0e4047624"
+    },
+    {
+      "target": "entry_session",
+      "source_sha256": "a10c651218b5f54f7360f509e737901bad0069d864bec3cac78f443803fac04b",
+      "compile": {
+        "command": [
+          "g++-14",
+          "-std=c++17",
+          "-O2",
+          "-Wall",
+          "-Wextra",
+          "-Werror",
+          "-pedantic",
+          "-fsanitize=undefined",
+          "-fno-sanitize-recover=all",
+          "-fno-omit-frame-pointer",
+          "entry_session.cpp",
+          "-o",
+          "entry_session"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": "",
+        "timed_out": false
+      },
+      "run": {
+        "command": [
+          "./entry_session"
+        ],
+        "exit": 0,
+        "stdout": "entry_session: synthetic auth; serialized request ownership model, no UE entity lifecycle claim\nPASS  same trusted principal/key/intent: reauthenticate, reuse result, no business replay\nPASS  revoked credential cannot retrieve cached Ready or its handle\nPASS  cross-principal identical requestId is isolated\nPASS  claimed player must match authenticated principal\nPASS  same key different full intent field rejected: 0\nPASS  same key different full intent field rejected: 1\nPASS  same key different full intent field rejected: 2\nPASS  new reconnect request borrows the same ready resource without another seat\nPASS  operation participates in the idempotency key\nPASS  tenant participates in trusted principal scope\nPASS  Ready cancellation is a no-op\nPASS  failure matrix Auth/reject releases only newly acquired seat\nPASS  failure matrix Auth/reject preserves old Ready handle/load/epoch\nPASS  failure matrix Auth/timeout releases only newly acquired seat\nPASS  failure matrix Auth/timeout preserves old Ready handle/load/epoch\nPASS  failure matrix Auth/cancel releases only newly acquired seat\nPASS  failure matrix Auth/cancel preserves old Ready handle/load/epoch\nPASS  failure matrix Allocate/reject releases only newly acquired seat\nPASS  failure matrix Allocate/reject preserves old Ready handle/load/epoch\nPASS  failure matrix Allocate/timeout releases only newly acquired seat\nPASS  failure matrix Allocate/timeout preserves old Ready handle/load/epoch\nPASS  failure matrix Allocate/cancel releases only newly acquired seat\nPASS  failure matrix Allocate/cancel preserves old Ready handle/load/epoch\nPASS  failure matrix Travel/reject releases only newly acquired seat\nPASS  failure matrix Travel/reject preserves old Ready handle/load/epoch\nPASS  failure matrix Travel/timeout releases only newly acquired seat\nPASS  failure matrix Travel/timeout preserves old Ready handle/load/epoch\nPASS  failure matrix Travel/cancel releases only newly acquired seat\nPASS  failure matrix Travel/cancel preserves old Ready handle/load/epoch\nPASS  failure matrix Load/reject releases only newly acquired seat\nPASS  failure matrix Load/reject preserves old Ready handle/load/epoch\nPASS  failure matrix Load/timeout releases only newly acquired seat\nPASS  failure matrix Load/timeout preserves old Ready handle/load/epoch\nPASS  failure matrix Load/cancel releases only newly acquired seat\nPASS  failure matrix Load/cancel preserves old Ready handle/load/epoch\nPASS  failure matrix Spawn/reject releases only newly acquired seat\nPASS  failure matrix Spawn/reject preserves old Ready handle/load/epoch\nPASS  failure matrix Spawn/timeout releases only newly acquired seat\nPASS  failure matrix Spawn/timeout preserves old Ready handle/load/epoch\nPASS  failure matrix Spawn/cancel releases only newly acquired seat\nPASS  failure matrix Spawn/cancel preserves old Ready handle/load/epoch\nPASS  late cancel of an early denied request cannot release a later Ready\nPASS  explicit normal exit releases the matching generation\nPASS  late compensation owning an older generation cannot release newer Ready\nPASS  replay of historical Ready returns stale without restoring write authority\nPASS  release also checks resource identity, not only generation\nPASS  no capacity terminates immediately, never reaches Travel/Load/Spawn\nPASS  bounded timeout retries reuse one acquisition\nPASS  new request cannot borrow an existing seat for a different match intent\nPASS  epoch exhaustion fails without wrap or seat allocation\nPASS  invalid retry bound rejects before callbacks/allocation: 0\nPASS  invalid retry bound rejects before callbacks/allocation: 4\nPASS  invalid retry bound rejects before callbacks/allocation: 2147483647\nPASS  negative control: per-DS invariant detects injected accounting corruption\nRESULT pass=54 fail=0\n",
+        "stderr": "",
+        "timed_out": false
+      },
+      "ok": true,
+      "raw": "entry_session-linux.txt",
+      "raw_sha256": "8eaa30561e2f7023b0969877d1c11332742014cc5c44590716af13b2614f1335"
+    },
+    {
+      "target": "ds_allocator",
+      "source_sha256": "909313c4ce1ac74aeae894f65c69ac9ba18e74ebb9a2f1fa22d4079a93c65b99",
+      "compile": {
+        "command": [
+          "g++-14",
+          "-std=c++17",
+          "-O2",
+          "-Wall",
+          "-Wextra",
+          "-Werror",
+          "-pedantic",
+          "-fsanitize=undefined",
+          "-fno-sanitize-recover=all",
+          "-fno-omit-frame-pointer",
+          "ds_allocator.cpp",
+          "-o",
+          "ds_allocator"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": "",
+        "timed_out": false
+      },
+      "run": {
+        "command": [
+          "./ds_allocator"
+        ],
+        "exit": 0,
+        "stdout": "ds_allocator: half-open live/grace windows; serialized model, no persistent fencing claim\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1029 op=0 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1029 op=1 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1029 op=2 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1029 op=3 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1030 op=0 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1030 op=1 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1030 op=2 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1030 op=3 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1031 op=0 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1031 op=1 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1031 op=2 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1031 op=3 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1039 op=0 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1039 op=1 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1039 op=2 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1039 op=3 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1040 op=0 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1040 op=1 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1040 op=2 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1040 op=3 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1041 op=0 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1041 op=1 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1041 op=2 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=1041 op=3 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=2000 op=0 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=2000 op=1 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=2000 op=2 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  boundary now=2000 op=3 without Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1029 op=0 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1029 op=1 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1029 op=2 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1029 op=3 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1030 op=0 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1030 op=1 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1030 op=2 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1030 op=3 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1031 op=0 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1031 op=1 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1031 op=2 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1031 op=3 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1039 op=0 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1039 op=1 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1039 op=2 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1039 op=3 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1040 op=0 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1040 op=1 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1040 op=2 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1040 op=3 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1041 op=0 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1041 op=1 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1041 op=2 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=1041 op=3 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=2000 op=0 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=2000 op=1 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=2000 op=2 with Reap\nPASS  boundary setup counted exactly one seat\nPASS  Reap changes capacity only at holdUntil\nPASS  boundary now=2000 op=3 with Reap\nPASS  grace reconnect on a full original DS reuses its counted seat and rotates epoch\nPASS  old generation commit rejected after grace reconnect\nPASS  old generation heartbeat rejected after grace reconnect\nPASS  old generation release cannot clear new reservation\nPASS  new generation can commit\nPASS  new generation heartbeat maintains one seat\nPASS  forged handle commit rejected field=0\nPASS  forged handle heartbeat rejected field=0\nPASS  forged handle release rejected without resource changes field=0\nPASS  forged handle commit rejected field=1\nPASS  forged handle heartbeat rejected field=1\nPASS  forged handle release rejected without resource changes field=1\nPASS  forged handle commit rejected field=2\nPASS  forged handle heartbeat rejected field=2\nPASS  forged handle release rejected without resource changes field=2\nPASS  matching live release decrements exactly one seat\nPASS  duplicate release cannot double decrement\nPASS  cross-DS allocation increases allocator-wide epoch\nPASS  old ds-1 handle cannot commit/renew/release p1 now on ds-2\nPASS  even equal epoch numeric value cannot authorize another DS\nPASS  no capacity leaves output and resource state unchanged\nPASS  expired heartbeat without Reap cannot revive owner\nPASS  clock rollback after expired rejection cannot restore authority\nPASS  invalid TTL/grace or deadline overflow rejects without resource effects case=0\nPASS  invalid TTL/grace or deadline overflow rejects without resource effects case=1\nPASS  invalid TTL/grace or deadline overflow rejects without resource effects case=2\nPASS  invalid TTL/grace or deadline overflow rejects without resource effects case=3\nPASS  invalid TTL/grace or deadline overflow rejects without resource effects case=4\nPASS  allocation rejects backwards trusted clock\nPASS  all operations reject backwards clock without resource effects\nPASS  input preflight failure is not a clock observation; valid later call uses last observed watermark\nPASS  exact INT64_MAX deadline is representable\nPASS  expiry at INT64_MAX still loses authority\nPASS  overflow allocation does not reap or overwrite old accounting\nPASS  cleanup uses stored deadline without overflow\nPASS  live heartbeat overflow leaves expiry unchanged\nPASS  last representable epoch can be issued once\nPASS  grace reacquire refuses epoch exhaustion without wrapping or leaking seat\nPASS  expired last epoch can still be reaped\nPASS  reap does not reset epoch high water mark\nPASS  sequence 1 allocate p\nPASS  sequence 2 allocate q\nPASS  sequence 3 renew p\nPASS  sequence 4 q becomes read-only at TTL\nPASS  sequence 5 q reconnect retains full DS seat\nPASS  sequence 6 delayed old q release\nPASS  sequence 7 reap only expired p\nPASS  sequence 8 release new q\nPASS  sequence 9 repeated cleanup stays empty\nPASS  negative control: invariant detects phantom seat on another DS\nPASS  negative control: invariant detects wrong player ownership\nRESULT pass=191 fail=0\n",
+        "stderr": "",
+        "timed_out": false
+      },
+      "ok": true,
+      "raw": "ds_allocator-linux.txt",
+      "raw_sha256": "a52345c2bb713169bb16fde0b939e1ab00276b146f97d8b0b3dee841478e1052"
+    }
+  ],
+  "runner_contract": {
+    "target": "runner-contract",
+    "ok": true,
+    "pass": 39,
+    "fail": 0,
+    "raw": "runner-contract-linux.txt",
+    "raw_sha256": "de055ca9fb625ae76630c84ef783ec1b11566d2a5805e2153354fabdc5510e9c"
+  },
+  "ok": true,
+  "historical_raw_sha256": {
+    "entry_ticket.txt": "3f52c460e45475a545e9d018aba335f289efa8331722e3ec2303cc9689142157",
+    "entry_session.txt": "7dd55db646f170a07e0f71f8bb7db3eae62b5f76bcbfa6e8acb6aa90e6e20f7b",
+    "ds_allocator.txt": "c8103fae6d07b5565a822a7663eba4912d4635e5bb66aff59e3da3332028284b",
+    "jip_resync.txt": "a2e53aee3519cdf75c795ef4efcf73b4d1c6bc9d7d6bca97a5a1331b110bffd0"
+  }
+}

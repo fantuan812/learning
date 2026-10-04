@@ -1,0 +1,789 @@
+# generated_utc: 2026-10-04T14:28:17.936608+00:00
+# host: {"system": "Linux", "release": "6.18.44", "machine": "x86_64", "libc": ["glibc", "2.41"]}
+# python: 3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]
+# build_cwd: fresh temporary directory
+# fixtures are synthetic; mutations use the actual compiler
+# bash_version_command: ["bash", "--version"]
+# bash_version_exit: 0
+# bash_version_timed_out: False
+--- bash_version stdout ---
+GNU bash, version 5.2.37(1)-release (x86_64-pc-linux-gnu)
+Copyright (C) 2022 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+
+This is free software; you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+--- bash_version stderr ---
+
+
+# pwsh_version_command: ["pwsh", "--version"]
+# pwsh_version_exit: 0
+# pwsh_version_timed_out: False
+--- pwsh_version stdout ---
+PowerShell 7.6.6
+
+--- pwsh_version stderr ---
+
+
+PASS  bash: successful fixture accepted
+# fixture_command: ["bash", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/run_all.sh", "--output-dir", "/tmp/entry-runner-fixtures-b9db0u_i/bash-ok", "--source-dir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "--cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "--targets", "entry_ticket", "--timeout", "1", "--compile-timeout", "1"]
+# fixture_exit: 0
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: PASS
+
+--- fixture stderr ---
+
+
+PASS  bash: existing output refused without overwrite
+# fixture_command: ["bash", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/run_all.sh", "--output-dir", "/tmp/entry-runner-fixtures-b9db0u_i/bash-ok", "--source-dir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "--cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "--targets", "entry_ticket", "--timeout", "1", "--compile-timeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+
+--- fixture stderr ---
+runner error: [Errno 17] File exists: '/tmp/entry-runner-fixtures-b9db0u_i/bash-ok'
+
+
+PASS  bash: existing empty directory also refused
+PASS  bash: compile_fail rejected and diagnosed
+# fixture_command: ["bash", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/run_all.sh", "--output-dir", "/tmp/entry-runner-fixtures-b9db0u_i/bash-compile_fail", "--source-dir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "--cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "--targets", "entry_ticket", "--timeout", "1", "--compile-timeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+PASS  bash: run_fail rejected and diagnosed
+# fixture_command: ["bash", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/run_all.sh", "--output-dir", "/tmp/entry-runner-fixtures-b9db0u_i/bash-run_fail", "--source-dir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "--cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "--targets", "entry_ticket", "--timeout", "1", "--compile-timeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+PASS  bash: missing rejected and diagnosed
+# fixture_command: ["bash", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/run_all.sh", "--output-dir", "/tmp/entry-runner-fixtures-b9db0u_i/bash-missing", "--source-dir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "--cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "--targets", "entry_ticket", "--timeout", "1", "--compile-timeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+PASS  bash: bad rejected and diagnosed
+# fixture_command: ["bash", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/run_all.sh", "--output-dir", "/tmp/entry-runner-fixtures-b9db0u_i/bash-bad", "--source-dir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "--cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "--targets", "entry_ticket", "--timeout", "1", "--compile-timeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+PASS  bash: duplicate rejected and diagnosed
+# fixture_command: ["bash", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/run_all.sh", "--output-dir", "/tmp/entry-runner-fixtures-b9db0u_i/bash-duplicate", "--source-dir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "--cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "--targets", "entry_ticket", "--timeout", "1", "--compile-timeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+PASS  bash: false_green rejected and diagnosed
+# fixture_command: ["bash", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/run_all.sh", "--output-dir", "/tmp/entry-runner-fixtures-b9db0u_i/bash-false_green", "--source-dir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "--cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "--targets", "entry_ticket", "--timeout", "1", "--compile-timeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+PASS  bash: count_lie rejected and diagnosed
+# fixture_command: ["bash", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/run_all.sh", "--output-dir", "/tmp/entry-runner-fixtures-b9db0u_i/bash-count_lie", "--source-dir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "--cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "--targets", "entry_ticket", "--timeout", "1", "--compile-timeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+PASS  bash: negative_result rejected and diagnosed
+# fixture_command: ["bash", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/run_all.sh", "--output-dir", "/tmp/entry-runner-fixtures-b9db0u_i/bash-negative_result", "--source-dir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "--cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "--targets", "entry_ticket", "--timeout", "1", "--compile-timeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+PASS  bash: run_timeout rejected and diagnosed
+# fixture_command: ["bash", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/run_all.sh", "--output-dir", "/tmp/entry-runner-fixtures-b9db0u_i/bash-run_timeout", "--source-dir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "--cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "--targets", "entry_ticket", "--timeout", "1", "--compile-timeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+PASS  bash: compile_timeout rejected and diagnosed
+# fixture_command: ["bash", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/run_all.sh", "--output-dir", "/tmp/entry-runner-fixtures-b9db0u_i/bash-compile_timeout", "--source-dir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "--cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "--targets", "entry_ticket", "--timeout", "1", "--compile-timeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+PASS  bash: missing compiler rejected
+# fixture_command: ["bash", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/run_all.sh", "--output-dir", "/tmp/entry-runner-fixtures-b9db0u_i/bash-tool-missing", "--source-dir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "--cxx", "/tmp/entry-runner-fixtures-b9db0u_i/absent-compiler", "--targets", "entry_ticket", "--timeout", "1", "--compile-timeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+PASS  bash: output creation failure rejected
+# fixture_command: ["bash", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/run_all.sh", "--output-dir", "/tmp/entry-runner-fixtures-b9db0u_i/bash-not-directory/run", "--source-dir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "--cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "--targets", "entry_ticket", "--timeout", "1", "--compile-timeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+
+--- fixture stderr ---
+runner error: [Errno 20] Not a directory: '/tmp/entry-runner-fixtures-b9db0u_i/bash-not-directory/run'
+
+
+PASS  bash: missing Python rejected
+# fixture_command: ["bash", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/run_all.sh", "--output-dir", "/tmp/entry-runner-fixtures-b9db0u_i/bash-missing-python", "--source-dir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "--cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "--targets", "entry_ticket", "--timeout", "1", "--compile-timeout", "1"]
+# fixture_exit: 127
+# fixture_timed_out: False
+--- fixture stdout ---
+
+--- fixture stderr ---
+/tmp/entry-runner-fixtures-b9db0u_i/scripts/run_all.sh: line 7: /tmp/entry-runner-fixtures-b9db0u_i/absent-python: No such file or directory
+
+
+PASS  pwsh-linux: successful fixture accepted
+# fixture_command: ["pwsh", "-NoProfile", "-File", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/build_run.ps1", "-OutputDir", "/tmp/entry-runner-fixtures-b9db0u_i/pwsh-linux-ok", "-SourceDir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "-Cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "-Targets", "entry_ticket", "-Timeout", "1", "-CompileTimeout", "1"]
+# fixture_exit: 0
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: PASS
+
+--- fixture stderr ---
+
+
+PASS  pwsh-linux: existing output refused without overwrite
+# fixture_command: ["pwsh", "-NoProfile", "-File", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/build_run.ps1", "-OutputDir", "/tmp/entry-runner-fixtures-b9db0u_i/pwsh-linux-ok", "-SourceDir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "-Cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "-Targets", "entry_ticket", "-Timeout", "1", "-CompileTimeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+
+--- fixture stderr ---
+runner error: [Errno 17] File exists: '/tmp/entry-runner-fixtures-b9db0u_i/pwsh-linux-ok'
+
+
+PASS  pwsh-linux: existing empty directory also refused
+PASS  pwsh-linux: compile_fail rejected and diagnosed
+# fixture_command: ["pwsh", "-NoProfile", "-File", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/build_run.ps1", "-OutputDir", "/tmp/entry-runner-fixtures-b9db0u_i/pwsh-linux-compile_fail", "-SourceDir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "-Cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "-Targets", "entry_ticket", "-Timeout", "1", "-CompileTimeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+PASS  pwsh-linux: run_fail rejected and diagnosed
+# fixture_command: ["pwsh", "-NoProfile", "-File", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/build_run.ps1", "-OutputDir", "/tmp/entry-runner-fixtures-b9db0u_i/pwsh-linux-run_fail", "-SourceDir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "-Cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "-Targets", "entry_ticket", "-Timeout", "1", "-CompileTimeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+PASS  pwsh-linux: missing rejected and diagnosed
+# fixture_command: ["pwsh", "-NoProfile", "-File", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/build_run.ps1", "-OutputDir", "/tmp/entry-runner-fixtures-b9db0u_i/pwsh-linux-missing", "-SourceDir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "-Cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "-Targets", "entry_ticket", "-Timeout", "1", "-CompileTimeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+PASS  pwsh-linux: bad rejected and diagnosed
+# fixture_command: ["pwsh", "-NoProfile", "-File", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/build_run.ps1", "-OutputDir", "/tmp/entry-runner-fixtures-b9db0u_i/pwsh-linux-bad", "-SourceDir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "-Cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "-Targets", "entry_ticket", "-Timeout", "1", "-CompileTimeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+PASS  pwsh-linux: duplicate rejected and diagnosed
+# fixture_command: ["pwsh", "-NoProfile", "-File", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/build_run.ps1", "-OutputDir", "/tmp/entry-runner-fixtures-b9db0u_i/pwsh-linux-duplicate", "-SourceDir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "-Cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "-Targets", "entry_ticket", "-Timeout", "1", "-CompileTimeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+PASS  pwsh-linux: false_green rejected and diagnosed
+# fixture_command: ["pwsh", "-NoProfile", "-File", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/build_run.ps1", "-OutputDir", "/tmp/entry-runner-fixtures-b9db0u_i/pwsh-linux-false_green", "-SourceDir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "-Cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "-Targets", "entry_ticket", "-Timeout", "1", "-CompileTimeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+PASS  pwsh-linux: count_lie rejected and diagnosed
+# fixture_command: ["pwsh", "-NoProfile", "-File", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/build_run.ps1", "-OutputDir", "/tmp/entry-runner-fixtures-b9db0u_i/pwsh-linux-count_lie", "-SourceDir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "-Cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "-Targets", "entry_ticket", "-Timeout", "1", "-CompileTimeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+PASS  pwsh-linux: negative_result rejected and diagnosed
+# fixture_command: ["pwsh", "-NoProfile", "-File", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/build_run.ps1", "-OutputDir", "/tmp/entry-runner-fixtures-b9db0u_i/pwsh-linux-negative_result", "-SourceDir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "-Cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "-Targets", "entry_ticket", "-Timeout", "1", "-CompileTimeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+PASS  pwsh-linux: run_timeout rejected and diagnosed
+# fixture_command: ["pwsh", "-NoProfile", "-File", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/build_run.ps1", "-OutputDir", "/tmp/entry-runner-fixtures-b9db0u_i/pwsh-linux-run_timeout", "-SourceDir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "-Cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "-Targets", "entry_ticket", "-Timeout", "1", "-CompileTimeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+PASS  pwsh-linux: compile_timeout rejected and diagnosed
+# fixture_command: ["pwsh", "-NoProfile", "-File", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/build_run.ps1", "-OutputDir", "/tmp/entry-runner-fixtures-b9db0u_i/pwsh-linux-compile_timeout", "-SourceDir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "-Cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "-Targets", "entry_ticket", "-Timeout", "1", "-CompileTimeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+PASS  pwsh-linux: missing compiler rejected
+# fixture_command: ["pwsh", "-NoProfile", "-File", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/build_run.ps1", "-OutputDir", "/tmp/entry-runner-fixtures-b9db0u_i/pwsh-linux-tool-missing", "-SourceDir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "-Cxx", "/tmp/entry-runner-fixtures-b9db0u_i/absent-compiler", "-Targets", "entry_ticket", "-Timeout", "1", "-CompileTimeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+PASS  pwsh-linux: output creation failure rejected
+# fixture_command: ["pwsh", "-NoProfile", "-File", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/build_run.ps1", "-OutputDir", "/tmp/entry-runner-fixtures-b9db0u_i/pwsh-linux-not-directory/run", "-SourceDir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "-Cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler", "-Targets", "entry_ticket", "-Timeout", "1", "-CompileTimeout", "1"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+
+--- fixture stderr ---
+runner error: [Errno 20] Not a directory: '/tmp/entry-runner-fixtures-b9db0u_i/pwsh-linux-not-directory/run'
+
+
+PASS  pwsh-linux: missing Python rejected
+# fixture_command: ["pwsh", "-NoProfile", "-File", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/build_run.ps1", "-OutputDir", "/tmp/entry-runner-fixtures-b9db0u_i/pwsh-linux-missing-python", "-Python", "/tmp/entry-runner-fixtures-b9db0u_i/absent-python"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+
+--- fixture stderr ---
+runner wrapper failed: The term '/tmp/entry-runner-fixtures-b9db0u_i/absent-python' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+
+
+PASS  failed compilation never executes a stale binary
+# fixture_command: ["python3", "-B", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/test_runner_contract.py", "--output-dir", "/tmp/entry-runner-fixtures-b9db0u_i/stale-run", "--source-dir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "--targets", "entry_ticket", "--cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+PASS  top-level main rejects entry_ticket-linux.txt write failure
+# fixture_command: ["python3", "-B", "-c", "import runpy, sys\nn = runpy.run_path('/tmp/entry-runner-fixtures-b9db0u_i/scripts/test_runner_contract.py')\ng = n['main'].__globals__\noriginal = g['write_new']\ndef failing(path, text):\n    if path.name == 'entry_ticket-linux.txt':\n        raise OSError('SYNTHETIC WRITE FAILURE')\n    return original(path, text)\ng['write_new'] = failing\nsys.argv = ['runner', '--output-dir', '/tmp/entry-runner-fixtures-b9db0u_i/write-fail-entry_ticket-linux-txt', '--source-dir', '/tmp/entry-runner-fixtures-b9db0u_i/src',\n            '--targets', 'entry_ticket', '--cxx', '/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler']\nsys.exit(n['main']())\n"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+
+--- fixture stderr ---
+runner error: SYNTHETIC WRITE FAILURE
+
+
+PASS  top-level main rejects run-manifest.json write failure
+# fixture_command: ["python3", "-B", "-c", "import runpy, sys\nn = runpy.run_path('/tmp/entry-runner-fixtures-b9db0u_i/scripts/test_runner_contract.py')\ng = n['main'].__globals__\noriginal = g['write_new']\ndef failing(path, text):\n    if path.name == 'run-manifest.json':\n        raise OSError('SYNTHETIC WRITE FAILURE')\n    return original(path, text)\ng['write_new'] = failing\nsys.argv = ['runner', '--output-dir', '/tmp/entry-runner-fixtures-b9db0u_i/write-fail-run-manifest-json', '--source-dir', '/tmp/entry-runner-fixtures-b9db0u_i/src',\n            '--targets', 'entry_ticket', '--cxx', '/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler']\nsys.exit(n['main']())\n"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: PASS
+
+--- fixture stderr ---
+runner error: SYNTHETIC WRITE FAILURE
+
+
+PASS  historical PASS is never used to fill a missing current RESULT
+# fixture_command: ["python3", "-B", "/tmp/entry-runner-fixtures-b9db0u_i/scripts/test_runner_contract.py", "--output-dir", "/tmp/entry-runner-fixtures-b9db0u_i/old-result-run", "--source-dir", "/tmp/entry-runner-fixtures-b9db0u_i/src", "--targets", "entry_ticket", "--cxx", "/tmp/entry-runner-fixtures-b9db0u_i/fixture-compiler"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: FAIL
+
+--- fixture stderr ---
+
+
+# mutation_target: entry_ticket
+# original_source_sha256: 11462e080300aeecfe05b626ec572bd2275966edc5f84654a34109ce986e4770
+# mutated_source_sha256: 5243a463b1a01e180715fba3c11db9000e568adcf38961c18e856515af17bf1b
+# mutation_compile_command: ["g++-14", "-std=c++17", "-O2", "-Wall", "-Wextra", "-Werror", "-pedantic", "-fsanitize=undefined", "-fno-sanitize-recover=all", "entry_ticket.cpp", "-o", "entry_ticket"]
+# mutation_compile_exit: 0
+# mutation_compile_timed_out: False
+--- mutation_compile stdout ---
+
+--- mutation_compile stderr ---
+
+
+PASS  entry_ticket: deliberate semantic defect is caught by the test oracle
+# fixture_command: ["./entry_ticket"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_ticket: synthetic data; selected vectors + bounded protocol, no side-channel claim
+PASS  T1 SHA-256 over empty input matches FIPS 180-4 vector
+        e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+PASS  T2 SHA-256("abc") matches FIPS 180-4 vector
+        ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+PASS  T3 SHA-256 over a 56-byte message (padding boundary) matches vector
+        248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1
+PASS  T4 streaming SHA-256 is chunk-boundary independent (1000B in 7B chunks)
+        44f8354494a5ba03ba1792a8d3e9c534c47a9181980fde7a3f44b06ef2ae7c7f
+PASS  T5 HMAC-SHA256 matches RFC 4231 Test Case 1 (20-byte 0x0b key)
+        b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7
+PASS  T6 HMAC-SHA256 matches RFC 4231 Test Case 2 ("Jefe")
+        5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843
+PASS  T7 HMAC-SHA256 matches RFC 4231 Test Case 3 (20B key / 50B data)
+        773ea91e36800e46854db8ebd09181a72959098b3ef8c122d9635514ced565fe
+PASS  T8 HMAC-SHA256 hashes a >64-byte key first (RFC 4231 Test Case 6)
+        60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54
+PASS  ticket: legal issue follows the wire grammar
+PASS  ticket: accepted window now=95 without consumption
+PASS  ticket: accepted window now=100 without consumption
+PASS  ticket: accepted window now=159 without consumption
+PASS  ticket: accepted window now=160 without consumption
+PASS  ticket: accepted window now=164 without consumption
+PASS  reject + unchanged nonce/output: one before not-before boundary
+PASS  reject + unchanged nonce/output: exact expiry including skew
+PASS  reject + unchanged nonce/output: after expiry
+PASS  reject + unchanged nonce/output: wrong audience
+PASS  reject + unchanged nonce/output: negative now
+PASS  reject + unchanged nonce/output: audience cannot be skipped
+PASS  reject + unchanged nonce/output: iat ''
+PASS  reject + unchanged nonce/output: exp ''
+PASS  reject + unchanged nonce/output: iat 'not-a-number'
+PASS  reject + unchanged nonce/output: exp 'not-a-number'
+PASS  reject + unchanged nonce/output: iat '9223372036854775808'
+PASS  reject + unchanged nonce/output: exp '9223372036854775808'
+PASS  reject + unchanged nonce/output: iat '999999999999999999999'
+PASS  reject + unchanged nonce/output: exp '999999999999999999999'
+PASS  reject + unchanged nonce/output: iat '100junk'
+PASS  reject + unchanged nonce/output: exp '100junk'
+PASS  reject + unchanged nonce/output: iat '+100'
+PASS  reject + unchanged nonce/output: exp '+100'
+PASS  reject + unchanged nonce/output: iat '-1'
+PASS  reject + unchanged nonce/output: exp '-1'
+PASS  reject + unchanged nonce/output: iat ' 100'
+PASS  reject + unchanged nonce/output: exp ' 100'
+PASS  reject + unchanged nonce/output: iat '100 '
+PASS  reject + unchanged nonce/output: exp '100 '
+PASS  reject + unchanged nonce/output: iat '0100'
+PASS  reject + unchanged nonce/output: exp '0100'
+PASS  reject + unchanged nonce/output: iat '00'
+PASS  reject + unchanged nonce/output: exp '00'
+PASS  reject + unchanged nonce/output: signed invalid grammar/interval v1|player=p1|player=p2|server=ds-1|nonce=0123456789abcdef|iat=100|exp=160
+PASS  reject + unchanged nonce/output: signed invalid grammar/interval v1|server=ds-1|player=p1|nonce=0123456789abcdef|iat=100|exp=160
+PASS  reject + unchanged nonce/output: signed invalid grammar/interval v1|player=p1|server=ds-1|iat=100|exp=160
+PASS  reject + unchanged nonce/output: signed invalid grammar/interval v1|player=p1|server=ds-1|nonce=0123456789abcdef|iat=100|exp=160|x=1
+PASS  reject + unchanged nonce/output: signed invalid grammar/interval v1|player=p=1|server=ds-1|nonce=0123456789abcdef|iat=100|exp=160
+PASS  reject + unchanged nonce/output: signed invalid grammar/interval v2|player=p1|server=ds-1|nonce=0123456789abcdef|iat=100|exp=160
+FAIL  reject + unchanged nonce/output: signed invalid grammar/interval v1|player=p1|server=ds-1|nonce=0123456789abcdef|iat=104|exp=96
+FAIL  reject + unchanged nonce/output: signed invalid grammar/interval v1|player=p1|server=ds-1|nonce=0123456789abcdef|iat=100|exp=100
+PASS  reject + unchanged nonce/output: signed invalid grammar/interval v1|player=p1|server=ds-1|nonce=0123456789abcdef|iat=100|exp=401
+PASS  reject + unchanged nonce/output: embedded NUL
+PASS  reject + unchanged nonce/output: wire exceeds bound
+PASS  reject + unchanged nonce/output: signature encoding/length
+PASS  reject + unchanged nonce/output: signature encoding/length
+PASS  reject + unchanged nonce/output: signature encoding/length
+PASS  reject + unchanged nonce/output: signature encoding/length
+PASS  reject + unchanged nonce/output: signature encoding/length
+PASS  reject + unchanged nonce/output: payload changed without MAC
+FAIL  reject wrong synthetic key without side effects
+PASS  parse output commits only after full grammar validation
+PASS  parse output commits only after full grammar validation
+FAIL  first consumption publishes authenticated fields
+PASS  reject + unchanged nonce/output: replay
+PASS  new nonce supports explicit reissue
+PASS  issue rejects invalid player without partial output
+PASS  issue rejects invalid server without partial output
+PASS  issue rejects invalid player without partial output
+PASS  issue rejects invalid server without partial output
+PASS  issue rejects invalid player without partial output
+PASS  issue rejects invalid server without partial output
+PASS  issue rejects invalid player without partial output
+PASS  issue rejects invalid server without partial output
+PASS  issue rejects invalid player without partial output
+PASS  issue rejects invalid server without partial output
+PASS  issue enforces nonce grammar
+PASS  issue enforces nonce grammar
+PASS  issue enforces nonce grammar
+PASS  issue enforces nonce grammar
+PASS  issue rejects invalid or overflowing clock input
+PASS  issue rejects invalid or overflowing clock input
+PASS  issue rejects out-of-policy TTL
+PASS  issue rejects out-of-policy TTL
+PASS  issue rejects out-of-policy TTL
+PASS  reject + unchanged nonce/output: invalid skew
+PASS  issue also rejects invalid skew configuration
+PASS  reject + unchanged nonce/output: invalid skew
+PASS  issue also rejects invalid skew configuration
+PASS  INT64_MAX expiry boundary without signed overflow
+PASS  max time plus skew compared without addition
+PASS  canonical zero timestamp accepted
+PASS  maximum legal identifier/nonce/TTL/skew bounds are accepted with exact expiry
+PASS  bounded consumption table fails closed without partial output
+PASS  compare boolean: equal
+PASS  compare boolean: first byte differs (not timing evidence)
+PASS  compare boolean: last byte differs (not timing evidence)
+PASS  compare boolean: unequal length
+RESULT pass=93 fail=4
+
+--- fixture stderr ---
+
+
+# mutation_target: entry_session
+# original_source_sha256: a10c651218b5f54f7360f509e737901bad0069d864bec3cac78f443803fac04b
+# mutated_source_sha256: 81d6fd50dcc2264131cec09d40b5d3e013971ee653e629c75a449355ce1c938c
+# mutation_compile_command: ["g++-14", "-std=c++17", "-O2", "-Wall", "-Wextra", "-Werror", "-pedantic", "-fsanitize=undefined", "-fno-sanitize-recover=all", "entry_session.cpp", "-o", "entry_session"]
+# mutation_compile_exit: 0
+# mutation_compile_timed_out: False
+--- mutation_compile stdout ---
+
+--- mutation_compile stderr ---
+
+
+PASS  entry_session: deliberate semantic defect is caught by the test oracle
+# fixture_command: ["./entry_session"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+entry_session: synthetic auth; serialized request ownership model, no UE entity lifecycle claim
+PASS  same trusted principal/key/intent: reauthenticate, reuse result, no business replay
+PASS  revoked credential cannot retrieve cached Ready or its handle
+PASS  cross-principal identical requestId is isolated
+PASS  claimed player must match authenticated principal
+PASS  same key different full intent field rejected: 0
+PASS  same key different full intent field rejected: 1
+PASS  same key different full intent field rejected: 2
+PASS  new reconnect request borrows the same ready resource without another seat
+PASS  operation participates in the idempotency key
+PASS  tenant participates in trusted principal scope
+PASS  Ready cancellation is a no-op
+PASS  failure matrix Auth/reject releases only newly acquired seat
+PASS  failure matrix Auth/reject preserves old Ready handle/load/epoch
+PASS  failure matrix Auth/timeout releases only newly acquired seat
+PASS  failure matrix Auth/timeout preserves old Ready handle/load/epoch
+PASS  failure matrix Auth/cancel releases only newly acquired seat
+PASS  failure matrix Auth/cancel preserves old Ready handle/load/epoch
+PASS  failure matrix Allocate/reject releases only newly acquired seat
+PASS  failure matrix Allocate/reject preserves old Ready handle/load/epoch
+PASS  failure matrix Allocate/timeout releases only newly acquired seat
+PASS  failure matrix Allocate/timeout preserves old Ready handle/load/epoch
+PASS  failure matrix Allocate/cancel releases only newly acquired seat
+PASS  failure matrix Allocate/cancel preserves old Ready handle/load/epoch
+PASS  failure matrix Travel/reject releases only newly acquired seat
+FAIL  failure matrix Travel/reject preserves old Ready handle/load/epoch
+PASS  failure matrix Travel/timeout releases only newly acquired seat
+FAIL  failure matrix Travel/timeout preserves old Ready handle/load/epoch
+PASS  failure matrix Travel/cancel releases only newly acquired seat
+FAIL  failure matrix Travel/cancel preserves old Ready handle/load/epoch
+PASS  failure matrix Load/reject releases only newly acquired seat
+FAIL  failure matrix Load/reject preserves old Ready handle/load/epoch
+PASS  failure matrix Load/timeout releases only newly acquired seat
+FAIL  failure matrix Load/timeout preserves old Ready handle/load/epoch
+PASS  failure matrix Load/cancel releases only newly acquired seat
+FAIL  failure matrix Load/cancel preserves old Ready handle/load/epoch
+PASS  failure matrix Spawn/reject releases only newly acquired seat
+FAIL  failure matrix Spawn/reject preserves old Ready handle/load/epoch
+PASS  failure matrix Spawn/timeout releases only newly acquired seat
+FAIL  failure matrix Spawn/timeout preserves old Ready handle/load/epoch
+PASS  failure matrix Spawn/cancel releases only newly acquired seat
+FAIL  failure matrix Spawn/cancel preserves old Ready handle/load/epoch
+PASS  late cancel of an early denied request cannot release a later Ready
+PASS  explicit normal exit releases the matching generation
+PASS  late compensation owning an older generation cannot release newer Ready
+PASS  replay of historical Ready returns stale without restoring write authority
+PASS  release also checks resource identity, not only generation
+PASS  no capacity terminates immediately, never reaches Travel/Load/Spawn
+PASS  bounded timeout retries reuse one acquisition
+PASS  new request cannot borrow an existing seat for a different match intent
+PASS  epoch exhaustion fails without wrap or seat allocation
+PASS  invalid retry bound rejects before callbacks/allocation: 0
+PASS  invalid retry bound rejects before callbacks/allocation: 4
+PASS  invalid retry bound rejects before callbacks/allocation: 2147483647
+PASS  negative control: per-DS invariant detects injected accounting corruption
+RESULT pass=45 fail=9
+
+--- fixture stderr ---
+
+
+# mutation_target: ds_allocator
+# original_source_sha256: 909313c4ce1ac74aeae894f65c69ac9ba18e74ebb9a2f1fa22d4079a93c65b99
+# mutated_source_sha256: 5e6fe55b605acc0f3b2cb0b9f80908a0063c6f7ba7a693b09e4bb6546d2c8efa
+# mutation_compile_command: ["g++-14", "-std=c++17", "-O2", "-Wall", "-Wextra", "-Werror", "-pedantic", "-fsanitize=undefined", "-fno-sanitize-recover=all", "ds_allocator.cpp", "-o", "ds_allocator"]
+# mutation_compile_exit: 0
+# mutation_compile_timed_out: False
+--- mutation_compile stdout ---
+
+--- mutation_compile stderr ---
+
+
+PASS  ds_allocator: deliberate semantic defect is caught by the test oracle
+# fixture_command: ["./ds_allocator"]
+# fixture_exit: 1
+# fixture_timed_out: False
+--- fixture stdout ---
+ds_allocator: half-open live/grace windows; serialized model, no persistent fencing claim
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1029 op=0 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1029 op=1 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1029 op=2 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1029 op=3 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1030 op=0 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1030 op=1 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1030 op=2 without Reap
+PASS  boundary setup counted exactly one seat
+FAIL  boundary now=1030 op=3 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1031 op=0 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1031 op=1 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1031 op=2 without Reap
+PASS  boundary setup counted exactly one seat
+FAIL  boundary now=1031 op=3 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1039 op=0 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1039 op=1 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1039 op=2 without Reap
+PASS  boundary setup counted exactly one seat
+FAIL  boundary now=1039 op=3 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1040 op=0 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1040 op=1 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1040 op=2 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1040 op=3 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1041 op=0 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1041 op=1 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1041 op=2 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=1041 op=3 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=2000 op=0 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=2000 op=1 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=2000 op=2 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  boundary now=2000 op=3 without Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1029 op=0 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1029 op=1 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1029 op=2 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1029 op=3 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1030 op=0 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1030 op=1 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1030 op=2 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+FAIL  boundary now=1030 op=3 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1031 op=0 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1031 op=1 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1031 op=2 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+FAIL  boundary now=1031 op=3 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1039 op=0 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1039 op=1 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1039 op=2 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+FAIL  boundary now=1039 op=3 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1040 op=0 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1040 op=1 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1040 op=2 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1040 op=3 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1041 op=0 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1041 op=1 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1041 op=2 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=1041 op=3 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=2000 op=0 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=2000 op=1 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=2000 op=2 with Reap
+PASS  boundary setup counted exactly one seat
+PASS  Reap changes capacity only at holdUntil
+PASS  boundary now=2000 op=3 with Reap
+FAIL  grace reconnect on a full original DS reuses its counted seat and rotates epoch
+FAIL  old generation commit rejected after grace reconnect
+FAIL  old generation heartbeat rejected after grace reconnect
+FAIL  old generation release cannot clear new reservation
+FAIL  new generation can commit
+FAIL  new generation heartbeat maintains one seat
+FAIL  forged handle commit rejected field=0
+FAIL  forged handle heartbeat rejected field=0
+FAIL  forged handle release rejected without resource changes field=0
+FAIL  forged handle commit rejected field=1
+FAIL  forged handle heartbeat rejected field=1
+FAIL  forged handle release rejected without resource changes field=1
+FAIL  forged handle commit rejected field=2
+FAIL  forged handle heartbeat rejected field=2
+FAIL  forged handle release rejected without resource changes field=2
+FAIL  matching live release decrements exactly one seat
+FAIL  duplicate release cannot double decrement
+PASS  cross-DS allocation increases allocator-wide epoch
+PASS  old ds-1 handle cannot commit/renew/release p1 now on ds-2
+PASS  even equal epoch numeric value cannot authorize another DS
+PASS  no capacity leaves output and resource state unchanged
+PASS  expired heartbeat without Reap cannot revive owner
+PASS  clock rollback after expired rejection cannot restore authority
+PASS  invalid TTL/grace or deadline overflow rejects without resource effects case=0
+PASS  invalid TTL/grace or deadline overflow rejects without resource effects case=1
+PASS  invalid TTL/grace or deadline overflow rejects without resource effects case=2
+PASS  invalid TTL/grace or deadline overflow rejects without resource effects case=3
+PASS  invalid TTL/grace or deadline overflow rejects without resource effects case=4
+PASS  allocation rejects backwards trusted clock
+PASS  all operations reject backwards clock without resource effects
+PASS  input preflight failure is not a clock observation; valid later call uses last observed watermark
+PASS  exact INT64_MAX deadline is representable
+PASS  expiry at INT64_MAX still loses authority
+PASS  overflow allocation does not reap or overwrite old accounting
+PASS  cleanup uses stored deadline without overflow
+PASS  live heartbeat overflow leaves expiry unchanged
+PASS  last representable epoch can be issued once
+PASS  grace reacquire refuses epoch exhaustion without wrapping or leaking seat
+PASS  expired last epoch can still be reaped
+PASS  reap does not reset epoch high water mark
+PASS  sequence 1 allocate p
+PASS  sequence 2 allocate q
+PASS  sequence 3 renew p
+PASS  sequence 4 q becomes read-only at TTL
+FAIL  sequence 5 q reconnect retains full DS seat
+FAIL  sequence 6 delayed old q release
+FAIL  sequence 7 reap only expired p
+FAIL  sequence 8 release new q
+FAIL  sequence 9 repeated cleanup stays empty
+PASS  negative control: invariant detects phantom seat on another DS
+PASS  negative control: invariant detects wrong player ownership
+RESULT pass=163 fail=28
+
+--- fixture stderr ---
+
+
+RESULT pass=39 fail=0

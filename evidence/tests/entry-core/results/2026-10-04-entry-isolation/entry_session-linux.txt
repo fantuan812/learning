@@ -1,0 +1,89 @@
+# generated_utc: 2026-10-04T14:28:17.936608+00:00
+# host: {"system": "Linux", "release": "6.18.44", "machine": "x86_64", "libc": ["glibc", "2.41"]}
+# python: 3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]
+# build_cwd: fresh temporary directory
+# target: entry_session
+# compiler_version_command: ["g++-14", "--version"]
+# compiler_version_exit: 0
+# compiler_version_timed_out: False
+--- compiler_version stdout ---
+g++-14 (Debian 14.2.0-19) 14.2.0
+Copyright (C) 2024 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+
+--- compiler_version stderr ---
+
+# source_sha256: a10c651218b5f54f7360f509e737901bad0069d864bec3cac78f443803fac04b
+# compile_command: ["g++-14", "-std=c++17", "-O2", "-Wall", "-Wextra", "-Werror", "-pedantic", "-fsanitize=undefined", "-fno-sanitize-recover=all", "-fno-omit-frame-pointer", "entry_session.cpp", "-o", "entry_session"]
+# compile_exit: 0
+# compile_timed_out: False
+--- compile stdout ---
+
+--- compile stderr ---
+
+# run_command: ["./entry_session"]
+# run_exit: 0
+# run_timed_out: False
+--- run stdout ---
+entry_session: synthetic auth; serialized request ownership model, no UE entity lifecycle claim
+PASS  same trusted principal/key/intent: reauthenticate, reuse result, no business replay
+PASS  revoked credential cannot retrieve cached Ready or its handle
+PASS  cross-principal identical requestId is isolated
+PASS  claimed player must match authenticated principal
+PASS  same key different full intent field rejected: 0
+PASS  same key different full intent field rejected: 1
+PASS  same key different full intent field rejected: 2
+PASS  new reconnect request borrows the same ready resource without another seat
+PASS  operation participates in the idempotency key
+PASS  tenant participates in trusted principal scope
+PASS  Ready cancellation is a no-op
+PASS  failure matrix Auth/reject releases only newly acquired seat
+PASS  failure matrix Auth/reject preserves old Ready handle/load/epoch
+PASS  failure matrix Auth/timeout releases only newly acquired seat
+PASS  failure matrix Auth/timeout preserves old Ready handle/load/epoch
+PASS  failure matrix Auth/cancel releases only newly acquired seat
+PASS  failure matrix Auth/cancel preserves old Ready handle/load/epoch
+PASS  failure matrix Allocate/reject releases only newly acquired seat
+PASS  failure matrix Allocate/reject preserves old Ready handle/load/epoch
+PASS  failure matrix Allocate/timeout releases only newly acquired seat
+PASS  failure matrix Allocate/timeout preserves old Ready handle/load/epoch
+PASS  failure matrix Allocate/cancel releases only newly acquired seat
+PASS  failure matrix Allocate/cancel preserves old Ready handle/load/epoch
+PASS  failure matrix Travel/reject releases only newly acquired seat
+PASS  failure matrix Travel/reject preserves old Ready handle/load/epoch
+PASS  failure matrix Travel/timeout releases only newly acquired seat
+PASS  failure matrix Travel/timeout preserves old Ready handle/load/epoch
+PASS  failure matrix Travel/cancel releases only newly acquired seat
+PASS  failure matrix Travel/cancel preserves old Ready handle/load/epoch
+PASS  failure matrix Load/reject releases only newly acquired seat
+PASS  failure matrix Load/reject preserves old Ready handle/load/epoch
+PASS  failure matrix Load/timeout releases only newly acquired seat
+PASS  failure matrix Load/timeout preserves old Ready handle/load/epoch
+PASS  failure matrix Load/cancel releases only newly acquired seat
+PASS  failure matrix Load/cancel preserves old Ready handle/load/epoch
+PASS  failure matrix Spawn/reject releases only newly acquired seat
+PASS  failure matrix Spawn/reject preserves old Ready handle/load/epoch
+PASS  failure matrix Spawn/timeout releases only newly acquired seat
+PASS  failure matrix Spawn/timeout preserves old Ready handle/load/epoch
+PASS  failure matrix Spawn/cancel releases only newly acquired seat
+PASS  failure matrix Spawn/cancel preserves old Ready handle/load/epoch
+PASS  late cancel of an early denied request cannot release a later Ready
+PASS  explicit normal exit releases the matching generation
+PASS  late compensation owning an older generation cannot release newer Ready
+PASS  replay of historical Ready returns stale without restoring write authority
+PASS  release also checks resource identity, not only generation
+PASS  no capacity terminates immediately, never reaches Travel/Load/Spawn
+PASS  bounded timeout retries reuse one acquisition
+PASS  new request cannot borrow an existing seat for a different match intent
+PASS  epoch exhaustion fails without wrap or seat allocation
+PASS  invalid retry bound rejects before callbacks/allocation: 0
+PASS  invalid retry bound rejects before callbacks/allocation: 4
+PASS  invalid retry bound rejects before callbacks/allocation: 2147483647
+PASS  negative control: per-DS invariant detects injected accounting corruption
+RESULT pass=54 fail=0
+
+--- run stderr ---
+
+# accepted_by_runner: True

@@ -1,43 +1,39 @@
 <#
 .SYNOPSIS
-    进入游戏证据包：编译并运行全部程序，原始输出写入 results/（Windows 版本）。
-
+严格runner的PowerShell入口。Linux pwsh测试不能替代Windows/MinGW验证。
 .EXAMPLE
-    & (Join-Path $RepoRoot 'evidence/tests/entry-core/scripts/build_run.ps1')
+./build_run.ps1 -OutputDir /tmp/entry-run-unique -Cxx g++-14 -Ubsan
 #>
 [CmdletBinding()]
 param(
-    [string]$Cxx = 'C:\msys64\mingw64\bin\g++.exe'
+    [Parameter(Mandatory=$true)][string]$OutputDir,
+    [string]$Cxx = 'g++',
+    [string]$Python = 'python3',
+    [string]$SourceDir = '',
+    [string[]]$Targets = @('entry_ticket', 'entry_session', 'ds_allocator'),
+    [double]$Timeout = 15,
+    [double]$CompileTimeout = 60,
+    [switch]$Ubsan,
+    [switch]$SelfTest,
+    [switch]$WithSelfTest,
+    [string]$Pwsh = ''
 )
-
 $ErrorActionPreference = 'Stop'
-$here = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
-$build = Join-Path $here 'build'
-$results = Join-Path $here 'results'
-New-Item -ItemType Directory -Force -Path $build, $results | Out-Null
-
-if (-not (Test-Path $Cxx)) {
-    throw "compiler not found: $Cxx  (pass -Cxx <path to g++>)"
+$env:PYTHONDONTWRITEBYTECODE = '1'
+try {
+    $script = Join-Path $PSScriptRoot 'test_runner_contract.py'
+    $runnerArgs = @('-B', $script, '--output-dir', $OutputDir, '--cxx', $Cxx,
+        '--timeout', "$Timeout", '--compile-timeout', "$CompileTimeout", '--targets') + $Targets
+    if ($SourceDir) { $runnerArgs += @('--source-dir', $SourceDir) }
+    if ($Ubsan) { $runnerArgs += '--ubsan' }
+    if ($SelfTest) { $runnerArgs += '--self-test' }
+    if ($WithSelfTest) { $runnerArgs += '--with-self-test' }
+    if ($Pwsh) { $runnerArgs += @('--pwsh', $Pwsh) }
+    & $Python @runnerArgs
+    $code = $LASTEXITCODE
+    if ($null -eq $code) { throw 'Python runner returned no native exit status' }
+    exit $code
+} catch {
+    [Console]::Error.WriteLine("runner wrapper failed: " + $_.Exception.Message)
+    exit 1
 }
-
-$tools = @('entry_ticket', 'entry_session', 'ds_allocator', 'jip_resync')
-$failed = 0
-
-foreach ($t in $tools) {
-    Write-Host "=== build $t ==="
-    & $Cxx -std=c++17 -O2 -Wall -o (Join-Path $build "$t.exe") (Join-Path $here "src/$t.cpp")
-    if ($LASTEXITCODE -ne 0) { Write-Host "BUILD FAILED: $t"; $failed = 1; continue }
-
-    Write-Host "=== run $t ==="
-    $out = & (Join-Path $build "$t.exe") 2>&1
-    $out | Out-File -FilePath (Join-Path $results "$t.txt") -Encoding utf8
-    $out | Select-Object -Last 3 | ForEach-Object { Write-Host $_ }
-    if ($LASTEXITCODE -ne 0) { Write-Host "RUN FAILED: $t (exit=$LASTEXITCODE)"; $failed = 1 }
-}
-
-Write-Host ''
-Write-Host '=== summary ==='
-Get-ChildItem $results -Filter *.txt | ForEach-Object {
-    Select-String -Path $_.FullName -Pattern '^RESULT' | ForEach-Object { Write-Host $_.Line }
-}
-exit $failed

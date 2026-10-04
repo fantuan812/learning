@@ -1,15 +1,15 @@
-// evidence/tests/entry-core/src/entry_ticket.cpp
-//
-// 进入游戏 · 登录票据证据
-//   1) SHA-256 / HMAC-SHA256 自实现（对 RFC 4231 与标准 SHA-256 向量校验）
-//   2) 一次性登录票据：签发 / 验签 / 过期 / 时钟偏移 / nonce 重放 / 常量时间比较
-//
-// 构建：g++ -std=c++17 -O2 -o build/entry_ticket.exe src/entry_ticket.cpp
-// 依赖：仅 C++17 标准库（不引入 OpenSSL，保证在任何机器上可复现）
-
+// 进入游戏票据：单进程串行、完全合成凭据的教学模型。
+// 自实现 SHA/HMAC 仅用于选定向量学习，不用于生产密钥或真实认证服务。
+// 严格 C++17；运行入口及覆盖边界见 ../README.md。
 #include <algorithm>
 #include <array>
-#include <chrono>
+#include <charconv>
+#include <exception>
+#include <utility>
+#include <limits>
+#include <map>
+#include <string_view>
+#include <tuple>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -166,8 +166,8 @@ static std::array<uint8_t, 32> HmacSha256(const std::string& key, const std::str
     return out;
 }
 
-// 常量时间比较：不因"第几个字节不同"而提前返回，避免时序侧信道。
-static bool ConstantTimeEqual(const std::string& a, const std::string& b) {
+// 教学用全字节异或比较；只测布尔功能，不证明优化后二进制的常量时间/侧信道性质。
+static bool EqualBytesDemo(const std::string& a, const std::string& b) {
     if (a.size() != b.size()) return false;
     uint8_t diff = 0;
     for (size_t i = 0; i < a.size(); ++i)
@@ -175,117 +175,119 @@ static bool ConstantTimeEqual(const std::string& a, const std::string& b) {
     return diff == 0;
 }
 
-// ---------------------------------------------------------------------------
-// 登录票据（One-Time Login Ticket）
-//   payload = v1|player=<id>|server=<ds>|nonce=<hex>|iat=<unix>|exp=<unix>
-//   ticket  = payload|sig=<hex hmac(key, payload)>
-// ---------------------------------------------------------------------------
+
+// v1 固定字段/顺序；ID=[A-Za-z0-9_-]{1,64}，nonce=16..64个小写hex。
+// iat/exp 是 [0, INT64_MAX] 规范十进制；sig=64小写hex；wire<=1024字节。
 struct Ticket {
-    std::string playerId;
-    std::string serverId;
-    std::string nonce;
-    int64_t issuedAt = 0;
-    int64_t expireAt = 0;
-    std::string signature;
-    std::string payload;   // 被签名的原文
+    std::string playerId, serverId, nonce;
+    int64_t issuedAt = 0, expireAt = 0;
+    std::string signature, payload;
+    bool operator==(const Ticket& b) const {
+        return std::tie(playerId, serverId, nonce, issuedAt, expireAt, signature, payload) ==
+               std::tie(b.playerId, b.serverId, b.nonce, b.issuedAt, b.expireAt, b.signature, b.payload);
+    }
 };
-
 struct TicketCodec {
-    std::string key;
-    int64_t ttlSeconds = 60;
-    int64_t maxClockSkew = 5;      // 容忍客户端/网关时钟偏移
-    std::unordered_set<std::string> usedNonces;   // 一次性消费表
-
+    std::string key = "synthetic-classroom-key-never-deploy";
+    int64_t ttlSeconds = 60, maxClockSkew = 5;
+    static constexpr int64_t kMaxTtl = 300, kMaxSkew = 30;
+    static constexpr size_t kMaxWire = 1024, kMaxConsumed = 1024;
+    // 作用域是本codec签发域中的 (player, server, nonce)，并非全局一次性。
+    // 本模型不清理；满表拒绝消费。生产需持久化原子消费/到期清理与恢复查询。
+    std::map<std::tuple<std::string, std::string, std::string>, int64_t> usedNonces;
+    enum class Result { kOk, kMalformed, kBadConfig, kBadSignature, kExpired,
+                        kNotYetValid, kReplayed, kServerMismatch, kStateFull };
+    static bool Id(std::string_view v) {
+        return !v.empty() && v.size() <= 64 && std::all_of(v.begin(), v.end(), [](char c) {
+            return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                   (c >= '0' && c <= '9') || c == '_' || c == '-';
+        });
+    }
+    static bool HexField(std::string_view v, size_t lo, size_t hi) {
+        return v.size() >= lo && v.size() <= hi && std::all_of(v.begin(), v.end(), [](char c) {
+            return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
+        });
+    }
+    static bool Decimal(std::string_view v, int64_t& out) {
+        if (v.empty() || v.size() > 19 || (v.size() > 1 && v.front() == '0') ||
+            !std::all_of(v.begin(), v.end(), [](char c) { return c >= '0' && c <= '9'; })) return false;
+        int64_t local = 0;
+        const auto r = std::from_chars(v.data(), v.data() + v.size(), local, 10);
+        if (r.ec != std::errc{} || r.ptr != v.data() + v.size()) return false;
+        out = local;
+        return true;
+    }
+    bool ConfigValid() const {
+        return !key.empty() && key.size() <= 128 && ttlSeconds > 0 && ttlSeconds <= kMaxTtl &&
+               maxClockSkew >= 0 && maxClockSkew <= kMaxSkew;
+    }
     std::string Sign(const std::string& payload) const {
         const auto mac = HmacSha256(key, payload);
         return Hex(mac.data(), mac.size());
     }
-
-    Ticket Issue(const std::string& playerId, const std::string& serverId,
-                 const std::string& nonce, int64_t now) const {
-        Ticket t;
-        t.playerId = playerId;
-        t.serverId = serverId;
-        t.nonce = nonce;
-        t.issuedAt = now;
-        t.expireAt = now + ttlSeconds;
-        t.payload = "v1|player=" + playerId + "|server=" + serverId + "|nonce=" + nonce +
-                    "|iat=" + std::to_string(t.issuedAt) + "|exp=" + std::to_string(t.expireAt);
-        t.signature = Sign(t.payload);
-        return t;
-    }
-
     std::string Serialize(const Ticket& t) const { return t.payload + "|sig=" + t.signature; }
-
-    // 解析不做验签；验签单独一步，便于把"格式错误"和"签名错误"分开报告。
+    Result Issue(const std::string& player, const std::string& server,
+                 const std::string& nonce, int64_t now, Ticket* out) const {
+        if (!ConfigValid()) return Result::kBadConfig;
+        if (!out || !Id(player) || !Id(server) || !HexField(nonce, 16, 64) || now < 0 ||
+            now > std::numeric_limits<int64_t>::max() - ttlSeconds) return Result::kMalformed;
+        Ticket t;
+        t.playerId = player; t.serverId = server; t.nonce = nonce;
+        t.issuedAt = now; t.expireAt = now + ttlSeconds;
+        t.payload = "v1|player=" + player + "|server=" + server + "|nonce=" + nonce +
+                    "|iat=" + std::to_string(now) + "|exp=" + std::to_string(t.expireAt);
+        t.signature = Sign(t.payload);
+        *out = std::move(t);
+        return Result::kOk;
+    }
     bool Parse(const std::string& wire, Ticket* out) const {
-        const auto sigPos = wire.rfind("|sig=");
-        if (sigPos == std::string::npos) return false;
-        const std::string payload = wire.substr(0, sigPos);
-        const std::string sig = wire.substr(sigPos + 5);
-        if (payload.rfind("v1|", 0) != 0) return false;
-
-        auto field = [&](const std::string& name, std::string* dst) -> bool {
-            const std::string pat = "|" + name + "=";
-            auto p = payload.find(pat);
-            if (p == std::string::npos) return false;
-            p += pat.size();
-            auto q = payload.find('|', p);
-            *dst = payload.substr(p, q == std::string::npos ? std::string::npos : q - p);
-            return !dst->empty();
-        };
-        std::string iat, exp;
-        if (!field("player", &out->playerId)) return false;
-        if (!field("server", &out->serverId)) return false;
-        if (!field("nonce", &out->nonce)) return false;
-        if (!field("iat", &iat)) return false;
-        if (!field("exp", &exp)) return false;
-        out->issuedAt = std::stoll(iat);
-        out->expireAt = std::stoll(exp);
-        out->payload = payload;
-        out->signature = sig;
+        if (!out || wire.size() > kMaxWire) return false;
+        std::array<std::string_view, 7> parts{};
+        const std::string_view view(wire);
+        size_t begin = 0;
+        for (size_t i = 0; i < parts.size(); ++i) {
+            const auto end = view.find('|', begin);
+            if ((i + 1 == parts.size()) != (end == std::string_view::npos)) return false;
+            parts[i] = view.substr(begin, end == std::string_view::npos ? view.size() - begin : end - begin);
+            if (end != std::string_view::npos) begin = end + 1;
+        }
+        const std::array<std::string_view, 7> prefixes = {"v1", "player=", "server=", "nonce=", "iat=", "exp=", "sig="};
+        if (parts[0] != "v1") return false;
+        for (size_t i = 1; i < parts.size(); ++i) {
+            if (parts[i].substr(0, prefixes[i].size()) != prefixes[i]) return false;
+            parts[i].remove_prefix(prefixes[i].size());
+        }
+        Ticket t;
+        if (!Id(parts[1]) || !Id(parts[2]) || !HexField(parts[3], 16, 64) ||
+            !Decimal(parts[4], t.issuedAt) || !Decimal(parts[5], t.expireAt) ||
+            !HexField(parts[6], 64, 64)) return false;
+        t.playerId = std::string(parts[1]); t.serverId = std::string(parts[2]);
+        t.nonce = std::string(parts[3]); t.signature = std::string(parts[6]);
+        t.payload = wire.substr(0, wire.size() - 69); // "|sig=" + 64 hex
+        *out = std::move(t); // 格式全部合法才发布输出；不吞掉bad_alloc冒充格式错误。
         return true;
     }
-
-    enum class VerifyResult { kOk, kMalformed, kBadSignature, kExpired, kNotYetValid, kReplayed, kServerMismatch };
-
-    static const char* Name(VerifyResult r) {
-        switch (r) {
-            case VerifyResult::kOk: return "ok";
-            case VerifyResult::kMalformed: return "malformed";
-            case VerifyResult::kBadSignature: return "bad_signature";
-            case VerifyResult::kExpired: return "expired";
-            case VerifyResult::kNotYetValid: return "not_yet_valid";
-            case VerifyResult::kReplayed: return "replayed";
-            case VerifyResult::kServerMismatch: return "server_mismatch";
-        }
-        return "?";
-    }
-
-    // expectedServer 为空表示不校验归属；校验顺序：格式 → 签名 → 时间窗 → 归属 → 一次性消费
-    VerifyResult Verify(const std::string& wire, int64_t now,
-                        const std::string& expectedServer, bool consume) {
+    Result Verify(const std::string& wire, int64_t now, const std::string& expectedServer,
+                  bool consume, Ticket* out = nullptr) {
+        if (!ConfigValid() || now < 0 || !Id(expectedServer)) return Result::kBadConfig;
         Ticket t;
-        if (!Parse(wire, &t)) return VerifyResult::kMalformed;
-
-        const std::string expect = Sign(t.payload);
-        if (!ConstantTimeEqual(expect, t.signature)) return VerifyResult::kBadSignature;
-
-        if (now + maxClockSkew < t.issuedAt) return VerifyResult::kNotYetValid;
-        if (now - maxClockSkew > t.expireAt) return VerifyResult::kExpired;
-
-        if (!expectedServer.empty() && t.serverId != expectedServer)
-            return VerifyResult::kServerMismatch;
-
-        if (usedNonces.count(t.nonce)) return VerifyResult::kReplayed;
-        if (consume) usedNonces.insert(t.nonce);
-        return VerifyResult::kOk;
+        if (!Parse(wire, &t)) return Result::kMalformed;
+        if (!EqualBytesDemo(Sign(t.payload), t.signature)) return Result::kBadSignature;
+        if (t.expireAt <= t.issuedAt || t.expireAt - t.issuedAt > kMaxTtl) return Result::kMalformed;
+        // 避免 now +/- skew 溢出：已知较大者减非负较小者。
+        if (t.issuedAt > now && t.issuedAt - now > maxClockSkew) return Result::kNotYetValid;
+        // 接受窗 [iat-skew, exp+skew)，边界由差值判断，无溢出加法。
+        if (now >= t.expireAt && now - t.expireAt >= maxClockSkew) return Result::kExpired;
+        if (t.serverId != expectedServer) return Result::kServerMismatch;
+        const auto nonceKey = std::make_tuple(t.playerId, t.serverId, t.nonce);
+        if (usedNonces.count(nonceKey)) return Result::kReplayed;
+        if (consume && usedNonces.size() >= kMaxConsumed) return Result::kStateFull;
+        if (consume) usedNonces.emplace(nonceKey, t.expireAt);
+        if (out) *out = std::move(t);
+        return Result::kOk;
     }
 };
 
-// ---------------------------------------------------------------------------
-// 断言组
-// ---------------------------------------------------------------------------
 static void TestSha256() {
     const std::string empty = "";
     Check(Sha256Hex(empty) == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -326,7 +328,7 @@ static void TestHmac() {
           "T6 HMAC-SHA256 matches RFC 4231 Test Case 2 (\"Jefe\")",
           Hex(HmacSha256("Jefe", "what do ya want for nothing?").data(), 32));
 
-    // RFC 4231 Test Case 3：key 与 data 均为 0xaa 重复
+    // RFC 4231 Test Case 3：key为20个0xaa，data为50个0xdd
     const std::string key3(20, '\xaa');
     const std::string data3(50, '\xdd');
     Check(Hex(HmacSha256(key3, data3).data(), 32) ==
@@ -343,89 +345,136 @@ static void TestHmac() {
           Hex(HmacSha256(longKey, data4).data(), 32));
 }
 
+
+static Ticket Sentinel() { return {"unchanged", "sentinel", "not-a-ticket", 7, 8, "sig", "payload"}; }
 static void TestTicket() {
-    TicketCodec codec;
-    codec.key = "server-side-secret-key";
-    const int64_t t0 = 1700000000;
-
-    const Ticket t = codec.Issue("10086", "ds-7", "9a3f1c", t0);
-    const std::string wire = codec.Serialize(t);
-
-    Check(codec.Verify(wire, t0, "", false) == TicketCodec::VerifyResult::kOk,
-          "T9 a freshly issued ticket verifies",
-          "wire=" + wire.substr(0, 60) + "...");
-
-    // 篡改 payload（把玩家改成别人）必须被签名拦下
-    std::string tampered = wire;
-    tampered.replace(tampered.find("player=10086"), 12, "player=10087");
-    Check(codec.Verify(tampered, t0, "", false) == TicketCodec::VerifyResult::kBadSignature,
-          "T10 tampering player id in payload breaks verification",
-          "swapped 10086 -> 10087");
-
-    // 换密钥必须失败（防止跨环境/跨服务复用票据）
-    TicketCodec other;
-    other.key = "another-secret-key";
-    Check(other.Verify(wire, t0, "", false) == TicketCodec::VerifyResult::kBadSignature,
-          "T11 a ticket signed with another key is rejected");
-
-    // 过期：TTL 60s，81 秒后（超过 5s 时钟容差）拒绝
-    Check(codec.Verify(wire, t0 + 54, "", false) == TicketCodec::VerifyResult::kOk,
-          "T12 ticket is still valid 54s later (inside 60s TTL)");
-    Check(codec.Verify(wire, t0 + 81, "", false) == TicketCodec::VerifyResult::kExpired,
-          "T13 ticket is rejected at +81s (TTL 60s, skew 5s)",
-          "exp=" + std::to_string(t.expireAt));
-
-    // 时钟漂移：客户端时间快 3 秒（在容差内）仍可用，快 30 秒判 not_yet_valid
-    Ticket future = codec.Issue("10086", "ds-7", "aa01", t0 + 3);
-    Check(codec.Verify(codec.Serialize(future), t0, "", false) == TicketCodec::VerifyResult::kOk,
-          "T14 ticket issued 3s in the future is accepted within clock skew");
-    Ticket farFuture = codec.Issue("10086", "ds-7", "aa02", t0 + 30);
-    Check(codec.Verify(codec.Serialize(farFuture), t0, "", false) ==
-              TicketCodec::VerifyResult::kNotYetValid,
-          "T15 ticket issued 30s in the future is rejected (beyond skew)");
-
-    // 归属校验：拿 A 服的票去 B 服进服必须拒绝
-    Check(codec.Verify(wire, t0, "ds-8", false) == TicketCodec::VerifyResult::kServerMismatch,
-          "T16 ticket for ds-7 is refused by ds-8");
-
-    // 一次性消费：同一张票消费后重放被拒
-    TicketCodec fresh;
-    fresh.key = codec.key;
-    Check(fresh.Verify(wire, t0, "ds-7", true) == TicketCodec::VerifyResult::kOk,
-          "T17 first consumption of the ticket succeeds");
-    Check(fresh.Verify(wire, t0, "ds-7", true) == TicketCodec::VerifyResult::kReplayed,
-          "T18 replaying the same ticket is rejected (one-time use)");
-
-    // 同一玩家换 nonce 重新签发应可用（正常重连路径）
-    const Ticket second = fresh.Issue("10086", "ds-7", "bb02", t0 + 1);
-    Check(fresh.Verify(fresh.Serialize(second), t0 + 1, "ds-7", true) ==
-              TicketCodec::VerifyResult::kOk,
-          "T19 a re-issued ticket with a new nonce is accepted (normal re-join)");
-
-    Check(codec.Verify("garbage", t0, "", false) == TicketCodec::VerifyResult::kMalformed,
-          "T20 a malformed string is rejected as malformed, not as bad signature");
+    using R = TicketCodec::Result;
+    TicketCodec c;
+    Ticket t;
+    Check(c.Issue("p1", "ds-1", "0123456789abcdef", 100, &t) == R::kOk,
+          "ticket: legal issue follows the wire grammar");
+    const auto wire = c.Serialize(t);
+    for (int64_t now : {95, 100, 159, 160, 164})
+        Check(c.Verify(wire, now, "ds-1", false) == R::kOk && c.usedNonces.empty(),
+              ("ticket: accepted window now=" + std::to_string(now) + " without consumption").c_str());
+    auto failure = [&](const std::string& input, R expected, int64_t now, const std::string& server,
+                       const std::string& name) {
+        const auto before = c.usedNonces;
+        auto out = Sentinel(); const auto saved = out;
+        bool noException = true; R actual = R::kOk;
+        try { actual = c.Verify(input, now, server, true, &out); }
+        catch (const std::exception&) { noException = false; }
+        Check(noException && actual == expected && c.usedNonces == before && out == saved,
+              ("reject + unchanged nonce/output: " + name).c_str());
+    };
+    failure(wire, R::kNotYetValid, 94, "ds-1", "one before not-before boundary");
+    failure(wire, R::kExpired, 165, "ds-1", "exact expiry including skew");
+    failure(wire, R::kExpired, 166, "ds-1", "after expiry");
+    failure(wire, R::kServerMismatch, 100, "ds-2", "wrong audience");
+    failure(wire, R::kBadConfig, -1, "ds-1", "negative now");
+    failure(wire, R::kBadConfig, 100, "", "audience cannot be skipped");
+    auto signedPayload = [&](const std::string& payload) { return payload + "|sig=" + c.Sign(payload); };
+    auto payload = [](const std::string& iat, const std::string& exp) {
+        return "v1|player=p1|server=ds-1|nonce=0123456789abcdef|iat=" + iat + "|exp=" + exp;
+    };
+    for (const auto& invalid : std::vector<std::string>{"", "not-a-number", "9223372036854775808",
+            "999999999999999999999", "100junk", "+100", "-1", " 100", "100 ", "0100", "00"}) {
+        failure(signedPayload(payload(invalid, "160")), R::kMalformed, 100, "ds-1", "iat '" + invalid + "'");
+        failure(signedPayload(payload("100", invalid)), R::kMalformed, 100, "ds-1", "exp '" + invalid + "'");
+    }
+    for (const auto& bad : std::vector<std::string>{
+            "v1|player=p1|player=p2|server=ds-1|nonce=0123456789abcdef|iat=100|exp=160",
+            "v1|server=ds-1|player=p1|nonce=0123456789abcdef|iat=100|exp=160",
+            "v1|player=p1|server=ds-1|iat=100|exp=160",
+            "v1|player=p1|server=ds-1|nonce=0123456789abcdef|iat=100|exp=160|x=1",
+            "v1|player=p=1|server=ds-1|nonce=0123456789abcdef|iat=100|exp=160",
+            "v2|player=p1|server=ds-1|nonce=0123456789abcdef|iat=100|exp=160",
+            payload("104", "96"), payload("100", "100"), payload("100", "401")})
+        failure(signedPayload(bad), R::kMalformed, 100, "ds-1", "signed invalid grammar/interval " + bad);
+    std::string embedded = t.payload; embedded[embedded.find("player=p1") + 7] = '\0';
+    failure(signedPayload(embedded), R::kMalformed, 100, "ds-1", "embedded NUL");
+    failure(std::string(1025, 'a'), R::kMalformed, 100, "ds-1", "wire exceeds bound");
+    for (const auto& sig : std::vector<std::string>{"", std::string(63, 'a'), std::string(65, 'a'),
+            std::string(64, 'A'), std::string(64, 'g')})
+        failure(t.payload + "|sig=" + sig, R::kMalformed, 100, "ds-1", "signature encoding/length");
+    std::string tampered = wire; tampered[tampered.find("player=p1") + 8] = '2';
+    failure(tampered, R::kBadSignature, 100, "ds-1", "payload changed without MAC");
+    TicketCodec wrong = c; wrong.key = "other-synthetic-key";
+    auto out = Sentinel();
+    Check(wrong.Verify(wire, 100, "ds-1", true, &out) == R::kBadSignature && wrong.usedNonces.empty() && out == Sentinel(),
+          "reject wrong synthetic key without side effects");
+    // 直接Parse失败也不能发布半成品。
+    for (const auto& malformed : {std::string("garbage"), t.payload + "|sig=g"}) {
+        out = Sentinel();
+        Check(!c.Parse(malformed, &out) && out == Sentinel(), "parse output commits only after full grammar validation");
+    }
+    Check(c.Verify(wire, 100, "ds-1", true, &out) == R::kOk && out == t && c.usedNonces.size() == 1,
+          "first consumption publishes authenticated fields");
+    failure(wire, R::kReplayed, 100, "ds-1", "replay");
+    Ticket second;
+    c.Issue("p1", "ds-1", "fedcba9876543210", 101, &second);
+    Check(c.Verify(c.Serialize(second), 101, "ds-1", true) == R::kOk, "new nonce supports explicit reissue");
+    for (const std::string& badId : std::vector<std::string>{"", "p|server=x", "p=x", std::string("p\0x", 3), std::string(65, 'p')}) {
+        out = Sentinel();
+        Check(c.Issue(badId, "ds-1", "0123456789abcdef", 100, &out) == R::kMalformed && out == Sentinel(),
+              "issue rejects invalid player without partial output");
+        Check(c.Issue("p1", badId, "0123456789abcdef", 100, &out) == R::kMalformed && out == Sentinel(),
+              "issue rejects invalid server without partial output");
+    }
+    for (const auto& nonce : {std::string(15, 'a'), std::string(65, 'a'), std::string(16, 'G'), std::string("a|b")}) {
+        out = Sentinel();
+        Check(c.Issue("p1", "ds-1", nonce, 100, &out) == R::kMalformed && out == Sentinel(), "issue enforces nonce grammar");
+    }
+    for (int64_t now : std::array<int64_t, 2>{-1, std::numeric_limits<int64_t>::max()}) {
+        out = Sentinel();
+        Check(c.Issue("p1", "ds-1", "0123456789abcdef", now, &out) == R::kMalformed && out == Sentinel(),
+              "issue rejects invalid or overflowing clock input");
+    }
+    for (int64_t ttl : {-1, 0, 301}) {
+        c.ttlSeconds = ttl; out = Sentinel();
+        Check(c.Issue("p1", "ds-1", "0123456789abcdef", 100, &out) == R::kBadConfig && out == Sentinel(),
+              "issue rejects out-of-policy TTL");
+    }
+    c.ttlSeconds = 60;
+    for (int64_t skew : {-1, 31}) {
+        c.maxClockSkew = skew; failure(wire, R::kBadConfig, 100, "ds-1", "invalid skew");
+        out = Sentinel();
+        Check(c.Issue("p1", "ds-1", "0123456789abcdef", 100, &out) == R::kBadConfig && out == Sentinel(),
+              "issue also rejects invalid skew configuration");
+    }
+    c.maxClockSkew = 0;
+    Ticket edge;
+    const auto max = std::numeric_limits<int64_t>::max();
+    Check(c.Issue("edge", "ds-1", "0123456789abcdef", max - 60, &edge) == R::kOk &&
+          c.Verify(c.Serialize(edge), max - 1, "ds-1", false) == R::kOk &&
+          c.Verify(c.Serialize(edge), max, "ds-1", false) == R::kExpired, "INT64_MAX expiry boundary without signed overflow");
+    c.maxClockSkew = 5;
+    Check(c.Verify(c.Serialize(edge), max, "ds-1", false) == R::kOk, "max time plus skew compared without addition");
+    Ticket zero;
+    Check(c.Issue("zero", "ds-1", "0123456789abcdef", 0, &zero) == R::kOk &&
+          c.Verify(c.Serialize(zero), 0, "ds-1", false) == R::kOk, "canonical zero timestamp accepted");
+    TicketCodec policyEdge; policyEdge.ttlSeconds = 300; policyEdge.maxClockSkew = 30;
+    Ticket policyTicket;
+    Check(policyEdge.Issue(std::string(64, 'p'), std::string(64, 's'), std::string(64, 'a'), 100, &policyTicket) == R::kOk &&
+          policyEdge.Verify(policyEdge.Serialize(policyTicket), 70, std::string(64, 's'), false) == R::kOk &&
+          policyEdge.Verify(policyEdge.Serialize(policyTicket), 429, std::string(64, 's'), false) == R::kOk &&
+          policyEdge.Verify(policyEdge.Serialize(policyTicket), 430, std::string(64, 's'), false) == R::kExpired,
+          "maximum legal identifier/nonce/TTL/skew bounds are accepted with exact expiry");
+    TicketCodec full;
+    for (size_t i = 0; i < TicketCodec::kMaxConsumed; ++i) full.usedNonces[{"fixture", "ds-1", std::to_string(i)}] = 1;
+    out = Sentinel(); const auto before = full.usedNonces;
+    Check(full.Verify(wire, 100, "ds-1", true, &out) == R::kStateFull && full.usedNonces == before && out == Sentinel(),
+          "bounded consumption table fails closed without partial output");
 }
-
-static void TestConstantTime() {
-    Check(ConstantTimeEqual("abcdef", "abcdef"), "T21 constant-time compare accepts equal strings");
-    Check(!ConstantTimeEqual("abcdef", "abcdeg"),
-          "T22 constant-time compare rejects a difference in the LAST byte",
-          "early-return implementations usually pass this one too");
-    Check(!ConstantTimeEqual("abcdef", "zbcdef"),
-          "T23 constant-time compare rejects a difference in the FIRST byte");
-    Check(!ConstantTimeEqual("abc", "abcdef"),
-          "T24 constant-time compare rejects length mismatch");
+static void TestCompare() {
+    Check(EqualBytesDemo("abcdef", "abcdef"), "compare boolean: equal");
+    Check(!EqualBytesDemo("abcdef", "zbcdef"), "compare boolean: first byte differs (not timing evidence)");
+    Check(!EqualBytesDemo("abcdef", "abcdeg"), "compare boolean: last byte differs (not timing evidence)");
+    Check(!EqualBytesDemo("abc", "abcdef"), "compare boolean: unequal length");
 }
-
 int main() {
-    std::printf("== entry_ticket: 进入游戏·登录票据证据 ==\n");
-    std::printf("   SHA-256 / HMAC-SHA256 self-check vs RFC 4231 and FIPS 180-4\n\n");
-
-    TestSha256();
-    TestHmac();
-    TestTicket();
-    TestConstantTime();
-
-    std::printf("\nRESULT pass=%d fail=%d\n", g_pass, g_fail);
-    return g_fail == 0 ? 0 : 1;
+    std::puts("entry_ticket: synthetic data; selected vectors + bounded protocol, no side-channel claim");
+    TestSha256(); TestHmac(); TestTicket(); TestCompare();
+    std::printf("RESULT pass=%d fail=%d\n", g_pass, g_fail);
+    return g_fail ? 1 : 0;
 }
