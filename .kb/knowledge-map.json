@@ -310,21 +310,30 @@
     },
     {
       "id": "kb-d8845a29d02f",
-      "path": "00-计算机与工程基础/12-数据库与分布式系统/01-存储引擎与事务.md",
+      "path": "知识/07-网络与游戏服务端/持久化与分布式一致性/01-存储引擎与事务.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/12-数据库与分布式系统/01-存储引擎与事务.md"
+      ]
     },
     {
       "id": "kb-22db22edfb2b",
-      "path": "00-计算机与工程基础/12-数据库与分布式系统/02-分布式系统基础.md",
+      "path": "知识/07-网络与游戏服务端/持久化与分布式一致性/02-分布式系统基础.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/12-数据库与分布式系统/02-分布式系统基础.md"
+      ]
     },
     {
       "id": "kb-033d0734fbbc",
-      "path": "00-计算机与工程基础/12-数据库与分布式系统/03-缓存与消息队列.md",
+      "path": "知识/07-网络与游戏服务端/持久化与分布式一致性/03-缓存与消息队列.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "00-计算机与工程基础/12-数据库与分布式系统/03-缓存与消息队列.md"
+      ]
     },
     {
       "id": "kb-e1b8c642d16f",
@@ -541,159 +550,237 @@
     },
     {
       "id": "kb-a5018eea4b6d",
-      "path": "游戏AI/01-决策与架构/01-AI总体架构与感知.md",
+      "path": "知识/06-游戏AI/感知决策与行为规划/01-AI总体架构与感知.md",
       "domain": "ai",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏AI/01-决策与架构/01-AI总体架构与感知.md"
+      ]
     },
     {
       "id": "kb-54bdd18a5c9a",
-      "path": "游戏AI/01-决策与架构/02-状态机与层次状态机.md",
+      "path": "知识/06-游戏AI/感知决策与行为规划/02-状态机与层次状态机.md",
       "domain": "ai",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏AI/01-决策与架构/02-状态机与层次状态机.md"
+      ]
     },
     {
       "id": "kb-ea3e7e3113fc",
-      "path": "游戏AI/01-决策与架构/03-行为树通用原理.md",
+      "path": "知识/06-游戏AI/感知决策与行为规划/03-行为树通用原理.md",
       "domain": "ai",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏AI/01-决策与架构/03-行为树通用原理.md"
+      ]
     },
     {
       "id": "kb-b3438b806671",
-      "path": "游戏AI/01-决策与架构/04-Utility与GOAP.md",
+      "path": "知识/06-游戏AI/感知决策与行为规划/04-Utility与GOAP.md",
       "domain": "ai",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏AI/01-决策与架构/04-Utility与GOAP.md"
+      ]
     },
     {
       "id": "kb-02be08c6fa24",
-      "path": "游戏AI/01-决策与架构/05-博弈搜索与对战AI.md",
+      "path": "知识/06-游戏AI/感知决策与行为规划/05-博弈搜索与对战AI.md",
       "domain": "ai",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏AI/01-决策与架构/05-博弈搜索与对战AI.md"
+      ]
     },
     {
       "id": "kb-233b72eaabfd",
-      "path": "游戏AI/01-决策与架构/06-模糊逻辑与连续决策.md",
+      "path": "知识/06-游戏AI/感知决策与行为规划/06-模糊逻辑与连续决策.md",
       "domain": "ai",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏AI/01-决策与架构/06-模糊逻辑与连续决策.md"
+      ]
     },
     {
       "id": "kb-090100fbf079",
-      "path": "游戏AI/01-决策与架构/07-NPC人格对话与社交AI.md",
+      "path": "知识/06-游戏AI/学习适应与社会行为/07-NPC人格对话与社交AI.md",
       "domain": "ai",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏AI/01-决策与架构/07-NPC人格对话与社交AI.md"
+      ]
     },
     {
       "id": "kb-f7ec186f631c",
-      "path": "游戏AI/02-移动学习与服务端/01-移动与群组行为.md",
+      "path": "知识/06-游戏AI/导航移动与群体协同/01-移动与群组行为.md",
       "domain": "ai",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏AI/02-移动学习与服务端/01-移动与群组行为.md"
+      ]
     },
     {
       "id": "kb-1c90e4410cd8",
-      "path": "游戏AI/02-移动学习与服务端/02-战斗与Boss设计.md",
+      "path": "知识/06-游戏AI/战斗战术与机器人/02-战斗与Boss设计.md",
       "domain": "ai",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏AI/02-移动学习与服务端/02-战斗与Boss设计.md"
+      ]
     },
     {
       "id": "kb-f4a0d98d48b7",
-      "path": "游戏AI/02-移动学习与服务端/03-学习型AI.md",
+      "path": "知识/06-游戏AI/学习适应与社会行为/03-学习型AI.md",
       "domain": "ai",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏AI/02-移动学习与服务端/03-学习型AI.md"
+      ]
     },
     {
       "id": "kb-9f5ef9b4082e",
-      "path": "游戏AI/02-移动学习与服务端/04-服务端AI与性能.md",
+      "path": "知识/06-游戏AI/评测安全与运行预算/04-服务端AI与性能.md",
       "domain": "ai",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏AI/02-移动学习与服务端/04-服务端AI与性能.md"
+      ]
     },
     {
       "id": "kb-149b3a2e2443",
-      "path": "游戏AI/02-移动学习与服务端/05-玩家建模与自适应难度.md",
+      "path": "知识/06-游戏AI/学习适应与社会行为/05-玩家建模与自适应难度.md",
       "domain": "ai",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏AI/02-移动学习与服务端/05-玩家建模与自适应难度.md"
+      ]
     },
     {
       "id": "kb-77ce07e5c1d6",
-      "path": "游戏AI/02-移动学习与服务端/06-多智能体协作与强化学习.md",
+      "path": "知识/06-游戏AI/学习适应与社会行为/06-多智能体协作与强化学习.md",
       "domain": "ai",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏AI/02-移动学习与服务端/06-多智能体协作与强化学习.md"
+      ]
     },
     {
       "id": "kb-4cd9248819ba",
-      "path": "游戏AI/02-移动学习与服务端/07-战斗AI编排与战术协同.md",
+      "path": "知识/06-游戏AI/战斗战术与机器人/07-战斗AI编排与战术协同.md",
       "domain": "ai",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏AI/02-移动学习与服务端/07-战斗AI编排与战术协同.md"
+      ]
     },
     {
       "id": "kb-167299c813f5",
-      "path": "游戏AI/03-评测与安全/01-AI评测回放.md",
+      "path": "知识/06-游戏AI/评测安全与运行预算/01-AI评测回放.md",
       "domain": "ai",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏AI/03-评测与安全/01-AI评测回放.md"
+      ]
     },
     {
       "id": "kb-78382fc9e802",
-      "path": "游戏AI/03-评测与安全/02-自动测试玩家与AI回归基准.md",
+      "path": "知识/06-游戏AI/评测安全与运行预算/02-自动测试玩家与AI回归基准.md",
       "domain": "ai",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏AI/03-评测与安全/02-自动测试玩家与AI回归基准.md"
+      ]
     },
     {
       "id": "kb-795d57bb1caa",
-      "path": "游戏AI/03-评测与安全/03-LLM-NPC安全.md",
+      "path": "知识/06-游戏AI/评测安全与运行预算/03-LLM-NPC安全.md",
       "domain": "ai",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏AI/03-评测与安全/03-LLM-NPC安全.md"
+      ]
     },
     {
       "id": "kb-8a1ac488cee8",
-      "path": "游戏服务端/01-架构与网络/01-服务器架构模式.md",
+      "path": "知识/07-网络与游戏服务端/服务架构与消息通信/01-服务器架构模式.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/01-架构与网络/01-服务器架构模式.md"
+      ]
     },
     {
       "id": "kb-0f42ab20b3a3",
-      "path": "游戏服务端/01-架构与网络/02-网络通信与协议设计.md",
+      "path": "知识/07-网络与游戏服务端/服务架构与消息通信/02-网络通信与协议设计.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/01-架构与网络/02-网络通信与协议设计.md"
+      ]
     },
     {
       "id": "kb-63214c460840",
-      "path": "游戏服务端/01-架构与网络/03-帧同步与状态同步.md",
+      "path": "知识/07-网络与游戏服务端/同步预测与回放/03-帧同步与状态同步.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/01-架构与网络/03-帧同步与状态同步.md"
+      ]
     },
     {
       "id": "kb-3f321ed12519",
-      "path": "游戏服务端/01-架构与网络/04-消息系统与事件驱动.md",
+      "path": "知识/07-网络与游戏服务端/服务架构与消息通信/04-消息系统与事件驱动.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/01-架构与网络/04-消息系统与事件驱动.md"
+      ]
     },
     {
       "id": "kb-32fb9bab13ab",
-      "path": "游戏服务端/01-架构与网络/05-并发与高性能.md",
+      "path": "知识/07-网络与游戏服务端/运行调度与过载保护/05-并发与高性能.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/01-架构与网络/05-并发与高性能.md"
+      ]
     },
     {
       "id": "kb-75c3f82084cc",
-      "path": "游戏服务端/02-数据与业务/01-数据库选型与存储设计.md",
+      "path": "知识/07-网络与游戏服务端/持久化与分布式一致性/01-数据库选型与存储设计.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/02-数据与业务/01-数据库选型与存储设计.md"
+      ]
     },
     {
       "id": "kb-309e981cc889",
-      "path": "游戏服务端/02-数据与业务/02-缓存与排行榜系统.md",
+      "path": "知识/07-网络与游戏服务端/持久化与分布式一致性/02-缓存与排行榜系统.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/02-数据与业务/02-缓存与排行榜系统.md"
+      ]
     },
     {
       "id": "kb-4d7b2bf9d2f6",
-      "path": "游戏服务端/02-数据与业务/03-分布式与高可用.md",
+      "path": "知识/07-网络与游戏服务端/持久化与分布式一致性/03-分布式与高可用.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/02-数据与业务/03-分布式与高可用.md"
+      ]
     },
     {
       "id": "kb-012a8c8ff9d2",
-      "path": "游戏服务端/02-数据与业务/04-安全与反作弊.md",
+      "path": "知识/07-网络与游戏服务端/会话身份与在线服务/04-安全与反作弊.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/02-数据与业务/04-安全与反作弊.md"
+      ]
     },
     {
       "id": "kb-be96a9a69943",
@@ -706,87 +793,129 @@
     },
     {
       "id": "kb-ba788c3015ab",
-      "path": "游戏服务端/03-业务系统设计/01-背包与道具系统.md",
+      "path": "知识/05-Gameplay与交互系统/背包装备与存档/01-背包与道具系统.md",
       "domain": "gameplay",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/03-业务系统设计/01-背包与道具系统.md"
+      ]
     },
     {
       "id": "kb-f5bf26766901",
-      "path": "游戏服务端/03-业务系统设计/02-任务与成就系统.md",
+      "path": "知识/05-Gameplay与交互系统/任务活动与经济规则/02-任务与成就系统.md",
       "domain": "gameplay",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/03-业务系统设计/02-任务与成就系统.md"
+      ]
     },
     {
       "id": "kb-6dc74816ac04",
-      "path": "游戏服务端/03-业务系统设计/03-商城与经济系统.md",
+      "path": "知识/05-Gameplay与交互系统/任务活动与经济规则/03-商城与经济系统.md",
       "domain": "gameplay",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/03-业务系统设计/03-商城与经济系统.md"
+      ]
     },
     {
       "id": "kb-d8c426e3cb49",
-      "path": "游戏服务端/03-业务系统设计/04-匹配与房间系统.md",
+      "path": "知识/07-网络与游戏服务端/会话身份与在线服务/04-匹配与房间系统.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/03-业务系统设计/04-匹配与房间系统.md"
+      ]
     },
     {
       "id": "kb-4a3cf260840f",
-      "path": "游戏服务端/03-业务系统设计/05-聊天与社交系统.md",
+      "path": "知识/07-网络与游戏服务端/会话身份与在线服务/05-聊天与社交系统.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/03-业务系统设计/05-聊天与社交系统.md"
+      ]
     },
     {
       "id": "kb-feb05bf81955",
-      "path": "游戏服务端/03-业务系统设计/06-战斗结算与验证.md",
+      "path": "知识/05-Gameplay与交互系统/技能战斗与属性结算/06-战斗结算与验证.md",
       "domain": "gameplay",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/03-业务系统设计/06-战斗结算与验证.md"
+      ]
     },
     {
       "id": "kb-c0379e43fc67",
-      "path": "游戏服务端/03-业务系统设计/07-活动与运营系统.md",
+      "path": "知识/05-Gameplay与交互系统/任务活动与经济规则/07-活动与运营系统.md",
       "domain": "gameplay",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/03-业务系统设计/07-活动与运营系统.md"
+      ]
     },
     {
       "id": "kb-54e305f4e0c2",
-      "path": "游戏服务端/03-业务系统设计/08-技能与战斗框架.md",
+      "path": "知识/05-Gameplay与交互系统/技能战斗与属性结算/08-技能与战斗框架.md",
       "domain": "gameplay",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/03-业务系统设计/08-技能与战斗框架.md"
+      ]
     },
     {
       "id": "kb-070cd5b59bd4",
-      "path": "游戏服务端/04-平台与可靠性/00-平台可靠性总览与迁移说明.md",
+      "path": "知识/07-网络与游戏服务端/服务架构与消息通信/00-平台可靠性总览与迁移说明.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/04-平台与可靠性/00-平台可靠性总览与迁移说明.md"
+      ]
     },
     {
       "id": "kb-d044f04e70b9",
-      "path": "游戏服务端/04-平台与可靠性/01-身份认证与权限模型.md",
+      "path": "知识/07-网络与游戏服务端/会话身份与在线服务/01-身份认证与权限模型.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/04-平台与可靠性/01-身份认证与权限模型.md"
+      ]
     },
     {
       "id": "kb-88567caf9c20",
-      "path": "游戏服务端/04-平台与可靠性/02-限流熔断背压与过载保护.md",
+      "path": "知识/07-网络与游戏服务端/运行调度与过载保护/02-限流熔断背压与过载保护.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/04-平台与可靠性/02-限流熔断背压与过载保护.md"
+      ]
     },
     {
       "id": "kb-94ac144c2bea",
-      "path": "游戏服务端/04-平台与可靠性/03-幂等重试与消息语义.md",
+      "path": "知识/07-网络与游戏服务端/持久化与分布式一致性/03-幂等重试与消息语义.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/04-平台与可靠性/03-幂等重试与消息语义.md"
+      ]
     },
     {
       "id": "kb-3f52c5b65ffd",
-      "path": "游戏服务端/04-平台与可靠性/04-分布式事务与最终一致性.md",
+      "path": "知识/07-网络与游戏服务端/持久化与分布式一致性/04-分布式事务与最终一致性.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/04-平台与可靠性/04-分布式事务与最终一致性.md"
+      ]
     },
     {
       "id": "kb-c43cf71e6120",
-      "path": "游戏服务端/04-平台与可靠性/05-服务发现配置中心与治理.md",
+      "path": "知识/07-网络与游戏服务端/服务架构与消息通信/05-服务发现配置中心与治理.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/04-平台与可靠性/05-服务发现配置中心与治理.md"
+      ]
     },
     {
       "id": "kb-097b6360b196",
@@ -817,11 +946,14 @@
     },
     {
       "id": "kb-f737bd11e584",
-      "path": "游戏服务端/05-UE Dedicated Server平台化/01-UE Dedicated Server实例生命周期与平台化.md",
+      "path": "知识/07-网络与游戏服务端/专用服务器实例与容量/01-UE Dedicated Server实例生命周期与平台化.md",
       "domain": "online",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏服务端/05-UE Dedicated Server平台化/01-UE Dedicated Server实例生命周期与平台化.md"
       ]
     },
     {
@@ -838,11 +970,14 @@
     },
     {
       "id": "kb-b44985774857",
-      "path": "游戏服务端/05-UE Dedicated Server平台化/03-DS会话注册与重连实现.md",
+      "path": "知识/07-网络与游戏服务端/会话身份与在线服务/03-DS会话注册与重连实现.md",
       "domain": "online",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏服务端/05-UE Dedicated Server平台化/03-DS会话注册与重连实现.md"
       ]
     },
     {
@@ -859,105 +994,153 @@
     },
     {
       "id": "kb-00434811fc7a",
-      "path": "游戏服务端/05-UE Dedicated Server平台化/05-DS自动扩缩容与容量规划.md",
+      "path": "知识/07-网络与游戏服务端/专用服务器实例与容量/05-DS自动扩缩容与容量规划.md",
       "domain": "online",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏服务端/05-UE Dedicated Server平台化/05-DS自动扩缩容与容量规划.md"
       ]
     },
     {
       "id": "kb-10112ab3ba6b",
-      "path": "游戏服务端/05-UE Dedicated Server平台化/06-DS多区部署与容灾.md",
+      "path": "知识/07-网络与游戏服务端/专用服务器实例与容量/06-DS多区部署与容灾.md",
       "domain": "online",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏服务端/05-UE Dedicated Server平台化/06-DS多区部署与容灾.md"
       ]
     },
     {
       "id": "kb-b26383d9adf2",
-      "path": "游戏服务端/06-世界模拟与运行时/01-ServerMainLoop与TickScheduler.md",
+      "path": "知识/07-网络与游戏服务端/运行调度与过载保护/01-ServerMainLoop与TickScheduler.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/06-世界模拟与运行时/01-ServerMainLoop与TickScheduler.md"
+      ]
     },
     {
       "id": "kb-9ff64e936455",
-      "path": "游戏服务端/06-世界模拟与运行时/02-Timer时间轮与延迟任务.md",
+      "path": "知识/07-网络与游戏服务端/运行调度与过载保护/02-Timer时间轮与延迟任务.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/06-世界模拟与运行时/02-Timer时间轮与延迟任务.md"
+      ]
     },
     {
       "id": "kb-e6bec32265b7",
-      "path": "游戏服务端/06-世界模拟与运行时/03-Entity生命周期与组件模型.md",
+      "path": "知识/07-网络与游戏服务端/世界权威与故障恢复/03-Entity生命周期与组件模型.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/06-世界模拟与运行时/03-Entity生命周期与组件模型.md"
+      ]
     },
     {
       "id": "kb-4dc8c0b55b10",
-      "path": "游戏服务端/06-世界模拟与运行时/04-Scene-Map-Zone与实例管理.md",
+      "path": "知识/07-网络与游戏服务端/世界权威与故障恢复/04-Scene-Map-Zone与实例管理.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/06-世界模拟与运行时/04-Scene-Map-Zone与实例管理.md"
+      ]
     },
     {
       "id": "kb-e3f8890b6281",
-      "path": "游戏服务端/06-世界模拟与运行时/05-AOI与InterestManagement.md",
+      "path": "知识/07-网络与游戏服务端/状态复制与兴趣管理/05-AOI与InterestManagement.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/06-世界模拟与运行时/05-AOI与InterestManagement.md"
+      ]
     },
     {
       "id": "kb-77ea87a5bcbe",
-      "path": "游戏服务端/06-世界模拟与运行时/06-SpatialQuery与兴趣点查询.md",
+      "path": "知识/07-网络与游戏服务端/状态复制与兴趣管理/06-SpatialQuery与兴趣点查询.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/06-世界模拟与运行时/06-SpatialQuery与兴趣点查询.md"
+      ]
     },
     {
       "id": "kb-e76a0c7ba37d",
-      "path": "游戏服务端/06-世界模拟与运行时/07-EntityOwnership与Authority.md",
+      "path": "知识/07-网络与游戏服务端/世界权威与故障恢复/07-EntityOwnership与Authority.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/06-世界模拟与运行时/07-EntityOwnership与Authority.md"
+      ]
     },
     {
       "id": "kb-638864998ce4",
-      "path": "游戏服务端/06-世界模拟与运行时/08-跨Zone与跨服迁移.md",
+      "path": "知识/07-网络与游戏服务端/世界权威与故障恢复/08-跨Zone与跨服迁移.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/06-世界模拟与运行时/08-跨Zone与跨服迁移.md"
+      ]
     },
     {
       "id": "kb-de7cc2c47a0b",
-      "path": "游戏服务端/06-世界模拟与运行时/09-动态分线与负载均衡.md",
+      "path": "知识/07-网络与游戏服务端/世界权威与故障恢复/09-动态分线与负载均衡.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/06-世界模拟与运行时/09-动态分线与负载均衡.md"
+      ]
     },
     {
       "id": "kb-8e0173d90d84",
-      "path": "游戏服务端/06-世界模拟与运行时/10-大规模战斗与降级.md",
+      "path": "知识/07-网络与游戏服务端/世界权威与故障恢复/10-大规模战斗与降级.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/06-世界模拟与运行时/10-大规模战斗与降级.md"
+      ]
     },
     {
       "id": "kb-4671046111ac",
-      "path": "游戏服务端/06-世界模拟与运行时/11-AI与寻路时间预算.md",
+      "path": "知识/07-网络与游戏服务端/运行调度与过载保护/11-AI与寻路时间预算.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/06-世界模拟与运行时/11-AI与寻路时间预算.md"
+      ]
     },
     {
       "id": "kb-3b8786900536",
-      "path": "游戏服务端/06-世界模拟与运行时/12-世界时间确定性与GameClock.md",
+      "path": "知识/07-网络与游戏服务端/运行调度与过载保护/12-世界时间确定性与GameClock.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/06-世界模拟与运行时/12-世界时间确定性与GameClock.md"
+      ]
     },
     {
       "id": "kb-767849925106",
-      "path": "游戏服务端/06-世界模拟与运行时/13-世界Snapshot与故障恢复.md",
+      "path": "知识/07-网络与游戏服务端/世界权威与故障恢复/13-世界Snapshot与故障恢复.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/06-世界模拟与运行时/13-世界Snapshot与故障恢复.md"
+      ]
     },
     {
       "id": "kb-84e851771c8e",
-      "path": "游戏服务端/06-世界模拟与运行时/14-运行时背压与过载保护.md",
+      "path": "知识/07-网络与游戏服务端/运行调度与过载保护/14-运行时背压与过载保护.md",
       "domain": "online",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏服务端/06-世界模拟与运行时/14-运行时背压与过载保护.md"
+      ]
     },
     {
       "id": "kb-772b934bb720",
@@ -1048,575 +1231,767 @@
     },
     {
       "id": "kb-210ecf7f6e6a",
-      "path": "游戏测试与质量/10-本地化无障碍与多端体验验收.md",
+      "path": "知识/05-Gameplay与交互系统/界面设置与无障碍/10-本地化无障碍与多端体验验收.md",
       "domain": "gameplay",
-      "kind": "concept"
+      "kind": "concept",
+      "legacy_paths": [
+        "游戏测试与质量/10-本地化无障碍与多端体验验收.md"
+      ]
     },
     {
       "id": "kb-fbddb01686b1",
-      "path": "游戏知识/00-全栈运行闭环.md",
+      "path": "知识/03-引擎架构与资源系统/运行架构与任务调度/00-全栈运行闭环.md",
       "domain": "engine",
       "kind": "roadmap",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/00-全栈运行闭环.md"
       ]
     },
     {
       "id": "kb-fc7d34315801",
-      "path": "游戏知识/01-引擎基础/01-UObject与反射系统.md",
+      "path": "知识/03-引擎架构与资源系统/对象模型与生命周期/01-UObject与反射系统.md",
       "domain": "engine",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/01-引擎基础/01-UObject与反射系统.md"
       ]
     },
     {
       "id": "kb-ddfebdf574ef",
-      "path": "游戏知识/01-引擎基础/02-Actor与Component生命周期.md",
+      "path": "知识/03-引擎架构与资源系统/对象模型与生命周期/02-Actor与Component生命周期.md",
       "domain": "engine",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/01-引擎基础/02-Actor与Component生命周期.md"
       ]
     },
     {
       "id": "kb-28b31c4a1bda",
-      "path": "游戏知识/01-引擎基础/03-Gameplay框架与游戏模式.md",
+      "path": "知识/03-引擎架构与资源系统/模块化框架与对象通信/03-Gameplay框架与游戏模式.md",
       "domain": "engine",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/01-引擎基础/03-Gameplay框架与游戏模式.md"
       ]
     },
     {
       "id": "kb-b4b1cc8a9791",
-      "path": "游戏知识/01-引擎基础/04-引擎启动流程与模块架构.md",
+      "path": "知识/03-引擎架构与资源系统/运行架构与任务调度/04-引擎启动流程与模块架构.md",
       "domain": "engine",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/01-引擎基础/04-引擎启动流程与模块架构.md"
       ]
     },
     {
       "id": "kb-d132ea9c10f2",
-      "path": "游戏知识/01-引擎基础/05-场景组件与变换体系.md",
+      "path": "知识/04-图形动画与物理仿真/空间层级与变换/05-场景组件与变换体系.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/01-引擎基础/05-场景组件与变换体系.md"
       ]
     },
     {
       "id": "kb-059c8c8327b9",
-      "path": "游戏知识/01-引擎基础/06-定时器与引擎Ticker.md",
+      "path": "知识/03-引擎架构与资源系统/运行架构与任务调度/06-定时器与引擎Ticker.md",
       "domain": "engine",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/01-引擎基础/06-定时器与引擎Ticker.md"
       ]
     },
     {
       "id": "kb-62f6aae6522e",
-      "path": "游戏知识/01-引擎基础/07-World关卡与Subsystem体系.md",
+      "path": "知识/03-引擎架构与资源系统/世界组织与资源加载/07-World关卡与Subsystem体系.md",
       "domain": "engine",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/01-引擎基础/07-World关卡与Subsystem体系.md"
       ]
     },
     {
       "id": "kb-3343a0cc8fb7",
-      "path": "游戏知识/01-引擎基础/08-关卡流送LevelStreaming.md",
+      "path": "知识/03-引擎架构与资源系统/世界组织与资源加载/08-关卡流送LevelStreaming.md",
       "domain": "engine",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/01-引擎基础/08-关卡流送LevelStreaming.md"
       ]
     },
     {
       "id": "kb-36ce828463b5",
-      "path": "游戏知识/01-引擎基础/09-WorldPartition大世界.md",
+      "path": "知识/03-引擎架构与资源系统/世界组织与资源加载/09-WorldPartition大世界.md",
       "domain": "engine",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/01-引擎基础/09-WorldPartition大世界.md"
       ]
     },
     {
       "id": "kb-a8caf94beaa6",
-      "path": "游戏知识/01-引擎基础/10-FName与FString底层.md",
+      "path": "知识/03-引擎架构与资源系统/对象模型与生命周期/10-FName与FString底层.md",
       "domain": "engine",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/01-引擎基础/10-FName与FString底层.md"
       ]
     },
     {
       "id": "kb-814121c131f6",
-      "path": "游戏知识/01-引擎基础/11-多线程与任务系统.md",
+      "path": "知识/03-引擎架构与资源系统/运行架构与任务调度/11-多线程与任务系统.md",
       "domain": "engine",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/01-引擎基础/11-多线程与任务系统.md"
       ]
     },
     {
       "id": "kb-ef3684c3a201",
-      "path": "游戏知识/02-渲染与图形/01-渲染管线概览.md",
+      "path": "知识/04-图形动画与物理仿真/渲染管线与光照/01-渲染管线概览.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/02-渲染与图形/01-渲染管线概览.md"
       ]
     },
     {
       "id": "kb-88f5a5bd1d52",
-      "path": "游戏知识/02-渲染与图形/02-材质系统详解.md",
+      "path": "知识/04-图形动画与物理仿真/材质地形与世界表现/02-材质系统详解.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/02-渲染与图形/02-材质系统详解.md"
       ]
     },
     {
       "id": "kb-24dfcfc82433",
-      "path": "游戏知识/02-渲染与图形/03-光照与阴影系统.md",
+      "path": "知识/04-图形动画与物理仿真/渲染管线与光照/03-光照与阴影系统.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/02-渲染与图形/03-光照与阴影系统.md"
       ]
     },
     {
       "id": "kb-6efc19dac9ff",
-      "path": "游戏知识/02-渲染与图形/04-Nanite与Lumen.md",
+      "path": "知识/04-图形动画与物理仿真/渲染管线与光照/04-Nanite与Lumen.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/02-渲染与图形/04-Nanite与Lumen.md"
       ]
     },
     {
       "id": "kb-2812477bc7d8",
-      "path": "游戏知识/02-渲染与图形/05-后处理与画面特效.md",
+      "path": "知识/04-图形动画与物理仿真/渲染管线与光照/05-后处理与画面特效.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/02-渲染与图形/05-后处理与画面特效.md"
       ]
     },
     {
       "id": "kb-93d2585361d2",
-      "path": "游戏知识/02-渲染与图形/06-Groom毛发系统.md",
+      "path": "知识/04-图形动画与物理仿真/材质地形与世界表现/06-Groom毛发系统.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/02-渲染与图形/06-Groom毛发系统.md"
       ]
     },
     {
       "id": "kb-0f271f91791b",
-      "path": "游戏知识/02-渲染与图形/07-虚拟纹理与材质混合.md",
+      "path": "知识/04-图形动画与物理仿真/材质地形与世界表现/07-虚拟纹理与材质混合.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/02-渲染与图形/07-虚拟纹理与材质混合.md"
       ]
     },
     {
       "id": "kb-effcda154fc7",
-      "path": "游戏知识/02-渲染与图形/08-体积渲染与云.md",
+      "path": "知识/04-图形动画与物理仿真/材质地形与世界表现/08-体积渲染与云.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/02-渲染与图形/08-体积渲染与云.md"
       ]
     },
     {
       "id": "kb-3618e990ac46",
-      "path": "游戏知识/02-渲染与图形/09-光线追踪与路径追踪.md",
+      "path": "知识/04-图形动画与物理仿真/渲染管线与光照/09-光线追踪与路径追踪.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/02-渲染与图形/09-光线追踪与路径追踪.md"
       ]
     },
     {
       "id": "kb-f69ae22f93c2",
-      "path": "游戏知识/02-渲染与图形/10-移动端渲染专项.md",
+      "path": "知识/04-图形动画与物理仿真/渲染管线与光照/10-移动端渲染专项.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/02-渲染与图形/10-移动端渲染专项.md"
       ]
     },
     {
       "id": "kb-88270c1adfa1",
-      "path": "游戏知识/02-渲染与图形/11-RenderTarget与SceneCapture实战.md",
+      "path": "知识/04-图形动画与物理仿真/渲染管线与光照/11-RenderTarget与SceneCapture实战.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/02-渲染与图形/11-RenderTarget与SceneCapture实战.md"
       ]
     },
     {
       "id": "kb-1c12c4f50fa2",
-      "path": "游戏知识/03-游戏玩法编程/01-GameplayAbilitySystem能力系统.md",
+      "path": "知识/05-Gameplay与交互系统/技能战斗与属性结算/01-GameplayAbilitySystem能力系统.md",
       "domain": "gameplay",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/03-游戏玩法编程/01-GameplayAbilitySystem能力系统.md"
       ]
     },
     {
       "id": "kb-c0aed360d31a",
-      "path": "游戏知识/03-游戏玩法编程/02-EnhancedInput增强输入.md",
+      "path": "知识/05-Gameplay与交互系统/输入移动与交互/02-EnhancedInput增强输入.md",
       "domain": "gameplay",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/03-游戏玩法编程/02-EnhancedInput增强输入.md"
       ]
     },
     {
       "id": "kb-cafb05e57667",
-      "path": "游戏知识/03-游戏玩法编程/03-GameplayTag与数据资产.md",
+      "path": "知识/05-Gameplay与交互系统/玩法架构与任务协作/03-GameplayTag与数据资产.md",
       "domain": "gameplay",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/03-游戏玩法编程/03-GameplayTag与数据资产.md"
       ]
     },
     {
       "id": "kb-78b96e391705",
-      "path": "游戏知识/03-游戏玩法编程/04-委托事件与对象通信.md",
+      "path": "知识/03-引擎架构与资源系统/模块化框架与对象通信/04-委托事件与对象通信.md",
       "domain": "engine",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/03-游戏玩法编程/04-委托事件与对象通信.md"
       ]
     },
     {
       "id": "kb-370e4ce5d9f2",
-      "path": "游戏知识/03-游戏玩法编程/05-蓝图与C++协作.md",
+      "path": "知识/05-Gameplay与交互系统/玩法架构与任务协作/05-蓝图与C++协作.md",
       "domain": "gameplay",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/03-游戏玩法编程/05-蓝图与C++协作.md"
       ]
     },
     {
       "id": "kb-91499abc8368",
-      "path": "游戏知识/03-游戏玩法编程/06-角色移动系统UCharacterMovement.md",
+      "path": "知识/05-Gameplay与交互系统/输入移动与交互/06-角色移动系统UCharacterMovement.md",
       "domain": "gameplay",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/03-游戏玩法编程/06-角色移动系统UCharacterMovement.md"
       ]
     },
     {
       "id": "kb-b8a3ee248c4e",
-      "path": "游戏知识/03-游戏玩法编程/07-相机系统与视口.md",
+      "path": "知识/05-Gameplay与交互系统/输入移动与交互/07-相机系统与视口.md",
       "domain": "gameplay",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/03-游戏玩法编程/07-相机系统与视口.md"
       ]
     },
     {
       "id": "kb-b63a4a5f1267",
-      "path": "游戏知识/03-游戏玩法编程/08-ModularGameplay模块化玩法.md",
+      "path": "知识/05-Gameplay与交互系统/玩法架构与任务协作/08-ModularGameplay模块化玩法.md",
       "domain": "gameplay",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/03-游戏玩法编程/08-ModularGameplay模块化玩法.md"
       ]
     },
     {
       "id": "kb-0fe7125c8d88",
-      "path": "游戏知识/03-游戏玩法编程/09-GameplayTask任务框架.md",
+      "path": "知识/05-Gameplay与交互系统/玩法架构与任务协作/09-GameplayTask任务框架.md",
       "domain": "gameplay",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/03-游戏玩法编程/09-GameplayTask任务框架.md"
       ]
     },
     {
       "id": "kb-9d66baeff955",
-      "path": "游戏知识/03-游戏玩法编程/10-输入设备抽象与手柄触控.md",
+      "path": "知识/05-Gameplay与交互系统/输入移动与交互/10-输入设备抽象与手柄触控.md",
       "domain": "gameplay",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/03-游戏玩法编程/10-输入设备抽象与手柄触控.md"
       ]
     },
     {
       "id": "kb-2de1dfe5b929",
-      "path": "游戏知识/03-游戏玩法编程/11-常用移动与辅助组件.md",
+      "path": "知识/05-Gameplay与交互系统/输入移动与交互/11-常用移动与辅助组件.md",
       "domain": "gameplay",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/03-游戏玩法编程/11-常用移动与辅助组件.md"
       ]
     },
     {
       "id": "kb-387656998c42",
-      "path": "游戏知识/03-游戏玩法编程/12-SaveGame存档系统与序列化.md",
+      "path": "知识/05-Gameplay与交互系统/背包装备与存档/12-SaveGame存档系统与序列化.md",
       "domain": "gameplay",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/03-游戏玩法编程/12-SaveGame存档系统与序列化.md"
       ]
     },
     {
       "id": "kb-b28410aa2dab",
-      "path": "游戏知识/03-游戏玩法编程/13-背包与装备系统.md",
+      "path": "知识/05-Gameplay与交互系统/背包装备与存档/13-背包与装备系统.md",
       "domain": "gameplay",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/03-游戏玩法编程/13-背包与装备系统.md"
       ]
     },
     {
       "id": "kb-d7d22c977401",
-      "path": "游戏知识/04-动画系统/01-动画蓝图与状态机.md",
+      "path": "知识/04-图形动画与物理仿真/动画求值与角色表现/01-动画蓝图与状态机.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/04-动画系统/01-动画蓝图与状态机.md"
       ]
     },
     {
       "id": "kb-294ec00dc8cb",
-      "path": "游戏知识/04-动画系统/02-动画蒙太奇与混合空间.md",
+      "path": "知识/04-图形动画与物理仿真/动画求值与角色表现/02-动画蒙太奇与混合空间.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/04-动画系统/02-动画蒙太奇与混合空间.md"
       ]
     },
     {
       "id": "kb-b290fc897241",
-      "path": "游戏知识/04-动画系统/03-IK与程序化动画.md",
+      "path": "知识/04-图形动画与物理仿真/动画求值与角色表现/03-IK与程序化动画.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/04-动画系统/03-IK与程序化动画.md"
       ]
     },
     {
       "id": "kb-89a0361a34fd",
-      "path": "游戏知识/04-动画系统/04-动画性能与预算分配.md",
+      "path": "知识/04-图形动画与物理仿真/动画求值与角色表现/04-动画性能与预算分配.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/04-动画系统/04-动画性能与预算分配.md"
       ]
     },
     {
       "id": "kb-045344746c02",
-      "path": "游戏知识/04-动画系统/05-AnimNext动画框架.md",
+      "path": "知识/04-图形动画与物理仿真/动画求值与角色表现/05-AnimNext动画框架.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/04-动画系统/05-AnimNext动画框架.md"
       ]
     },
     {
       "id": "kb-5a4435fcf91f",
-      "path": "游戏知识/04-动画系统/06-动画重定向与IKRetargeter.md",
+      "path": "知识/04-图形动画与物理仿真/动画求值与角色表现/06-动画重定向与IKRetargeter.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/04-动画系统/06-动画重定向与IKRetargeter.md"
       ]
     },
     {
       "id": "kb-6564b9b0a427",
-      "path": "游戏知识/04-动画系统/07-动画资产与骨骼基础.md",
+      "path": "知识/04-图形动画与物理仿真/动画求值与角色表现/07-动画资产与骨骼基础.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/04-动画系统/07-动画资产与骨骼基础.md"
       ]
     },
     {
       "id": "kb-9533e6ef041b",
-      "path": "游戏知识/04-动画系统/08-动作战斗系统与打击手感.md",
+      "path": "知识/04-图形动画与物理仿真/动画求值与角色表现/08-动作战斗系统与打击手感.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/04-动画系统/08-动作战斗系统与打击手感.md"
       ]
     },
     {
       "id": "kb-7269a2cdadca",
-      "path": "游戏知识/05-AI系统/01-行为树详解.md",
+      "path": "知识/06-游戏AI/感知决策与行为规划/01-行为树详解.md",
       "domain": "ai",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/05-AI系统/01-行为树详解.md"
       ]
     },
     {
       "id": "kb-f4cbdc2ed44d",
-      "path": "游戏知识/05-AI系统/02-感知系统与EQS.md",
+      "path": "知识/06-游戏AI/感知决策与行为规划/02-感知系统与EQS.md",
       "domain": "ai",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/05-AI系统/02-感知系统与EQS.md"
       ]
     },
     {
       "id": "kb-b5a88f5fef1c",
-      "path": "游戏知识/05-AI系统/03-NavMesh寻路.md",
+      "path": "知识/06-游戏AI/导航移动与群体协同/03-NavMesh寻路.md",
       "domain": "ai",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/05-AI系统/03-NavMesh寻路.md"
       ]
     },
     {
       "id": "kb-1aa3760f8df0",
-      "path": "游戏知识/05-AI系统/04-Mass实体框架与群集模拟.md",
+      "path": "知识/06-游戏AI/导航移动与群体协同/04-Mass实体框架与群集模拟.md",
       "domain": "ai",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/05-AI系统/04-Mass实体框架与群集模拟.md"
       ]
     },
     {
       "id": "kb-501c7b251dc3",
-      "path": "游戏知识/05-AI系统/05-StateTree状态树.md",
+      "path": "知识/06-游戏AI/感知决策与行为规划/05-StateTree状态树.md",
       "domain": "ai",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/05-AI系统/05-StateTree状态树.md"
       ]
     },
     {
       "id": "kb-5de225f36448",
-      "path": "游戏知识/05-AI系统/06-ZoneGraph与SmartObjects.md",
+      "path": "知识/06-游戏AI/导航移动与群体协同/06-ZoneGraph与SmartObjects.md",
       "domain": "ai",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/05-AI系统/06-ZoneGraph与SmartObjects.md"
       ]
     },
     {
       "id": "kb-f7341b77c9d2",
-      "path": "游戏知识/05-AI系统/07-GameplayTasks-StateTree-GAS-AI协同.md",
+      "path": "知识/06-游戏AI/感知决策与行为规划/07-GameplayTasks-StateTree-GAS-AI协同.md",
       "domain": "ai",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/05-AI系统/07-GameplayTasks-StateTree-GAS-AI协同.md"
       ]
     },
     {
       "id": "kb-6578876f5970",
-      "path": "游戏知识/05-AI系统/08-AI调试与性能分析.md",
+      "path": "知识/06-游戏AI/评测安全与运行预算/08-AI调试与性能分析.md",
       "domain": "ai",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/05-AI系统/08-AI调试与性能分析.md"
       ]
     },
     {
       "id": "kb-4184dba1baa0",
-      "path": "游戏知识/06-网络同步/01-网络架构与复制基础.md",
+      "path": "知识/07-网络与游戏服务端/状态复制与兴趣管理/01-网络架构与复制基础.md",
       "domain": "online",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/06-网络同步/01-网络架构与复制基础.md"
       ]
     },
     {
       "id": "kb-8fcef53c8775",
-      "path": "游戏知识/06-网络同步/02-RPC与属性同步.md",
+      "path": "知识/07-网络与游戏服务端/状态复制与兴趣管理/02-RPC与属性同步.md",
       "domain": "online",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/06-网络同步/02-RPC与属性同步.md"
       ]
     },
     {
       "id": "kb-f48b338e725e",
-      "path": "游戏知识/06-网络同步/03-客户端预测与延迟补偿.md",
+      "path": "知识/07-网络与游戏服务端/同步预测与回放/03-客户端预测与延迟补偿.md",
       "domain": "online",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/06-网络同步/03-客户端预测与延迟补偿.md"
       ]
     },
     {
       "id": "kb-e46fff2dc515",
-      "path": "游戏知识/06-网络同步/04-多人游戏框架与玩家状态.md",
+      "path": "知识/07-网络与游戏服务端/会话身份与在线服务/04-多人游戏框架与玩家状态.md",
       "domain": "online",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/06-网络同步/04-多人游戏框架与玩家状态.md"
       ]
     },
     {
       "id": "kb-55568c39c8c2",
-      "path": "游戏知识/06-网络同步/05-ReplicationGraph兴趣管理.md",
+      "path": "知识/07-网络与游戏服务端/状态复制与兴趣管理/05-ReplicationGraph兴趣管理.md",
       "domain": "online",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/06-网络同步/05-ReplicationGraph兴趣管理.md"
       ]
     },
     {
       "id": "kb-715236095af9",
-      "path": "游戏知识/06-网络同步/06-在线子系统与会话匹配.md",
+      "path": "知识/07-网络与游戏服务端/会话身份与在线服务/06-在线子系统与会话匹配.md",
       "domain": "online",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/06-网络同步/06-在线子系统与会话匹配.md"
       ]
     },
     {
       "id": "kb-4038f54cba1c",
-      "path": "游戏知识/06-网络同步/07-Iris复制使用与迁移.md",
+      "path": "知识/07-网络与游戏服务端/状态复制与兴趣管理/07-Iris复制使用与迁移.md",
       "domain": "online",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/06-网络同步/07-Iris复制使用与迁移.md"
       ]
     },
     {
       "id": "kb-012dbb1ac01c",
-      "path": "游戏知识/06-网络同步/08-网络调试与性能分析.md",
+      "path": "知识/07-网络与游戏服务端/状态复制与兴趣管理/08-网络调试与性能分析.md",
       "domain": "online",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/06-网络同步/08-网络调试与性能分析.md"
       ]
     },
     {
       "id": "kb-4fdbe53017bd",
-      "path": "游戏知识/06-网络同步/09-网络回放与DemoNetDriver.md",
+      "path": "知识/07-网络与游戏服务端/同步预测与回放/09-网络回放与DemoNetDriver.md",
       "domain": "online",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/06-网络同步/09-网络回放与DemoNetDriver.md"
       ]
     },
     {
       "id": "kb-73b3bdb23c63",
-      "path": "游戏知识/07-UI与性能优化/01-UMG框架与控件系统.md",
+      "path": "知识/05-Gameplay与交互系统/界面设置与无障碍/01-UMG框架与控件系统.md",
       "domain": "gameplay",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/07-UI与性能优化/01-UMG框架与控件系统.md"
       ]
     },
     {
       "id": "kb-f121a7bbe0cf",
-      "path": "游戏知识/07-UI与性能优化/02-UI数据绑定与MVVM.md",
+      "path": "知识/05-Gameplay与交互系统/界面设置与无障碍/02-UI数据绑定与MVVM.md",
       "domain": "gameplay",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/07-UI与性能优化/02-UI数据绑定与MVVM.md"
       ]
     },
     {
@@ -1657,29 +2032,38 @@
     },
     {
       "id": "kb-a6982173bd20",
-      "path": "游戏知识/07-UI与性能优化/06-UI状态与可观测性闭环.md",
+      "path": "知识/05-Gameplay与交互系统/界面设置与无障碍/06-UI状态与可观测性闭环.md",
       "domain": "gameplay",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/07-UI与性能优化/06-UI状态与可观测性闭环.md"
       ]
     },
     {
       "id": "kb-ff59cf8d89b4",
-      "path": "游戏知识/07-UI与性能优化/07-CommonUI输入路由与焦点管理.md",
+      "path": "知识/05-Gameplay与交互系统/界面设置与无障碍/07-CommonUI输入路由与焦点管理.md",
       "domain": "gameplay",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/07-UI与性能优化/07-CommonUI输入路由与焦点管理.md"
       ]
     },
     {
       "id": "kb-86a2761dfef5",
-      "path": "游戏知识/07-UI与性能优化/08-Slate自定义控件与样式系统.md",
+      "path": "知识/05-Gameplay与交互系统/界面设置与无障碍/08-Slate自定义控件与样式系统.md",
       "domain": "gameplay",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/07-UI与性能优化/08-Slate自定义控件与样式系统.md"
       ]
     },
     {
@@ -1852,371 +2236,494 @@
     },
     {
       "id": "kb-6d6ffd0e8254",
-      "path": "游戏知识/09-物理系统/01-Chaos物理引擎概览.md",
+      "path": "知识/04-图形动画与物理仿真/物理求解与动力学/01-Chaos物理引擎概览.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/09-物理系统/01-Chaos物理引擎概览.md"
       ]
     },
     {
       "id": "kb-7d11ba6b04fc",
-      "path": "游戏知识/09-物理系统/02-碰撞检测与物理材质.md",
+      "path": "知识/04-图形动画与物理仿真/物理求解与动力学/02-碰撞检测与物理材质.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/09-物理系统/02-碰撞检测与物理材质.md"
       ]
     },
     {
       "id": "kb-437c26afbdec",
-      "path": "游戏知识/09-物理系统/03-物理约束与关节.md",
+      "path": "知识/04-图形动画与物理仿真/物理求解与动力学/03-物理约束与关节.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/09-物理系统/03-物理约束与关节.md"
       ]
     },
     {
       "id": "kb-349bb8a4a134",
-      "path": "游戏知识/09-物理系统/04-布娃娃与物理动画.md",
+      "path": "知识/04-图形动画与物理仿真/物理求解与动力学/04-布娃娃与物理动画.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/09-物理系统/04-布娃娃与物理动画.md"
       ]
     },
     {
       "id": "kb-de4380851a4b",
-      "path": "游戏知识/09-物理系统/05-Chaos破坏系统与Field.md",
+      "path": "知识/04-图形动画与物理仿真/物理求解与动力学/05-Chaos破坏系统与Field.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/09-物理系统/05-Chaos破坏系统与Field.md"
       ]
     },
     {
       "id": "kb-74bde69e53a4",
-      "path": "游戏知识/09-物理系统/06-Chaos车辆系统.md",
+      "path": "知识/04-图形动画与物理仿真/物理求解与动力学/06-Chaos车辆系统.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/09-物理系统/06-Chaos车辆系统.md"
       ]
     },
     {
       "id": "kb-537a2763e1ba",
-      "path": "游戏知识/10-音频系统/01-音频基础与播放.md",
+      "path": "知识/04-图形动画与物理仿真/音频播放与程序化声音/01-音频基础与播放.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/10-音频系统/01-音频基础与播放.md"
       ]
     },
     {
       "id": "kb-3e5ebc24740d",
-      "path": "游戏知识/10-音频系统/02-衰减与3D空间音效.md",
+      "path": "知识/04-图形动画与物理仿真/音频播放与程序化声音/02-衰减与3D空间音效.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/10-音频系统/02-衰减与3D空间音效.md"
       ]
     },
     {
       "id": "kb-4e46478d5d89",
-      "path": "游戏知识/10-音频系统/03-MetaSound与程序化音频.md",
+      "path": "知识/04-图形动画与物理仿真/音频播放与程序化声音/03-MetaSound与程序化音频.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/10-音频系统/03-MetaSound与程序化音频.md"
       ]
     },
     {
       "id": "kb-8fd85dc806f7",
-      "path": "游戏知识/10-音频系统/04-Quartz音频时钟与节奏同步.md",
+      "path": "知识/04-图形动画与物理仿真/音频播放与程序化声音/04-Quartz音频时钟与节奏同步.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/10-音频系统/04-Quartz音频时钟与节奏同步.md"
       ]
     },
     {
       "id": "kb-7e8550943b6e",
-      "path": "游戏知识/11-VFX与Niagara/01-Niagara粒子系统基础.md",
+      "path": "知识/04-图形动画与物理仿真/特效粒子与流体仿真/01-Niagara粒子系统基础.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/11-VFX与Niagara/01-Niagara粒子系统基础.md"
       ]
     },
     {
       "id": "kb-f672b9ee658a",
-      "path": "游戏知识/11-VFX与Niagara/02-Niagara高级技巧.md",
+      "path": "知识/04-图形动画与物理仿真/特效粒子与流体仿真/02-Niagara高级技巧.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/11-VFX与Niagara/02-Niagara高级技巧.md"
       ]
     },
     {
       "id": "kb-b85e2225a7eb",
-      "path": "游戏知识/11-VFX与Niagara/03-VFX性能优化.md",
+      "path": "知识/04-图形动画与物理仿真/特效粒子与流体仿真/03-VFX性能优化.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/11-VFX与Niagara/03-VFX性能优化.md"
       ]
     },
     {
       "id": "kb-38825d02e6c2",
-      "path": "游戏知识/11-VFX与Niagara/04-Niagara流体模拟.md",
+      "path": "知识/04-图形动画与物理仿真/特效粒子与流体仿真/04-Niagara流体模拟.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/11-VFX与Niagara/04-Niagara流体模拟.md"
       ]
     },
     {
       "id": "kb-4ffbf73ad75e",
-      "path": "游戏知识/12-引擎源码分析/01-UPROPERTY与反射系统源码.md",
+      "path": "知识/03-引擎架构与资源系统/对象模型与生命周期/01-UPROPERTY与反射系统源码.md",
       "domain": "engine",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/01-UPROPERTY与反射系统源码.md"
       ]
     },
     {
       "id": "kb-064374f7d650",
-      "path": "游戏知识/12-引擎源码分析/02-UObject与垃圾回收源码.md",
+      "path": "知识/03-引擎架构与资源系统/对象模型与生命周期/02-UObject与垃圾回收源码.md",
       "domain": "engine",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/02-UObject与垃圾回收源码.md"
       ]
     },
     {
       "id": "kb-c4ff67f6850d",
-      "path": "游戏知识/12-引擎源码分析/03-Actor与Component生命周期源码.md",
+      "path": "知识/03-引擎架构与资源系统/对象模型与生命周期/03-Actor与Component生命周期源码.md",
       "domain": "engine",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/03-Actor与Component生命周期源码.md"
       ]
     },
     {
       "id": "kb-f4e49f90c7f5",
-      "path": "游戏知识/12-引擎源码分析/04-Gameplay框架与登录流程源码.md",
+      "path": "知识/07-网络与游戏服务端/会话身份与在线服务/04-Gameplay框架与登录流程源码.md",
       "domain": "online",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/04-Gameplay框架与登录流程源码.md"
       ]
     },
     {
       "id": "kb-9d4eb800692a",
-      "path": "游戏知识/12-引擎源码分析/05-GAS能力系统源码.md",
+      "path": "知识/05-Gameplay与交互系统/技能战斗与属性结算/05-GAS能力系统源码.md",
       "domain": "gameplay",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/05-GAS能力系统源码.md"
       ]
     },
     {
       "id": "kb-cda2ce0120c0",
-      "path": "游戏知识/12-引擎源码分析/06-委托与事件系统源码.md",
+      "path": "知识/03-引擎架构与资源系统/模块化框架与对象通信/06-委托与事件系统源码.md",
       "domain": "engine",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/06-委托与事件系统源码.md"
       ]
     },
     {
       "id": "kb-68f8228015f0",
-      "path": "游戏知识/12-引擎源码分析/07-容器与内存管理源码.md",
+      "path": "知识/03-引擎架构与资源系统/对象模型与生命周期/07-容器与内存管理源码.md",
       "domain": "engine",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/07-容器与内存管理源码.md"
       ]
     },
     {
       "id": "kb-e1b1c8304c8e",
-      "path": "游戏知识/12-引擎源码分析/08-Tick与模块系统源码.md",
+      "path": "知识/03-引擎架构与资源系统/运行架构与任务调度/08-Tick与模块系统源码.md",
       "domain": "engine",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/08-Tick与模块系统源码.md"
       ]
     },
     {
       "id": "kb-50682f32b174",
-      "path": "游戏知识/12-引擎源码分析/09-网络复制与RPC源码.md",
+      "path": "知识/07-网络与游戏服务端/状态复制与兴趣管理/09-网络复制与RPC源码.md",
       "domain": "online",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/09-网络复制与RPC源码.md"
       ]
     },
     {
       "id": "kb-7b9ca86e4b4f",
-      "path": "游戏知识/12-引擎源码分析/10-渲染线程与RHI源码.md",
+      "path": "知识/04-图形动画与物理仿真/渲染管线与光照/10-渲染线程与RHI源码.md",
       "domain": "simulation",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/10-渲染线程与RHI源码.md"
       ]
     },
     {
       "id": "kb-4a6e67066380",
-      "path": "游戏知识/12-引擎源码分析/11-动画系统求值源码.md",
+      "path": "知识/04-图形动画与物理仿真/动画求值与角色表现/11-动画系统求值源码.md",
       "domain": "simulation",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/11-动画系统求值源码.md"
       ]
     },
     {
       "id": "kb-80c219e4920b",
-      "path": "游戏知识/12-引擎源码分析/12-行为树与AI源码.md",
+      "path": "知识/06-游戏AI/感知决策与行为规划/12-行为树与AI源码.md",
       "domain": "ai",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/12-行为树与AI源码.md"
       ]
     },
     {
       "id": "kb-e5d26b4acef1",
-      "path": "游戏知识/12-引擎源码分析/13-资源加载与异步加载源码.md",
+      "path": "知识/03-引擎架构与资源系统/世界组织与资源加载/13-资源加载与异步加载源码.md",
       "domain": "engine",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/13-资源加载与异步加载源码.md"
       ]
     },
     {
       "id": "kb-cf34704f8e94",
-      "path": "游戏知识/12-引擎源码分析/14-UMG与Slate源码.md",
+      "path": "知识/05-Gameplay与交互系统/界面设置与无障碍/14-UMG与Slate源码.md",
       "domain": "gameplay",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/14-UMG与Slate源码.md"
       ]
     },
     {
       "id": "kb-55c4fce13ea1",
-      "path": "游戏知识/12-引擎源码分析/15-物理系统源码.md",
+      "path": "知识/04-图形动画与物理仿真/物理求解与动力学/15-物理系统源码.md",
       "domain": "simulation",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/15-物理系统源码.md"
       ]
     },
     {
       "id": "kb-afbddf00b9ab",
-      "path": "游戏知识/12-引擎源码分析/16-音频系统源码.md",
+      "path": "知识/04-图形动画与物理仿真/音频播放与程序化声音/16-音频系统源码.md",
       "domain": "simulation",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/16-音频系统源码.md"
       ]
     },
     {
       "id": "kb-f292423b8f81",
-      "path": "游戏知识/12-引擎源码分析/17-Niagara源码.md",
+      "path": "知识/04-图形动画与物理仿真/特效粒子与流体仿真/17-Niagara源码.md",
       "domain": "simulation",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/17-Niagara源码.md"
       ]
     },
     {
       "id": "kb-161cd9453647",
-      "path": "游戏知识/12-引擎源码分析/18-RigVM与ControlRig源码.md",
+      "path": "知识/04-图形动画与物理仿真/动画求值与角色表现/18-RigVM与ControlRig源码.md",
       "domain": "simulation",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/18-RigVM与ControlRig源码.md"
       ]
     },
     {
       "id": "kb-8d79a8b13c88",
-      "path": "游戏知识/12-引擎源码分析/19-高优先级源码覆盖路线图.md",
+      "path": "知识/03-引擎架构与资源系统/源码阅读与覆盖基线/19-高优先级源码覆盖路线图.md",
       "domain": "engine",
       "kind": "roadmap",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/19-高优先级源码覆盖路线图.md"
       ]
     },
     {
       "id": "kb-127dc843ea49",
-      "path": "游戏知识/12-引擎源码分析/20-Iris复制源码.md",
+      "path": "知识/07-网络与游戏服务端/状态复制与兴趣管理/20-Iris复制源码.md",
       "domain": "online",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/20-Iris复制源码.md"
       ]
     },
     {
       "id": "kb-d87373fe6660",
-      "path": "游戏知识/12-引擎源码分析/21-Mass与StateTree源码.md",
+      "path": "知识/06-游戏AI/导航移动与群体协同/21-Mass与StateTree源码.md",
       "domain": "ai",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/21-Mass与StateTree源码.md"
       ]
     },
     {
       "id": "kb-08f50ccb0796",
-      "path": "游戏知识/12-引擎源码分析/22-WorldPartition与WorldStreaming源码.md",
+      "path": "知识/03-引擎架构与资源系统/世界组织与资源加载/22-WorldPartition与WorldStreaming源码.md",
       "domain": "engine",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/22-WorldPartition与WorldStreaming源码.md"
       ]
     },
     {
       "id": "kb-e055533de04c",
-      "path": "游戏知识/12-引擎源码分析/23-Landscape与Foliage源码.md",
+      "path": "知识/04-图形动画与物理仿真/材质地形与世界表现/23-Landscape与Foliage源码.md",
       "domain": "simulation",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/23-Landscape与Foliage源码.md"
       ]
     },
     {
       "id": "kb-1d5183d92473",
-      "path": "游戏知识/12-引擎源码分析/24-Sequencer与MovieRenderGraph源码.md",
+      "path": "知识/04-图形动画与物理仿真/过场渲染与虚拟制片/24-Sequencer与MovieRenderGraph源码.md",
       "domain": "simulation",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/24-Sequencer与MovieRenderGraph源码.md"
       ]
     },
     {
       "id": "kb-d326bee09482",
-      "path": "游戏知识/12-引擎源码分析/25-EnhancedInput与GameplayTags源码.md",
+      "path": "知识/05-Gameplay与交互系统/输入移动与交互/25-EnhancedInput与GameplayTags源码.md",
       "domain": "gameplay",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/25-EnhancedInput与GameplayTags源码.md"
       ]
     },
     {
       "id": "kb-30b6e28f5f9a",
-      "path": "游戏知识/12-引擎源码分析/26-CommonUI源码.md",
+      "path": "知识/05-Gameplay与交互系统/界面设置与无障碍/26-CommonUI源码.md",
       "domain": "gameplay",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/26-CommonUI源码.md"
       ]
     },
     {
       "id": "kb-a241260ed851",
-      "path": "游戏知识/12-引擎源码分析/27-UMGMVVM源码.md",
+      "path": "知识/05-Gameplay与交互系统/界面设置与无障碍/27-UMGMVVM源码.md",
       "domain": "gameplay",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/27-UMGMVVM源码.md"
       ]
     },
     {
@@ -2233,164 +2740,218 @@
     },
     {
       "id": "kb-9906795d6b41",
-      "path": "游戏知识/12-引擎源码分析/29-GameplayTasks源码.md",
+      "path": "知识/05-Gameplay与交互系统/玩法架构与任务协作/29-GameplayTasks源码.md",
       "domain": "gameplay",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/29-GameplayTasks源码.md"
       ]
     },
     {
       "id": "kb-153e377b64b7",
-      "path": "游戏知识/12-引擎源码分析/30-Lumen与MegaLights源码.md",
+      "path": "知识/04-图形动画与物理仿真/渲染管线与光照/30-Lumen与MegaLights源码.md",
       "domain": "simulation",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/30-Lumen与MegaLights源码.md"
       ]
     },
     {
       "id": "kb-0934fec008bb",
-      "path": "游戏知识/12-引擎源码分析/31-ProceduralVegetationEditor源码.md",
+      "path": "知识/04-图形动画与物理仿真/材质地形与世界表现/31-ProceduralVegetationEditor源码.md",
       "domain": "simulation",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/31-ProceduralVegetationEditor源码.md"
       ]
     },
     {
       "id": "kb-ff5391bb3400",
-      "path": "游戏知识/12-引擎源码分析/32-UE Dedicated Server启动与监听源码.md",
+      "path": "知识/07-网络与游戏服务端/专用服务器实例与容量/32-UE Dedicated Server启动与监听源码.md",
       "domain": "online",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/32-UE Dedicated Server启动与监听源码.md"
       ]
     },
     {
       "id": "kb-2e5231220cd2",
-      "path": "游戏知识/12-引擎源码分析/33-UNetDriver与连接通道源码.md",
+      "path": "知识/07-网络与游戏服务端/状态复制与兴趣管理/33-UNetDriver与连接通道源码.md",
       "domain": "online",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/33-UNetDriver与连接通道源码.md"
       ]
     },
     {
       "id": "kb-98d5e781bb34",
-      "path": "游戏知识/12-引擎源码分析/34-ReplicationGraph源码.md",
+      "path": "知识/07-网络与游戏服务端/状态复制与兴趣管理/34-ReplicationGraph源码.md",
       "domain": "online",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/34-ReplicationGraph源码.md"
       ]
     },
     {
       "id": "kb-5bf27c8405cf",
-      "path": "游戏知识/12-引擎源码分析/35-Nanite源码.md",
+      "path": "知识/04-图形动画与物理仿真/渲染管线与光照/35-Nanite源码.md",
       "domain": "simulation",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/35-Nanite源码.md"
       ]
     },
     {
       "id": "kb-2d559eb8d673",
-      "path": "游戏知识/12-引擎源码分析/36-AnimNext与UAF源码.md",
+      "path": "知识/04-图形动画与物理仿真/动画求值与角色表现/36-AnimNext与UAF源码.md",
       "domain": "simulation",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/36-AnimNext与UAF源码.md"
       ]
     },
     {
       "id": "kb-50c06ac3d8c7",
-      "path": "游戏知识/12-引擎源码分析/37-Chaos破坏与Field源码.md",
+      "path": "知识/04-图形动画与物理仿真/物理求解与动力学/37-Chaos破坏与Field源码.md",
       "domain": "simulation",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/37-Chaos破坏与Field源码.md"
       ]
     },
     {
       "id": "kb-2c162dfa5e40",
-      "path": "游戏知识/12-引擎源码分析/38-PCG源码.md",
+      "path": "知识/03-引擎架构与资源系统/程序化内容生成/38-PCG源码.md",
       "domain": "engine",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/38-PCG源码.md"
       ]
     },
     {
       "id": "kb-8877ee663cfd",
-      "path": "游戏知识/12-引擎源码分析/39-Lyra源码总览与阅读路线.md",
+      "path": "知识/05-Gameplay与交互系统/玩法架构与任务协作/39-Lyra源码总览与阅读路线.md",
       "domain": "gameplay",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/39-Lyra源码总览与阅读路线.md"
       ]
     },
     {
       "id": "kb-cf75b533deab",
-      "path": "游戏知识/12-引擎源码分析/40-Lyra-Experience与GameFeature源码.md",
+      "path": "知识/03-引擎架构与资源系统/模块化框架与对象通信/40-Lyra-Experience与GameFeature源码.md",
       "domain": "engine",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/40-Lyra-Experience与GameFeature源码.md"
       ]
     },
     {
       "id": "kb-a59f91e2f5bf",
-      "path": "游戏知识/12-引擎源码分析/41-Lyra-Pawn初始化与模块化组件源码.md",
+      "path": "知识/03-引擎架构与资源系统/模块化框架与对象通信/41-Lyra-Pawn初始化与模块化组件源码.md",
       "domain": "engine",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/41-Lyra-Pawn初始化与模块化组件源码.md"
       ]
     },
     {
       "id": "kb-7890be064b5d",
-      "path": "游戏知识/12-引擎源码分析/42-Lyra-输入GAS与武器战斗源码.md",
+      "path": "知识/05-Gameplay与交互系统/技能战斗与属性结算/42-Lyra-输入GAS与武器战斗源码.md",
       "domain": "gameplay",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/42-Lyra-输入GAS与武器战斗源码.md"
       ]
     },
     {
       "id": "kb-bb2a6adf808f",
-      "path": "游戏知识/12-引擎源码分析/43-Lyra-背包装备消息与UI源码.md",
+      "path": "知识/05-Gameplay与交互系统/背包装备与存档/43-Lyra-背包装备消息与UI源码.md",
       "domain": "gameplay",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/43-Lyra-背包装备消息与UI源码.md"
       ]
     },
     {
       "id": "kb-15fa48b05c96",
-      "path": "游戏知识/12-引擎源码分析/44-Lyra-前端会话网络与扩展源码.md",
+      "path": "知识/07-网络与游戏服务端/会话身份与在线服务/44-Lyra-前端会话网络与扩展源码.md",
       "domain": "online",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/44-Lyra-前端会话网络与扩展源码.md"
       ]
     },
     {
       "id": "kb-248084194ab6",
-      "path": "游戏知识/12-引擎源码分析/45-Lyra-相机音频与游戏阶段源码.md",
+      "path": "知识/05-Gameplay与交互系统/输入移动与交互/45-Lyra-相机音频与游戏阶段源码.md",
       "domain": "gameplay",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/45-Lyra-相机音频与游戏阶段源码.md"
       ]
     },
     {
       "id": "kb-3c8fc7a5ff9a",
-      "path": "游戏知识/12-引擎源码分析/46-Lyra-AI机器人与队伍源码.md",
+      "path": "知识/06-游戏AI/战斗战术与机器人/46-Lyra-AI机器人与队伍源码.md",
       "domain": "ai",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/46-Lyra-AI机器人与队伍源码.md"
       ]
     },
     {
@@ -2407,137 +2968,182 @@
     },
     {
       "id": "kb-2f5c78b78ad9",
-      "path": "游戏知识/12-引擎源码分析/48-Lyra扩展插件源码.md",
+      "path": "知识/03-引擎架构与资源系统/模块化框架与对象通信/48-Lyra扩展插件源码.md",
       "domain": "engine",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/48-Lyra扩展插件源码.md"
       ]
     },
     {
       "id": "kb-112e46eadd64",
-      "path": "游戏知识/12-引擎源码分析/49-Lyra-UI控件与表现源码.md",
+      "path": "知识/05-Gameplay与交互系统/界面设置与无障碍/49-Lyra-UI控件与表现源码.md",
       "domain": "gameplay",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/49-Lyra-UI控件与表现源码.md"
       ]
     },
     {
       "id": "kb-8893c49fd796",
-      "path": "游戏知识/12-引擎源码分析/50-Lyra-设置系统与GameSettings源码.md",
+      "path": "知识/05-Gameplay与交互系统/界面设置与无障碍/50-Lyra-设置系统与GameSettings源码.md",
       "domain": "gameplay",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/50-Lyra-设置系统与GameSettings源码.md"
       ]
     },
     {
       "id": "kb-3fac0249801e",
-      "path": "游戏知识/12-引擎源码分析/51-Lyra-GAS扩展与能力费用源码.md",
+      "path": "知识/05-Gameplay与交互系统/技能战斗与属性结算/51-Lyra-GAS扩展与能力费用源码.md",
       "domain": "gameplay",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/51-Lyra-GAS扩展与能力费用源码.md"
       ]
     },
     {
       "id": "kb-f26c731b5e91",
-      "path": "游戏知识/12-引擎源码分析/52-Lyra-交互系统源码.md",
+      "path": "知识/05-Gameplay与交互系统/输入移动与交互/52-Lyra-交互系统源码.md",
       "domain": "gameplay",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/52-Lyra-交互系统源码.md"
       ]
     },
     {
       "id": "kb-a678920eae72",
-      "path": "游戏知识/12-引擎源码分析/53-Lyra核心生成移动与状态源码.md",
+      "path": "知识/05-Gameplay与交互系统/输入移动与交互/53-Lyra核心生成移动与状态源码.md",
       "domain": "gameplay",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/53-Lyra核心生成移动与状态源码.md"
       ]
     },
     {
       "id": "kb-8ad1ea261318",
-      "path": "游戏知识/12-引擎源码分析/54-Lyra网络复制与引擎模块化特性源码.md",
+      "path": "知识/07-网络与游戏服务端/状态复制与兴趣管理/54-Lyra网络复制与引擎模块化特性源码.md",
       "domain": "online",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/54-Lyra网络复制与引擎模块化特性源码.md"
       ]
     },
     {
       "id": "kb-945fbc091fae",
-      "path": "游戏知识/12-引擎源码分析/55-Lyra输入重映射与辅助瞄准源码.md",
+      "path": "知识/05-Gameplay与交互系统/输入移动与交互/55-Lyra输入重映射与辅助瞄准源码.md",
       "domain": "gameplay",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/55-Lyra输入重映射与辅助瞄准源码.md"
       ]
     },
     {
       "id": "kb-f17a354cbdba",
-      "path": "游戏知识/12-引擎源码分析/56-Lyra-ShooterCore核心玩法与淘汰消息源码.md",
+      "path": "知识/05-Gameplay与交互系统/技能战斗与属性结算/56-Lyra-ShooterCore核心玩法与淘汰消息源码.md",
       "domain": "gameplay",
       "kind": "source-analysis",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/12-引擎源码分析/56-Lyra-ShooterCore核心玩法与淘汰消息源码.md"
       ]
     },
     {
       "id": "kb-d7039c9ec9a7",
-      "path": "游戏知识/13-世界构建与过场/01-Landscape地形系统.md",
+      "path": "知识/04-图形动画与物理仿真/材质地形与世界表现/01-Landscape地形系统.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/13-世界构建与过场/01-Landscape地形系统.md"
       ]
     },
     {
       "id": "kb-a00c14c1fc57",
-      "path": "游戏知识/13-世界构建与过场/02-植被Foliage与实例化渲染.md",
+      "path": "知识/04-图形动画与物理仿真/材质地形与世界表现/02-植被Foliage与实例化渲染.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/13-世界构建与过场/02-植被Foliage与实例化渲染.md"
       ]
     },
     {
       "id": "kb-4d117ba8cd9c",
-      "path": "游戏知识/13-世界构建与过场/03-过场与影视Sequencer.md",
+      "path": "知识/04-图形动画与物理仿真/过场渲染与虚拟制片/03-过场与影视Sequencer.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/13-世界构建与过场/03-过场与影视Sequencer.md"
       ]
     },
     {
       "id": "kb-b32903b4947d",
-      "path": "游戏知识/13-世界构建与过场/04-PCG程序化内容生成.md",
+      "path": "知识/03-引擎架构与资源系统/程序化内容生成/04-PCG程序化内容生成.md",
       "domain": "engine",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/13-世界构建与过场/04-PCG程序化内容生成.md"
       ]
     },
     {
       "id": "kb-34ef1cd3c39d",
-      "path": "游戏知识/13-世界构建与过场/05-大世界植被与渲染协同.md",
+      "path": "知识/04-图形动画与物理仿真/材质地形与世界表现/05-大世界植被与渲染协同.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/13-世界构建与过场/05-大世界植被与渲染协同.md"
       ]
     },
     {
       "id": "kb-58889f0536c9",
-      "path": "游戏知识/13-世界构建与过场/06-虚拟制片与ICVFX.md",
+      "path": "知识/04-图形动画与物理仿真/过场渲染与虚拟制片/06-虚拟制片与ICVFX.md",
       "domain": "simulation",
       "kind": "concept",
       "technologies": [
         "unreal-engine"
+      ],
+      "legacy_paths": [
+        "游戏知识/13-世界构建与过场/06-虚拟制片与ICVFX.md"
       ]
     },
     {
@@ -2767,39 +3373,57 @@
     },
     {
       "id": "kb-db425ceabdb8",
-      "path": "系统实战/01-角色进入游戏完整链路.md",
+      "path": "知识/07-网络与游戏服务端/会话身份与在线服务/01-角色进入游戏完整链路.md",
       "domain": "online",
-      "kind": "case-study"
+      "kind": "case-study",
+      "legacy_paths": [
+        "系统实战/01-角色进入游戏完整链路.md"
+      ]
     },
     {
       "id": "kb-d61c606ee84b",
-      "path": "系统实战/02-角色移动完整链路.md",
+      "path": "知识/07-网络与游戏服务端/同步预测与回放/02-角色移动完整链路.md",
       "domain": "online",
-      "kind": "case-study"
+      "kind": "case-study",
+      "legacy_paths": [
+        "系统实战/02-角色移动完整链路.md"
+      ]
     },
     {
       "id": "kb-dd78d6eb6f8d",
-      "path": "系统实战/03-技能释放完整链路.md",
+      "path": "知识/05-Gameplay与交互系统/技能战斗与属性结算/03-技能释放完整链路.md",
       "domain": "gameplay",
-      "kind": "case-study"
+      "kind": "case-study",
+      "legacy_paths": [
+        "系统实战/03-技能释放完整链路.md"
+      ]
     },
     {
       "id": "kb-d5ed89f4a4d9",
-      "path": "系统实战/04-Buff系统完整链路.md",
+      "path": "知识/05-Gameplay与交互系统/技能战斗与属性结算/04-Buff系统完整链路.md",
       "domain": "gameplay",
-      "kind": "case-study"
+      "kind": "case-study",
+      "legacy_paths": [
+        "系统实战/04-Buff系统完整链路.md"
+      ]
     },
     {
       "id": "kb-ec28864a9a57",
-      "path": "系统实战/05-背包道具完整链路.md",
+      "path": "知识/05-Gameplay与交互系统/背包装备与存档/05-背包道具完整链路.md",
       "domain": "gameplay",
-      "kind": "case-study"
+      "kind": "case-study",
+      "legacy_paths": [
+        "系统实战/05-背包道具完整链路.md"
+      ]
     },
     {
       "id": "kb-37d3faf72ec2",
-      "path": "系统实战/07-假人AI完整链路.md",
+      "path": "知识/06-游戏AI/战斗战术与机器人/07-假人AI完整链路.md",
       "domain": "ai",
-      "kind": "case-study"
+      "kind": "case-study",
+      "legacy_paths": [
+        "系统实战/07-假人AI完整链路.md"
+      ]
     },
     {
       "id": "kb-bfaa231ef4e8",
@@ -2812,9 +3436,12 @@
     },
     {
       "id": "kb-5c0e018d700f",
-      "path": "系统实战/11-伤害与属性结算完整链路.md",
+      "path": "知识/05-Gameplay与交互系统/技能战斗与属性结算/11-伤害与属性结算完整链路.md",
       "domain": "gameplay",
-      "kind": "case-study"
+      "kind": "case-study",
+      "legacy_paths": [
+        "系统实战/11-伤害与属性结算完整链路.md"
+      ]
     },
     {
       "id": "kb-29314693dd20",

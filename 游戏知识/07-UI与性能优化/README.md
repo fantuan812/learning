@@ -29,14 +29,14 @@ updated: 2026-08-20
 
 | 专题文件（Canonical 路径） | 知识类型 | 成熟度 | 核心工程关注点与落地场景 |
 | :--- | :---: | :---: | :--- |
-| [01-UMG框架与控件系统.md](01-UMG框架与控件系统.md) | Concept | L2 | Slate 与 UMG 层次模型、Slot 布局规则、InvalidationBox 失效缓存原理、RetainerBox 动态合批优化 |
-| [02-UI数据绑定与MVVM.md](02-UI数据绑定与MVVM.md) | Concept | L2 | 传统 Tick 绑定弊端、UE5.3+ MVVM 架构：ViewModel 属性通知（FieldNotify）、转换函数与 ListView 列表虚拟化 |
+| [01-UMG框架与控件系统.md](../../知识/05-Gameplay与交互系统/界面设置与无障碍/01-UMG框架与控件系统.md) | Concept | L2 | Slate 与 UMG 层次模型、Slot 布局规则、InvalidationBox 失效缓存原理、RetainerBox 动态合批优化 |
+| [02-UI数据绑定与MVVM.md](../../知识/05-Gameplay与交互系统/界面设置与无障碍/02-UI数据绑定与MVVM.md) | Concept | L2 | 传统 Tick 绑定弊端、UE5.3+ MVVM 架构：ViewModel 属性通知（FieldNotify）、转换函数与 ListView 列表虚拟化 |
 | [03-性能分析工具与Profiling.md](../../知识/08-工程实践与质量/调试与性能分析/03-性能分析工具与Profiling.md) | Concept | L2 | Unreal Insights 帧分析/Timing 视图、stat unit/stat gpu 判读、ProfileGPU 渲染耗时展开与 LLM 内存分析 |
 | [04-渲染与加载性能优化.md](../../知识/08-工程实践与质量/调试与性能分析/04-渲染与加载性能优化.md) | Concept | L2 | DrawCall 合批合并、UI 纹理图集打包、软引用与 StreamableManager 异步加载、移动端内存预算控制 |
 | [05-GameplayDebugger与运行时调试.md](../../知识/08-工程实践与质量/调试与性能分析/05-GameplayDebugger与运行时调试.md) | Concept | L2 | GameplayDebuggerCategory 自定义扩展、GDC 网络同步与 HUD 视口绘制、VisualLogger 可视化日志排障 |
-| [06-UI状态与可观测性闭环.md](06-UI状态与可观测性闭环.md) | Concept | L2 | 打通 CommonUI、MVVM、Enhanced Input 与 Unreal Insights 的 UI 状态迁移、输入响应与性能验收闭环 |
-| [07-CommonUI输入路由与焦点管理.md](07-CommonUI输入路由与焦点管理.md) | Concept | L2 | CommonUI 架构：CommonActivatableWidget 激活栈、CommonInputSubsystem 多端输入感知、手柄焦点导航与动作绑定 |
-| [08-Slate自定义控件与样式系统.md](08-Slate自定义控件与样式系统.md) | Concept | L2 | SCompoundWidget/SLeafWidget 声明式宏语法、FSlateStyleSet 样式集合、OnPaint 绘制元素与 UMG 封装 |
+| [06-UI状态与可观测性闭环.md](../../知识/05-Gameplay与交互系统/界面设置与无障碍/06-UI状态与可观测性闭环.md) | Concept | L2 | 打通 CommonUI、MVVM、Enhanced Input 与 Unreal Insights 的 UI 状态迁移、输入响应与性能验收闭环 |
+| [07-CommonUI输入路由与焦点管理.md](../../知识/05-Gameplay与交互系统/界面设置与无障碍/07-CommonUI输入路由与焦点管理.md) | Concept | L2 | CommonUI 架构：CommonActivatableWidget 激活栈、CommonInputSubsystem 多端输入感知、手柄焦点导航与动作绑定 |
+| [08-Slate自定义控件与样式系统.md](../../知识/05-Gameplay与交互系统/界面设置与无障碍/08-Slate自定义控件与样式系统.md) | Concept | L2 | SCompoundWidget/SLeafWidget 声明式宏语法、FSlateStyleSet 样式集合、OnPaint 绘制元素与 UMG 封装 |
 
 ---
 
@@ -74,9 +74,9 @@ flowchart TD
   - 工程调试与崩溃排障：[00-11 工程调试与性能分析](../../00-计算机与工程基础/11-工程调试与性能分析/README.md)
   - 处理器存储层次与 Cache：[00-08 计算机体系结构与性能](../../00-计算机与工程基础/08-计算机体系结构与性能/README.md)
 - **向上驱动（引擎源码剖析）**：
-  - UMG 与 Slate 源码：[12-14 UMG与Slate源码](../12-引擎源码分析/14-UMG与Slate源码.md)
-  - MVVM 底层源码：[12-27 UMGMVVM源码](../12-引擎源码分析/27-UMGMVVM源码.md)
-  - CommonUI 源码：[12-26 CommonUI源码](../12-引擎源码分析/26-CommonUI源码.md)
+  - UMG 与 Slate 源码：[12-14 UMG与Slate源码](../../知识/05-Gameplay与交互系统/界面设置与无障碍/14-UMG与Slate源码.md)
+  - MVVM 底层源码：[12-27 UMGMVVM源码](../../知识/05-Gameplay与交互系统/界面设置与无障碍/27-UMGMVVM源码.md)
+  - CommonUI 源码：[12-26 CommonUI源码](../../知识/05-Gameplay与交互系统/界面设置与无障碍/26-CommonUI源码.md)
   - Unreal Insights 源码：[12-28 UnrealInsights与Trace源码](../../知识/08-工程实践与质量/调试与性能分析/28-UnrealInsights与Trace源码.md)
 - **横向协同（玩法与音频）**：
   - 委托通信与数据驱动：[03-游戏玩法编程](../03-游戏玩法编程/README.md)

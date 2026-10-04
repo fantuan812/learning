@@ -29,10 +29,10 @@ updated: 2026-08-20
 
 | 专题文件（Canonical 路径） | 知识类型 | 成熟度 | 核心工程关注点与落地场景 |
 | :--- | :---: | :---: | :--- |
-| [01-音频基础与播放.md](01-音频基础与播放.md) | Concept | L2 | WAV 资产导入与压缩比率、SoundBase 层次、PlaySound2D/AtLocation 播放生命周期、SoundClass 混音总线与并发管理 |
-| [02-衰减与3D空间音效.md](02-衰减与3D空间音效.md) | Concept | L2 | SoundAttenuation 距离衰减模型、HRTF 双耳空间定位、AudioVolume 室内混响预设、几何视线遮挡（Occlusion）与透射参数 |
-| [03-MetaSound与程序化音频.md](03-MetaSound与程序化音频.md) | Concept | L2 | MetaSoundSource 样本精确图表、变量输入输出、动态 DSP 滤波器节点、Submix 效果链串接与内存常驻治理 |
-| [04-Quartz音频时钟与节奏同步.md](04-Quartz音频时钟与节奏同步.md) | Concept | L2 | UQuartzSubsystem 音频时钟句柄、BPM 节拍量化触发器、音频线程与 GameThread 双向指令队列与玩法卡点 |
+| [01-音频基础与播放.md](../../知识/04-图形动画与物理仿真/音频播放与程序化声音/01-音频基础与播放.md) | Concept | L2 | WAV 资产导入与压缩比率、SoundBase 层次、PlaySound2D/AtLocation 播放生命周期、SoundClass 混音总线与并发管理 |
+| [02-衰减与3D空间音效.md](../../知识/04-图形动画与物理仿真/音频播放与程序化声音/02-衰减与3D空间音效.md) | Concept | L2 | SoundAttenuation 距离衰减模型、HRTF 双耳空间定位、AudioVolume 室内混响预设、几何视线遮挡（Occlusion）与透射参数 |
+| [03-MetaSound与程序化音频.md](../../知识/04-图形动画与物理仿真/音频播放与程序化声音/03-MetaSound与程序化音频.md) | Concept | L2 | MetaSoundSource 样本精确图表、变量输入输出、动态 DSP 滤波器节点、Submix 效果链串接与内存常驻治理 |
+| [04-Quartz音频时钟与节奏同步.md](../../知识/04-图形动画与物理仿真/音频播放与程序化声音/04-Quartz音频时钟与节奏同步.md) | Concept | L2 | UQuartzSubsystem 音频时钟句柄、BPM 节拍量化触发器、音频线程与 GameThread 双向指令队列与玩法卡点 |
 
 ---
 
@@ -65,8 +65,8 @@ flowchart TD
   - 任务调度与多线程队列：[00-04 C++并发与内存模型](../../00-计算机与工程基础/04-C++并发与内存模型/README.md)
   - 硬件音频驱动与系统调用：[00-06 操作系统](../../00-计算机与工程基础/06-操作系统/README.md)
 - **向上驱动（引擎源码剖析）**：
-  - 音频系统引擎源码：[12-16 音频系统源码](../12-引擎源码分析/16-音频系统源码.md)
-  - Lyra 相机与音频联动：[12-45 Lyra-相机音频与游戏阶段源码](../12-引擎源码分析/45-Lyra-相机音频与游戏阶段源码.md)
+  - 音频系统引擎源码：[12-16 音频系统源码](../../知识/04-图形动画与物理仿真/音频播放与程序化声音/16-音频系统源码.md)
+  - Lyra 相机与音频联动：[12-45 Lyra-相机音频与游戏阶段源码](../../知识/05-Gameplay与交互系统/输入移动与交互/45-Lyra-相机音频与游戏阶段源码.md)
 - **横向协同（动画与玩法）**：
   - 动画 Notify 音效触发：[04-动画系统](../04-动画系统/README.md)
   - 武器开火与击中反馈：[03-游戏玩法编程](../03-游戏玩法编程/README.md)

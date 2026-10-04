@@ -343,7 +343,7 @@ E 到 F 表示 TimingView 只消费已解析模型，不直接读取 TraceLog �
 上述示例不能作为未核实 API、命令参数或项目接入代码的依据。
 
 ### 8. 关联阅读
-- 仓库内真实相对链接：[UE5.8 高优先级源码覆盖路线图](../../../游戏知识/12-引擎源码分析/19-高优先级源码覆盖路线图.md)。
+- 仓库内真实相对链接：[UE5.8 高优先级源码覆盖路线图](../../03-引擎架构与资源系统/源码阅读与覆盖基线/19-高优先级源码覆盖路线图.md)。
 - 官方入口：[Unreal Insights 官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-insights-in-unreal-engine)。
 - 源码入口：`Engine/Source/Runtime/TraceLog/`，用于核对事件声明、字段和写入边界。
 - 源码入口：`Engine/Source/Developer/TraceServices/`，用于核对 session、分析器和 Provider 边界。

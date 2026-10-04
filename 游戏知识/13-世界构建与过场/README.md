@@ -29,12 +29,12 @@ updated: 2026-08-20
 
 | 专题文件（Canonical 路径） | 知识类型 | 成熟度 | 核心工程关注点与落地场景 |
 | :--- | :---: | :---: | :--- |
-| [01-Landscape地形系统.md](01-Landscape地形系统.md) | Concept | L2 | Landscape 架构：Component 分块、高度图编码、材质 LayerBlend 权重、LandscapeSpline 与 World Partition 流送集成 |
-| [02-植被Foliage与实例化渲染.md](02-植被Foliage与实例化渲染.md) | Concept | L2 | AInstancedFoliageActor 数据流、HISM（分层实例化）渲染合批原理、LOD 切换、距离剔除与 Mass 群集选型对比 |
-| [03-过场与影视Sequencer.md](03-过场与影视Sequencer.md) | Concept | L2 | Sequencer 轨道架构、Possessable 与 Spawnable 绑定机制、CineCamera 镜头光圈、Movie Render Graph 与运行时播放控制 |
-| [04-PCG程序化内容生成.md](04-PCG程序化内容生成.md) | Concept | L2 | PCG 图资产（UPCGGraph）、空间点采样与密度过滤、确定性随机种子、PCGCompute 与 World Partition Cell 协同生成 |
-| [05-大世界植被与渲染协同.md](05-大世界植被与渲染协同.md) | Concept | L2 | 串联 World Partition、PCG、Procedural Vegetation Editor 与 HLOD 的植被生成、烘焙、流送、渲染与销毁完整闭环 |
-| [06-虚拟制片与ICVFX.md](06-虚拟制片与ICVFX.md) | Concept | L2 | nDisplay LED 墙多节点渲染同步、内镜头视锥（Inner Frustum）畸变校正、LiveLink 摄像机外设追踪与虚拟制片全流程 |
+| [01-Landscape地形系统.md](../../知识/04-图形动画与物理仿真/材质地形与世界表现/01-Landscape地形系统.md) | Concept | L2 | Landscape 架构：Component 分块、高度图编码、材质 LayerBlend 权重、LandscapeSpline 与 World Partition 流送集成 |
+| [02-植被Foliage与实例化渲染.md](../../知识/04-图形动画与物理仿真/材质地形与世界表现/02-植被Foliage与实例化渲染.md) | Concept | L2 | AInstancedFoliageActor 数据流、HISM（分层实例化）渲染合批原理、LOD 切换、距离剔除与 Mass 群集选型对比 |
+| [03-过场与影视Sequencer.md](../../知识/04-图形动画与物理仿真/过场渲染与虚拟制片/03-过场与影视Sequencer.md) | Concept | L2 | Sequencer 轨道架构、Possessable 与 Spawnable 绑定机制、CineCamera 镜头光圈、Movie Render Graph 与运行时播放控制 |
+| [04-PCG程序化内容生成.md](../../知识/03-引擎架构与资源系统/程序化内容生成/04-PCG程序化内容生成.md) | Concept | L2 | PCG 图资产（UPCGGraph）、空间点采样与密度过滤、确定性随机种子、PCGCompute 与 World Partition Cell 协同生成 |
+| [05-大世界植被与渲染协同.md](../../知识/04-图形动画与物理仿真/材质地形与世界表现/05-大世界植被与渲染协同.md) | Concept | L2 | 串联 World Partition、PCG、Procedural Vegetation Editor 与 HLOD 的植被生成、烘焙、流送、渲染与销毁完整闭环 |
+| [06-虚拟制片与ICVFX.md](../../知识/04-图形动画与物理仿真/过场渲染与虚拟制片/06-虚拟制片与ICVFX.md) | Concept | L2 | nDisplay LED 墙多节点渲染同步、内镜头视锥（Inner Frustum）畸变校正、LiveLink 摄像机外设追踪与虚拟制片全流程 |
 
 ---
 
@@ -69,10 +69,10 @@ flowchart TD
   - 空间分区与八叉树：[游戏算法 01-寻路与图论](../../游戏算法/01-寻路与图论/README.md)
   - 程序化生成算法：[游戏算法 03-工程与实用技巧](../../游戏算法/03-工程与实用技巧/README.md)
 - **向上驱动（引擎源码剖析）**：
-  - 大世界流送源码：[12-22 WorldPartition源码](../12-引擎源码分析/22-WorldPartition与WorldStreaming源码.md)
-  - 地形与植被源码：[12-23 Landscape与Foliage源码](../12-引擎源码分析/23-Landscape与Foliage源码.md)
-  - PCG 源码实现：[12-38 PCG源码](../12-引擎源码分析/38-PCG源码.md)
-  - Sequencer 源码：[12-24 Sequencer与MRG源码](../12-引擎源码分析/24-Sequencer与MovieRenderGraph源码.md)
+  - 大世界流送源码：[12-22 WorldPartition源码](../../知识/03-引擎架构与资源系统/世界组织与资源加载/22-WorldPartition与WorldStreaming源码.md)
+  - 地形与植被源码：[12-23 Landscape与Foliage源码](../../知识/04-图形动画与物理仿真/材质地形与世界表现/23-Landscape与Foliage源码.md)
+  - PCG 源码实现：[12-38 PCG源码](../../知识/03-引擎架构与资源系统/程序化内容生成/38-PCG源码.md)
+  - Sequencer 源码：[12-24 Sequencer与MRG源码](../../知识/04-图形动画与物理仿真/过场渲染与虚拟制片/24-Sequencer与MovieRenderGraph源码.md)
 - **横向协同（基础与渲染）**：
-  - 大世界流送基础：[01-引擎基础/09-WorldPartition大世界](../01-引擎基础/09-WorldPartition大世界.md)
-  - 虚拟纹理与地表混合：[02-渲染与图形/07-虚拟纹理与材质混合](../02-渲染与图形/07-虚拟纹理与材质混合.md)
+  - 大世界流送基础：[01-引擎基础/09-WorldPartition大世界](../../知识/03-引擎架构与资源系统/世界组织与资源加载/09-WorldPartition大世界.md)
+  - 虚拟纹理与地表混合：[02-渲染与图形/07-虚拟纹理与材质混合](../../知识/04-图形动画与物理仿真/材质地形与世界表现/07-虚拟纹理与材质混合.md)

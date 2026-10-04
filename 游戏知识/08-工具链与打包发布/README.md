@@ -84,9 +84,9 @@ flowchart TD
   - 软件工程与持续交付：[00-15 软件工程与构建](../../00-计算机与工程基础/15-软件工程与构建/README.md)
   - 容器云与编排：[00-16 容器云与可观测性](../../00-计算机与工程基础/16-容器云与可观测性/README.md)
 - **向上驱动（引擎源码剖析）**：
-  - DS 启动与监听源码：[12-32 DS启动与监听源码](../12-引擎源码分析/32-UE%20Dedicated%20Server启动与监听源码.md)
-  - UNetDriver 源码：[12-33 UNetDriver与连接通道源码](../12-引擎源码分析/33-UNetDriver与连接通道源码.md)
-  - Lyra GameFeatures 源码：[12-40 Lyra-Experience与GameFeature源码](../12-引擎源码分析/40-Lyra-Experience与GameFeature源码.md)
+  - DS 启动与监听源码：[12-32 DS启动与监听源码](../../知识/07-网络与游戏服务端/专用服务器实例与容量/32-UE%20Dedicated%20Server启动与监听源码.md)
+  - UNetDriver 源码：[12-33 UNetDriver与连接通道源码](../../知识/07-网络与游戏服务端/状态复制与兴趣管理/33-UNetDriver与连接通道源码.md)
+  - Lyra GameFeatures 源码：[12-40 Lyra-Experience与GameFeature源码](../../知识/03-引擎架构与资源系统/模块化框架与对象通信/40-Lyra-Experience与GameFeature源码.md)
 - **横向协同（服务端与质量）**：
   - 服务端 DS 平台化：[游戏服务端 05-UE Dedicated Server平台化](../../游戏服务端/05-UE%20Dedicated%20Server平台化/README.md)
   - 自动化测试与压测：[游戏测试与质量](../../游戏测试与质量/README.md)

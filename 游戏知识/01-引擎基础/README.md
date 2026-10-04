@@ -31,17 +31,17 @@ updated: 2026-10-01
 
 | 专题文件（Canonical 路径） | 知识类型 | 成熟度 | 核心工程关注点与落地场景 |
 | :--- | :---: | :---: | :--- |
-| [01-UObject与反射系统.md](01-UObject与反射系统.md) | Concept | L2 | UObject 内存对象头、UHT 代码生成原理、Mark-Sweep 垃圾回收机制、CDO 类默认对象与智能指针选型 |
-| [02-Actor与Component生命周期.md](02-Actor与Component生命周期.md) | Concept | L2 | Actor 生成注册、BeginPlay 延迟触发条件、Component 挂接与变换更新、Tick 组依赖与优雅销毁流程 |
-| [03-Gameplay框架与游戏模式.md](03-Gameplay框架与游戏模式.md) | Concept | L2 | GameMode/GameState/PlayerController/PlayerState 职责边界、玩家登录握手、Possess 流程与状态机 |
-| [04-引擎启动流程与模块架构.md](04-引擎启动流程与模块架构.md) | Concept | L2 | 引擎 PreInit→Init→LoadMap 完整启动时序、LoadingPhase 加载阶段、模块接口与自定义插件工程实践 |
-| [05-场景组件与变换体系.md](05-场景组件与变换体系.md) | Concept | L2 | 组件空间合同、FTransform 组合与非均匀缩放边界、Socket、Sweep/Teleport 与物理驱动切换 |
-| [06-定时器与引擎Ticker.md](06-定时器与引擎Ticker.md) | Concept | L2 | FTimerManager 最小堆管理、循环与单次定时器、时间膨胀（TimeDilation）影响与 FTSTicker 跨帧调度 |
-| [07-World关卡与Subsystem体系.md](07-World关卡与Subsystem体系.md) | Concept | L2 | UWorld 运行时组成、Engine/Editor/GameInstance/World/LocalPlayer 五大生命周期 Subsystem 架构设计 |
-| [08-关卡流送LevelStreaming.md](08-关卡流送LevelStreaming.md) | Concept | L2 | 传统 LevelStreaming 方案、Persistent 关卡与子关卡、流送体积（StreamingVolume）、异步加载与卸载 |
-| [09-WorldPartition大世界.md](09-WorldPartition大世界.md) | Concept | L2 | UE5 World Partition 空间网格划分、ActorDesc 分离存储、DataLayer 数据分层、HLOD 与运行时流送源 |
-| [10-FName与FString底层.md](10-FName与FString底层.md) | Concept | L2 | FName 全局名表哈希池（FNamePool）、FString 动态堆内存连续分配、FText 本地化管道与高效选型 |
-| [11-多线程与任务系统.md](11-多线程与任务系统.md) | Mechanism | L2 | FRunnable/FThread 线程生命周期、TaskGraph 任务依赖图调度、ParallelFor 并行遍历与 UObject 线程安全边界 |
+| [01-UObject与反射系统.md](../../知识/03-引擎架构与资源系统/对象模型与生命周期/01-UObject与反射系统.md) | Concept | L2 | UObject 内存对象头、UHT 代码生成原理、Mark-Sweep 垃圾回收机制、CDO 类默认对象与智能指针选型 |
+| [02-Actor与Component生命周期.md](../../知识/03-引擎架构与资源系统/对象模型与生命周期/02-Actor与Component生命周期.md) | Concept | L2 | Actor 生成注册、BeginPlay 延迟触发条件、Component 挂接与变换更新、Tick 组依赖与优雅销毁流程 |
+| [03-Gameplay框架与游戏模式.md](../../知识/03-引擎架构与资源系统/模块化框架与对象通信/03-Gameplay框架与游戏模式.md) | Concept | L2 | GameMode/GameState/PlayerController/PlayerState 职责边界、玩家登录握手、Possess 流程与状态机 |
+| [04-引擎启动流程与模块架构.md](../../知识/03-引擎架构与资源系统/运行架构与任务调度/04-引擎启动流程与模块架构.md) | Concept | L2 | 引擎 PreInit→Init→LoadMap 完整启动时序、LoadingPhase 加载阶段、模块接口与自定义插件工程实践 |
+| [05-场景组件与变换体系.md](../../知识/04-图形动画与物理仿真/空间层级与变换/05-场景组件与变换体系.md) | Concept | L2 | 组件空间合同、FTransform 组合与非均匀缩放边界、Socket、Sweep/Teleport 与物理驱动切换 |
+| [06-定时器与引擎Ticker.md](../../知识/03-引擎架构与资源系统/运行架构与任务调度/06-定时器与引擎Ticker.md) | Concept | L2 | FTimerManager 最小堆管理、循环与单次定时器、时间膨胀（TimeDilation）影响与 FTSTicker 跨帧调度 |
+| [07-World关卡与Subsystem体系.md](../../知识/03-引擎架构与资源系统/世界组织与资源加载/07-World关卡与Subsystem体系.md) | Concept | L2 | UWorld 运行时组成、Engine/Editor/GameInstance/World/LocalPlayer 五大生命周期 Subsystem 架构设计 |
+| [08-关卡流送LevelStreaming.md](../../知识/03-引擎架构与资源系统/世界组织与资源加载/08-关卡流送LevelStreaming.md) | Concept | L2 | 传统 LevelStreaming 方案、Persistent 关卡与子关卡、流送体积（StreamingVolume）、异步加载与卸载 |
+| [09-WorldPartition大世界.md](../../知识/03-引擎架构与资源系统/世界组织与资源加载/09-WorldPartition大世界.md) | Concept | L2 | UE5 World Partition 空间网格划分、ActorDesc 分离存储、DataLayer 数据分层、HLOD 与运行时流送源 |
+| [10-FName与FString底层.md](../../知识/03-引擎架构与资源系统/对象模型与生命周期/10-FName与FString底层.md) | Concept | L2 | FName 全局名表哈希池（FNamePool）、FString 动态堆内存连续分配、FText 本地化管道与高效选型 |
+| [11-多线程与任务系统.md](../../知识/03-引擎架构与资源系统/运行架构与任务调度/11-多线程与任务系统.md) | Mechanism | L2 | FRunnable/FThread 线程生命周期、TaskGraph 任务依赖图调度、ParallelFor 并行遍历与 UObject 线程安全边界 |
 
 ---
 
@@ -79,12 +79,12 @@ flowchart TD
   - C++ 对象布局与虚函数：[00-02 C++对象模型与内存](../../00-计算机与工程基础/02-C++对象模型与内存/README.md)
   - 线程同步与无锁队列：[00-04 C++并发与内存模型](../../00-计算机与工程基础/04-C++并发与内存模型/README.md)
 - **向上驱动（引擎源码剖析）**：
-  - 反射与 GC 源码：[12-01 UPROPERTY反射源码](../12-引擎源码分析/01-UPROPERTY与反射系统源码.md) ｜ [12-02 UObject与GC源码](../12-引擎源码分析/02-UObject与垃圾回收源码.md)
-  - 大世界流送源码：[12-22 WorldPartition源码](../12-引擎源码分析/22-WorldPartition与WorldStreaming源码.md)
+  - 反射与 GC 源码：[12-01 UPROPERTY反射源码](../../知识/03-引擎架构与资源系统/对象模型与生命周期/01-UPROPERTY与反射系统源码.md) ｜ [12-02 UObject与GC源码](../../知识/03-引擎架构与资源系统/对象模型与生命周期/02-UObject与垃圾回收源码.md)
+  - 大世界流送源码：[12-22 WorldPartition源码](../../知识/03-引擎架构与资源系统/世界组织与资源加载/22-WorldPartition与WorldStreaming源码.md)
 - **横向协同（玩法与网络）**：
   - 玩法能力扩展：[03-游戏玩法编程](../03-游戏玩法编程/README.md)
   - 多人复制机制：[06-网络同步](../06-网络同步/README.md)
 
 ## 6. 从空间概念到可验证结果
 
-[05 场景组件与变换体系](05-场景组件与变换体系.md)新增空间/单位/采样时刻合同、非均匀缩放的独立 C++11 反例和物理切换验收。先证明点、方向、法线各自如何变换，再比对 UE 的实际表示与调用合同；数学模型通过不代表 Chaos 或动画运行已经验证。向后连接[骨骼与资产基础](../04-动画系统/07-动画资产与骨骼基础.md)、[IK 重定向](../04-动画系统/06-动画重定向与IKRetargeter.md)和[碰撞检测](../09-物理系统/02-碰撞检测与物理材质.md)。
+[05 场景组件与变换体系](../../知识/04-图形动画与物理仿真/空间层级与变换/05-场景组件与变换体系.md)新增空间/单位/采样时刻合同、非均匀缩放的独立 C++11 反例和物理切换验收。先证明点、方向、法线各自如何变换，再比对 UE 的实际表示与调用合同；数学模型通过不代表 Chaos 或动画运行已经验证。向后连接[骨骼与资产基础](../../知识/04-图形动画与物理仿真/动画求值与角色表现/07-动画资产与骨骼基础.md)、[IK 重定向](../../知识/04-图形动画与物理仿真/动画求值与角色表现/06-动画重定向与IKRetargeter.md)和[碰撞检测](../../知识/04-图形动画与物理仿真/物理求解与动力学/02-碰撞检测与物理材质.md)。

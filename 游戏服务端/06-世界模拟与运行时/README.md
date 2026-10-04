@@ -51,39 +51,39 @@ Player 进入 Scene → 加入 AOI Cell → 计算 Interest Set → EnterView/Le
 
 | 主题 | 状态 | 篇数 | 成熟度分布 |
 | --- | --- | --- | --- |
-| [Main Loop / Tick Scheduler](01-ServerMainLoop与TickScheduler.md) | 已落地 | 1 | L4 |
-| [Timer / Timing Wheel](02-Timer时间轮与延迟任务.md) | 已落地 | 1 | L2 |
-| [Entity 生命周期](03-Entity生命周期与组件模型.md) | 已落地 | 1 | L3 |
-| [Scene / Map / Zone](04-Scene-Map-Zone与实例管理.md) | 已落地 | 1 | L2 |
-| [AOI 与 Interest Management](05-AOI与InterestManagement.md) | 已落地 | 1 | L4 |
-| [SpatialQuery / 空间索引](06-SpatialQuery与兴趣点查询.md) | 已落地 | 1 | L2 |
-| [Entity Ownership / Authority](07-EntityOwnership与Authority.md) | 已落地 | 1 | L2 |
-| [跨 Zone / 跨服迁移](08-跨Zone与跨服迁移.md) | 已落地 | 1 | L2 |
-| [动态分线 / 负载均衡](09-动态分线与负载均衡.md) | 已落地 | 1 | L2 |
-| [大规模战斗 / 降级策略](10-大规模战斗与降级.md) | 已落地 | 1 | L2 |
-| [时间预算 / AI Tick](11-AI与寻路时间预算.md) | 已落地 | 1 | L4 |
-| [世界时间 / GameClock](12-世界时间确定性与GameClock.md) | 已落地 | 1 | L2 |
-| [世界 Snapshot / 故障恢复](13-世界Snapshot与故障恢复.md) | 已落地 | 1 | L3 |
-| [背压与过载保护](14-运行时背压与过载保护.md) | 已落地 | 1 | L4 |
+| [Main Loop / Tick Scheduler](../../知识/07-网络与游戏服务端/运行调度与过载保护/01-ServerMainLoop与TickScheduler.md) | 已落地 | 1 | L4 |
+| [Timer / Timing Wheel](../../知识/07-网络与游戏服务端/运行调度与过载保护/02-Timer时间轮与延迟任务.md) | 已落地 | 1 | L2 |
+| [Entity 生命周期](../../知识/07-网络与游戏服务端/世界权威与故障恢复/03-Entity生命周期与组件模型.md) | 已落地 | 1 | L3 |
+| [Scene / Map / Zone](../../知识/07-网络与游戏服务端/世界权威与故障恢复/04-Scene-Map-Zone与实例管理.md) | 已落地 | 1 | L2 |
+| [AOI 与 Interest Management](../../知识/07-网络与游戏服务端/状态复制与兴趣管理/05-AOI与InterestManagement.md) | 已落地 | 1 | L4 |
+| [SpatialQuery / 空间索引](../../知识/07-网络与游戏服务端/状态复制与兴趣管理/06-SpatialQuery与兴趣点查询.md) | 已落地 | 1 | L2 |
+| [Entity Ownership / Authority](../../知识/07-网络与游戏服务端/世界权威与故障恢复/07-EntityOwnership与Authority.md) | 已落地 | 1 | L2 |
+| [跨 Zone / 跨服迁移](../../知识/07-网络与游戏服务端/世界权威与故障恢复/08-跨Zone与跨服迁移.md) | 已落地 | 1 | L2 |
+| [动态分线 / 负载均衡](../../知识/07-网络与游戏服务端/世界权威与故障恢复/09-动态分线与负载均衡.md) | 已落地 | 1 | L2 |
+| [大规模战斗 / 降级策略](../../知识/07-网络与游戏服务端/世界权威与故障恢复/10-大规模战斗与降级.md) | 已落地 | 1 | L2 |
+| [时间预算 / AI Tick](../../知识/07-网络与游戏服务端/运行调度与过载保护/11-AI与寻路时间预算.md) | 已落地 | 1 | L4 |
+| [世界时间 / GameClock](../../知识/07-网络与游戏服务端/运行调度与过载保护/12-世界时间确定性与GameClock.md) | 已落地 | 1 | L2 |
+| [世界 Snapshot / 故障恢复](../../知识/07-网络与游戏服务端/世界权威与故障恢复/13-世界Snapshot与故障恢复.md) | 已落地 | 1 | L3 |
+| [背压与过载保护](../../知识/07-网络与游戏服务端/运行调度与过载保护/14-运行时背压与过载保护.md) | 已落地 | 1 | L4 |
 
 ## 文件列表
 
 | 文件 | 简介 | 成熟度 |
 | --- | --- | --- |
-| [01-ServerMainLoop与TickScheduler](01-ServerMainLoop与TickScheduler.md) | 固定步长主循环、accumulator、catch-up/drop、时间预算、UE5.8 对照；含本机模拟 | L4 |
-| [02-Timer时间轮与延迟任务](02-Timer时间轮与延迟任务.md) | Tick/monotonic/business time、时间轮/堆选型、取消/重试、owner queue、过载与恢复 | L2 |
-| [03-Entity生命周期与组件模型](03-Entity生命周期与组件模型.md) | Entity ID/世代、Spawn/Despawn、组件模型、实体池、Ghost/Mirror、悬垂防护 | L3 |
-| [04-Scene-Map-Zone与实例管理](04-Scene-Map-Zone与实例管理.md) | Map/Scene/Zone 三层、玩家归属、实例分配、Zone 迁移、动态加载、线程/进程分布 | L2（示例为伪代码，运行证据待补） |
-| [05-AOI与InterestManagement](05-AOI与InterestManagement.md) | Move→Cell Change→Interest Diff→Enter/Leave→限流→批量；含本机模拟器（100/1K/10K 实体） | L4 |
-| [06-SpatialQuery与兴趣点查询](06-SpatialQuery与兴趣点查询.md) | Spatial Query、POI、候选集与精确命中；接口、Tick 边界和待验证容量预算 | L2 |
-| [07-EntityOwnership与Authority](07-EntityOwnership与Authority.md) | 单写者、generation、owner/fence、客户端预测、迁移封存、故障接管与审计 | L2 |
-| [08-跨Zone与跨服迁移](08-跨Zone与跨服迁移.md) | 冻结快照、delta、路由 epoch、重连、Timer/AOI 衔接、回滚与故障注入 | L2 |
-| [09-动态分线与负载均衡](09-动态分线与负载均衡.md) | 分线容量模型、粘性路由、扩缩容/合并/回收状态机与验证矩阵 | L2 |
-| [10-大规模战斗与降级](10-大规模战斗与降级.md) | 战斗负载建模、预算分层、确定性结算与渐进降级策略 | L2 |
-| [11-AI与寻路时间预算](11-AI与寻路时间预算.md) | 三层预算、容量单位与P99边界、队列准入/deadline/过期结果；历史A*/Tick证据范围单列 | L4 |
-| [12-世界时间确定性与GameClock](12-世界时间确定性与GameClock.md) | 五类时间边界、GameClock 单一权威、暂停/减速、跨服对齐、worldLag 监控 | L2 |
-| [13-世界Snapshot与故障恢复](13-世界Snapshot与故障恢复.md) | 快照+增量事件、崩溃恢复状态机、客户端 Reconcile、事件日志幂等 | L3 |
-| [14-运行时背压与过载保护](14-运行时背压与过载保护.md) | 背压传导、降级优先级、四类过载阈值、滞回恢复；复用 Tick/AOI 实验证据 | L4 |
+| [01-ServerMainLoop与TickScheduler](../../知识/07-网络与游戏服务端/运行调度与过载保护/01-ServerMainLoop与TickScheduler.md) | 固定步长主循环、accumulator、catch-up/drop、时间预算、UE5.8 对照；含本机模拟 | L4 |
+| [02-Timer时间轮与延迟任务](../../知识/07-网络与游戏服务端/运行调度与过载保护/02-Timer时间轮与延迟任务.md) | Tick/monotonic/business time、时间轮/堆选型、取消/重试、owner queue、过载与恢复 | L2 |
+| [03-Entity生命周期与组件模型](../../知识/07-网络与游戏服务端/世界权威与故障恢复/03-Entity生命周期与组件模型.md) | Entity ID/世代、Spawn/Despawn、组件模型、实体池、Ghost/Mirror、悬垂防护 | L3 |
+| [04-Scene-Map-Zone与实例管理](../../知识/07-网络与游戏服务端/世界权威与故障恢复/04-Scene-Map-Zone与实例管理.md) | Map/Scene/Zone 三层、玩家归属、实例分配、Zone 迁移、动态加载、线程/进程分布 | L2（示例为伪代码，运行证据待补） |
+| [05-AOI与InterestManagement](../../知识/07-网络与游戏服务端/状态复制与兴趣管理/05-AOI与InterestManagement.md) | Move→Cell Change→Interest Diff→Enter/Leave→限流→批量；含本机模拟器（100/1K/10K 实体） | L4 |
+| [06-SpatialQuery与兴趣点查询](../../知识/07-网络与游戏服务端/状态复制与兴趣管理/06-SpatialQuery与兴趣点查询.md) | Spatial Query、POI、候选集与精确命中；接口、Tick 边界和待验证容量预算 | L2 |
+| [07-EntityOwnership与Authority](../../知识/07-网络与游戏服务端/世界权威与故障恢复/07-EntityOwnership与Authority.md) | 单写者、generation、owner/fence、客户端预测、迁移封存、故障接管与审计 | L2 |
+| [08-跨Zone与跨服迁移](../../知识/07-网络与游戏服务端/世界权威与故障恢复/08-跨Zone与跨服迁移.md) | 冻结快照、delta、路由 epoch、重连、Timer/AOI 衔接、回滚与故障注入 | L2 |
+| [09-动态分线与负载均衡](../../知识/07-网络与游戏服务端/世界权威与故障恢复/09-动态分线与负载均衡.md) | 分线容量模型、粘性路由、扩缩容/合并/回收状态机与验证矩阵 | L2 |
+| [10-大规模战斗与降级](../../知识/07-网络与游戏服务端/世界权威与故障恢复/10-大规模战斗与降级.md) | 战斗负载建模、预算分层、确定性结算与渐进降级策略 | L2 |
+| [11-AI与寻路时间预算](../../知识/07-网络与游戏服务端/运行调度与过载保护/11-AI与寻路时间预算.md) | 三层预算、容量单位与P99边界、队列准入/deadline/过期结果；历史A*/Tick证据范围单列 | L4 |
+| [12-世界时间确定性与GameClock](../../知识/07-网络与游戏服务端/运行调度与过载保护/12-世界时间确定性与GameClock.md) | 五类时间边界、GameClock 单一权威、暂停/减速、跨服对齐、worldLag 监控 | L2 |
+| [13-世界Snapshot与故障恢复](../../知识/07-网络与游戏服务端/世界权威与故障恢复/13-世界Snapshot与故障恢复.md) | 快照+增量事件、崩溃恢复状态机、客户端 Reconcile、事件日志幂等 | L3 |
+| [14-运行时背压与过载保护](../../知识/07-网络与游戏服务端/运行调度与过载保护/14-运行时背压与过载保护.md) | 背压传导、降级优先级、四类过载阈值、滞回恢复；复用 Tick/AOI 实验证据 | L4 |
 
 ## 验收门禁
 
@@ -93,4 +93,4 @@ Player 进入 Scene → 加入 AOI Cell → 计算 Interest Set → EnterView/Le
 
 ## AI 查询的预算验收入口
 
-[11 AI与寻路时间预算](11-AI与寻路时间预算.md)区分微秒配额、算法工作单元、业务deadline与队列/内存上限；新增C++11模型只验证编排不变量。历史L4证据仅覆盖原A*/Tick实验，不等于新调度协议或Detour集成已验证。先核对容量单位，再测有效提交吞吐、排队时延及失效原因；算法主责继续放在[NavMesh工程](../../知识/02-数学与游戏算法/路径搜索与导航/03-NavMesh工程Recast与Detour.md)。
+[11 AI与寻路时间预算](../../知识/07-网络与游戏服务端/运行调度与过载保护/11-AI与寻路时间预算.md)区分微秒配额、算法工作单元、业务deadline与队列/内存上限；新增C++11模型只验证编排不变量。历史L4证据仅覆盖原A*/Tick实验，不等于新调度协议或Detour集成已验证。先核对容量单位，再测有效提交吞吐、排队时延及失效原因；算法主责继续放在[NavMesh工程](../../知识/02-数学与游戏算法/路径搜索与导航/03-NavMesh工程Recast与Detour.md)。

@@ -29,12 +29,12 @@ updated: 2026-08-20
 
 | 专题文件（Canonical 路径） | 知识类型 | 成熟度 | 核心工程关注点与落地场景 |
 | :--- | :---: | :---: | :--- |
-| [01-Chaos物理引擎概览.md](01-Chaos物理引擎概览.md) | Concept | L2 | Chaos 核心架构演进、异步物理 Tick 线程模型、刚体动力学求解器方程、连续碰撞检测（CCD）与性能开销预算 |
-| [02-碰撞检测与物理材质.md](02-碰撞检测与物理材质.md) | Concept | L2 | 碰撞通道划分、响应矩阵过滤、OnComponentHit/BeginOverlap 事件管线、物理材质摩擦力/弹性与 SceneQuery 射线探测 |
-| [03-物理约束与关节.md](03-物理约束与关节.md) | Concept | L2 | 铰链/球形/棱柱关节自由度（DOF）锁定、约束驱动器与弹簧马达参数调优、破坏断裂连接机制 |
-| [04-布娃娃与物理动画.md](04-布娃娃与物理动画.md) | Concept | L2 | Ragdoll 布娃娃激活流程、PhysicsAsset 碰撞体拓扑、物理动画组件（PhysicalAnimationComponent）受击混播、Chaos Cloth 布料 |
-| [05-Chaos破坏系统与Field.md](05-Chaos破坏系统与Field.md) | Concept | L2 | Geometry Collection 破碎分层、Fracture 几何碎块生成、Field System（径向力场/锚定力场）与断裂事件同步 |
-| [06-Chaos车辆系统.md](06-Chaos车辆系统.md) | Concept | L2 | WheeledVehiclePawn 载具体系：引擎扭矩曲线、传动比、差速器模式、车轮独立悬挂弹簧与载具网络物理同步 |
+| [01-Chaos物理引擎概览.md](../../知识/04-图形动画与物理仿真/物理求解与动力学/01-Chaos物理引擎概览.md) | Concept | L2 | Chaos 核心架构演进、异步物理 Tick 线程模型、刚体动力学求解器方程、连续碰撞检测（CCD）与性能开销预算 |
+| [02-碰撞检测与物理材质.md](../../知识/04-图形动画与物理仿真/物理求解与动力学/02-碰撞检测与物理材质.md) | Concept | L2 | 碰撞通道划分、响应矩阵过滤、OnComponentHit/BeginOverlap 事件管线、物理材质摩擦力/弹性与 SceneQuery 射线探测 |
+| [03-物理约束与关节.md](../../知识/04-图形动画与物理仿真/物理求解与动力学/03-物理约束与关节.md) | Concept | L2 | 铰链/球形/棱柱关节自由度（DOF）锁定、约束驱动器与弹簧马达参数调优、破坏断裂连接机制 |
+| [04-布娃娃与物理动画.md](../../知识/04-图形动画与物理仿真/物理求解与动力学/04-布娃娃与物理动画.md) | Concept | L2 | Ragdoll 布娃娃激活流程、PhysicsAsset 碰撞体拓扑、物理动画组件（PhysicalAnimationComponent）受击混播、Chaos Cloth 布料 |
+| [05-Chaos破坏系统与Field.md](../../知识/04-图形动画与物理仿真/物理求解与动力学/05-Chaos破坏系统与Field.md) | Concept | L2 | Geometry Collection 破碎分层、Fracture 几何碎块生成、Field System（径向力场/锚定力场）与断裂事件同步 |
+| [06-Chaos车辆系统.md](../../知识/04-图形动画与物理仿真/物理求解与动力学/06-Chaos车辆系统.md) | Concept | L2 | WheeledVehiclePawn 载具体系：引擎扭矩曲线、传动比、差速器模式、车轮独立悬挂弹簧与载具网络物理同步 |
 
 ---
 
@@ -69,8 +69,8 @@ flowchart TD
   - 向量、四元数与刚体变换：[游戏算法 02-数学与碰撞](../../游戏算法/02-数学与碰撞/README.md)
   - 碰撞检测数学理论：[游戏算法 02-数学与碰撞/04-碰撞检测](../../知识/02-数学与游戏算法/空间查询与碰撞/04-碰撞检测.md)
 - **向上驱动（引擎源码剖析）**：
-  - 物理系统底层源码：[12-15 物理系统源码](../12-引擎源码分析/15-物理系统源码.md)
-  - Chaos 破坏源码：[12-37 Chaos破坏与Field源码](../12-引擎源码分析/37-Chaos破坏与Field源码.md)
+  - 物理系统底层源码：[12-15 物理系统源码](../../知识/04-图形动画与物理仿真/物理求解与动力学/15-物理系统源码.md)
+  - Chaos 破坏源码：[12-37 Chaos破坏与Field源码](../../知识/04-图形动画与物理仿真/物理求解与动力学/37-Chaos破坏与Field源码.md)
 - **横向协同（动画与特效）**：
   - 骨骼姿态与动画图：[04-动画系统](../04-动画系统/README.md)
   - 粒子特效力场碰撞：[11-VFX与Niagara](../11-VFX与Niagara/README.md)

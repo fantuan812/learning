@@ -29,14 +29,14 @@ updated: 2026-08-20
 
 | 专题文件（Canonical 路径） | 知识类型 | 成熟度 | 核心工程关注点与落地场景 |
 | :--- | :---: | :---: | :--- |
-| [01-行为树详解.md](01-行为树详解.md) | Concept | L2 | BehaviorTree 执行模型、Composite（选择/顺序/简单并行）、Decorator 条件打断、Task 任务与 Blackboard 数据共享 |
-| [02-感知系统与EQS.md](02-感知系统与EQS.md) | Concept | L2 | AIPerceptionComponent 视觉/听觉感知配置、刺激源（Stimulus）、EQS 查询上下文、生成器/测试评分函数与最优掩体筛选 |
-| [03-NavMesh寻路.md](03-NavMesh寻路.md) | Concept | L2 | Recast/Detour 导航网格烘焙、NavMeshBoundsVolume 动态切分、NavLinkProxy 攀爬跳点、RVO 避障与寻路代价优化 |
-| [04-Mass实体框架与群集模拟.md](04-Mass实体框架与群集模拟.md) | Concept | L2 | UE5 Mass 生态：MassEntity ECS 架构、Fragments/Tags 内存布局、Processors 批处理执行、LOD 降级与海量群集模拟 |
-| [05-StateTree状态树.md](05-StateTree状态树.md) | Concept | L2 | StateTree 分层状态机架构、State/Task/Evaluator/Transition 条件状态转移、与 MassEntity 和 Actor 深度集成 |
-| [06-ZoneGraph与SmartObjects.md](06-ZoneGraph与SmartObjects.md) | Concept | L2 | ZoneGraph 走廊空间拓扑、SmartObjects 环境交互槽位声明、Claim 认领与释放机制、NPC 动作无缝衔接 |
-| [07-GameplayTasks-StateTree-GAS-AI协同.md](07-GameplayTasks-StateTree-GAS-AI协同.md) | Concept | L2 | 组合 GameplayTasks、StateTree、GAS 与 NavMesh，落地可中断、可恢复、带确认与可观测的 AI 战斗闭环 |
-| [08-AI调试与性能分析.md](08-AI调试与性能分析.md) | Concept | L2 | Visual Logger 行为录制回放、GameplayDebugger AI 七大分类、控制台调试命令体系与 AI Tick 预算治理 |
+| [01-行为树详解.md](../../知识/06-游戏AI/感知决策与行为规划/01-行为树详解.md) | Concept | L2 | BehaviorTree 执行模型、Composite（选择/顺序/简单并行）、Decorator 条件打断、Task 任务与 Blackboard 数据共享 |
+| [02-感知系统与EQS.md](../../知识/06-游戏AI/感知决策与行为规划/02-感知系统与EQS.md) | Concept | L2 | AIPerceptionComponent 视觉/听觉感知配置、刺激源（Stimulus）、EQS 查询上下文、生成器/测试评分函数与最优掩体筛选 |
+| [03-NavMesh寻路.md](../../知识/06-游戏AI/导航移动与群体协同/03-NavMesh寻路.md) | Concept | L2 | Recast/Detour 导航网格烘焙、NavMeshBoundsVolume 动态切分、NavLinkProxy 攀爬跳点、RVO 避障与寻路代价优化 |
+| [04-Mass实体框架与群集模拟.md](../../知识/06-游戏AI/导航移动与群体协同/04-Mass实体框架与群集模拟.md) | Concept | L2 | UE5 Mass 生态：MassEntity ECS 架构、Fragments/Tags 内存布局、Processors 批处理执行、LOD 降级与海量群集模拟 |
+| [05-StateTree状态树.md](../../知识/06-游戏AI/感知决策与行为规划/05-StateTree状态树.md) | Concept | L2 | StateTree 分层状态机架构、State/Task/Evaluator/Transition 条件状态转移、与 MassEntity 和 Actor 深度集成 |
+| [06-ZoneGraph与SmartObjects.md](../../知识/06-游戏AI/导航移动与群体协同/06-ZoneGraph与SmartObjects.md) | Concept | L2 | ZoneGraph 走廊空间拓扑、SmartObjects 环境交互槽位声明、Claim 认领与释放机制、NPC 动作无缝衔接 |
+| [07-GameplayTasks-StateTree-GAS-AI协同.md](../../知识/06-游戏AI/感知决策与行为规划/07-GameplayTasks-StateTree-GAS-AI协同.md) | Concept | L2 | 组合 GameplayTasks、StateTree、GAS 与 NavMesh，落地可中断、可恢复、带确认与可观测的 AI 战斗闭环 |
+| [08-AI调试与性能分析.md](../../知识/06-游戏AI/评测安全与运行预算/08-AI调试与性能分析.md) | Concept | L2 | Visual Logger 行为录制回放、GameplayDebugger AI 七大分类、控制台调试命令体系与 AI Tick 预算治理 |
 
 ---
 
@@ -76,9 +76,9 @@ flowchart TD
   - Recast/Detour 原理与确定性：[游戏算法 04-确定性与基准工程](../../游戏算法/04-确定性与基准工程/README.md)
   - 通用 AI 决策模型（FSM/BT/GOAP/Utility）：[游戏AI 01-决策与架构](../../游戏AI/01-决策与架构/README.md)
 - **向上驱动（引擎源码剖析）**：
-  - 行为树与 AI 源码：[12-12 行为树与AI源码](../12-引擎源码分析/12-行为树与AI源码.md)
-  - Mass 与 StateTree 源码：[12-21 Mass与StateTree源码](../12-引擎源码分析/21-Mass与StateTree源码.md)
-  - Lyra 机器人与队伍源码：[12-46 Lyra-AI机器人源码](../12-引擎源码分析/46-Lyra-AI机器人与队伍源码.md)
+  - 行为树与 AI 源码：[12-12 行为树与AI源码](../../知识/06-游戏AI/感知决策与行为规划/12-行为树与AI源码.md)
+  - Mass 与 StateTree 源码：[12-21 Mass与StateTree源码](../../知识/06-游戏AI/导航移动与群体协同/21-Mass与StateTree源码.md)
+  - Lyra 机器人与队伍源码：[12-46 Lyra-AI机器人源码](../../知识/06-游戏AI/战斗战术与机器人/46-Lyra-AI机器人与队伍源码.md)
 - **横向协同（玩法与实战）**：
   - 技能触发与属性修改：[03-游戏玩法编程](../03-游戏玩法编程/README.md)
-  - 假人 AI 完整链路：[系统实战 07-假人AI完整链路](../../系统实战/07-假人AI完整链路.md)
+  - 假人 AI 完整链路：[系统实战 07-假人AI完整链路](../../知识/06-游戏AI/战斗战术与机器人/07-假人AI完整链路.md)

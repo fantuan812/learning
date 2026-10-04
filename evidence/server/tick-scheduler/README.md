@@ -59,5 +59,5 @@ maturity: L0
 
 ## 关联知识文档
 
-- [01-ServerMainLoop与TickScheduler](../../../游戏服务端/06-世界模拟与运行时/01-ServerMainLoop与TickScheduler.md)
-- [11-AI与寻路时间预算](../../../游戏服务端/06-世界模拟与运行时/11-AI与寻路时间预算.md)（已落地）
+- [01-ServerMainLoop与TickScheduler](../../../知识/07-网络与游戏服务端/运行调度与过载保护/01-ServerMainLoop与TickScheduler.md)
+- [11-AI与寻路时间预算](../../../知识/07-网络与游戏服务端/运行调度与过载保护/11-AI与寻路时间预算.md)（已落地）
