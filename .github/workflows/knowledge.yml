@@ -67,6 +67,14 @@ jobs:
         run: |
           bash evidence/tests/entry-core/scripts/run_all.sh --output-dir "$env:RUNNER_TEMP/entry-isolation-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" --cxx g++-14 --ubsan --with-self-test --pwsh pwsh 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/entry-isolation-console-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT.txt"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Damage numerical and DOT contracts with runner negative controls (Linux)
+        if: ${{ !cancelled() && runner.os == 'Linux' }}
+        timeout-minutes: 8
+        run: |
+          python -B evidence/tests/damage-core/scripts/run_damage_contract.py --out "$env:RUNNER_TEMP/damage-contract-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" --cxx g++-14 --mode all --timeout 120 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/damage-contract-console-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT.txt"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -O -B evidence/tests/damage-core/scripts/test_runner_contract.py --out "$env:RUNNER_TEMP/damage-runner-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" --cxx g++-14 --pwsh pwsh 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/damage-runner-console-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT.txt"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Migration safety regression fixtures
         if: ${{ !cancelled() }}
         run: |
@@ -167,4 +175,10 @@ jobs:
             ${{ runner.temp }}/entry-isolation-${{ github.run_id }}-${{ github.run_attempt }}/*.json
             ${{ runner.temp }}/entry-isolation-${{ github.run_id }}-${{ github.run_attempt }}/*.txt
             ${{ runner.temp }}/entry-isolation-console-${{ github.run_id }}-${{ github.run_attempt }}.txt
+            ${{ runner.temp }}/damage-contract-${{ github.run_id }}-${{ github.run_attempt }}/*.json
+            ${{ runner.temp }}/damage-contract-${{ github.run_id }}-${{ github.run_attempt }}/*.txt
+            ${{ runner.temp }}/damage-runner-${{ github.run_id }}-${{ github.run_attempt }}/**/*.json
+            ${{ runner.temp }}/damage-runner-${{ github.run_id }}-${{ github.run_attempt }}/**/*.txt
+            ${{ runner.temp }}/damage-contract-console-${{ github.run_id }}-${{ github.run_attempt }}.txt
+            ${{ runner.temp }}/damage-runner-console-${{ github.run_id }}-${{ github.run_attempt }}.txt
           if-no-files-found: warn
