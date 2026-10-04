@@ -1,0 +1,3 @@
+/tmp/foundation-contracts-revised/variant_definition.cpp:2:33: error: types may not be defined in template arguments
+    2 | using V = std::variant<struct X { int n; }, int>;
+      |                                 ^

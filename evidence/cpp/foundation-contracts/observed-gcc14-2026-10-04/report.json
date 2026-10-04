@@ -1,0 +1,116 @@
+{
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "source_sha256": "8704f448f432dabb212945b3133ddd967d5eab5995bb5b499578de4c59f71011",
+  "runs": [
+    {
+      "mode": "O0",
+      "compile_command": [
+        "/usr/bin/g++-14",
+        "-std=c++23",
+        "-pthread",
+        "-Wall",
+        "-Wextra",
+        "-Wpedantic",
+        "-Werror",
+        "-O0",
+        "/workspace/scratch/234c8048d85d/learning-content-main-20261004/evidence/cpp/foundation-contracts/contracts.cpp",
+        "-o",
+        "/tmp/foundation-contracts-revised/O0.bin"
+      ],
+      "compile_exit": 0,
+      "run_exit": 0
+    },
+    {
+      "mode": "O2",
+      "compile_command": [
+        "/usr/bin/g++-14",
+        "-std=c++23",
+        "-pthread",
+        "-Wall",
+        "-Wextra",
+        "-Wpedantic",
+        "-Werror",
+        "-O2",
+        "/workspace/scratch/234c8048d85d/learning-content-main-20261004/evidence/cpp/foundation-contracts/contracts.cpp",
+        "-o",
+        "/tmp/foundation-contracts-revised/O2.bin"
+      ],
+      "compile_exit": 0,
+      "run_exit": 0
+    },
+    {
+      "mode": "UBSan",
+      "compile_command": [
+        "/usr/bin/g++-14",
+        "-std=c++23",
+        "-pthread",
+        "-Wall",
+        "-Wextra",
+        "-Wpedantic",
+        "-Werror",
+        "-O1",
+        "-g",
+        "-fsanitize=undefined",
+        "-fno-sanitize-recover=all",
+        "/workspace/scratch/234c8048d85d/learning-content-main-20261004/evidence/cpp/foundation-contracts/contracts.cpp",
+        "-o",
+        "/tmp/foundation-contracts-revised/UBSan.bin"
+      ],
+      "compile_exit": 0,
+      "run_exit": 0
+    }
+  ],
+  "compiler": "g++-14 (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+  "negative_controls": [
+    {
+      "name": "variant_definition",
+      "compile_command": [
+        "/usr/bin/g++-14",
+        "-std=c++23",
+        "-pthread",
+        "-O1",
+        "-fsanitize=undefined",
+        "-fno-sanitize-recover=all",
+        "/tmp/foundation-contracts-revised/variant_definition.cpp",
+        "-o",
+        "/tmp/foundation-contracts-revised/variant_definition.bin"
+      ],
+      "compile_exit": 1,
+      "passed": true
+    },
+    {
+      "name": "zero_capacity",
+      "compile_command": [
+        "/usr/bin/g++-14",
+        "-std=c++23",
+        "-pthread",
+        "-O1",
+        "-fsanitize=undefined",
+        "-fno-sanitize-recover=all",
+        "/tmp/foundation-contracts-revised/zero_capacity.cpp",
+        "-o",
+        "/tmp/foundation-contracts-revised/zero_capacity.bin"
+      ],
+      "compile_exit": 1,
+      "passed": true
+    },
+    {
+      "name": "old_byte_stride",
+      "compile_command": [
+        "/usr/bin/g++-14",
+        "-std=c++23",
+        "-pthread",
+        "-O1",
+        "-fsanitize=undefined",
+        "-fno-sanitize-recover=all",
+        "/tmp/foundation-contracts-revised/old_byte_stride.cpp",
+        "-o",
+        "/tmp/foundation-contracts-revised/old_byte_stride.bin"
+      ],
+      "compile_exit": 0,
+      "run_exit": 1,
+      "passed": true
+    }
+  ],
+  "passed": true
+}

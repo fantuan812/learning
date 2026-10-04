@@ -83,6 +83,7 @@ maturity: L0
 ## 可复现实验
 
 - [std::expected 的内嵌存储与异常边界实验](<../../evidence/cpp/expected-contract/README.md>)
+- [原子发布、对象池与类型化解码的最小合同](<../../evidence/cpp/foundation-contracts/README.md>)
 - [Evidence · atomic-memory-order：Atomic 与 C++ 内存模型实验](<../../evidence/labs/atomic-memory-order/README.md>)
 - [Evidence · cpp-move：Copy/Move 计数实验](<../../evidence/labs/cpp-move/README.md>)
 - [Evidence · epoll-reactor：LT/ET、部分写与背压契约](<../../evidence/labs/epoll-reactor/README.md>)

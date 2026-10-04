@@ -1,0 +1,50 @@
+PASS release-acquire payload after join
+PASS two valid atomic stores can lose a composite update
+PASS RMW exact equal-total-work count
+PASS RMW exact equal-total-work count
+PASS RMW exact equal-total-work count
+PASS RMW exact equal-total-work count
+PASS RMW exact equal-total-work count
+PASS RMW exact equal-total-work count
+PASS CAS mismatch fails
+PASS CAS failure refreshes expected
+PASS CAS matching value succeeds
+PASS CAS success stores desired
+PASS three independent live objects
+PASS distinct slots
+PASS over-aligned slots
+PASS no slot overlap
+PASS capacity exhausted
+PASS destroy live object
+PASS foreign live pointer rejected
+PASS null rejected
+PASS constructor failure preserves free slot
+PASS slot reusable after exception
+PASS capacity restored accurately
+PASS pool destroys all remaining objects once
+PASS capacity one
+PASS single slot reclaim
+PASS single slot reuse
+OBS sizeof(Large)=100 alignof=1
+PASS parse damage tag
+PASS visit damage
+PASS decode big-endian maximum heal
+PASS empty rejected
+PASS truncated rejected
+PASS trailing byte rejected
+PASS unknown tag rejected
+PASS zero amount rejected
+PASS range overflow rejected
+PASS span aliases caller storage
+PASS valid bounded subspan
+PASS expected chain success
+PASS and_then rejects range
+PASS transform skips error state
+PASS wrong variant get throws
+OBS Original size/align/offsets=24/8/0,8,16,20
+OBS Reordered size/align=16/8
+OBS base address offsets A/B=0/8
+PASS virtual dispatch through both bases
+PASS base pointer resolves complete object
+PASS array element size supports alignment
+TOTAL 45 PASS

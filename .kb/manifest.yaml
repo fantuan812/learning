@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-04 (paths, bytes, lines, and maturity mechanically recalculated).
+# Generated: 2026-10-04 (foundation contracts and evidence navigation; mechanically recalculated).
 version: 4
 
 okf:
@@ -204,8 +204,8 @@ documents:
   "evidence/README.md":
     kind: README
     maturity: L0
-    bytes: 6981
-    lines: 52
+    bytes: 7594
+    lines: 53
   "evidence/algorithms/aoi/README.md":
     kind: README
     maturity: L0
@@ -224,13 +224,18 @@ documents:
   "evidence/cpp/README.md":
     kind: README
     maturity: L0
-    bytes: 556
-    lines: 15
+    bytes: 770
+    lines: 17
   "evidence/cpp/expected-contract/README.md":
     kind: README
     maturity: L2
     bytes: 5688
     lines: 75
+  "evidence/cpp/foundation-contracts/README.md":
+    kind: README
+    maturity: L2
+    bytes: 4505
+    lines: 65
   "evidence/labs/atomic-memory-order/README.md":
     kind: README
     maturity: L0
@@ -459,8 +464,8 @@ documents:
   "知识/01-编程与计算机基础/C++语言与对象模型/01-对象布局、虚函数与内存分配.md":
     kind: doc
     maturity: L2
-    bytes: 17838
-    lines: 374
+    bytes: 15955
+    lines: 242
   "知识/01-编程与计算机基础/C++语言与对象模型/02-Copy-Move与值语义.md":
     kind: doc
     maturity: L3
@@ -474,8 +479,8 @@ documents:
   "知识/01-编程与计算机基础/C++语言与对象模型/02-异常、类型系统与标准库实现.md":
     kind: doc
     maturity: L2
-    bytes: 17917
-    lines: 323
+    bytes: 13372
+    lines: 164
   "知识/01-编程与计算机基础/C++语言与对象模型/README.md":
     kind: README
     maturity: L0
@@ -484,13 +489,13 @@ documents:
   "知识/01-编程与计算机基础/README.md":
     kind: README
     maturity: L0
-    bytes: 7288
-    lines: 100
+    bytes: 7403
+    lines: 101
   "知识/01-编程与计算机基础/并发与同步/02-Atomic与C++内存模型.md":
     kind: doc
     maturity: L4
-    bytes: 21784
-    lines: 308
+    bytes: 14258
+    lines: 204
   "知识/01-编程与计算机基础/并发与同步/02-线程同步与锁.md":
     kind: doc
     maturity: L2

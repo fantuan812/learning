@@ -1,0 +1,4 @@
+/tmp/foundation-contracts-revised/old_byte_stride.cpp:3:115: runtime error: member access within misaligned address 0x7ffe10d3a411 for type 'union Node', which requires 8 byte alignment
+0x7ffe10d3a411: note: pointer points here
+ 55 00 00  00 00 00 00 00 00 00 00  d2 4a 0e fc 2a 7f 00 00  01 00 00 00 00 00 00 00  67 6c 69 62 63
+              ^ 
