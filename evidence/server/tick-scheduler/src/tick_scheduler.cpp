@@ -1,100 +1,245 @@
-// tick_scheduler.cpp — Server Main Loop / Tick Scheduler 模拟（证据：evidence/server/tick-scheduler）
-//
-// 模拟问题：
-//  1) 固定步长主循环（accumulator 模式）在负载正常/过载时的 Tick 成本分布（P50/P95/P99）；
-//  2) 过载时 catch-up（补帧，有上限）与 drop（丢帧）两种策略的效果；
-//  3) 实体数量对单 Tick 成本的影响（100 / 1000 / 10000）。
-//
-// 这是模型实验：工作负载 = 实体数 × 单位成本（带抖动），不绑定具体引擎实现。
-//
-// 构建：cl /nologo /utf-8 /O2 /std:c++17 /EHsc tick_scheduler.cpp /Fe:tick_scheduler.exe
-
-#include <algorithm>
-#include <chrono>
-#include <cstdio>
-#include <random>
+// Original deterministic Tick-policy laboratory, 2026-10-04.
+// Old Windows/MSVC output stays untouched. These are model decisions, not CPU timings.
+#include "tick_policy.hpp"
+#include <fstream>
+#include <functional>
+#include <iostream>
+#include <locale>
+#include <string>
+#include <utility>
 #include <vector>
 
-struct Stats {
-    double p50 = 0, p95 = 0, p99 = 0;
-    long long ticks = 0, frames = 0, drops = 0, catchUps = 0;
+using tick_policy::Config;
+using tick_policy::ElapsedNs;
+using tick_policy::Policy;
+using tick_policy::Step;
+using tick_policy::Unsigned;
+constexpr Unsigned Q = tick_policy::kCreditsPerTick;
+
+void require(bool condition, const std::string& message) {
+    if (!condition) throw std::runtime_error(message);
+}
+template<class Exception, class Function>
+void expect_throw(Function function, const std::string& message) {
+    bool caught = false;
+    try { function(); } catch (const Exception&) { caught = true; }
+    require(caught, message);
+}
+void check_conservation(const Config& config, const Step& step) {
+    require(step.raw_ns >= 0 && step.accepted_ns >= 0 && step.clamped_ns >= 0, "negative time account");
+    require(step.raw_ns - step.accepted_ns == step.clamped_ns, "clamp account");
+    require(step.accepted_ns <= config.max_accepted_delta_ns, "clamp limit");
+    require(step.phase_before < Q && step.phase_after < Q, "phase bounds");
+    const auto input = tick_policy::detail::checked_add(step.phase_before,
+        tick_policy::detail::checked_multiply(static_cast<Unsigned>(step.accepted_ns), config.hz));
+    const auto output = tick_policy::detail::checked_add(
+        tick_policy::detail::checked_multiply(
+            tick_policy::detail::checked_add(step.executed, step.dropped_ticks), Q), step.phase_after);
+    require(input == output, "credit conservation");
+    require(step.due == step.executed + step.dropped_ticks, "due account");
+    require(step.executed <= config.max_ticks_per_advance, "pre-execution cap");
+    require(step.extra_ticks == (step.executed ? step.executed - 1 : 0), "extra Tick count");
+    require(step.catchup_iteration == (step.executed > 1), "catch iteration count");
+    require(step.drop_event == (step.dropped_ticks > 0), "drop event count");
+}
+struct Rng {
+    Unsigned value;
+    explicit Rng(Unsigned seed) : value(seed ? seed : 1) {}
+    Unsigned next() {
+        value ^= value >> 12;
+        value ^= value << 25;
+        value ^= value >> 27;
+        return value * UINT64_C(2685821657736338717); // Defined unsigned fixture arithmetic.
+    }
 };
 
-// 固定步长 accumulator 模拟
-// tickUs: 每 Tick 预算（微秒，模拟 60Hz → 约 16667us）
-// entities: 实体数；workPerEntityUs: 每实体每 Tick 模拟成本；jitter: 成本抖动
-// frameLoad: 帧时间负载系数（1.0 = 正好 60fps 节奏；1.3 = 过载）
-// catchUp: true 用补帧策略（最多 maxCatchUp 帧），false 用丢帧策略
-static Stats simulate(int entities, double workPerEntityUs, double jitter,
-                      double frameLoad, bool catchUp, int maxCatchUp,
-                      int frames) {
-    const double tickUs = 16666.7;                 // 60Hz tick
-    const double frameUs = 16666.7 * frameLoad;    // 每帧实际流逝
-    std::mt19937_64 rng(20260812);
-    std::uniform_real_distribution<double> jit(1.0 - jitter, 1.0 + jitter);
-
-    Stats st;
-    std::vector<double> costs;
-    costs.reserve(frames * 2);
-    double accumulator = 0.0;
-
-    for (int f = 0; f < frames; ++f) {
-        st.frames++;
-        accumulator += frameUs;
-        int executed = 0;
-        while (accumulator >= tickUs && (catchUp || executed == 0)) {
-            const double cost = entities * workPerEntityUs * jit(rng);   // 本 Tick 工作量
-            costs.push_back(cost);
-            st.ticks++;
-            accumulator -= tickUs;
-            if (++executed > maxCatchUp) {
-                // 达到补帧上限：剩余时间直接丢弃（慢帧标记）
-                accumulator = 0.0;
-                st.drops++;
-                break;
+int self_test() {
+    int passed = 0, failed = 0;
+    auto test = [&](const std::string& name, const std::function<void()>& body) {
+        try { body(); ++passed; std::cout << "PASS " << name << '\n'; }
+        catch (const std::exception& error) { ++failed; std::cout << "FAIL " << name << ": " << error.what() << '\n'; }
+    };
+    test("units_20_30_60_one_second", [] {
+        for (std::uint32_t hz : {20U, 30U, 60U}) {
+            Policy policy({hz, 1000, tick_policy::kMaximumDeltaNs});
+            const Step step = policy.advance(INT64_C(1000000000));
+            require(step.executed == hz && step.phase_after == 0 && step.dropped_ticks == 0, "one second frequency");
+        }
+    });
+    test("threshold_and_one_nanosecond", [] {
+        Policy policy({60, 1000, tick_policy::kMaximumDeltaNs});
+        const Step first = policy.advance(16666666);
+        require(first.executed == 0 && first.phase_after == 999999960, "below threshold");
+        const Step second = policy.advance(1);
+        require(second.executed == 1 && second.phase_after == 20, "cross threshold without truncation");
+    });
+    test("zero_elapsed_keeps_phase", [] {
+        Policy policy({20, 3, tick_policy::kMaximumDeltaNs});
+        policy.advance(12500000);
+        const Step step = policy.advance(0);
+        require(step.executed == 0 && step.phase_before == 250000000 && step.phase_after == 250000000, "zero input phase");
+    });
+    test("cap_checked_before_execution", [] {
+        Policy policy({60, 3, tick_policy::kMaximumDeltaNs});
+        const Step step = policy.advance(200000000);
+        require(step.due == 12 && step.executed == 3 && step.dropped_ticks == 9, "cap=3 must not execute 4");
+    });
+    test("fraction_survives_whole_tick_drop", [] {
+        Policy policy({20, 1, tick_policy::kMaximumDeltaNs});
+        const Step first = policy.advance(125000000);
+        const Step second = policy.advance(25000000);
+        require(first.executed == 1 && first.dropped_ticks == 1 && first.phase_after == 500000000, "half Tick kept after drop");
+        require(second.executed == 1 && second.dropped_ticks == 0 && second.phase_after == 0, "saved fraction contributes");
+    });
+    test("extra_ticks_and_catch_iterations_differ", [] {
+        Policy policy({60, 10, tick_policy::kMaximumDeltaNs});
+        const Step step = policy.advance(50000000);
+        require(step.executed == 3 && step.extra_ticks == 2 && step.catchup_iteration && !step.drop_event, "distinct metric denominators");
+    });
+    test("clamp_and_drop_are_separate", [] {
+        Policy policy({30, 3, 100000000});
+        const Step step = policy.advance(INT64_C(2000000000));
+        require(step.accepted_ns == 100000000 && step.clamped_ns == INT64_C(1900000000) &&
+                step.executed == 3 && step.dropped_ticks == 0, "clamp is not overload Tick drop");
+        check_conservation(policy.config(), step);
+    });
+    test("invalid_configuration_rejected", [] {
+        for (Config config : std::vector<Config>{{0, 3, 1}, {1001, 3, 1}, {60, 0, 1},
+                {60, 1001, 1}, {60, 3, 0}, {60, 3, -1}, {60, 3, INT64_C(60000000001)}})
+            expect_throw<std::invalid_argument>([&] { Policy invalid(config); }, "invalid config accepted");
+    });
+    test("negative_elapsed_rejected_without_state_change", [] {
+        Policy policy({30, 3, tick_policy::kMaximumDeltaNs});
+        policy.advance(1);
+        const auto before = policy.phase();
+        expect_throw<std::invalid_argument>([&] { policy.advance(-1); }, "backwards input accepted");
+        expect_throw<std::invalid_argument>([&] { policy.advance(std::numeric_limits<ElapsedNs>::min()); }, "signed minimum accepted");
+        require(policy.phase() == before, "failed advance changed phase");
+    });
+    test("int64_max_elapsed_clamped_safely", [] {
+        Policy policy({1000, 1000, tick_policy::kMaximumDeltaNs});
+        const Step step = policy.advance(std::numeric_limits<ElapsedNs>::max());
+        require(step.accepted_ns == INT64_C(60000000000) && step.due == 60000 &&
+                step.executed == 1000 && step.dropped_ticks == 59000 && step.phase_after == 0, "large elapsed account");
+        check_conservation(policy.config(), step);
+    });
+    test("checked_arithmetic_boundary_values", [] {
+        const auto maximum = std::numeric_limits<Unsigned>::max();
+        require(tick_policy::detail::checked_add(maximum, 0) == maximum, "max+0");
+        require(tick_policy::detail::checked_multiply(maximum, 1) == maximum, "max*1");
+        require(tick_policy::detail::checked_multiply(0, maximum) == 0, "0*max");
+        require(tick_policy::detail::checked_add(7, 9) == 16, "ordinary addition");
+    });
+    test("checked_arithmetic_rejects_before_overflow", [] {
+        const auto maximum = std::numeric_limits<Unsigned>::max();
+        expect_throw<std::overflow_error>([&] { tick_policy::detail::checked_add(maximum, 1); }, "wrapped sum accepted");
+        expect_throw<std::overflow_error>([&] { tick_policy::detail::checked_multiply(maximum, 2); }, "wrapped product accepted");
+    });
+    test("partition_without_clamp_or_drop", [] {
+        Policy whole({60, 1000, tick_policy::kMaximumDeltaNs}), parts = whole;
+        const Step one = whole.advance(INT64_C(1000000000));
+        Unsigned total = 0;
+        for (ElapsedNs delta : {333333333, 333333333, 333333334}) total += parts.advance(delta).executed;
+        require(one.executed == 60 && total == 60 && whole.phase() == parts.phase(), "partition drift");
+    });
+    test("partition_changes_cap_work_not_time_account", [] {
+        Policy whole({30, 3, tick_policy::kMaximumDeltaNs}), parts = whole;
+        const Step one = whole.advance(INT64_C(1000000000));
+        Unsigned executed = 0, dropped = 0;
+        for (int i = 0; i < 10; ++i) { const Step step = parts.advance(100000000); executed += step.executed; dropped += step.dropped_ticks; }
+        require(one.executed == 3 && one.dropped_ticks == 27 && executed == 30 && dropped == 0, "per-call cap semantics");
+        require(one.executed + one.dropped_ticks == executed + dropped && whole.phase() == parts.phase(), "partition account");
+    });
+    test("partition_can_change_clamped_input", [] {
+        Policy whole({30, 1000, 100000000}), parts = whole;
+        const Step one = whole.advance(INT64_C(1000000000));
+        Unsigned executed = 0;
+        for (int i = 0; i < 10; ++i) executed += parts.advance(100000000).executed;
+        require(one.executed == 3 && one.clamped_ns == 900000000 && executed == 30, "clamp is per call");
+    });
+    test("value_copy_is_independent_phase_snapshot", [] {
+        Policy original({60, 1000, tick_policy::kMaximumDeltaNs});
+        original.advance(1);
+        Policy copy = original;
+        copy.advance(1);
+        require(original.phase() == 60 && copy.phase() == 120, "independent value state");
+    });
+    test("deterministic_random_conservation", [] {
+        Rng random(20261004);
+        for (std::uint32_t hz : {1U, 20U, 30U, 60U, 1000U}) {
+            Policy policy({hz, 3, 500000000});
+            for (int i = 0; i < 2000; ++i) {
+                const ElapsedNs delta = static_cast<ElapsedNs>(random.next() % UINT64_C(2000000001));
+                const Step step = policy.advance(delta);
+                check_conservation(policy.config(), step);
             }
         }
-        if (!catchUp && accumulator >= tickUs) {   // 丢帧策略：不补，直接清零
-            st.drops++;
-            accumulator = 0.0;
-        }
-        if (executed > 1) st.catchUps++;
+    });
+    std::cout << "SELF_TEST passed=" << passed << " failed=" << failed
+              << " mode=" << tick_policy::kMutation << '\n';
+    return failed ? 1 : 0;
+}
+
+struct Scenario { std::string name; Config config; std::vector<ElapsedNs> input; };
+std::vector<Scenario> scenarios() {
+    std::vector<Scenario> result;
+    for (std::uint32_t hz : {20U, 30U, 60U})
+        result.push_back({"units_" + std::to_string(hz), {hz, 1000, tick_policy::kMaximumDeltaNs}, {INT64_C(1000000000)}});
+    result.push_back({"boundaries_60", {60, 1000, tick_policy::kMaximumDeltaNs}, {0, 16666666, 1, 0, 16666666, 1}});
+    result.push_back({"cap3_spike", {60, 3, tick_policy::kMaximumDeltaNs}, {200000000, 0, 16000000, 1000000}});
+    result.push_back({"fractional_drop", {20, 1, tick_policy::kMaximumDeltaNs}, {125000000, 25000000, 125000000, 25000000}});
+    result.push_back({"clamp_separate", {30, 3, 100000000}, {INT64_C(2000000000), 0, 50000000, 50000000}});
+    result.push_back({"whole_second", {60, 1000, tick_policy::kMaximumDeltaNs}, {INT64_C(1000000000)}});
+    result.push_back({"partition_second", {60, 1000, tick_policy::kMaximumDeltaNs}, {333333333, 333333333, 333333334}});
+    result.push_back({"whole_cap", {30, 3, tick_policy::kMaximumDeltaNs}, {INT64_C(1000000000)}});
+    result.push_back({"partition_cap", {30, 3, tick_policy::kMaximumDeltaNs}, std::vector<ElapsedNs>(10, 100000000)});
+    result.push_back({"whole_clamp", {30, 1000, 100000000}, {INT64_C(1000000000)}});
+    result.push_back({"partition_clamp", {30, 1000, 100000000}, std::vector<ElapsedNs>(10, 100000000)});
+    result.push_back({"max_elapsed", {1000, 1000, tick_policy::kMaximumDeltaNs}, {std::numeric_limits<ElapsedNs>::max(), 0, 1}});
+    const std::vector<Config> configurations{{30, 3, 500000000}, {60, 10, 100000000},
+                                          {20, 1, INT64_C(1000000000)}, {1000, 1000, tick_policy::kMaximumDeltaNs}};
+    for (std::size_t index = 0; index < configurations.size(); ++index) {
+        Rng random(UINT64_C(20261004) + index);
+        Scenario scenario{"random_" + std::to_string(configurations[index].hz), configurations[index], {}};
+        for (int i = 0; i < 256; ++i)
+            scenario.input.push_back(static_cast<ElapsedNs>(random.next() % UINT64_C(2000000001)));
+        result.push_back(std::move(scenario));
     }
-
-    std::sort(costs.begin(), costs.end());
-    const size_t n = costs.size();
-    st.p50 = costs[n / 2];
-    st.p95 = costs[(size_t)(n * 0.95)];
-    st.p99 = costs[(size_t)(n * 0.99)];
-    return st;
+    return result;
 }
-
-static void print_row(const char* label, int entities, double work, double jitter,
-                      double load, bool catchUp, int maxCatchUp, int frames) {
-    Stats s = simulate(entities, work, jitter, load, catchUp, maxCatchUp, frames);
-    printf("%-34s | %6lld | %8.1f | %8.1f | %8.1f | %6lld | %6lld | %6lld\n",
-           label, s.ticks, s.p50, s.p95, s.p99, s.drops, s.catchUps, s.frames);
-}
-
-int main() {
-    printf("== Server Main Loop / Tick Scheduler 模拟（60Hz，%d 帧）==\n", 6000);
-    printf("说明：Tick 成本 = 实体数 × 单位成本(带抖动) 的模型量；单位 us。\n\n");
-    printf("%-34s | %6s | %8s | %8s | %8s | %6s | %6s | %6s\n",
-           "场景", "ticks", "P50", "P95", "P99", "drops", "catch", "frames");
-    printf("------------------------------------------------------------------------------------------------\n");
-
-    // 1) 实体规模：单位成本 0.5us，负载 1.0，catch-up 上限 3
-    print_row("100 entities x0.5us load=1.0", 100, 0.5, 0.3, 1.0, true, 3, 6000);
-    print_row("1000 entities x0.5us load=1.0", 1000, 0.5, 0.3, 1.0, true, 3, 6000);
-    print_row("10000 entities x0.5us load=1.0", 10000, 0.5, 0.3, 1.0, true, 3, 6000);
-
-    // 2) 过载：10000 实体在 1.0 负载下已接近预算（5000us），1.3 负载导致积压
-    print_row("10000 x0.5us load=1.3 catch-up", 10000, 0.5, 0.3, 1.3, true, 3, 6000);
-    print_row("10000 x0.5us load=1.3 drop", 10000, 0.5, 0.3, 1.3, false, 3, 6000);
-
-    // 3) 严重过载：20000 实体（预算 10000us，接近 60% 帧预算）
-    print_row("20000 x0.5us load=1.5 catch-up", 20000, 0.5, 0.3, 1.5, true, 3, 6000);
-    print_row("20000 x0.5us load=1.5 drop", 20000, 0.5, 0.3, 1.5, false, 3, 6000);
-
+int write_scenarios(const std::string& path) {
+    require(std::string(tick_policy::kMutation) == "none", "mutation builds cannot produce evidence scenarios");
+    std::ofstream output(path, std::ios::out | std::ios::trunc);
+    require(output.good(), "cannot open scenario file");
+    output.imbue(std::locale::classic());
+    output << "scenario,step,hz,cap,max_delta_ns,raw_ns,accepted_ns,clamped_ns,phase_before,due,executed,extra_ticks,catchup_iteration,dropped_ticks,drop_event,phase_after,conservation\n";
+    std::size_t rows = 0;
+    for (const auto& scenario : scenarios()) {
+        Policy policy(scenario.config);
+        for (std::size_t index = 0; index < scenario.input.size(); ++index) {
+            const Step step = policy.advance(scenario.input[index]);
+            check_conservation(scenario.config, step);
+            output << scenario.name << ',' << index << ',' << scenario.config.hz << ','
+                << scenario.config.max_ticks_per_advance << ',' << scenario.config.max_accepted_delta_ns << ','
+                << step.raw_ns << ',' << step.accepted_ns << ',' << step.clamped_ns << ',' << step.phase_before << ','
+                << step.due << ',' << step.executed << ',' << step.extra_ticks << ',' << step.catchup_iteration << ','
+                << step.dropped_ticks << ',' << step.drop_event << ',' << step.phase_after << ",1\n";
+            ++rows;
+        }
+    }
+    output.flush();
+    require(output.good(), "scenario write failed");
+    std::cout << "SCENARIOS rows=" << rows << " groups=" << scenarios().size()
+              << " type=pure_policy_model_no_cpu_measurement\n";
     return 0;
+}
+int main(int argc, char** argv) {
+    try {
+        if (argc == 2 && std::string(argv[1]) == "--self-test") return self_test();
+        if (argc == 3 && std::string(argv[1]) == "--scenarios") return write_scenarios(argv[2]);
+        throw std::invalid_argument("use --self-test or --scenarios NEW_FILE (use the safe runner for capture)");
+    } catch (const std::exception& error) {
+        std::cerr << "ERROR: " << error.what() << '\n';
+        return 2;
+    }
 }

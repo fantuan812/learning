@@ -1,0 +1,369 @@
+{
+  "kind": "deterministic_policy_model_not_CPU_measurement",
+  "credits_per_tick": 1000000000,
+  "phase_unit": "elapsed_nanoseconds * Hz; 1e9 credits = one Tick",
+  "large_integer_storage": "CSV decimal integers; JSON nanosecond totals are decimal strings, never binary floats",
+  "partition_boundary": "Equal admitted time conserves executed+dropped and phase; per-call caps/clamps can change execution or admitted time",
+  "groups": [
+    {
+      "scenario": "units_20",
+      "hz": 20,
+      "cap": 1000,
+      "max_delta_ns": 60000000000,
+      "steps": 1,
+      "raw_ns_total_decimal": "1000000000",
+      "accepted_ns_total_decimal": "1000000000",
+      "clamped_ns_total_decimal": "0",
+      "executed_ticks": 20,
+      "extra_ticks": 19,
+      "catchup_iterations": 1,
+      "dropped_ticks": 0,
+      "drop_events": 0,
+      "final_phase_credits": 0,
+      "dropped_seconds_exact": {
+        "numerator": 0,
+        "denominator": 1
+      }
+    },
+    {
+      "scenario": "units_30",
+      "hz": 30,
+      "cap": 1000,
+      "max_delta_ns": 60000000000,
+      "steps": 1,
+      "raw_ns_total_decimal": "1000000000",
+      "accepted_ns_total_decimal": "1000000000",
+      "clamped_ns_total_decimal": "0",
+      "executed_ticks": 30,
+      "extra_ticks": 29,
+      "catchup_iterations": 1,
+      "dropped_ticks": 0,
+      "drop_events": 0,
+      "final_phase_credits": 0,
+      "dropped_seconds_exact": {
+        "numerator": 0,
+        "denominator": 1
+      }
+    },
+    {
+      "scenario": "units_60",
+      "hz": 60,
+      "cap": 1000,
+      "max_delta_ns": 60000000000,
+      "steps": 1,
+      "raw_ns_total_decimal": "1000000000",
+      "accepted_ns_total_decimal": "1000000000",
+      "clamped_ns_total_decimal": "0",
+      "executed_ticks": 60,
+      "extra_ticks": 59,
+      "catchup_iterations": 1,
+      "dropped_ticks": 0,
+      "drop_events": 0,
+      "final_phase_credits": 0,
+      "dropped_seconds_exact": {
+        "numerator": 0,
+        "denominator": 1
+      }
+    },
+    {
+      "scenario": "boundaries_60",
+      "hz": 60,
+      "cap": 1000,
+      "max_delta_ns": 60000000000,
+      "steps": 6,
+      "raw_ns_total_decimal": "33333334",
+      "accepted_ns_total_decimal": "33333334",
+      "clamped_ns_total_decimal": "0",
+      "executed_ticks": 2,
+      "extra_ticks": 0,
+      "catchup_iterations": 0,
+      "dropped_ticks": 0,
+      "drop_events": 0,
+      "final_phase_credits": 40,
+      "dropped_seconds_exact": {
+        "numerator": 0,
+        "denominator": 1
+      }
+    },
+    {
+      "scenario": "cap3_spike",
+      "hz": 60,
+      "cap": 3,
+      "max_delta_ns": 60000000000,
+      "steps": 4,
+      "raw_ns_total_decimal": "217000000",
+      "accepted_ns_total_decimal": "217000000",
+      "clamped_ns_total_decimal": "0",
+      "executed_ticks": 4,
+      "extra_ticks": 2,
+      "catchup_iterations": 1,
+      "dropped_ticks": 9,
+      "drop_events": 1,
+      "final_phase_credits": 20000000,
+      "dropped_seconds_exact": {
+        "numerator": 3,
+        "denominator": 20
+      }
+    },
+    {
+      "scenario": "fractional_drop",
+      "hz": 20,
+      "cap": 1,
+      "max_delta_ns": 60000000000,
+      "steps": 4,
+      "raw_ns_total_decimal": "300000000",
+      "accepted_ns_total_decimal": "300000000",
+      "clamped_ns_total_decimal": "0",
+      "executed_ticks": 4,
+      "extra_ticks": 0,
+      "catchup_iterations": 0,
+      "dropped_ticks": 2,
+      "drop_events": 2,
+      "final_phase_credits": 0,
+      "dropped_seconds_exact": {
+        "numerator": 1,
+        "denominator": 10
+      }
+    },
+    {
+      "scenario": "clamp_separate",
+      "hz": 30,
+      "cap": 3,
+      "max_delta_ns": 100000000,
+      "steps": 4,
+      "raw_ns_total_decimal": "2100000000",
+      "accepted_ns_total_decimal": "200000000",
+      "clamped_ns_total_decimal": "1900000000",
+      "executed_ticks": 6,
+      "extra_ticks": 3,
+      "catchup_iterations": 2,
+      "dropped_ticks": 0,
+      "drop_events": 0,
+      "final_phase_credits": 0,
+      "dropped_seconds_exact": {
+        "numerator": 0,
+        "denominator": 1
+      }
+    },
+    {
+      "scenario": "whole_second",
+      "hz": 60,
+      "cap": 1000,
+      "max_delta_ns": 60000000000,
+      "steps": 1,
+      "raw_ns_total_decimal": "1000000000",
+      "accepted_ns_total_decimal": "1000000000",
+      "clamped_ns_total_decimal": "0",
+      "executed_ticks": 60,
+      "extra_ticks": 59,
+      "catchup_iterations": 1,
+      "dropped_ticks": 0,
+      "drop_events": 0,
+      "final_phase_credits": 0,
+      "dropped_seconds_exact": {
+        "numerator": 0,
+        "denominator": 1
+      }
+    },
+    {
+      "scenario": "partition_second",
+      "hz": 60,
+      "cap": 1000,
+      "max_delta_ns": 60000000000,
+      "steps": 3,
+      "raw_ns_total_decimal": "1000000000",
+      "accepted_ns_total_decimal": "1000000000",
+      "clamped_ns_total_decimal": "0",
+      "executed_ticks": 60,
+      "extra_ticks": 57,
+      "catchup_iterations": 3,
+      "dropped_ticks": 0,
+      "drop_events": 0,
+      "final_phase_credits": 0,
+      "dropped_seconds_exact": {
+        "numerator": 0,
+        "denominator": 1
+      }
+    },
+    {
+      "scenario": "whole_cap",
+      "hz": 30,
+      "cap": 3,
+      "max_delta_ns": 60000000000,
+      "steps": 1,
+      "raw_ns_total_decimal": "1000000000",
+      "accepted_ns_total_decimal": "1000000000",
+      "clamped_ns_total_decimal": "0",
+      "executed_ticks": 3,
+      "extra_ticks": 2,
+      "catchup_iterations": 1,
+      "dropped_ticks": 27,
+      "drop_events": 1,
+      "final_phase_credits": 0,
+      "dropped_seconds_exact": {
+        "numerator": 9,
+        "denominator": 10
+      }
+    },
+    {
+      "scenario": "partition_cap",
+      "hz": 30,
+      "cap": 3,
+      "max_delta_ns": 60000000000,
+      "steps": 10,
+      "raw_ns_total_decimal": "1000000000",
+      "accepted_ns_total_decimal": "1000000000",
+      "clamped_ns_total_decimal": "0",
+      "executed_ticks": 30,
+      "extra_ticks": 20,
+      "catchup_iterations": 10,
+      "dropped_ticks": 0,
+      "drop_events": 0,
+      "final_phase_credits": 0,
+      "dropped_seconds_exact": {
+        "numerator": 0,
+        "denominator": 1
+      }
+    },
+    {
+      "scenario": "whole_clamp",
+      "hz": 30,
+      "cap": 1000,
+      "max_delta_ns": 100000000,
+      "steps": 1,
+      "raw_ns_total_decimal": "1000000000",
+      "accepted_ns_total_decimal": "100000000",
+      "clamped_ns_total_decimal": "900000000",
+      "executed_ticks": 3,
+      "extra_ticks": 2,
+      "catchup_iterations": 1,
+      "dropped_ticks": 0,
+      "drop_events": 0,
+      "final_phase_credits": 0,
+      "dropped_seconds_exact": {
+        "numerator": 0,
+        "denominator": 1
+      }
+    },
+    {
+      "scenario": "partition_clamp",
+      "hz": 30,
+      "cap": 1000,
+      "max_delta_ns": 100000000,
+      "steps": 10,
+      "raw_ns_total_decimal": "1000000000",
+      "accepted_ns_total_decimal": "1000000000",
+      "clamped_ns_total_decimal": "0",
+      "executed_ticks": 30,
+      "extra_ticks": 20,
+      "catchup_iterations": 10,
+      "dropped_ticks": 0,
+      "drop_events": 0,
+      "final_phase_credits": 0,
+      "dropped_seconds_exact": {
+        "numerator": 0,
+        "denominator": 1
+      }
+    },
+    {
+      "scenario": "max_elapsed",
+      "hz": 1000,
+      "cap": 1000,
+      "max_delta_ns": 60000000000,
+      "steps": 3,
+      "raw_ns_total_decimal": "9223372036854775808",
+      "accepted_ns_total_decimal": "60000000001",
+      "clamped_ns_total_decimal": "9223371976854775807",
+      "executed_ticks": 1000,
+      "extra_ticks": 999,
+      "catchup_iterations": 1,
+      "dropped_ticks": 59000,
+      "drop_events": 1,
+      "final_phase_credits": 1000,
+      "dropped_seconds_exact": {
+        "numerator": 59,
+        "denominator": 1
+      }
+    },
+    {
+      "scenario": "random_30",
+      "hz": 30,
+      "cap": 3,
+      "max_delta_ns": 500000000,
+      "steps": 256,
+      "raw_ns_total_decimal": "257025631589",
+      "accepted_ns_total_decimal": "112285249313",
+      "clamped_ns_total_decimal": "144740382276",
+      "executed_ticks": 758,
+      "extra_ticks": 502,
+      "catchup_iterations": 252,
+      "dropped_ticks": 2610,
+      "drop_events": 243,
+      "final_phase_credits": 557479390,
+      "dropped_seconds_exact": {
+        "numerator": 87,
+        "denominator": 1
+      }
+    },
+    {
+      "scenario": "random_60",
+      "hz": 60,
+      "cap": 10,
+      "max_delta_ns": 100000000,
+      "steps": 256,
+      "raw_ns_total_decimal": "253074488437",
+      "accepted_ns_total_decimal": "24992250578",
+      "clamped_ns_total_decimal": "228082237859",
+      "executed_ticks": 1499,
+      "extra_ticks": 1245,
+      "catchup_iterations": 251,
+      "dropped_ticks": 0,
+      "drop_events": 0,
+      "final_phase_credits": 535034680,
+      "dropped_seconds_exact": {
+        "numerator": 0,
+        "denominator": 1
+      }
+    },
+    {
+      "scenario": "random_20",
+      "hz": 20,
+      "cap": 1,
+      "max_delta_ns": 1000000000,
+      "steps": 256,
+      "raw_ns_total_decimal": "252235300722",
+      "accepted_ns_total_decimal": "188176483726",
+      "clamped_ns_total_decimal": "64058816996",
+      "executed_ticks": 254,
+      "extra_ticks": 0,
+      "catchup_iterations": 0,
+      "dropped_ticks": 3509,
+      "drop_events": 246,
+      "final_phase_credits": 529674520,
+      "dropped_seconds_exact": {
+        "numerator": 3509,
+        "denominator": 20
+      }
+    },
+    {
+      "scenario": "random_1000",
+      "hz": 1000,
+      "cap": 1000,
+      "max_delta_ns": 60000000000,
+      "steps": 256,
+      "raw_ns_total_decimal": "260310753014",
+      "accepted_ns_total_decimal": "260310753014",
+      "clamped_ns_total_decimal": "0",
+      "executed_ticks": 194970,
+      "extra_ticks": 194714,
+      "catchup_iterations": 256,
+      "dropped_ticks": 65340,
+      "drop_events": 125,
+      "final_phase_credits": 753014000,
+      "dropped_seconds_exact": {
+        "numerator": 3267,
+        "denominator": 50
+      }
+    }
+  ]
+}

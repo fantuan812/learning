@@ -1,0 +1,14 @@
+{
+  "fixed_fixture_order_and_inputs": "PASS",
+  "fraction_reference_every_field": "PASS",
+  "every_step_credit_and_clamp_conservation": "PASS",
+  "rows": 1074,
+  "groups": 18,
+  "cpu_performance_claim": false,
+  "functional": "17 named groups, including 10000 deterministic conservation steps",
+  "cap_mutation": "exactly 5 named failures, exit 1",
+  "fraction_mutation": "exactly 2 named failures, exit 1",
+  "mutation_capture_rejected": "both builds exit 2 before output creation",
+  "article_example": "extracted, compiled, executed with expected output",
+  "runner_contract_tests": "PASS"
+}

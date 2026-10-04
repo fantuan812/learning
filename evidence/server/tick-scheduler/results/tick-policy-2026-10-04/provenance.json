@@ -1,0 +1,61 @@
+{
+  "state": "PASS_POLICY_CONTRACTS_NO_CPU_MEASUREMENT",
+  "kind": "pure_policy_model",
+  "started_utc": "2026-10-04T13:05:43.900970+00:00",
+  "system": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "compiler": "/usr/bin/g++",
+  "language_standard": "C++17",
+  "source_hashes_before": {
+    "evidence/server/tick-scheduler/src/tick_scheduler.cpp": "a6a922cfe1aee0abb09a7a79c277a6961889b3d0de82db973764d61bc4a28890",
+    "evidence/server/tick-scheduler/src/tick_policy.hpp": "e37ae7cf42943e28f4048488d67479393c888ecf888605ee7cec37d68760a143",
+    "evidence/server/tick-scheduler/scripts/run_policy.py": "6a2af27cd8430075bf79d7b89ce32ee1dee45d833505c0964360b4afbbd9aba2",
+    "evidence/server/tick-scheduler/scripts/test_policy.py": "f8ae920564b14192292f4efb6d3bf4a465689e253fec748ba698695767957b06",
+    "知识/07-网络与游戏服务端/运行调度与过载保护/01-ServerMainLoop与TickScheduler.md": "c3fdcb84ed46516ac533df6a32c00b94e35693621f4b55d2fe2ccf3d1cff3faa",
+    "evidence/server/tick-scheduler/results/tick_scheduler_win_x64_msvc.txt": "7a8a5e6022f06840b4cf445889a0788a5e944849fbdfaeab2fc57a208b887051"
+  },
+  "article_example_sha256": "49a4b936ddb9eef98866e1f58a4a619f82281de4c09b1947fbe5aa3064c1dba1",
+  "timeout_seconds": 120.0,
+  "fixture_seed": 20261004,
+  "contract": {
+    "elapsed_type": "int64_t nonnegative nanoseconds",
+    "phase_type": "uint64_t ns*Hz credits",
+    "Hz_range": [
+      1,
+      1000
+    ],
+    "cap_range": [
+      1,
+      1000
+    ],
+    "maximum_delta_ns_range": [
+      1,
+      60000000000
+    ],
+    "overflow": "checks before unsigned multiply/add",
+    "cap_zero": "invalid configuration",
+    "drop": "discard whole debt only; retain fractional Tick phase",
+    "mutation_capture": "forbidden"
+  },
+  "not_verified": [
+    "real CPU work/service-cost feedback",
+    "wall clock wake precision",
+    "production Tick capacity",
+    "UE integration",
+    "threaded Stop/callback execution",
+    "network or memory overload effects",
+    "MSVC"
+  ],
+  "binary_sha256": "a70a89ef5ebfaee74c2e7e46e495ab890d7ed6f7d80ea7df1e5c2ed429ce2129",
+  "source_hashes_after": {
+    "evidence/server/tick-scheduler/src/tick_scheduler.cpp": "a6a922cfe1aee0abb09a7a79c277a6961889b3d0de82db973764d61bc4a28890",
+    "evidence/server/tick-scheduler/src/tick_policy.hpp": "e37ae7cf42943e28f4048488d67479393c888ecf888605ee7cec37d68760a143",
+    "evidence/server/tick-scheduler/scripts/run_policy.py": "6a2af27cd8430075bf79d7b89ce32ee1dee45d833505c0964360b4afbbd9aba2",
+    "evidence/server/tick-scheduler/scripts/test_policy.py": "f8ae920564b14192292f4efb6d3bf4a465689e253fec748ba698695767957b06",
+    "知识/07-网络与游戏服务端/运行调度与过载保护/01-ServerMainLoop与TickScheduler.md": "c3fdcb84ed46516ac533df6a32c00b94e35693621f4b55d2fe2ccf3d1cff3faa",
+    "evidence/server/tick-scheduler/results/tick_scheduler_win_x64_msvc.txt": "7a8a5e6022f06840b4cf445889a0788a5e944849fbdfaeab2fc57a208b887051"
+  },
+  "historical_result_unchanged": true,
+  "scenarios_sha256": "a74b5dda3817b45f70800eaa56b4bdf28b44af68502e563e37479b51164487ed",
+  "finished_utc": "2026-10-04T13:05:48.715606+00:00"
+}

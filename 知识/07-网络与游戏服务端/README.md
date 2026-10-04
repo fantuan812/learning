@@ -98,7 +98,7 @@ maturity: L0
 ## 可复现实验
 
 - [Protobuf 新旧 schema：presence、未知字段与 ProtoJSON 实验](<../../evidence/labs/protobuf-evolution/README.md>)
-- [Evidence · tick-scheduler：Server Main Loop 模拟](<../../evidence/server/tick-scheduler/README.md>)
+- [Evidence · tick-scheduler：单位、上限与相位守恒](<../../evidence/server/tick-scheduler/README.md>)
 - [进入游戏可运行证据（登录票据 / 会话状态机 / DS 租约 / JIP 追赶）](<../../evidence/tests/entry-core/README.md>)
 
 ## 主题路线
