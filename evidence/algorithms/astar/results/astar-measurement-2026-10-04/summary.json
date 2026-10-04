@@ -1,0 +1,949 @@
+{
+  "quantile_method": "nearest rank ceil(q*N), no interpolation",
+  "speed_gate": null,
+  "clock": {
+    "samples": 1000,
+    "minimum_positive_ns": 20.0,
+    "empty_pair_p50_ns": 20.0,
+    "empty_pair_p99_ns": 31.0,
+    "interpretation": "Clock-pair elapsed observations, not guaranteed resolution or a constant to subtract"
+  },
+  "groups": [
+    {
+      "scenario": "cold-fill",
+      "density_percent_threshold": 25,
+      "method": "cache-copy-consume",
+      "sample_unit": "single query incl returned path consumption",
+      "samples": 320,
+      "operations": 320,
+      "weighted_mean_ns": 114953.2875,
+      "p50_sample_ns": 61671.0,
+      "p95_sample_ns": 309877.0,
+      "p99_sample_ns": 1062476.0,
+      "zero_duration_samples": 0,
+      "samples_at_or_below_empty_clock_p50": 0,
+      "total_hits": 0,
+      "total_hit_rate": 0.0,
+      "scheduled_repeat_requests": 0,
+      "scheduled_repeat_hit_rate": null,
+      "mean_path_nodes": 51.140625,
+      "mean_expanded": 735.3125,
+      "found": 305,
+      "unreachable": 15,
+      "invalid": 0,
+      "total_pops": 286230,
+      "total_stale_pops": 50625,
+      "rounds": [
+        {
+          "repeat": 0,
+          "total_ns": 7586110.0,
+          "operations": 64
+        },
+        {
+          "repeat": 1,
+          "total_ns": 7612032.0,
+          "operations": 64
+        },
+        {
+          "repeat": 2,
+          "total_ns": 7047969.0,
+          "operations": 64
+        },
+        {
+          "repeat": 3,
+          "total_ns": 7069682.0,
+          "operations": 64
+        },
+        {
+          "repeat": 4,
+          "total_ns": 7469259.0,
+          "operations": 64
+        }
+      ]
+    },
+    {
+      "scenario": "cold-fill",
+      "density_percent_threshold": 25,
+      "method": "uncached-copy-consume",
+      "sample_unit": "single query incl returned path consumption",
+      "samples": 320,
+      "operations": 320,
+      "weighted_mean_ns": 113367.9625,
+      "p50_sample_ns": 60760.0,
+      "p95_sample_ns": 313502.0,
+      "p99_sample_ns": 1049878.0,
+      "zero_duration_samples": 0,
+      "samples_at_or_below_empty_clock_p50": 0,
+      "total_hits": null,
+      "total_hit_rate": null,
+      "scheduled_repeat_requests": null,
+      "scheduled_repeat_hit_rate": null,
+      "mean_path_nodes": 51.140625,
+      "mean_expanded": 735.3125,
+      "found": 305,
+      "unreachable": 15,
+      "invalid": 0,
+      "total_pops": 286230,
+      "total_stale_pops": 50625,
+      "rounds": [
+        {
+          "repeat": 0,
+          "total_ns": 6914494.0,
+          "operations": 64
+        },
+        {
+          "repeat": 1,
+          "total_ns": 7383444.0,
+          "operations": 64
+        },
+        {
+          "repeat": 2,
+          "total_ns": 6969674.0,
+          "operations": 64
+        },
+        {
+          "repeat": 3,
+          "total_ns": 7599522.0,
+          "operations": 64
+        },
+        {
+          "repeat": 4,
+          "total_ns": 7410614.0,
+          "operations": 64
+        }
+      ]
+    },
+    {
+      "scenario": "cold-fill",
+      "density_percent_threshold": 40,
+      "method": "cache-copy-consume",
+      "sample_unit": "single query incl returned path consumption",
+      "samples": 320,
+      "operations": 320,
+      "weighted_mean_ns": 229243.696875,
+      "p50_sample_ns": 134258.0,
+      "p95_sample_ns": 637820.0,
+      "p99_sample_ns": 768553.0,
+      "zero_duration_samples": 0,
+      "samples_at_or_below_empty_clock_p50": 0,
+      "total_hits": 0,
+      "total_hit_rate": 0.0,
+      "scheduled_repeat_requests": 0,
+      "scheduled_repeat_hit_rate": null,
+      "mean_path_nodes": 73.578125,
+      "mean_expanded": 1897.0625,
+      "found": 225,
+      "unreachable": 95,
+      "invalid": 0,
+      "total_pops": 661205,
+      "total_stale_pops": 53920,
+      "rounds": [
+        {
+          "repeat": 0,
+          "total_ns": 15243533.0,
+          "operations": 64
+        },
+        {
+          "repeat": 1,
+          "total_ns": 14133416.0,
+          "operations": 64
+        },
+        {
+          "repeat": 2,
+          "total_ns": 14860166.0,
+          "operations": 64
+        },
+        {
+          "repeat": 3,
+          "total_ns": 14601659.0,
+          "operations": 64
+        },
+        {
+          "repeat": 4,
+          "total_ns": 14519209.0,
+          "operations": 64
+        }
+      ]
+    },
+    {
+      "scenario": "cold-fill",
+      "density_percent_threshold": 40,
+      "method": "uncached-copy-consume",
+      "sample_unit": "single query incl returned path consumption",
+      "samples": 320,
+      "operations": 320,
+      "weighted_mean_ns": 222926.275,
+      "p50_sample_ns": 135289.0,
+      "p95_sample_ns": 598612.0,
+      "p99_sample_ns": 746170.0,
+      "zero_duration_samples": 0,
+      "samples_at_or_below_empty_clock_p50": 0,
+      "total_hits": null,
+      "total_hit_rate": null,
+      "scheduled_repeat_requests": null,
+      "scheduled_repeat_hit_rate": null,
+      "mean_path_nodes": 73.578125,
+      "mean_expanded": 1897.0625,
+      "found": 225,
+      "unreachable": 95,
+      "invalid": 0,
+      "total_pops": 661205,
+      "total_stale_pops": 53920,
+      "rounds": [
+        {
+          "repeat": 0,
+          "total_ns": 14511873.0,
+          "operations": 64
+        },
+        {
+          "repeat": 1,
+          "total_ns": 14011936.0,
+          "operations": 64
+        },
+        {
+          "repeat": 2,
+          "total_ns": 14443860.0,
+          "operations": 64
+        },
+        {
+          "repeat": 3,
+          "total_ns": 14293809.0,
+          "operations": 64
+        },
+        {
+          "repeat": 4,
+          "total_ns": 14074930.0,
+          "operations": 64
+        }
+      ]
+    },
+    {
+      "scenario": "lookup-only",
+      "density_percent_threshold": 25,
+      "method": "borrowed-metadata",
+      "sample_unit": "batch mean ns/operation, NOT individual-request latency",
+      "samples": 160,
+      "operations": 40960,
+      "weighted_mean_ns": 32.5145263671875,
+      "p50_sample_ns": 30.7890625,
+      "p95_sample_ns": 33.52734375,
+      "p99_sample_ns": 142.203125,
+      "zero_duration_samples": 0,
+      "samples_at_or_below_empty_clock_p50": 0,
+      "total_hits": null,
+      "total_hit_rate": null,
+      "scheduled_repeat_requests": null,
+      "scheduled_repeat_hit_rate": null,
+      "mean_path_nodes": 0.0,
+      "mean_expanded": 0.0,
+      "found": 0,
+      "unreachable": 0,
+      "invalid": 0,
+      "total_pops": 0,
+      "total_stale_pops": 0,
+      "rounds": [
+        {
+          "repeat": 0,
+          "total_ns": 254551.0,
+          "operations": 8192
+        },
+        {
+          "repeat": 1,
+          "total_ns": 261701.0,
+          "operations": 8192
+        },
+        {
+          "repeat": 2,
+          "total_ns": 251793.0,
+          "operations": 8192
+        },
+        {
+          "repeat": 3,
+          "total_ns": 282634.0,
+          "operations": 8192
+        },
+        {
+          "repeat": 4,
+          "total_ns": 281116.0,
+          "operations": 8192
+        }
+      ]
+    },
+    {
+      "scenario": "lookup-only",
+      "density_percent_threshold": 40,
+      "method": "borrowed-metadata",
+      "sample_unit": "batch mean ns/operation, NOT individual-request latency",
+      "samples": 160,
+      "operations": 40960,
+      "weighted_mean_ns": 36.848828125,
+      "p50_sample_ns": 30.90234375,
+      "p95_sample_ns": 32.5078125,
+      "p99_sample_ns": 212.34375,
+      "zero_duration_samples": 0,
+      "samples_at_or_below_empty_clock_p50": 0,
+      "total_hits": null,
+      "total_hit_rate": null,
+      "scheduled_repeat_requests": null,
+      "scheduled_repeat_hit_rate": null,
+      "mean_path_nodes": 0.0,
+      "mean_expanded": 0.0,
+      "found": 0,
+      "unreachable": 0,
+      "invalid": 0,
+      "total_pops": 0,
+      "total_stale_pops": 0,
+      "rounds": [
+        {
+          "repeat": 0,
+          "total_ns": 303867.0,
+          "operations": 8192
+        },
+        {
+          "repeat": 1,
+          "total_ns": 255647.0,
+          "operations": 8192
+        },
+        {
+          "repeat": 2,
+          "total_ns": 246825.0,
+          "operations": 8192
+        },
+        {
+          "repeat": 3,
+          "total_ns": 414123.0,
+          "operations": 8192
+        },
+        {
+          "repeat": 4,
+          "total_ns": 288866.0,
+          "operations": 8192
+        }
+      ]
+    },
+    {
+      "scenario": "mixed-pressure",
+      "density_percent_threshold": 25,
+      "method": "cache-copy-consume",
+      "sample_unit": "batch mean ns/operation, NOT individual-request latency",
+      "samples": 160,
+      "operations": 5000,
+      "weighted_mean_ns": 51662.487,
+      "p50_sample_ns": 46920.71875,
+      "p95_sample_ns": 98758.0625,
+      "p99_sample_ns": 116724.90625,
+      "zero_duration_samples": 0,
+      "samples_at_or_below_empty_clock_p50": 0,
+      "total_hits": 2865,
+      "total_hit_rate": 0.573,
+      "scheduled_repeat_requests": 1245,
+      "scheduled_repeat_hit_rate": 1.0,
+      "mean_path_nodes": 54.877,
+      "mean_expanded": 302.18,
+      "found": 4880,
+      "unreachable": 120,
+      "invalid": 0,
+      "total_pops": 1879830,
+      "total_stale_pops": 366840,
+      "rounds": [
+        {
+          "repeat": 0,
+          "total_ns": 51151627.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 1,
+          "total_ns": 51559008.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 2,
+          "total_ns": 51674726.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 3,
+          "total_ns": 53334732.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 4,
+          "total_ns": 50592342.0,
+          "operations": 1000
+        }
+      ]
+    },
+    {
+      "scenario": "mixed-pressure",
+      "density_percent_threshold": 25,
+      "method": "uncached-copy-consume",
+      "sample_unit": "batch mean ns/operation, NOT individual-request latency",
+      "samples": 160,
+      "operations": 5000,
+      "weighted_mean_ns": 121075.4264,
+      "p50_sample_ns": 118931.5625,
+      "p95_sample_ns": 196304.375,
+      "p99_sample_ns": 215090.84375,
+      "zero_duration_samples": 0,
+      "samples_at_or_below_empty_clock_p50": 0,
+      "total_hits": null,
+      "total_hit_rate": null,
+      "scheduled_repeat_requests": null,
+      "scheduled_repeat_hit_rate": null,
+      "mean_path_nodes": 54.877,
+      "mean_expanded": 718.399,
+      "found": 4880,
+      "unreachable": 120,
+      "invalid": 0,
+      "total_pops": 4449490,
+      "total_stale_pops": 852615,
+      "rounds": [
+        {
+          "repeat": 0,
+          "total_ns": 120120576.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 1,
+          "total_ns": 122994495.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 2,
+          "total_ns": 122187521.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 3,
+          "total_ns": 121906171.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 4,
+          "total_ns": 118168369.0,
+          "operations": 1000
+        }
+      ]
+    },
+    {
+      "scenario": "mixed-pressure",
+      "density_percent_threshold": 40,
+      "method": "cache-copy-consume",
+      "sample_unit": "batch mean ns/operation, NOT individual-request latency",
+      "samples": 160,
+      "operations": 5000,
+      "weighted_mean_ns": 89045.0008,
+      "p50_sample_ns": 90488.40625,
+      "p95_sample_ns": 145686.03125,
+      "p99_sample_ns": 189354.125,
+      "zero_duration_samples": 0,
+      "samples_at_or_below_empty_clock_p50": 0,
+      "total_hits": 2820,
+      "total_hit_rate": 0.564,
+      "scheduled_repeat_requests": 1245,
+      "scheduled_repeat_hit_rate": 1.0,
+      "mean_path_nodes": 69.047,
+      "mean_expanded": 705.77,
+      "found": 3325,
+      "unreachable": 1675,
+      "invalid": 0,
+      "total_pops": 3841450,
+      "total_stale_pops": 311175,
+      "rounds": [
+        {
+          "repeat": 0,
+          "total_ns": 87660757.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 1,
+          "total_ns": 87192094.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 2,
+          "total_ns": 89365518.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 3,
+          "total_ns": 91145380.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 4,
+          "total_ns": 89861255.0,
+          "operations": 1000
+        }
+      ]
+    },
+    {
+      "scenario": "mixed-pressure",
+      "density_percent_threshold": 40,
+      "method": "uncached-copy-consume",
+      "sample_unit": "batch mean ns/operation, NOT individual-request latency",
+      "samples": 160,
+      "operations": 5000,
+      "weighted_mean_ns": 206470.1752,
+      "p50_sample_ns": 199811.09375,
+      "p95_sample_ns": 289828.8125,
+      "p99_sample_ns": 300580.59375,
+      "zero_duration_samples": 0,
+      "samples_at_or_below_empty_clock_p50": 0,
+      "total_hits": null,
+      "total_hit_rate": null,
+      "scheduled_repeat_requests": null,
+      "scheduled_repeat_hit_rate": null,
+      "mean_path_nodes": 69.047,
+      "mean_expanded": 1637.454,
+      "found": 3325,
+      "unreachable": 1675,
+      "invalid": 0,
+      "total_pops": 8908405,
+      "total_stale_pops": 717810,
+      "rounds": [
+        {
+          "repeat": 0,
+          "total_ns": 202369595.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 1,
+          "total_ns": 207631508.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 2,
+          "total_ns": 205613258.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 3,
+          "total_ns": 208491532.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 4,
+          "total_ns": 208244983.0,
+          "operations": 1000
+        }
+      ]
+    },
+    {
+      "scenario": "search",
+      "density_percent_threshold": 25,
+      "method": "heap-copy-consume",
+      "sample_unit": "single query incl returned path consumption",
+      "samples": 5000,
+      "operations": 5000,
+      "weighted_mean_ns": 118067.2348,
+      "p50_sample_ns": 74981.0,
+      "p95_sample_ns": 341303.0,
+      "p99_sample_ns": 688816.0,
+      "zero_duration_samples": 0,
+      "samples_at_or_below_empty_clock_p50": 0,
+      "total_hits": null,
+      "total_hit_rate": null,
+      "scheduled_repeat_requests": null,
+      "scheduled_repeat_hit_rate": null,
+      "mean_path_nodes": 56.497,
+      "mean_expanded": 673.165,
+      "found": 4930,
+      "unreachable": 70,
+      "invalid": 0,
+      "total_pops": 4215005,
+      "total_stale_pops": 844250,
+      "rounds": [
+        {
+          "repeat": 0,
+          "total_ns": 116287989.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 1,
+          "total_ns": 114620709.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 2,
+          "total_ns": 117587929.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 3,
+          "total_ns": 118561566.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 4,
+          "total_ns": 123277981.0,
+          "operations": 1000
+        }
+      ]
+    },
+    {
+      "scenario": "search",
+      "density_percent_threshold": 25,
+      "method": "linear-copy-consume",
+      "sample_unit": "single query incl returned path consumption",
+      "samples": 5000,
+      "operations": 5000,
+      "weighted_mean_ns": 475750.264,
+      "p50_sample_ns": 212403.0,
+      "p95_sample_ns": 1704853.0,
+      "p99_sample_ns": 3263221.0,
+      "zero_duration_samples": 0,
+      "samples_at_or_below_empty_clock_p50": 0,
+      "total_hits": null,
+      "total_hit_rate": null,
+      "scheduled_repeat_requests": null,
+      "scheduled_repeat_hit_rate": null,
+      "mean_path_nodes": 56.497,
+      "mean_expanded": 673.165,
+      "found": 4930,
+      "unreachable": 70,
+      "invalid": 0,
+      "total_pops": 4215005,
+      "total_stale_pops": 844250,
+      "rounds": [
+        {
+          "repeat": 0,
+          "total_ns": 470033467.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 1,
+          "total_ns": 465404524.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 2,
+          "total_ns": 476109116.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 3,
+          "total_ns": 475442268.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 4,
+          "total_ns": 491761945.0,
+          "operations": 1000
+        }
+      ]
+    },
+    {
+      "scenario": "search",
+      "density_percent_threshold": 40,
+      "method": "heap-copy-consume",
+      "sample_unit": "single query incl returned path consumption",
+      "samples": 5000,
+      "operations": 5000,
+      "weighted_mean_ns": 200602.9302,
+      "p50_sample_ns": 121849.0,
+      "p95_sample_ns": 611732.0,
+      "p99_sample_ns": 755073.0,
+      "zero_duration_samples": 0,
+      "samples_at_or_below_empty_clock_p50": 0,
+      "total_hits": null,
+      "total_hit_rate": null,
+      "scheduled_repeat_requests": null,
+      "scheduled_repeat_hit_rate": null,
+      "mean_path_nodes": 67.482,
+      "mean_expanded": 1532.296,
+      "found": 3345,
+      "unreachable": 1655,
+      "invalid": 0,
+      "total_pops": 8343220,
+      "total_stale_pops": 678395,
+      "rounds": [
+        {
+          "repeat": 0,
+          "total_ns": 195742553.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 1,
+          "total_ns": 197615554.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 2,
+          "total_ns": 208885464.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 3,
+          "total_ns": 201573178.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 4,
+          "total_ns": 199197902.0,
+          "operations": 1000
+        }
+      ]
+    },
+    {
+      "scenario": "search",
+      "density_percent_threshold": 40,
+      "method": "linear-copy-consume",
+      "sample_unit": "single query incl returned path consumption",
+      "samples": 5000,
+      "operations": 5000,
+      "weighted_mean_ns": 355633.5302,
+      "p50_sample_ns": 183100.0,
+      "p95_sample_ns": 1195132.0,
+      "p99_sample_ns": 1424380.0,
+      "zero_duration_samples": 0,
+      "samples_at_or_below_empty_clock_p50": 0,
+      "total_hits": null,
+      "total_hit_rate": null,
+      "scheduled_repeat_requests": null,
+      "scheduled_repeat_hit_rate": null,
+      "mean_path_nodes": 67.482,
+      "mean_expanded": 1532.296,
+      "found": 3345,
+      "unreachable": 1655,
+      "invalid": 0,
+      "total_pops": 8343220,
+      "total_stale_pops": 678395,
+      "rounds": [
+        {
+          "repeat": 0,
+          "total_ns": 350254910.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 1,
+          "total_ns": 349246681.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 2,
+          "total_ns": 370601736.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 3,
+          "total_ns": 357443579.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 4,
+          "total_ns": 350620745.0,
+          "operations": 1000
+        }
+      ]
+    },
+    {
+      "scenario": "warm-hit",
+      "density_percent_threshold": 25,
+      "method": "cache-copy-consume",
+      "sample_unit": "batch mean ns/operation, NOT individual-request latency",
+      "samples": 160,
+      "operations": 5000,
+      "weighted_mean_ns": 168.875,
+      "p50_sample_ns": 139.875,
+      "p95_sample_ns": 261.65625,
+      "p99_sample_ns": 1111.9375,
+      "zero_duration_samples": 0,
+      "samples_at_or_below_empty_clock_p50": 0,
+      "total_hits": 5000,
+      "total_hit_rate": 1.0,
+      "scheduled_repeat_requests": 5000,
+      "scheduled_repeat_hit_rate": 1.0,
+      "mean_path_nodes": 51.147,
+      "mean_expanded": 0.0,
+      "found": 4765,
+      "unreachable": 235,
+      "invalid": 0,
+      "total_pops": 0,
+      "total_stale_pops": 0,
+      "rounds": [
+        {
+          "repeat": 0,
+          "total_ns": 144385.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 1,
+          "total_ns": 161847.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 2,
+          "total_ns": 137063.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 3,
+          "total_ns": 177278.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 4,
+          "total_ns": 223802.0,
+          "operations": 1000
+        }
+      ]
+    },
+    {
+      "scenario": "warm-hit",
+      "density_percent_threshold": 25,
+      "method": "uncached-copy-consume",
+      "sample_unit": "batch mean ns/operation, NOT individual-request latency",
+      "samples": 160,
+      "operations": 5000,
+      "weighted_mean_ns": 125059.1332,
+      "p50_sample_ns": 127422.53125,
+      "p95_sample_ns": 152036.3125,
+      "p99_sample_ns": 184450.65625,
+      "zero_duration_samples": 0,
+      "samples_at_or_below_empty_clock_p50": 0,
+      "total_hits": null,
+      "total_hit_rate": null,
+      "scheduled_repeat_requests": null,
+      "scheduled_repeat_hit_rate": null,
+      "mean_path_nodes": 51.147,
+      "mean_expanded": 732.494,
+      "found": 4765,
+      "unreachable": 235,
+      "invalid": 0,
+      "total_pops": 4455640,
+      "total_stale_pops": 788405,
+      "rounds": [
+        {
+          "repeat": 0,
+          "total_ns": 123510853.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 1,
+          "total_ns": 118996059.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 2,
+          "total_ns": 126753644.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 3,
+          "total_ns": 127589096.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 4,
+          "total_ns": 128446014.0,
+          "operations": 1000
+        }
+      ]
+    },
+    {
+      "scenario": "warm-hit",
+      "density_percent_threshold": 40,
+      "method": "cache-copy-consume",
+      "sample_unit": "batch mean ns/operation, NOT individual-request latency",
+      "samples": 160,
+      "operations": 5000,
+      "weighted_mean_ns": 265.565,
+      "p50_sample_ns": 254.75,
+      "p95_sample_ns": 418.125,
+      "p99_sample_ns": 524.8125,
+      "zero_duration_samples": 0,
+      "samples_at_or_below_empty_clock_p50": 0,
+      "total_hits": 5000,
+      "total_hit_rate": 1.0,
+      "scheduled_repeat_requests": 5000,
+      "scheduled_repeat_hit_rate": 1.0,
+      "mean_path_nodes": 73.614,
+      "mean_expanded": 0.0,
+      "found": 3515,
+      "unreachable": 1485,
+      "invalid": 0,
+      "total_pops": 0,
+      "total_stale_pops": 0,
+      "rounds": [
+        {
+          "repeat": 0,
+          "total_ns": 257900.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 1,
+          "total_ns": 256920.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 2,
+          "total_ns": 242842.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 3,
+          "total_ns": 265532.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 4,
+          "total_ns": 304631.0,
+          "operations": 1000
+        }
+      ]
+    },
+    {
+      "scenario": "warm-hit",
+      "density_percent_threshold": 40,
+      "method": "uncached-copy-consume",
+      "sample_unit": "batch mean ns/operation, NOT individual-request latency",
+      "samples": 160,
+      "operations": 5000,
+      "weighted_mean_ns": 241586.8894,
+      "p50_sample_ns": 240854.125,
+      "p95_sample_ns": 266127.03125,
+      "p99_sample_ns": 282800.625,
+      "zero_duration_samples": 0,
+      "samples_at_or_below_empty_clock_p50": 0,
+      "total_hits": null,
+      "total_hit_rate": null,
+      "scheduled_repeat_requests": null,
+      "scheduled_repeat_hit_rate": null,
+      "mean_path_nodes": 73.614,
+      "mean_expanded": 1891.854,
+      "found": 3515,
+      "unreachable": 1485,
+      "invalid": 0,
+      "total_pops": 10303600,
+      "total_stale_pops": 840815,
+      "rounds": [
+        {
+          "repeat": 0,
+          "total_ns": 241892019.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 1,
+          "total_ns": 240232471.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 2,
+          "total_ns": 241825333.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 3,
+          "total_ns": 247692370.0,
+          "operations": 1000
+        },
+        {
+          "repeat": 4,
+          "total_ns": 236292254.0,
+          "operations": 1000
+        }
+      ]
+    }
+  ]
+}

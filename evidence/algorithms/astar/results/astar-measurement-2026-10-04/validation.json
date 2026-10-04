@@ -1,0 +1,12 @@
+{
+  "sample_schema_and_pairing": "PASS",
+  "input_rows": 6128,
+  "timing_rows": 22880,
+  "calibration_rows": 1000,
+  "optimality_scope": "Independent Bellman-Ford is in small-grid functional tests, not these 100x100 performance rows",
+  "latency_scope": "Search/cold-fill individual calls; warm/mixed/lookup-only batch means",
+  "functional": "13 groups; 23040 query contracts x 2 implementations; both corner policies",
+  "negative_lru_no_touch": "expected exit 1; exactly the recency test failed",
+  "runner_tests": "PASS",
+  "existing_astar_contract": "PASS"
+}
