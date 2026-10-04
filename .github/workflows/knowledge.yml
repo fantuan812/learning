@@ -75,6 +75,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -O -B evidence/tests/damage-core/scripts/test_runner_contract.py --out "$env:RUNNER_TEMP/damage-runner-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" --cxx g++-14 --pwsh pwsh 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/damage-runner-console-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT.txt"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Buff group-winner and refresh contracts with runner negative controls (Linux)
+        if: ${{ !cancelled() && runner.os == 'Linux' }}
+        timeout-minutes: 8
+        run: |
+          python -B evidence/tests/gameplay-core/scripts/run_buff_contract.py --output-dir "$env:RUNNER_TEMP/buff-contract-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" --cxx g++-14 --mode all --negative-controls --timeout-seconds 120 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/buff-contract-console-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT.txt"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -O -B evidence/tests/gameplay-core/scripts/run_buff_contract.py --output-dir "$env:RUNNER_TEMP/buff-runner-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" --self-test --timeout-seconds 120 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/buff-runner-console-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT.txt"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Inventory memory contracts and five-target runner preservation (Linux)
         if: ${{ !cancelled() && runner.os == 'Linux' }}
         timeout-minutes: 8
@@ -204,6 +212,12 @@ jobs:
             ${{ runner.temp }}/damage-runner-${{ github.run_id }}-${{ github.run_attempt }}/**/*.txt
             ${{ runner.temp }}/damage-contract-console-${{ github.run_id }}-${{ github.run_attempt }}.txt
             ${{ runner.temp }}/damage-runner-console-${{ github.run_id }}-${{ github.run_attempt }}.txt
+            ${{ runner.temp }}/buff-contract-${{ github.run_id }}-${{ github.run_attempt }}/**/*.json
+            ${{ runner.temp }}/buff-contract-${{ github.run_id }}-${{ github.run_attempt }}/**/*.txt
+            ${{ runner.temp }}/buff-runner-${{ github.run_id }}-${{ github.run_attempt }}/**/*.json
+            ${{ runner.temp }}/buff-runner-${{ github.run_id }}-${{ github.run_attempt }}/**/*.txt
+            ${{ runner.temp }}/buff-contract-console-${{ github.run_id }}-${{ github.run_attempt }}.txt
+            ${{ runner.temp }}/buff-runner-console-${{ github.run_id }}-${{ github.run_attempt }}.txt
             ${{ runner.temp }}/inventory-contract-${{ github.run_id }}-${{ github.run_attempt }}/**/*.json
             ${{ runner.temp }}/inventory-contract-${{ github.run_id }}-${{ github.run_attempt }}/**/*.txt
             ${{ runner.temp }}/inventory-runner-${{ github.run_id }}-${{ github.run_attempt }}/**/*.json

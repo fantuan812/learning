@@ -83,7 +83,7 @@ python3 -B evidence/tests/gameplay-core/scripts/run_inventory_contract.py \
 ## 输入
 
 - 历史背包基准输入：40 槽、单堆叠上限 99、单次批量上限 999；400 000 次增删操作（2/3 为移除）。当前聚焦合同不运行这段基准；其它模型输入仍按各自历史条目理解。
-- Buff：11 个 Buff 定义，覆盖 8 个互斥组、可叠层与不可叠层、法术/诅咒两种驱散类型、零时长边界。
+- 历史Buff：11个定义的12场景；当前独立合同另覆盖33场景，详见下方修订，不把旧输入与新覆盖混计。
 - 技能：3 个技能定义（瞬发攻击 / 不可打断长吟唱 / 免费自增益）；确定性重放为 4 000 次伪随机请求（xorshift64 固定种子 12345）。
 - 属性：20 000 个实体 × 16 个修正器，200 轮，每轮 10% 实体变脏。
 
@@ -116,7 +116,7 @@ python3 -B evidence/tests/gameplay-core/scripts/run_inventory_contract.py \
 ## 结论
 
 1. **历史背包断言只覆盖有限路径**：`T3` 检查容量拒绝时逐槽不变，`T4` 检查同键不再加物品，`T7` 检查超量移除。它们没有覆盖槽位修改后的去重节点/桶分配失败，也没有验证异参冲突和原结果重放；旧实现实际可在 `bad_alloc` 后重试双发。完整异常准备与无抛出发布边界见下方 2026-10-04 背包合同修订，旧 7 项全绿不能推出所有失败路径无副作用。
-2. **Buff 的九类交互可以全部用断言固定**，其中三处最容易写错：`R6`（高级结束时低级按**剩余**时长恢复，而非满时长）、`E2`（被压制者剩余时长耗尽则直接过期，不复活）、`E3`（低级不能覆盖活跃的高级）。`R7` 说明驱散必须把**被压制实例**一并清除，否则会残留幽灵状态。
+2. **历史Buff十二场景只覆盖有限交互**：R6/E2仍有剩余时长与不过期复活的价值，但未覆盖受压刷新、三层赢家和可叠child周期事件；旧全绿不能证明九类交互的组合正确。R7只验证本模型按school删除所有匹配条目（含被压制者），不是所有游戏驱散都须全删。2026-10-04修订在下方补出具体反例、组内不变量、全状态oracle和明确政策。
 3. **技能请求管线的拒绝路径必须无副作用**：`S2`/`S4` 显示冷却与蓝量拒绝都不扣蓝、不写冷却；`S7` 显示网络重传只结算一次；`S9` 显示客户端预测在服务端拒绝后能回滚到权威值——这三条共同构成"客户端预测 + 服务端权威"的最小正确性骨架。
 4. **技能管线可确定重放**：相同 4 000 次请求流两次运行得到同一状态哈希，换种子则不同，满足回放/帧同步对确定性的基本要求。
 5. **属性聚合的增量化收益显著且值得**：在本机 20 000 实体 × 16 修正器下，脏标记增量重算的 p50 是全量重算的约 **1/7.5**（p99 同样约为 1/5.3）。服务端若每 Tick 全量刷新属性，成本随实体数线性上升；改用"修正器变更即置脏 + Tick 末批量刷新"能把属性预算压回与**变更量**而非**实体总量**相关的量级。
@@ -129,6 +129,93 @@ python3 -B evidence/tests/gameplay-core/scripts/run_inventory_contract.py \
 - **存在运行间波动**：同一程序重复运行，属性基准 p50 在 1750–1760 µs 之间、加速比在 7.4–7.8x 之间波动；`results/` 中保存的是某一次的真实输出，不取多次最优值。
 - **模型简化**：背包为槽位模型（无绑定/唯一物品/耐久），Buff 为离散时长模型（无属性快照/快照重算），技能无目标筛选与命中判定，属性无依赖链与脏传播。
 - 本目录**不主张**线上容量结论；线上预算仍需在真实 DS 环境复测。
+
+## 2026-10-04 Buff 组内仲裁与刷新合同修订
+
+旧12场景覆盖单点行为，没有覆盖组合历史：低120→高121→再次120会把受压低级重新置为有效；三层可能只处理首个低级；可叠child的周期重挂会额外加层。旧原始结果仍保留，不能继续据它宣称九类交互已全面正确。
+
+新模型把存活集合和有效集合分开：每个非空组仅最高等级幸存者有效。普通Apply、已有PeriodicReapply、Tick过期与Dispel都在返回前恢复整组不变量。已有低级可刷新但继续受压，新低级遇更高者则拒绝；六种三层施加顺序会留下不同存储历史，均只让最高等级生效。受压时间继续消耗，过期条目不复活。D4“拒绝不执行跨组排除”、D5“驱散返回前恢复”是本教学模型明确选定的行为变更，不是所有游戏的唯一正确政策。
+
+一个BuffSystem隐含单目标，定义ID是身份，source可重绑定；不是按来源多实例。普通Apply可叠层并重复执行一次性有向跨组删除；已有child的PeriodicReapply只刷新时间/source、不加层、不重复排除，缺失child才走完整Apply。定义必须唯一、使用前注册且不变，maxStacks≥1、duration有限、dt有限非负且串行调用，排除配置不含自身group；这些不是已实现的配置校验。没有周期调度、来源死亡、驱散优先级/数量限制、稳定实例句柄或强异常保证。
+
+本例优先让不变量易审查，每次变更重算赢家；当前Def也是线性查找，A个存活条目、D个定义时，单次RecomputeWinners最坏为O(A²D)。这不是生产规模优化方案；索引/排序或增量维护应在保住相同历史语义与测试后另行评估，不能凭功能通过宣称预算达标。
+
+### 实际模型与测试边界
+
+Linux / GCC 14.2.0 / C++17，严格警告下O0+NDEBUG、O2和UBSan三模式各保留12场景，并执行33场景/323显式检查零失败。8个真实源码变体必须编译成功、在指定场景明确FAIL并exit1；编译失败或崩溃不算通过负控。独立预先固定的54检查在旧源码中每模式32通过/22失败，当前三模式均54通过/0失败；探针源码与全部原流在归档中。
+
+测试同时比较完整存活表、有效ID集和字面期望；投影100+有效potency×stacks仅为测试oracle，没有调用GAS或属性计算器。33场景与323检查是覆盖清单，三构建复跑不增加独立业务场景。runner要求本版完整323检查、完整case集合和一致的FAIL/退出状态；这只是报告完整性协议，不防测试程序主动伪造结果。
+
+Python -O作者runner自测89检查通过，独立normal/-O外层各89检查通过；独立真实CLI的28个正负报告场景全部符合预期。早期v1确实把checks=33的截减报告误收为通过（普通与-O两项），修订后拒绝；另一次新增fixture错把未篡改的retained输出也要求失败，selftest-02出现1项真实失败，已修正并保留原输出。空/缺/畸形/重复报告、compile/run/timeout/write故障、缺编译器、拒覆盖与中文/空格路径均有实际隔离测试。未运行Windows C++、UE/GAS、网络、GameClock/真实属性集成、来源死亡或新的CPU基准。
+
+### 聚焦复现与原始记录
+
+```bash
+python3 -B evidence/tests/gameplay-core/scripts/run_buff_contract.py \
+  --output-dir /tmp/buff-contract-NEW --cxx g++-14 --mode all --negative-controls --timeout-seconds 120
+python3 -O -B evidence/tests/gameplay-core/scripts/run_buff_contract.py \
+  --output-dir /tmp/buff-runner-NEW --self-test --timeout-seconds 120
+```
+
+两个目标须尚不存在、位于仓库外且父目录已存在。入口只读复用已审Inventory捕获助手，不执行Inventory suite或五模型基准；该helper哈希纳入每次provenance。已存在路径/别名拒绝、编译失败不运行遗留二进制、日志写失败/超时非零；超时只保证原进程组清理与有限输出快照，不保证逃逸后代全部终止或未来输出已捕尽。base64/bytes/SHA是权威原字节，展示文本不承担无损合同。
+
+本地Linux模型运行与[CI配置](../../../.github/workflows/knowledge.yml)分开：新增Linux-only步骤执行三构建与runner负控，并即时传播退出码；Windows仍执行仓库通用门禁，不意味着Windows C++或UE运行已验证。
+
+[本次摘要](results/buff_contract_20261004.txt)不是完整raw；[完整gzip JSONL](results/buff_contract_20261004.raw.jsonl.gz)保留各轮实际成功、失败与被替代诊断，历史71个raw及282份书籍/日志原件未改。归档含2,362个原技术文件（2,363条JSONL，含头记录）：作者7轮全部保留，仅run-03/selftest-03代表冻结版本；另外保留独立前后对照/报告负控与本地CI整段验证。原文件共34,701,613字节，JSONL 46,756,938字节，确定性gzip 6,342,146字节（mtime=0）。旧阶段明确标为superseded或实际失败，不倒写成通过。
+
+- gzip SHA256：`914e56f97a58e01625e6f10d65ac8357e8782f2da0e7e38c581d62f3eeced646`
+- 解压JSONL SHA256：`565d643ef3c8b47818e382d9dea74a2452fd3cf9ba19d899fc0cbdae913ba30e`
+
+下面只校验，不向磁盘解包，也不执行归档命令。逐文件data_base64为原字节，bytes/SHA单列；外层hash、重复/危险路径、错误长度/hash及压缩损坏/截断均显式拒绝，`-O`不会跳过。正常与-O共18项配方正负检查已实际运行，负例会重算外层digest以确实触发内层验证。
+
+```bash
+python3 -O - evidence/tests/gameplay-core/results/buff_contract_20261004.raw.jsonl.gz <<'PY'
+import base64, gzip, hashlib, json, sys
+from pathlib import Path, PurePosixPath
+
+GZIP_SHA256 = '914e56f97a58e01625e6f10d65ac8357e8782f2da0e7e38c581d62f3eeced646'
+JSONL_SHA256 = '565d643ef3c8b47818e382d9dea74a2452fd3cf9ba19d899fc0cbdae913ba30e'
+FILE_COUNT = 2362
+
+def require(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+def verify(path, gzip_sha256=GZIP_SHA256, jsonl_sha256=JSONL_SHA256, count=FILE_COUNT):
+    packed = Path(path).read_bytes()
+    require(hashlib.sha256(packed).hexdigest() == gzip_sha256, 'gzip SHA mismatch')
+    data = gzip.decompress(packed)
+    require(hashlib.sha256(data).hexdigest() == jsonl_sha256, 'JSONL SHA mismatch')
+    require(data.endswith(b'\n'), 'missing final JSONL newline')
+    rows = [json.loads(line) for line in data.decode('utf-8').splitlines()]
+    require(len(rows) == count + 1, 'record count mismatch')
+    require(rows[0].get('kind') == 'archive_header' and
+            rows[0].get('format') == 'learning.buff.evidence.v1' and
+            rows[0].get('author_attempts') == 7 and
+            rows[0].get('accepted_author_runs') == ['author/run-03', 'author/selftest-03'], 'bad header')
+    names = set()
+    total = 0
+    for row in rows[1:]:
+        require(row.get('kind') == 'file', 'non-file record')
+        name = row.get('path')
+        require(isinstance(name, str) and name and '\\' not in name and '\0' not in name, 'bad path')
+        q = PurePosixPath(name)
+        require(not q.is_absolute() and '..' not in q.parts and name == q.as_posix() and name != '.', 'unsafe path')
+        require(name not in names, 'duplicate record: ' + name)
+        names.add(name)
+        raw = base64.b64decode(row['data_base64'], validate=True)
+        require(type(row['bytes']) is int and row['bytes'] >= 0 and len(raw) == row['bytes'], 'length mismatch: ' + name)
+        require(hashlib.sha256(raw).hexdigest() == row['sha256'], 'file SHA mismatch: ' + name)
+        total += len(raw)
+    return {'files': len(names), 'original_file_bytes': total, 'jsonl_bytes': len(data)}
+
+if __name__ == '__main__':
+    require(len(sys.argv) == 2, 'usage: python [-O] verify.py ARCHIVE.raw.jsonl.gz')
+    print(json.dumps(verify(sys.argv[1]), sort_keys=True))
+PY
+```
+
+
 
 ## 2026-10-04 背包内存合同修订
 

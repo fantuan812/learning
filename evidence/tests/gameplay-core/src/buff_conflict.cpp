@@ -1,10 +1,15 @@
-// Gameplay core evidence: buff stacking / conflict / expiry / dispel semantics.
+// Single-target teaching model; definition ID is the identity, source is mutable.
+// Contract domain: unique definitions registered before use and never changed,
+// finite duration, maxStacks >= 1, excludesGroups never contains its own group,
+// and finite nonnegative Tick dt. Callers are
+// serialized. Invalid configuration, allocation failures, networking, engine
+// integration and periodic scheduling are outside this model's guarantees.
+// ActiveBuff addresses are not stable across mutations of the vector.
 // Build: g++ -std=c++17 -O2 -o buff_conflict.exe buff_conflict.cpp
 #include <cstdio>
 #include <string>
 #include <vector>
 #include <algorithm>
-#include <functional>
 
 namespace {
 
@@ -12,14 +17,14 @@ enum School { kSchoolNone = 0, kSchoolMagic = 1, kSchoolCurse = 2 };
 
 struct BuffDef {
     int id;
-    int group;          // same group == mutually exclusive by level
+    int group;          // at most one effective highest-level survivor
     int level;          // higher wins inside a group
     bool stackable;
     int maxStacks;
     double duration;
     int school;
-    std::vector<int> excludesGroups;  // applying this buff removes those groups (mutual exclusion)
-    int periodicChild = 0;            // re-applied on each periodic tick
+    std::vector<int> excludesGroups;  // directional one-shot deletion on accepted ordinary Apply
+    int periodicChild = 0;            // metadata only: no scheduler reads this field
 };
 
 struct ActiveBuff {
@@ -44,77 +49,70 @@ public:
         if (!d) return "unknown-buff";
         if (d->duration <= 0.0) return "expired-on-apply";
 
-        // Mutual exclusion: remove excluded groups first.
+        // Admission is decided using the whole group, before on-apply deletion.
+        // Existing IDs may refresh under a stronger survivor; NEW lower IDs may not.
+        if (!FindById(id)) {
+            for (const ActiveBuff& a : active_) {
+                const BuffDef* other = Def(a.id);
+                if (other->group == d->group && other->level > d->level)
+                    return "blocked-by-higher";
+            }
+        }
+        // This is a chosen gameplay policy, not allocation/crash atomicity.
         for (int g : d->excludesGroups) RemoveGroup(g);
 
-        ActiveBuff* same = FindById(id);
+        // Reacquire after deletion: no pointer is retained across vector mutation.
+        ActiveBuff* same = FindMutable(id);
         if (same) {
-            same->remaining = d->duration;          // refresh duration (R1 / R8)
-            same->sourceId = sourceId;              // source change keeps stacks (R8)
-            if (d->stackable) {                     // stacking caps at maxStacks (R2)
-                same->stacks = std::min(same->stacks + 1, d->maxStacks);
-            }
-            same->suppressed = false;
+            same->remaining = d->duration;
+            same->sourceId = sourceId;
+            if (d->stackable && same->stacks < d->maxStacks) ++same->stacks;
+            RecomputeWinners(); // REFRESH_ARBITRATION
             return "refreshed";
         }
 
-        // Same group, same level, different id -> replace (R3).
-        for (ActiveBuff& a : active_) {
+        bool replaced = false;
+        bool hadLower = false;
+        for (const ActiveBuff& a : active_) {
             const BuffDef* other = Def(a.id);
-            if (!other) continue;
             if (other->group != d->group) continue;
-            if (other->level == d->level) { a.id = id; a.stacks = 1; a.remaining = d->duration;
-                                            a.sourceId = sourceId; a.suppressed = false;
-                                            return "replaced"; }
-            if (other->level < d->level) {          // higher suppresses lower (R5)
-                a.suppressed = true;
-                active_.push_back(ActiveBuff{id, 1, d->duration, sourceId, false});
-                return "suppressed-lower";
-            }
-            return "blocked-by-higher";             // lower cannot override higher
+            replaced = replaced || other->level == d->level;
+            hadLower = hadLower || other->level < d->level;
         }
-
+        // Equal-rank different definition replaces that logical entry, resetting
+        // source/time/stacks. Higher admission suppresses EVERY lower survivor.
+        active_.erase(std::remove_if(active_.begin(), active_.end(),
+            [&](const ActiveBuff& a) {
+                const BuffDef* other = Def(a.id);
+                return other->group == d->group && other->level == d->level;
+            }), active_.end());
         active_.push_back(ActiveBuff{id, 1, d->duration, sourceId, false});
-        return "applied";
+        RecomputeWinners(); // INSERT_ARBITRATION
+        return replaced ? "replaced" : hadLower ? "suppressed-lower" : "applied";
     }
 
-    // Periodic re-apply of a child buff: never stacks beyond cap, only refreshes (R9).
+    // Existing child: refresh-only, no stack or repeated on-apply exclusion.
+    // Missing child: complete ordinary Apply. This does not schedule any ticks.
     std::string PeriodicReapply(int childId, int sourceId) {
         const BuffDef* d = Def(childId);
         if (!d) return "unknown-buff";
-        ActiveBuff* a = FindById(childId);
+        ActiveBuff* a = FindMutable(childId);
         if (!a) return Apply(childId, sourceId);
         a->remaining = d->duration;
         a->sourceId = sourceId;
-        if (d->stackable) a->stacks = std::min(a->stacks + 1, d->maxStacks);
+        // PERIODIC_PRESERVE_STACKS
+        RecomputeWinners();
         return "refreshed-no-extra-stack";
     }
 
-    // Advance time, expire finished buffs, then resume suppressed lower buffs (R6).
+    // All surviving timers continue, including suppressed entries. Remove expired
+    // entries before choosing each group's highest survivor; never resurrect one.
     void Tick(double dt) {
-        for (ActiveBuff& a : active_) {
-            if (a.suppressed) continue;             // suppressed timers keep running elsewhere
-            a.remaining -= dt;
-        }
-        // Suppressed buffs keep consuming their stored remaining time.
-        for (ActiveBuff& a : active_) {
-            if (a.suppressed) a.remaining -= dt;
-        }
+        for (ActiveBuff& a : active_) a.remaining -= dt; // CONTINUE_TIME
         active_.erase(std::remove_if(active_.begin(), active_.end(),
                                      [](const ActiveBuff& a) { return a.remaining <= 0.0; }),
                       active_.end());
-        // Resume a suppressed buff only if its group has no active (non-suppressed) winner.
-        for (ActiveBuff& a : active_) {
-            if (!a.suppressed) continue;
-            const BuffDef* d = Def(a.id);
-            bool winner = false;
-            for (const ActiveBuff& b : active_) {
-                if (b.suppressed) continue;
-                const BuffDef* od = Def(b.id);
-                if (od && od->group == d->group) { winner = true; break; }
-            }
-            if (!winner) a.suppressed = false;      // remaining > 0 already guaranteed by erase
-        }
+        RecomputeWinners(); // EXPIRY_ARBITRATION
     }
 
     int Dispel(int school) {
@@ -125,11 +123,12 @@ public:
                                          return d && d->school == school;
                                      }),
                       active_.end());
+        RecomputeWinners(); // DISPEL_ARBITRATION: visible before return
         return static_cast<int>(before - active_.size());
     }
 
-    ActiveBuff* FindById(int id) {
-        for (ActiveBuff& a : active_) if (a.id == id) return &a;
+    const ActiveBuff* FindById(int id) const {
+        for (const ActiveBuff& a : active_) if (a.id == id) return &a;
         return nullptr;
     }
     int Count(int id) const {
@@ -144,8 +143,28 @@ public:
         return n;
     }
     int Size() const { return static_cast<int>(active_.size()); }
+    // Read-only value snapshot: tests/observers do not seed hidden flags or rely
+    // on vector order. The model has no stable production instance handle.
+    std::vector<ActiveBuff> Snapshot() const { return active_; }
 
 private:
+    ActiveBuff* FindMutable(int id) {
+        for (ActiveBuff& a : active_) if (a.id == id) return &a;
+        return nullptr;
+    }
+    void RecomputeWinners() {
+        for (ActiveBuff& a : active_) {
+            const BuffDef* d = Def(a.id);
+            a.suppressed = false;
+            for (const ActiveBuff& b : active_) {
+                const BuffDef* other = Def(b.id);
+                if (other->group == d->group && other->level > d->level) {
+                    a.suppressed = true;
+                    break;
+                }
+            }
+        }
+    }
     void RemoveGroup(int group) {
         active_.erase(std::remove_if(active_.begin(), active_.end(),
                                      [&](const ActiveBuff& a) {
@@ -158,14 +177,13 @@ private:
     std::vector<ActiveBuff> active_;
 };
 
+#ifndef BUFF_CONTRACT_TEST
 int gPass = 0;
 int gFail = 0;
 void Check(bool ok, const char* name, const std::string& detail) {
     if (ok) { ++gPass; std::printf("PASS  %-52s %s\n", name, detail.c_str()); }
     else    { ++gFail; std::printf("FAIL  %-52s %s\n", name, detail.c_str()); }
 }
-
-std::string S(const std::string& v) { return v; }
 
 void Build(BuffSystem& bs) {
     // id, group, level, stackable, maxStacks, duration, school, excludes, child
@@ -187,7 +205,7 @@ void TestRefresh() {
     bs.Apply(100, 7);
     bs.Tick(4.0);
     bs.Apply(100, 7);
-    ActiveBuff* a = bs.FindById(100);
+    const ActiveBuff* a = bs.FindById(100);
     Check(a && a->remaining == 10.0 && a->stacks == 1,
           "R1 same buff refreshes duration, no extra stack",
           "remaining=" + std::to_string(a ? a->remaining : -1.0));
@@ -196,7 +214,7 @@ void TestRefresh() {
 void TestStacking() {
     BuffSystem bs; Build(bs);
     for (int i = 0; i < 9; ++i) bs.Apply(101, 7);
-    ActiveBuff* a = bs.FindById(101);
+    const ActiveBuff* a = bs.FindById(101);
     Check(a && a->stacks == 5 && a->remaining == 10.0,
           "R2 stacking increments then caps at maxStacks",
           "stacks=" + std::to_string(a ? a->stacks : -1));
@@ -216,8 +234,8 @@ void TestHigherSuppressesLower() {
     bs.Apply(120, 7);          // low, 12s
     bs.Tick(4.0);              // remaining 8s
     bs.Apply(121, 7);          // high, 6s
-    ActiveBuff* low = bs.FindById(120);
-    ActiveBuff* high = bs.FindById(121);
+    const ActiveBuff* low = bs.FindById(120);
+    const ActiveBuff* high = bs.FindById(121);
     Check(low && low->suppressed && high && !high->suppressed,
           "R5 higher level suppresses lower in same group",
           "lowSuppressed=" + std::to_string(low ? low->suppressed : -1) +
@@ -230,7 +248,7 @@ void TestResumeAfterExpiry() {
     bs.Tick(2.0);              // low remaining 10s
     bs.Apply(121, 7);          // high 6s
     bs.Tick(6.5);              // high expires (low remaining 3.5s)
-    ActiveBuff* low = bs.FindById(120);
+    const ActiveBuff* low = bs.FindById(120);
     Check(low && !low->suppressed && low->remaining > 0.0 && bs.Count(121) == 0,
           "R6 lower resumes when higher expires and time remains",
           "resumed=" + std::to_string(low ? !low->suppressed : -1) +
@@ -274,7 +292,7 @@ void TestSourceChange() {
     bs.Apply(100, 7);
     bs.Tick(5.0);
     bs.Apply(100, 9);          // same buff, different caster
-    ActiveBuff* a = bs.FindById(100);
+    const ActiveBuff* a = bs.FindById(100);
     Check(a && a->sourceId == 9 && a->remaining == 10.0 && a->stacks == 1,
           "R8 re-apply from new source refreshes and rebinds source",
           "source=" + std::to_string(a ? a->sourceId : -1));
@@ -306,11 +324,13 @@ void TestLowerBlockedByHigher() {
           "reason=" + r);
 }
 
+#endif // BUFF_CONTRACT_TEST
 }  // namespace
 
+#ifndef BUFF_CONTRACT_TEST
 int main() {
     std::printf("gameplay-core | buff conflict matrix test suite\n");
-    std::printf("compiler=%s c++17 O2\n", __VERSION__);
+    std::printf("compiler=%s c++17 (flags recorded by runner)\n", __VERSION__);
     std::printf("----------------------------------------------------------------------\n");
     TestRefresh();
     TestStacking();
@@ -328,3 +348,5 @@ int main() {
     std::printf("RESULT pass=%d fail=%d rules=R1-R9+E1-E3\n", gPass, gFail);
     return gFail == 0 ? 0 : 1;
 }
+
+#endif // BUFF_CONTRACT_TEST

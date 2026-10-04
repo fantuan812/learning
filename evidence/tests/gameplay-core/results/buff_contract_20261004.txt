@@ -1,0 +1,102 @@
+Buff contract evidence, 2026-10-04
+SUMMARY ONLY. This text is not the complete raw record.
+All exact original diagnostic files, including superseded and genuine failure runs, are in buff_contract_20261004.raw.jsonl.gz.
+Scope: single-target definition-ID state model, not UE/Windows/GAS/production/network/clock/attribute/performance certification.
+Chosen D4/D5 policies: rejected Apply has no cross-group deletion; Dispel restores winner before return. No self-group exclusion, invalid-input validation, allocation/crash atomicity guarantee.
+
+Final author runs: run-03 and selftest-03. Three builds each retained12 + cases33/checks323/fail0. Eight compiled real-source mutants each explicit target FAIL and exit1. Runner selftest optimized89/fail0.
+Independent54 fixed before implementation: old32pass/22fail each mode, new54pass/0fail each mode. Full probe source and explicit native-exit/hash validators in archive.
+Independent real CLI report checks: v1 26/28 matched (two reduced-check reports wrongly accepted); v2 28/28 matched normal/optimized combined. Independent selftests normal and optimized each89/fail0.
+A genuine author selftest-02 fixture failure is preserved: reduced checks only modified contract/mutant summaries, but its initial assertion also required unaffected retained summaries to fail. Corrected selftest-03 accepts retained and rejects modified summaries.
+Exact PowerShell YAML block locally executed: positive0; synthetic first-Python failure23 returned23 and skipped the second command. Local Linux pwsh evidence, not a remote CI result.
+
+Final source SHA256:
+[
+  {
+    "path": "evidence/tests/gameplay-core/src/buff_conflict.cpp",
+    "sha256": "f6079ee32406aacb327ab780c16c61e5876e07a226687eeb3bcab41216df8e0f",
+    "bytes": 14394
+  },
+  {
+    "path": "知识/05-Gameplay与交互系统/技能战斗与属性结算/04-Buff系统完整链路.md",
+    "sha256": "34a2673930721960002ec94d9dc6db16ccf0757db31331842f4da54577866379",
+    "bytes": 34080
+  },
+  {
+    "path": "evidence/tests/gameplay-core/tests/buff_contract.cpp",
+    "sha256": "efaad006f069eebc7d27e19dd952e8f6f55f184e929ff44283645452d1075780",
+    "bytes": 15296
+  },
+  {
+    "path": "evidence/tests/gameplay-core/scripts/run_buff_contract.py",
+    "sha256": "e923376a8407e6fcb4cbda0b27270e024e784614839e38da6d40d0929a8a4df7",
+    "bytes": 23916
+  },
+  {
+    "path": "evidence/tests/gameplay-core/scripts/run_inventory_contract.py",
+    "sha256": "c8e58e69911d81d862b6b010e313ed078c440ab10c6e0c328d1cc965f633f974",
+    "bytes": 36077
+  }
+]
+
+Archive metadata:
+{
+  "archive_path": "evidence/tests/gameplay-core/results/buff_contract_20261004.raw.jsonl.gz",
+  "files": 2362,
+  "jsonl_records": 2363,
+  "author_attempts": 7,
+  "compressed_bytes": 6342146,
+  "uncompressed_bytes": 46756938,
+  "source_file_bytes": 34701613,
+  "gzip_sha256": "914e56f97a58e01625e6f10d65ac8357e8782f2da0e7e38c581d62f3eeced646",
+  "jsonl_sha256": "565d643ef3c8b47818e382d9dea74a2452fd3cf9ba19d899fc0cbdae913ba30e",
+  "deterministic_mtime": 0,
+  "original_bytes_roundtrip_all": true
+}
+
+Archive members: author run-index and diagnostic files for all7 attempts, frozen code snapshots; independent synthetic probes/recorders/raw diagnostics; parent exact CI positive/negative diagnostics. No compiled executables, private reviews or communication. Deliberate failures, timeout snapshots and malformed fixtures are not success claims. Historical71raw and protected282 originals preserved byte-for-byte.
+Verification recipe, no extraction or archived-command execution:
+python3 -O - evidence/tests/gameplay-core/results/buff_contract_20261004.raw.jsonl.gz <<'PY'
+import base64, gzip, hashlib, json, sys
+from pathlib import Path, PurePosixPath
+
+GZIP_SHA256 = '914e56f97a58e01625e6f10d65ac8357e8782f2da0e7e38c581d62f3eeced646'
+JSONL_SHA256 = '565d643ef3c8b47818e382d9dea74a2452fd3cf9ba19d899fc0cbdae913ba30e'
+FILE_COUNT = 2362
+
+def require(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+def verify(path, gzip_sha256=GZIP_SHA256, jsonl_sha256=JSONL_SHA256, count=FILE_COUNT):
+    packed = Path(path).read_bytes()
+    require(hashlib.sha256(packed).hexdigest() == gzip_sha256, 'gzip SHA mismatch')
+    data = gzip.decompress(packed)
+    require(hashlib.sha256(data).hexdigest() == jsonl_sha256, 'JSONL SHA mismatch')
+    require(data.endswith(b'\n'), 'missing final JSONL newline')
+    rows = [json.loads(line) for line in data.decode('utf-8').splitlines()]
+    require(len(rows) == count + 1, 'record count mismatch')
+    require(rows[0].get('kind') == 'archive_header' and
+            rows[0].get('format') == 'learning.buff.evidence.v1' and
+            rows[0].get('author_attempts') == 7 and
+            rows[0].get('accepted_author_runs') == ['author/run-03', 'author/selftest-03'], 'bad header')
+    names = set()
+    total = 0
+    for row in rows[1:]:
+        require(row.get('kind') == 'file', 'non-file record')
+        name = row.get('path')
+        require(isinstance(name, str) and name and '\\' not in name and '\0' not in name, 'bad path')
+        q = PurePosixPath(name)
+        require(not q.is_absolute() and '..' not in q.parts and name == q.as_posix() and name != '.', 'unsafe path')
+        require(name not in names, 'duplicate record: ' + name)
+        names.add(name)
+        raw = base64.b64decode(row['data_base64'], validate=True)
+        require(type(row['bytes']) is int and row['bytes'] >= 0 and len(raw) == row['bytes'], 'length mismatch: ' + name)
+        require(hashlib.sha256(raw).hexdigest() == row['sha256'], 'file SHA mismatch: ' + name)
+        total += len(raw)
+    return {'files': len(names), 'original_file_bytes': total, 'jsonl_bytes': len(data)}
+
+if __name__ == '__main__':
+    require(len(sys.argv) == 2, 'usage: python [-O] verify.py ARCHIVE.raw.jsonl.gz')
+    print(json.dumps(verify(sys.argv[1]), sort_keys=True))
+PY
