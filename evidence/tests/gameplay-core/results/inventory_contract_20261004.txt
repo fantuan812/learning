@@ -1,0 +1,542 @@
+Inventory evidence summary, 2026-10-04
+This .txt is a human-readable SUMMARY plus selected final original streams.
+It is NOT the complete raw archive. All 18 attempts, including failed and superseded attempts, are retained losslessly in the adjacent gzip JSONL archive.
+ARCHIVE_PATH evidence/tests/gameplay-core/results/inventory_contract_20261004.raw.jsonl.gz
+GZIP_SHA256 a3284fb0007cbf0a7f08cde4525e25d0d23f65c8dca046752cde78f2401d7904
+JSONL_SHA256 59aa03c26c652165d8a7e724676b416cefc7846d165899f6569ece4d81d341a3
+JSONL_RECORDS 953 (1 header + 952 exact diagnostic files)
+ORIGINAL_FILE_BYTES 6921981
+COMPRESSED_BYTES 844613
+CURRENT_AUTHOR_SHA256 {"evidence/tests/gameplay-core/scripts/run_inventory_contract.py": "c8e58e69911d81d862b6b010e313ed078c440ab10c6e0c328d1cc965f633f974", "evidence/tests/gameplay-core/src/inventory_txn.cpp": "6e890593a050add3525d6057157ba4c3b15f8ae1df7cd502af5e68d4dffc567b", "evidence/tests/gameplay-core/tests/inventory_contract.cpp": "1b5825078d70dced4aa898309827836363bcc71cd60a47f8cfb34d107ee01e3c", "知识/05-Gameplay与交互系统/背包装备与存档/05-背包道具完整链路.md": "369509b5b42315263ffbcf5459b2b5a3330497bc591cc8e27a1cccaf8e4de2ad"}
+CAPTURE_SCOPE: final bytes use base64/length/SHA; display decoding is not authoritative. Timeout capture is incomplete, finite and non-atomic. POSIX pread does not alter the writer offset; native Windows and escaped-descendant cleanup are not certified. Older captures retain their original format, without retroactive arbitrary-byte claims.
+ATTEMPTS (exit0 alone does not establish final acceptance):
+first-focused exit=1 final_acceptance=False
+second-focused exit=0 final_acceptance=False
+third-focused exit=0 final_acceptance=False
+fourth-focused exit=0 final_acceptance=False
+fifth-focused exit=0 final_acceptance=False
+final-v2-focused exit=0 final_acceptance=False
+first-selftest exit=1 final_acceptance=False
+second-selftest exit=0 final_acceptance=False
+third-selftest exit=0 final_acceptance=False
+fourth-selftest exit=0 final_acceptance=False
+fifth-selftest exit=0 final_acceptance=False
+final-v2-selftest exit=0 final_acceptance=False
+v3-focused exit=0 final_acceptance=False
+v3-selftest exit=0 final_acceptance=False
+final-v3-focused exit=0 final_acceptance=False
+final-v3-selftest exit=0 final_acceptance=False
+final-focused exit=0 final_acceptance=True
+final-selftest exit=0 final_acceptance=True
+
+CURRENT_FOCUSED_RUN_RECORDS
+RECORD {"argv": ["/workspace/scratch/234c8048d85d/content-audit-20261004/inventory-author-output/final-focused/build/contract-o0-ndebug.exe"], "capture_complete": true, "capture_may_be_truncated": false, "capture_method": "regular-file finite snapshots; never wait for pipe EOF", "capture_origin": "child_process_bytes", "capture_scope": "launched process lifetime; escaped descendants are not guaranteed captured or terminated", "cwd": "/workspace/scratch/234c8048d85d/learning-inventory-contract-quality-20261004", "elapsed_seconds": 0.003742, "exit_code": 0, "expected_failure": false, "label": "o0-ndebug-run", "root_reaped": true, "semantic_errors": [], "semantic_valid": true, "snapshot_is_atomic_against_concurrent_writers": false, "snapshot_read_method": "pread, writer offset unchanged", "snapshot_sizes": {"stderr": 0, "stdout": 4183}, "stderr_bytes": 0, "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "stdout_bytes": 4183, "stdout_sha256": "9ab2cd512bea7fb2911e4ca3ba2dc5da438c1a62730087519bbec410da26c44c", "stream_changed_during_snapshot": false, "termination_attempted": false, "text_encoding": "utf-8/backslashreplace DISPLAY ONLY; base64 is authoritative", "timed_out": false, "timeout_seconds": 120.0}
+--- stdout original UTF-8 bytes below (4183 bytes) ---
+inventory_contract compiler=14.2.0 NDEBUG=1 allocation_limit=65536 calls_limit=128
+PASS_GROUP independent_stacking_remove_original_result_conflict
+PASS_GROUP inputs_retry_retained_memory_wide_totals
+ALLOCATION_DISCOVERY scenario=empty_small calls=3 buckets_before=1 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=64 old_slots_and_out=1
+ALLOCATION call=3 bytes=104 old_slots_and_out=1
+FAULT_CASE scenario=empty_small fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=empty_small fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=empty_small fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=empty_small fail_on=4 caught=0 final_status=1
+ALLOCATION_DISCOVERY scenario=empty_max_batch calls=7 buckets_before=1 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=32 old_slots_and_out=1
+ALLOCATION call=3 bytes=64 old_slots_and_out=1
+ALLOCATION call=4 bytes=128 old_slots_and_out=1
+ALLOCATION call=5 bytes=256 old_slots_and_out=1
+ALLOCATION call=6 bytes=64 old_slots_and_out=1
+ALLOCATION call=7 bytes=104 old_slots_and_out=1
+FAULT_CASE scenario=empty_max_batch fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=4 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=5 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=6 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=7 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=8 caught=0 final_status=1
+ALLOCATION_DISCOVERY scenario=topup_and_new_slots calls=4 buckets_before=13 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=32 old_slots_and_out=1
+ALLOCATION call=3 bytes=64 old_slots_and_out=1
+ALLOCATION call=4 bytes=64 old_slots_and_out=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=4 caught=1 final_status=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=5 caught=0 final_status=1
+ALLOCATION_DISCOVERY scenario=map_growth calls=3 buckets_before=13 buckets_after=29
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=64 old_slots_and_out=1
+ALLOCATION call=3 bytes=232 old_slots_and_out=1
+FAULT_CASE scenario=map_growth fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=map_growth fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=map_growth fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=map_growth fail_on=4 caught=0 final_status=1
+ALLOCATION_DISCOVERY scenario=capacity_rejection_plan calls=1 buckets_before=13 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+FAULT_CASE scenario=capacity_rejection_plan fail_on=1 caught=1 final_status=0
+FAULT_CASE scenario=capacity_rejection_plan fail_on=2 caught=0 final_status=0
+ALLOCATION_DISCOVERY scenario=tight_prefilled_max_batch calls=6 buckets_before=13 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=32 old_slots_and_out=1
+ALLOCATION call=3 bytes=64 old_slots_and_out=1
+ALLOCATION call=4 bytes=128 old_slots_and_out=1
+ALLOCATION call=5 bytes=256 old_slots_and_out=1
+ALLOCATION call=6 bytes=64 old_slots_and_out=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=4 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=5 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=6 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=7 caught=0 final_status=1
+PASS_GROUP no_throw_results_and_external_serialization_boundary
+RESULT checks=2381 fail=0 (explicit checks remain active with NDEBUG)
+
+--- stream end ---
+--- stderr original UTF-8 bytes below (0 bytes) ---
+
+--- stream end ---
+RECORD {"argv": ["/workspace/scratch/234c8048d85d/content-audit-20261004/inventory-author-output/final-focused/build/contract-o2.exe"], "capture_complete": true, "capture_may_be_truncated": false, "capture_method": "regular-file finite snapshots; never wait for pipe EOF", "capture_origin": "child_process_bytes", "capture_scope": "launched process lifetime; escaped descendants are not guaranteed captured or terminated", "cwd": "/workspace/scratch/234c8048d85d/learning-inventory-contract-quality-20261004", "elapsed_seconds": 0.00373, "exit_code": 0, "expected_failure": false, "label": "o2-run", "root_reaped": true, "semantic_errors": [], "semantic_valid": true, "snapshot_is_atomic_against_concurrent_writers": false, "snapshot_read_method": "pread, writer offset unchanged", "snapshot_sizes": {"stderr": 0, "stdout": 4183}, "stderr_bytes": 0, "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "stdout_bytes": 4183, "stdout_sha256": "08532ded84effaffa87d7dd45bf1357ac6ff8f94b641211d787ea05da0d04272", "stream_changed_during_snapshot": false, "termination_attempted": false, "text_encoding": "utf-8/backslashreplace DISPLAY ONLY; base64 is authoritative", "timed_out": false, "timeout_seconds": 120.0}
+--- stdout original UTF-8 bytes below (4183 bytes) ---
+inventory_contract compiler=14.2.0 NDEBUG=0 allocation_limit=65536 calls_limit=128
+PASS_GROUP independent_stacking_remove_original_result_conflict
+PASS_GROUP inputs_retry_retained_memory_wide_totals
+ALLOCATION_DISCOVERY scenario=empty_small calls=3 buckets_before=1 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=64 old_slots_and_out=1
+ALLOCATION call=3 bytes=104 old_slots_and_out=1
+FAULT_CASE scenario=empty_small fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=empty_small fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=empty_small fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=empty_small fail_on=4 caught=0 final_status=1
+ALLOCATION_DISCOVERY scenario=empty_max_batch calls=7 buckets_before=1 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=32 old_slots_and_out=1
+ALLOCATION call=3 bytes=64 old_slots_and_out=1
+ALLOCATION call=4 bytes=128 old_slots_and_out=1
+ALLOCATION call=5 bytes=256 old_slots_and_out=1
+ALLOCATION call=6 bytes=64 old_slots_and_out=1
+ALLOCATION call=7 bytes=104 old_slots_and_out=1
+FAULT_CASE scenario=empty_max_batch fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=4 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=5 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=6 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=7 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=8 caught=0 final_status=1
+ALLOCATION_DISCOVERY scenario=topup_and_new_slots calls=4 buckets_before=13 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=32 old_slots_and_out=1
+ALLOCATION call=3 bytes=64 old_slots_and_out=1
+ALLOCATION call=4 bytes=64 old_slots_and_out=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=4 caught=1 final_status=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=5 caught=0 final_status=1
+ALLOCATION_DISCOVERY scenario=map_growth calls=3 buckets_before=13 buckets_after=29
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=64 old_slots_and_out=1
+ALLOCATION call=3 bytes=232 old_slots_and_out=1
+FAULT_CASE scenario=map_growth fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=map_growth fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=map_growth fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=map_growth fail_on=4 caught=0 final_status=1
+ALLOCATION_DISCOVERY scenario=capacity_rejection_plan calls=1 buckets_before=13 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+FAULT_CASE scenario=capacity_rejection_plan fail_on=1 caught=1 final_status=0
+FAULT_CASE scenario=capacity_rejection_plan fail_on=2 caught=0 final_status=0
+ALLOCATION_DISCOVERY scenario=tight_prefilled_max_batch calls=6 buckets_before=13 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=32 old_slots_and_out=1
+ALLOCATION call=3 bytes=64 old_slots_and_out=1
+ALLOCATION call=4 bytes=128 old_slots_and_out=1
+ALLOCATION call=5 bytes=256 old_slots_and_out=1
+ALLOCATION call=6 bytes=64 old_slots_and_out=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=4 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=5 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=6 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=7 caught=0 final_status=1
+PASS_GROUP no_throw_results_and_external_serialization_boundary
+RESULT checks=2381 fail=0 (explicit checks remain active with NDEBUG)
+
+--- stream end ---
+--- stderr original UTF-8 bytes below (0 bytes) ---
+
+--- stream end ---
+RECORD {"argv": ["/workspace/scratch/234c8048d85d/content-audit-20261004/inventory-author-output/final-focused/build/contract-ubsan.exe"], "capture_complete": true, "capture_may_be_truncated": false, "capture_method": "regular-file finite snapshots; never wait for pipe EOF", "capture_origin": "child_process_bytes", "capture_scope": "launched process lifetime; escaped descendants are not guaranteed captured or terminated", "cwd": "/workspace/scratch/234c8048d85d/learning-inventory-contract-quality-20261004", "elapsed_seconds": 0.003713, "exit_code": 0, "expected_failure": false, "label": "ubsan-run", "root_reaped": true, "semantic_errors": [], "semantic_valid": true, "snapshot_is_atomic_against_concurrent_writers": false, "snapshot_read_method": "pread, writer offset unchanged", "snapshot_sizes": {"stderr": 0, "stdout": 4183}, "stderr_bytes": 0, "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "stdout_bytes": 4183, "stdout_sha256": "08532ded84effaffa87d7dd45bf1357ac6ff8f94b641211d787ea05da0d04272", "stream_changed_during_snapshot": false, "termination_attempted": false, "text_encoding": "utf-8/backslashreplace DISPLAY ONLY; base64 is authoritative", "timed_out": false, "timeout_seconds": 120.0}
+--- stdout original UTF-8 bytes below (4183 bytes) ---
+inventory_contract compiler=14.2.0 NDEBUG=0 allocation_limit=65536 calls_limit=128
+PASS_GROUP independent_stacking_remove_original_result_conflict
+PASS_GROUP inputs_retry_retained_memory_wide_totals
+ALLOCATION_DISCOVERY scenario=empty_small calls=3 buckets_before=1 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=64 old_slots_and_out=1
+ALLOCATION call=3 bytes=104 old_slots_and_out=1
+FAULT_CASE scenario=empty_small fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=empty_small fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=empty_small fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=empty_small fail_on=4 caught=0 final_status=1
+ALLOCATION_DISCOVERY scenario=empty_max_batch calls=7 buckets_before=1 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=32 old_slots_and_out=1
+ALLOCATION call=3 bytes=64 old_slots_and_out=1
+ALLOCATION call=4 bytes=128 old_slots_and_out=1
+ALLOCATION call=5 bytes=256 old_slots_and_out=1
+ALLOCATION call=6 bytes=64 old_slots_and_out=1
+ALLOCATION call=7 bytes=104 old_slots_and_out=1
+FAULT_CASE scenario=empty_max_batch fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=4 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=5 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=6 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=7 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=8 caught=0 final_status=1
+ALLOCATION_DISCOVERY scenario=topup_and_new_slots calls=4 buckets_before=13 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=32 old_slots_and_out=1
+ALLOCATION call=3 bytes=64 old_slots_and_out=1
+ALLOCATION call=4 bytes=64 old_slots_and_out=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=4 caught=1 final_status=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=5 caught=0 final_status=1
+ALLOCATION_DISCOVERY scenario=map_growth calls=3 buckets_before=13 buckets_after=29
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=64 old_slots_and_out=1
+ALLOCATION call=3 bytes=232 old_slots_and_out=1
+FAULT_CASE scenario=map_growth fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=map_growth fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=map_growth fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=map_growth fail_on=4 caught=0 final_status=1
+ALLOCATION_DISCOVERY scenario=capacity_rejection_plan calls=1 buckets_before=13 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+FAULT_CASE scenario=capacity_rejection_plan fail_on=1 caught=1 final_status=0
+FAULT_CASE scenario=capacity_rejection_plan fail_on=2 caught=0 final_status=0
+ALLOCATION_DISCOVERY scenario=tight_prefilled_max_batch calls=6 buckets_before=13 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=32 old_slots_and_out=1
+ALLOCATION call=3 bytes=64 old_slots_and_out=1
+ALLOCATION call=4 bytes=128 old_slots_and_out=1
+ALLOCATION call=5 bytes=256 old_slots_and_out=1
+ALLOCATION call=6 bytes=64 old_slots_and_out=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=4 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=5 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=6 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=7 caught=0 final_status=1
+PASS_GROUP no_throw_results_and_external_serialization_boundary
+RESULT checks=2381 fail=0 (explicit checks remain active with NDEBUG)
+
+--- stream end ---
+--- stderr original UTF-8 bytes below (0 bytes) ---
+
+--- stream end ---
+RECORD {"argv": ["/workspace/scratch/234c8048d85d/content-audit-20261004/inventory-author-output/final-focused/build/retained-seven.exe"], "capture_complete": true, "capture_may_be_truncated": false, "capture_method": "regular-file finite snapshots; never wait for pipe EOF", "capture_origin": "child_process_bytes", "capture_scope": "launched process lifetime; escaped descendants are not guaranteed captured or terminated", "cwd": "/workspace/scratch/234c8048d85d/learning-inventory-contract-quality-20261004", "elapsed_seconds": 0.003783, "exit_code": 0, "expected_failure": false, "label": "retained-seven-run", "root_reaped": true, "semantic_errors": [], "semantic_valid": true, "snapshot_is_atomic_against_concurrent_writers": false, "snapshot_read_method": "pread, writer offset unchanged", "snapshot_sizes": {"stderr": 0, "stdout": 856}, "stderr_bytes": 0, "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "stdout_bytes": 856, "stdout_sha256": "49288f67dab3325d30095220a3d253b6d6cd9849ebe8bf9883562193f74a9182", "stream_changed_during_snapshot": false, "termination_attempted": false, "text_encoding": "utf-8/backslashreplace DISPLAY ONLY; base64 is authoritative", "timed_out": false, "timeout_seconds": 120.0}
+--- stdout original UTF-8 bytes below (856 bytes) ---
+gameplay-core | inventory transaction test suite
+compiler=14.2.0 c++17 (flags recorded by runner)
+--------------------------------------------------------------------------
+PASS  T1 basic stacking splits into new slot         count=150 stacks=2 used=2
+PASS  T2 tops up existing stack before new slot      slot0=99 slot1=41 total=140
+PASS  T3 capacity exhaustion is atomic (no partial write) ok=0 unchanged=1 reason=capacity-exhausted-no-change
+PASS  T4 duplicate requestId is deduplicated         total=10 secondReason=ok
+PASS  T5 invalid item/count/batch rejected without mutation zero=0(invalid-count) neg=0 big=0 badItem=0
+PASS  T6 partial removal frees emptied slot          left=30 used=1
+PASS  T7 removal above owned amount rejected         ok=0 left=10
+--------------------------------------------------------------------------
+RESULT pass=7 fail=0
+
+--- stream end ---
+--- stderr original UTF-8 bytes below (0 bytes) ---
+
+--- stream end ---
+RECORD {"argv": ["/workspace/scratch/234c8048d85d/content-audit-20261004/inventory-author-output/final-focused/build/publish-before-record.exe"], "capture_complete": true, "capture_may_be_truncated": false, "capture_method": "regular-file finite snapshots; never wait for pipe EOF", "capture_origin": "child_process_bytes", "capture_scope": "launched process lifetime; escaped descendants are not guaranteed captured or terminated", "cwd": "/workspace/scratch/234c8048d85d/learning-inventory-contract-quality-20261004", "elapsed_seconds": 0.003937, "exit_code": 1, "expected_failure": true, "label": "publish-before-record-run", "root_reaped": true, "semantic_errors": [], "semantic_valid": true, "snapshot_is_atomic_against_concurrent_writers": false, "snapshot_read_method": "pread, writer offset unchanged", "snapshot_sizes": {"stderr": 0, "stdout": 3924}, "stderr_bytes": 0, "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "stdout_bytes": 3924, "stdout_sha256": "141737dd6da1adc617c7474167fe75bdfd926e0a87a512d3983ac151143b2c66", "stream_changed_during_snapshot": false, "termination_attempted": false, "text_encoding": "utf-8/backslashreplace DISPLAY ONLY; base64 is authoritative", "timed_out": false, "timeout_seconds": 120.0}
+--- stdout original UTF-8 bytes below (3924 bytes) ---
+inventory_contract compiler=14.2.0 NDEBUG=0 allocation_limit=65536 calls_limit=128
+PASS_GROUP independent_stacking_remove_original_result_conflict
+PASS_GROUP inputs_retry_retained_memory_wide_totals
+ALLOCATION_DISCOVERY scenario=empty_small calls=3 buckets_before=1 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+FAIL no allocation after slots/out publication
+ALLOCATION call=2 bytes=64 old_slots_and_out=0
+FAIL no allocation after slots/out publication
+ALLOCATION call=3 bytes=104 old_slots_and_out=0
+FAULT_CASE scenario=empty_small fail_on=1 caught=1 final_status=1
+FAIL bad_alloc preserves full slots and success memory
+ALLOCATION_DISCOVERY scenario=empty_max_batch calls=7 buckets_before=1 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=32 old_slots_and_out=1
+ALLOCATION call=3 bytes=64 old_slots_and_out=1
+ALLOCATION call=4 bytes=128 old_slots_and_out=1
+ALLOCATION call=5 bytes=256 old_slots_and_out=1
+FAIL no allocation after slots/out publication
+ALLOCATION call=6 bytes=64 old_slots_and_out=0
+FAIL no allocation after slots/out publication
+ALLOCATION call=7 bytes=104 old_slots_and_out=0
+FAULT_CASE scenario=empty_max_batch fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=4 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=5 caught=1 final_status=1
+FAIL bad_alloc preserves full slots and success memory
+ALLOCATION_DISCOVERY scenario=topup_and_new_slots calls=4 buckets_before=13 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=32 old_slots_and_out=1
+ALLOCATION call=3 bytes=64 old_slots_and_out=1
+FAIL no allocation after slots/out publication
+ALLOCATION call=4 bytes=64 old_slots_and_out=0
+FAULT_CASE scenario=topup_and_new_slots fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=3 caught=1 final_status=1
+FAIL bad_alloc preserves full slots and success memory
+ALLOCATION_DISCOVERY scenario=map_growth calls=3 buckets_before=13 buckets_after=29
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+FAIL no allocation after slots/out publication
+ALLOCATION call=2 bytes=64 old_slots_and_out=0
+FAIL no allocation after slots/out publication
+ALLOCATION call=3 bytes=232 old_slots_and_out=0
+FAULT_CASE scenario=map_growth fail_on=1 caught=1 final_status=1
+FAIL bad_alloc preserves full slots and success memory
+ALLOCATION_DISCOVERY scenario=capacity_rejection_plan calls=1 buckets_before=13 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+FAULT_CASE scenario=capacity_rejection_plan fail_on=1 caught=1 final_status=0
+FAULT_CASE scenario=capacity_rejection_plan fail_on=2 caught=0 final_status=0
+ALLOCATION_DISCOVERY scenario=tight_prefilled_max_batch calls=6 buckets_before=13 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=32 old_slots_and_out=1
+ALLOCATION call=3 bytes=64 old_slots_and_out=1
+ALLOCATION call=4 bytes=128 old_slots_and_out=1
+ALLOCATION call=5 bytes=256 old_slots_and_out=1
+FAIL no allocation after slots/out publication
+ALLOCATION call=6 bytes=64 old_slots_and_out=0
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=4 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=5 caught=1 final_status=1
+FAIL bad_alloc preserves full slots and success memory
+PASS_GROUP no_throw_results_and_external_serialization_boundary
+RESULT checks=1809 fail=13 (explicit checks remain active with NDEBUG)
+
+--- stream end ---
+--- stderr original UTF-8 bytes below (0 bytes) ---
+
+--- stream end ---
+RECORD {"argv": ["/workspace/scratch/234c8048d85d/content-audit-20261004/inventory-author-output/final-focused/build/ignore-intent-conflict.exe"], "capture_complete": true, "capture_may_be_truncated": false, "capture_method": "regular-file finite snapshots; never wait for pipe EOF", "capture_origin": "child_process_bytes", "capture_scope": "launched process lifetime; escaped descendants are not guaranteed captured or terminated", "cwd": "/workspace/scratch/234c8048d85d/learning-inventory-contract-quality-20261004", "elapsed_seconds": 0.003773, "exit_code": 1, "expected_failure": true, "label": "ignore-intent-conflict-run", "root_reaped": true, "semantic_errors": [], "semantic_valid": true, "snapshot_is_atomic_against_concurrent_writers": false, "snapshot_read_method": "pread, writer offset unchanged", "snapshot_sizes": {"stderr": 0, "stdout": 4542}, "stderr_bytes": 0, "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "stdout_bytes": 4542, "stdout_sha256": "2aea4568d10abcc6530fe493447bec659f7d09c01a9d999e955abfde47293bca", "stream_changed_during_snapshot": false, "termination_attempted": false, "text_encoding": "utf-8/backslashreplace DISPLAY ONLY; base64 is authoritative", "timed_out": false, "timeout_seconds": 120.0}
+--- stdout original UTF-8 bytes below (4542 bytes) ---
+inventory_contract compiler=14.2.0 NDEBUG=0 allocation_limit=65536 calls_limit=128
+FAIL stored key conflicts including invalid params
+FAIL stored key conflicts including invalid params
+FAIL stored key conflicts including invalid params
+FAIL stored key conflicts including invalid params
+FAIL stored key conflicts including invalid params
+FAIL stored key conflicts including invalid params
+PASS_GROUP independent_stacking_remove_original_result_conflict
+PASS_GROUP inputs_retry_retained_memory_wide_totals
+ALLOCATION_DISCOVERY scenario=empty_small calls=3 buckets_before=1 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=64 old_slots_and_out=1
+ALLOCATION call=3 bytes=104 old_slots_and_out=1
+FAULT_CASE scenario=empty_small fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=empty_small fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=empty_small fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=empty_small fail_on=4 caught=0 final_status=1
+ALLOCATION_DISCOVERY scenario=empty_max_batch calls=7 buckets_before=1 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=32 old_slots_and_out=1
+ALLOCATION call=3 bytes=64 old_slots_and_out=1
+ALLOCATION call=4 bytes=128 old_slots_and_out=1
+ALLOCATION call=5 bytes=256 old_slots_and_out=1
+ALLOCATION call=6 bytes=64 old_slots_and_out=1
+ALLOCATION call=7 bytes=104 old_slots_and_out=1
+FAULT_CASE scenario=empty_max_batch fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=4 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=5 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=6 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=7 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=8 caught=0 final_status=1
+ALLOCATION_DISCOVERY scenario=topup_and_new_slots calls=4 buckets_before=13 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=32 old_slots_and_out=1
+ALLOCATION call=3 bytes=64 old_slots_and_out=1
+ALLOCATION call=4 bytes=64 old_slots_and_out=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=4 caught=1 final_status=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=5 caught=0 final_status=1
+ALLOCATION_DISCOVERY scenario=map_growth calls=3 buckets_before=13 buckets_after=29
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=64 old_slots_and_out=1
+ALLOCATION call=3 bytes=232 old_slots_and_out=1
+FAULT_CASE scenario=map_growth fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=map_growth fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=map_growth fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=map_growth fail_on=4 caught=0 final_status=1
+ALLOCATION_DISCOVERY scenario=capacity_rejection_plan calls=1 buckets_before=13 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+FAULT_CASE scenario=capacity_rejection_plan fail_on=1 caught=1 final_status=0
+FAULT_CASE scenario=capacity_rejection_plan fail_on=2 caught=0 final_status=0
+ALLOCATION_DISCOVERY scenario=tight_prefilled_max_batch calls=6 buckets_before=13 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=32 old_slots_and_out=1
+ALLOCATION call=3 bytes=64 old_slots_and_out=1
+ALLOCATION call=4 bytes=128 old_slots_and_out=1
+ALLOCATION call=5 bytes=256 old_slots_and_out=1
+ALLOCATION call=6 bytes=64 old_slots_and_out=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=4 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=5 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=6 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=7 caught=0 final_status=1
+FAIL fixed rejection/conflict result cannot allocate
+PASS_GROUP no_throw_results_and_external_serialization_boundary
+RESULT checks=2381 fail=7 (explicit checks remain active with NDEBUG)
+
+--- stream end ---
+--- stderr original UTF-8 bytes below (0 bytes) ---
+
+--- stream end ---
+RECORD {"argv": ["/workspace/scratch/234c8048d85d/content-audit-20261004/inventory-author-output/final-focused/build/recompute-replay-result.exe"], "capture_complete": true, "capture_may_be_truncated": false, "capture_method": "regular-file finite snapshots; never wait for pipe EOF", "capture_origin": "child_process_bytes", "capture_scope": "launched process lifetime; escaped descendants are not guaranteed captured or terminated", "cwd": "/workspace/scratch/234c8048d85d/learning-inventory-contract-quality-20261004", "elapsed_seconds": 0.003955, "exit_code": 1, "expected_failure": true, "label": "recompute-replay-result-run", "root_reaped": true, "semantic_errors": [], "semantic_valid": true, "snapshot_is_atomic_against_concurrent_writers": false, "snapshot_read_method": "pread, writer offset unchanged", "snapshot_sizes": {"stderr": 0, "stdout": 4311}, "stderr_bytes": 0, "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "stdout_bytes": 4311, "stdout_sha256": "53c03ac088bdcc0abc79dacd5b8c9ce15603ae879d0e96df159c1c41e1461ce4", "stream_changed_during_snapshot": false, "termination_attempted": false, "text_encoding": "utf-8/backslashreplace DISPLAY ONLY; base64 is authoritative", "timed_out": false, "timeout_seconds": 120.0}
+--- stdout original UTF-8 bytes below (4311 bytes) ---
+inventory_contract compiler=14.2.0 NDEBUG=0 allocation_limit=65536 calls_limit=128
+FAIL replay exact first result despite later state
+FAIL original still replays after conflicts
+PASS_GROUP independent_stacking_remove_original_result_conflict
+FAIL retained old key no regrant
+PASS_GROUP inputs_retry_retained_memory_wide_totals
+ALLOCATION_DISCOVERY scenario=empty_small calls=3 buckets_before=1 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=64 old_slots_and_out=1
+ALLOCATION call=3 bytes=104 old_slots_and_out=1
+FAULT_CASE scenario=empty_small fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=empty_small fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=empty_small fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=empty_small fail_on=4 caught=0 final_status=1
+ALLOCATION_DISCOVERY scenario=empty_max_batch calls=7 buckets_before=1 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=32 old_slots_and_out=1
+ALLOCATION call=3 bytes=64 old_slots_and_out=1
+ALLOCATION call=4 bytes=128 old_slots_and_out=1
+ALLOCATION call=5 bytes=256 old_slots_and_out=1
+ALLOCATION call=6 bytes=64 old_slots_and_out=1
+ALLOCATION call=7 bytes=104 old_slots_and_out=1
+FAULT_CASE scenario=empty_max_batch fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=4 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=5 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=6 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=7 caught=1 final_status=1
+FAULT_CASE scenario=empty_max_batch fail_on=8 caught=0 final_status=1
+ALLOCATION_DISCOVERY scenario=topup_and_new_slots calls=4 buckets_before=13 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=32 old_slots_and_out=1
+ALLOCATION call=3 bytes=64 old_slots_and_out=1
+ALLOCATION call=4 bytes=64 old_slots_and_out=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=4 caught=1 final_status=1
+FAULT_CASE scenario=topup_and_new_slots fail_on=5 caught=0 final_status=1
+ALLOCATION_DISCOVERY scenario=map_growth calls=3 buckets_before=13 buckets_after=29
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=64 old_slots_and_out=1
+ALLOCATION call=3 bytes=232 old_slots_and_out=1
+FAULT_CASE scenario=map_growth fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=map_growth fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=map_growth fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=map_growth fail_on=4 caught=0 final_status=1
+ALLOCATION_DISCOVERY scenario=capacity_rejection_plan calls=1 buckets_before=13 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+FAULT_CASE scenario=capacity_rejection_plan fail_on=1 caught=1 final_status=0
+FAULT_CASE scenario=capacity_rejection_plan fail_on=2 caught=0 final_status=0
+ALLOCATION_DISCOVERY scenario=tight_prefilled_max_batch calls=6 buckets_before=13 buckets_after=13
+ALLOCATION call=1 bytes=16 old_slots_and_out=1
+ALLOCATION call=2 bytes=32 old_slots_and_out=1
+ALLOCATION call=3 bytes=64 old_slots_and_out=1
+ALLOCATION call=4 bytes=128 old_slots_and_out=1
+ALLOCATION call=5 bytes=256 old_slots_and_out=1
+ALLOCATION call=6 bytes=64 old_slots_and_out=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=1 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=2 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=3 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=4 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=5 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=6 caught=1 final_status=1
+FAULT_CASE scenario=tight_prefilled_max_batch fail_on=7 caught=0 final_status=1
+PASS_GROUP no_throw_results_and_external_serialization_boundary
+RESULT checks=2381 fail=3 (explicit checks remain active with NDEBUG)
+
+--- stream end ---
+--- stderr original UTF-8 bytes below (0 bytes) ---
+
+--- stream end ---
+
+CURRENT_RUNNER_SELFTEST assertions=282 fail=0
+No other model CPU benchmarks, Windows/MSVC, UE, real DB/WAL/Outbox, network or production-payment execution is claimed.
+
+VERIFY_ALL_ARCHIVED_FILES (also enforced with Python -O; verification only, no extraction or execution):
+python3 -O - evidence/tests/gameplay-core/results/inventory_contract_20261004.raw.jsonl.gz <<'PY'
+import base64, gzip, hashlib, json, sys
+from pathlib import Path, PurePosixPath
+
+GZIP_SHA256 = 'a3284fb0007cbf0a7f08cde4525e25d0d23f65c8dca046752cde78f2401d7904'
+JSONL_SHA256 = '59aa03c26c652165d8a7e724676b416cefc7846d165899f6569ece4d81d341a3'
+FILE_COUNT = 952
+
+def require(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+def verify(path, gzip_sha256=GZIP_SHA256, jsonl_sha256=JSONL_SHA256, count=FILE_COUNT):
+    packed = Path(path).read_bytes()
+    require(hashlib.sha256(packed).hexdigest() == gzip_sha256, 'gzip SHA mismatch')
+    data = gzip.decompress(packed)
+    require(hashlib.sha256(data).hexdigest() == jsonl_sha256, 'JSONL SHA mismatch')
+    require(data.endswith(b'\n'), 'missing final JSONL newline')
+    rows = [json.loads(line) for line in data.decode('utf-8').splitlines()]
+    require(len(rows) == count + 1, 'record count mismatch')
+    require(rows[0].get('kind') == 'archive_header' and
+            rows[0].get('format') == 'learning.inventory.evidence.v1' and
+            rows[0].get('attempts') == 18 and
+            rows[0].get('accepted_runs') == ['final-focused', 'final-selftest'], 'bad header')
+    names = set()
+    total = 0
+    for row in rows[1:]:
+        require(row.get('kind') == 'file', 'non-file record')
+        name = row.get('path')
+        require(isinstance(name, str) and name and '\\' not in name and '\0' not in name, 'bad path')
+        q = PurePosixPath(name)
+        require(not q.is_absolute() and '..' not in q.parts and name == q.as_posix() and name != '.', 'unsafe path')
+        require(name not in names, 'duplicate record: ' + name)
+        names.add(name)
+        raw = base64.b64decode(row['data_base64'], validate=True)
+        require(type(row['bytes']) is int and row['bytes'] >= 0 and len(raw) == row['bytes'], 'length mismatch: ' + name)
+        require(hashlib.sha256(raw).hexdigest() == row['sha256'], 'file SHA mismatch: ' + name)
+        total += len(raw)
+    return {'files': len(names), 'original_file_bytes': total, 'jsonl_bytes': len(data)}
+
+if __name__ == '__main__':
+    require(len(sys.argv) == 2, 'usage: python [-O] verify.py ARCHIVE.raw.jsonl.gz')
+    print(json.dumps(verify(sys.argv[1]), sort_keys=True))
+PY

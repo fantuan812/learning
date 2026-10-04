@@ -11,7 +11,7 @@ tags:
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-01
+updated: 2026-10-04
 sources:
   - id: gcc-finite-math
     title: "GCC optimization options"
@@ -53,21 +53,36 @@ sources:
 
 ## 运行方式
 
+2026-10-04 起，两个通用入口必须指定**尚不存在的仓库外目录**；不再写回或覆盖仓库 `build/`、`results/`。它们保留五目标列表、C++17/O2 编译与默认 main，仅把子进程、输出和失败处理集中在 Python driver。需要可用的 Python；`PYTHON` 环境变量可指定单个解释器路径，不接收 shell 命令串。
+
 ```powershell
-# Windows PowerShell 5.1 / pwsh 均可
-& (Join-Path $RepoRoot 'evidence/tests/gameplay-core/scripts/build_run.ps1')
+# 保留 Root/Gxx；OutputDir 必填，父目录先存在且目标目录尚不存在
+$env:PYTHON = 'python'
+& (Join-Path $RepoRoot 'evidence/tests/gameplay-core/scripts/build_run.ps1') `
+  -Root $RepoRoot -Gxx 'C:\msys64\mingw64\bin\g++.exe' `
+  -OutputDir (Join-Path $env:TEMP 'gameplay-five-models-new')
 ```
 
 ```bash
-# MSYS2 / Git Bash：脚本会把 C:\msys64\mingw64\bin 加入 PATH
-bash evidence/tests/gameplay-core/scripts/run_all.sh
+# CXX 是单个编译器路径；未指定时仍保留 MSYS2 默认路径检测，否则使用 g++
+PYTHON=python3 CXX=g++ bash evidence/tests/gameplay-core/scripts/run_all.sh \
+  --output-dir /tmp/gameplay-five-models-new
 ```
 
-两个脚本重新编译其固定列表中的五个程序，并把**未经修改的原始输出**写入 `results/*.txt`（`build/` 已被 `.gitignore` 忽略）。
+新目录中 `build/<target>.exe` 是本次构建，`logs/<target>.txt` 记录源码哈希、实际命令、完整输出与退出状态。已有文件、目录、符号链接、仓库内路径及解析后落回仓库的别名均拒绝；失败不覆盖历史证据。编译失败不运行旧二进制，能继续的后续目标仍尝试，任一构建、运行、超时或日志写失败均返回非零。单个命令默认上限 30 秒，超时是失败；需调整时直接使用 Python 的显式通用模式 `--legacy-five-targets --timeout-seconds N`。
+
+**通用入口会执行各程序当前默认 main，其它模型仍可能运行历史微基准。** 聚焦背包合同验证用下面单独入口，不启动其它四个 C++ 模型的基准；其 fixture 自测只执行合成小程序。PowerShell 脚本入口是否运行于 Windows、Linux pwsh 或仅静态审查，按本次结果分开记录，不由脚本文件名推定。
+
+```bash
+python3 -B evidence/tests/gameplay-core/scripts/run_inventory_contract.py \
+  --cxx g++-14 --output-dir /tmp/inventory-contract-new
+python3 -B evidence/tests/gameplay-core/scripts/run_inventory_contract.py \
+  --self-test --pwsh /path/to/pwsh --output-dir /tmp/inventory-runner-check-new
+```
 
 ## 输入
 
-- 背包：40 槽背包、单堆叠上限 99、单次批量上限 999；400 000 次增删操作（2/3 为移除）。
+- 历史背包基准输入：40 槽、单堆叠上限 99、单次批量上限 999；400 000 次增删操作（2/3 为移除）。当前聚焦合同不运行这段基准；其它模型输入仍按各自历史条目理解。
 - Buff：11 个 Buff 定义，覆盖 8 个互斥组、可叠层与不可叠层、法术/诅咒两种驱散类型、零时长边界。
 - 技能：3 个技能定义（瞬发攻击 / 不可打断长吟唱 / 免费自增益）；确定性重放为 4 000 次伪随机请求（xorshift64 固定种子 12345）。
 - 属性：20 000 个实体 × 16 个修正器，200 轮，每轮 10% 实体变脏。
@@ -100,7 +115,7 @@ bash evidence/tests/gameplay-core/scripts/run_all.sh
 
 ## 结论
 
-1. **背包事务可以做到零半成品**：容量不足时先做 dry-run 规划再提交，`T3` 证明失败路径下背包逐槽不变；`T4`/`T7` 证明 requestId 去重与超额移除守卫都无副作用。这条"先规划后提交"的顺序是背包/邮件/奖励发放类写操作应当复用的范式。
+1. **历史背包断言只覆盖有限路径**：`T3` 检查容量拒绝时逐槽不变，`T4` 检查同键不再加物品，`T7` 检查超量移除。它们没有覆盖槽位修改后的去重节点/桶分配失败，也没有验证异参冲突和原结果重放；旧实现实际可在 `bad_alloc` 后重试双发。完整异常准备与无抛出发布边界见下方 2026-10-04 背包合同修订，旧 7 项全绿不能推出所有失败路径无副作用。
 2. **Buff 的九类交互可以全部用断言固定**，其中三处最容易写错：`R6`（高级结束时低级按**剩余**时长恢复，而非满时长）、`E2`（被压制者剩余时长耗尽则直接过期，不复活）、`E3`（低级不能覆盖活跃的高级）。`R7` 说明驱散必须把**被压制实例**一并清除，否则会残留幽灵状态。
 3. **技能请求管线的拒绝路径必须无副作用**：`S2`/`S4` 显示冷却与蓝量拒绝都不扣蓝、不写冷却；`S7` 显示网络重传只结算一次；`S9` 显示客户端预测在服务端拒绝后能回滚到权威值——这三条共同构成"客户端预测 + 服务端权威"的最小正确性骨架。
 4. **技能管线可确定重放**：相同 4 000 次请求流两次运行得到同一状态哈希，换种子则不同，满足回放/帧同步对确定性的基本要求。
@@ -110,10 +125,87 @@ bash evidence/tests/gameplay-core/scripts/run_all.sh
 
 - **不是 UE GAS**：这里验证的是算法与状态机语义，不涉及 `UAbilitySystemComponent`、`FGameplayEffectSpec`、属性捕获与网络预测的具体实现；UE 映射关系见关联文档。
 - **单机单线程**：所有断言在单线程内串行执行，未覆盖多线程竞争、跨服迁移、断线重连后的状态对账。
-- **计时精度有限**：背包微基准使用 `steady_clock`，粒度约 100 ns，因此 p50/p95/p99 落在 100/200 ns 量级；`max=185600 ns` 是首次分配造成的离群值，不代表稳态。
+- **背包历史计时的边界**：旧 raw 报告 p50/p95/p99 为 100/200 ns、max 为 185600 ns；它没有独立时钟分辨率测量或 max 样本的调用链证据，不能由分位数取整推定 100 ns 粒度，也撤回“max 由首次分配造成”的未证归因。新代码的成功记录、固定 Result 和异常准备已改变，旧数字不为新实现的性能背书。
 - **存在运行间波动**：同一程序重复运行，属性基准 p50 在 1750–1760 µs 之间、加速比在 7.4–7.8x 之间波动；`results/` 中保存的是某一次的真实输出，不取多次最优值。
 - **模型简化**：背包为槽位模型（无绑定/唯一物品/耐久），Buff 为离散时长模型（无属性快照/快照重算），技能无目标筛选与命中判定，属性无依赖链与脏传播。
 - 本目录**不主张**线上容量结论；线上预算仍需在真实 DS 环境复测。
+
+## 2026-10-04 背包内存合同修订
+
+### 为什么原七项全绿仍不足
+
+旧实现先发布槽位，再为去重集合分配节点/桶。小型受控 `bad_alloc` 会留下“物品已增加、成功键未记忆”的状态：空间足时重试可再发，空间紧张时重试反而被容量守卫拒绝。容量 dry-run 只证明一种业务拒绝路径；它不证明后续任何分配或响应准备都安全。
+
+当前真实实现先准备计划和固定 Result，再完成成功记录的单元素 emplace，最后只做不抛出的槽位标量写入和结果复制。合同依赖单线程、非重入、标准 allocator、固定 noexcept 整数 hash/equality/结果；不是 CPU 原子指令或崩溃事务。原 `bool Add(..., std::string& outReason)` 改为固定 `Result`，字段为 code/requestId/itemId/requested/before/after；旧性能数据不绑定这个新接口。
+
+成功键只绑定一个 `(itemId,count,首次结果)`：同参重放原快照，即使当前库存后来变了；异参（包括非法新参数）明确冲突。仅成功 Add 留记录，容量/参数拒绝不占键，释放空间后可用同键再试。Remove 保留本地按槽扣除的原语，不新加其幂等 API。当前类无 TTL/持久化，成功记录随对象生命周期保留并增长；DB 同事务与可靠日志先行是[主文](../../../知识/05-Gameplay与交互系统/背包装备与存档/05-背包道具完整链路.md)分开讨论、尚未执行的架构。
+
+### 当前实际范围
+
+Linux / GCC 14.2.0 / C++17，严格 `-Wall -Wextra -Werror -pedantic`：O0+NDEBUG、O2、O1+UBSan 非恢复各 2381 个显式检查零失败；保留七场景通过。六种小状态动态发现共 24 个实际分配点，逐点失败后按独立字面量核对全部槽位、成功记录和原 out；恢复后同键提交一次。数量是本工具链与场景观测，不代表任意标准库的分配序号或全部输入空间。
+
+分配 hook 只观察独立 slots/out，成功 map 在方法返回/catch 后检查，避免重入其 emplace 中间态。固定 Result 用静态无抛出条件；外部 128 字节序列化失败是已提交但响应未知的另一个边界，不冒称原短串 `ok` 实际分配失败。
+
+三个真实源码变体分别把记录放回槽位之后、略掉异参冲突、用当前数量重算原结果；各自显式 fail=13/7/3 且 exit1。编译失败或无关崩溃不算通过负控。driver 要求完整非空 RESULT、预定组/分配场景及匹配的 FAIL 标记，不能靠 exit0 判定成功。
+
+Python -O + Bash + Linux PowerShell 7.6.6 的 282 个 runner 断言通过：中文/空格路径、首中尾编译/运行失败、拒覆盖/alias、真实写失败、坏报告/exit0假成功、双流非法UTF8/字面转义/CRLF/NUL逐字节往返。超时采用外部临时常规文件的有限快照，不等 pipe EOF；同组子进程终止、短命 setsid 逃逸持输出两类各五目标被分别测试。超时记录 capture_complete=false，不保证逃逸后代全部终止或未来输出已捕尽；快照非原子，Windows fallback 没有本轮实测。fixture 不运行其余四个模型基准，更不证明它们的业务语义已修好。
+
+### 全部原记录与复算
+
+[人读摘要与最终关键原输出](results/inventory_contract_20261004.txt)不是完整 raw。[完整 gzip JSONL 归档](results/inventory_contract_20261004.raw.jsonl.gz)保留 18 次尝试的 952 个原诊断文件（953 条记录，含一条头记录），包括失败与被替代的旧版本；只有 final-focused/final-selftest 对应本次冻结源码。旧 69 份历史结果未被覆盖。早期版本只有展示解码的地方保留原样，不补造当时未记录的字节证据。
+
+- gzip SHA256：`a3284fb0007cbf0a7f08cde4525e25d0d23f65c8dca046752cde78f2401d7904`
+- 解压 JSONL SHA256：`59aa03c26c652165d8a7e724676b416cefc7846d165899f6569ece4d81d341a3`
+- 原诊断文件总字节 6,921,981；JSONL 9,412,706 字节；确定性 gzip 844,613 字节，mtime=0
+
+在仓库根运行下面配方；它只验证，不解压写文件、不运行归档中的命令。每条 data_base64 是对应原诊断文件的精确字节，bytes/SHA 单列。去重、路径、长度、摘要与压缩截断检查均用显式异常，`-O` 不会移除；实际正负校验已覆盖损坏、截断、重复记录、错误长度/hash、危险路径和缺记录。
+
+```bash
+python3 -O - evidence/tests/gameplay-core/results/inventory_contract_20261004.raw.jsonl.gz <<'PY'
+import base64, gzip, hashlib, json, sys
+from pathlib import Path, PurePosixPath
+
+GZIP_SHA256 = 'a3284fb0007cbf0a7f08cde4525e25d0d23f65c8dca046752cde78f2401d7904'
+JSONL_SHA256 = '59aa03c26c652165d8a7e724676b416cefc7846d165899f6569ece4d81d341a3'
+FILE_COUNT = 952
+
+def require(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+def verify(path, gzip_sha256=GZIP_SHA256, jsonl_sha256=JSONL_SHA256, count=FILE_COUNT):
+    packed = Path(path).read_bytes()
+    require(hashlib.sha256(packed).hexdigest() == gzip_sha256, 'gzip SHA mismatch')
+    data = gzip.decompress(packed)
+    require(hashlib.sha256(data).hexdigest() == jsonl_sha256, 'JSONL SHA mismatch')
+    require(data.endswith(b'\n'), 'missing final JSONL newline')
+    rows = [json.loads(line) for line in data.decode('utf-8').splitlines()]
+    require(len(rows) == count + 1, 'record count mismatch')
+    require(rows[0].get('kind') == 'archive_header' and
+            rows[0].get('format') == 'learning.inventory.evidence.v1' and
+            rows[0].get('attempts') == 18 and
+            rows[0].get('accepted_runs') == ['final-focused', 'final-selftest'], 'bad header')
+    names = set()
+    total = 0
+    for row in rows[1:]:
+        require(row.get('kind') == 'file', 'non-file record')
+        name = row.get('path')
+        require(isinstance(name, str) and name and '\\' not in name and '\0' not in name, 'bad path')
+        q = PurePosixPath(name)
+        require(not q.is_absolute() and '..' not in q.parts and name == q.as_posix() and name != '.', 'unsafe path')
+        require(name not in names, 'duplicate record: ' + name)
+        names.add(name)
+        raw = base64.b64decode(row['data_base64'], validate=True)
+        require(type(row['bytes']) is int and row['bytes'] >= 0 and len(raw) == row['bytes'], 'length mismatch: ' + name)
+        require(hashlib.sha256(raw).hexdigest() == row['sha256'], 'file SHA mismatch: ' + name)
+        total += len(raw)
+    return {'files': len(names), 'original_file_bytes': total, 'jsonl_bytes': len(data)}
+
+if __name__ == '__main__':
+    require(len(sys.argv) == 2, 'usage: python [-O] verify.py ARCHIVE.raw.jsonl.gz')
+    print(json.dumps(verify(sys.argv[1]), sort_keys=True))
+PY
+```
 
 ## 2026-09-30 边界回归补充
 

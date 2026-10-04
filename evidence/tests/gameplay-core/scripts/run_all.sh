@@ -1,46 +1,17 @@
 #!/usr/bin/env bash
-# Gameplay-core evidence runner.
-# Toolchain used on the reference machine: MSYS2 MinGW-w64 g++ (C:\msys64\mingw64).
-# Writes the raw, unedited program output into results/.
+# Legacy five-model entry. The Python driver owns output safety and failure handling.
+# This explicit entry still runs each model's default main; it is not the focused
+# Inventory contract command and may run historical benchmarks in the other models.
 set -u
-
-BASH_HERE="$(cd "$(dirname "$0")/.." && pwd)"
-if [ -x /c/msys64/mingw64/bin/g++.exe ]; then
-  export PATH="/c/msys64/mingw64/bin:$PATH"
+if [ "$#" -ne 2 ] || [ "$1" != "--output-dir" ] || [ -z "$2" ]; then
+  printf 'usage: %s --output-dir NEW_EXTERNAL_DIRECTORY\n' "$0" >&2
+  exit 2
+fi
+REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../../.." && pwd -P)" || exit 1
+PYTHON="${PYTHON:-python3}"
+if [ -z "${CXX:-}" ] && [ -x /c/msys64/mingw64/bin/g++.exe ]; then
+  CXX=/c/msys64/mingw64/bin/g++.exe
 fi
 CXX="${CXX:-g++}"
-
-cd "$BASH_HERE" || exit 1
-mkdir -p build results
-
-STAMP="$(date +%Y-%m-%dT%H:%M:%S%z)"
-TARGET="$("$CXX" -dumpmachine 2>/dev/null || echo unknown)"
-CORES="$(nproc 2>/dev/null || echo unknown)"
-OSLINE="$(uname -s -m 2>/dev/null || echo unknown)"
-
-status=0
-for t in inventory_txn buff_conflict skill_pipeline attr_modifier_bench entity_lifecycle; do
-  if ! "$CXX" -std=c++17 -O2 -o "build/$t.exe" "src/$t.cpp"; then
-    echo "compile failed: $t" >&2
-    status=1
-    continue
-  fi
-  {
-    echo "# evidence   : tests/gameplay-core/$t"
-    echo "# generated  : $STAMP"
-    echo "# host       : $OSLINE (cores=$CORES)"
-    echo "# target     : $TARGET"
-    echo "# compiler   : $("$CXX" --version | head -1)"
-    echo "# command    : $CXX -std=c++17 -O2 -o build/$t.exe src/$t.cpp && ./build/$t.exe"
-    echo "#"
-    ./"build/$t.exe"
-    run_status=$?
-    echo "# exit_code  : $run_status"
-    if [ "$run_status" -ne 0 ]; then
-      status=1
-    fi
-  } > "results/$t.txt" 2>&1
-  echo "wrote results/$t.txt"
-done
-
-exit $status
+exec "$PYTHON" -B "$REPO_ROOT/evidence/tests/gameplay-core/scripts/run_inventory_contract.py" \
+  --legacy-five-targets --output-dir "$2" --root "$REPO_ROOT" --cxx "$CXX"

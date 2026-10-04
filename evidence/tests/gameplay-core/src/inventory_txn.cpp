@@ -8,34 +8,109 @@
 #include <vector>
 #include <chrono>
 #include <algorithm>
-#include <unordered_set>
+#include <unordered_map>
+#include <stdexcept>
+#include <type_traits>
+#include <memory>
+#include <limits>
+#include <climits>
+#include <cstring>
 
 namespace {
 
 constexpr int kMaxStack = 99;
 constexpr int kMaxBatch = 999;
 
+// This bounded teaching model assumes an int with at most 31 value bits.
+// It accepts every nonnegative int capacity (subject to vector allocation limits).
+static_assert(std::numeric_limits<int>::digits <= 31, "widen capacity proof for this ABI");
+constexpr int64_t MaxItemsForCapacity(int capacity) noexcept {
+    return static_cast<int64_t>(capacity) * kMaxStack;
+}
+static_assert(MaxItemsForCapacity(INT_MAX) <= INT64_MAX, "all slot totals fit int64_t");
+
 struct Slot {
-    int itemId = 0;   // 0 == empty
+    int itemId = 0;   // Empty iff itemId == 0 and count == 0; occupied count in [1,99].
     int count = 0;
-    bool operator==(const Slot& o) const { return itemId == o.itemId && count == o.count; }
+    bool operator==(const Slot& o) const noexcept { return itemId == o.itemId && count == o.count; }
 };
+
+enum class Code { Ok, InvalidItem, InvalidCount, BatchLimit, Capacity, Conflict, NotEnough };
+const char* Reason(Code code) noexcept {
+    switch (code) {
+    case Code::Ok: return "ok";
+    case Code::InvalidItem: return "invalid-item";
+    case Code::InvalidCount: return "invalid-count";
+    case Code::BatchLimit: return "batch-exceeds-limit";
+    case Code::Capacity: return "capacity-exhausted-no-change";
+    case Code::Conflict: return "request-id-conflict";
+    case Code::NotEnough: return "not-enough-items";
+    }
+    return "unknown-code";
+}
+
+// Fixed-size result: no string allocation, callback, or serialization in publication.
+// before/after describe the FIRST successful Add, not the current bag on replay.
+struct Result {
+    Code code = Code::Ok;
+    uint64_t requestId = 0;
+    int itemId = 0;
+    int requested = 0;
+    int64_t before = 0;
+    int64_t after = 0;
+    bool operator==(const Result& r) const noexcept {
+        return code == r.code && requestId == r.requestId && itemId == r.itemId &&
+               requested == r.requested && before == r.before && after == r.after;
+    }
+};
+struct SuccessRecord {
+    int itemId;
+    int count;
+    Result result;
+    bool operator==(const SuccessRecord& r) const noexcept {
+        return itemId == r.itemId && count == r.count && result == r.result;
+    }
+};
+struct KeyHash {
+    size_t operator()(uint64_t key) const noexcept { return static_cast<size_t>(key); }
+};
+struct KeyEqual {
+    bool operator()(uint64_t a, uint64_t b) const noexcept { return a == b; }
+};
+using Successes = std::unordered_map<uint64_t, SuccessRecord, KeyHash, KeyEqual>;
+static_assert(std::is_nothrow_copy_constructible<Result>::value &&
+              std::is_nothrow_copy_assignable<Result>::value &&
+              std::is_nothrow_destructible<Result>::value, "result publication must not throw");
+static_assert(std::is_nothrow_copy_constructible<SuccessRecord>::value, "record copy must not throw");
+static_assert(noexcept(KeyHash{}(0)) && noexcept(KeyEqual{}(0, 0)), "no throwing hash/equality");
+static_assert(std::allocator_traits<Successes::allocator_type>::is_always_equal::value,
+              "only the standard always-equal allocator is used");
+static_assert(std::is_nothrow_destructible<Successes::value_type>::value,
+              "record destruction must not throw");
 
 class Inventory {
 public:
-    explicit Inventory(int capacity) : slots_(static_cast<size_t>(capacity)) {}
+    explicit Inventory(int capacity) : slots_(CheckedCapacity(capacity)) {}
 
-    // Transactional add. Either the whole amount fits (all stacks written) or nothing changes.
-    // Returns true when the item ends up added (or was already applied for this requestId).
-    bool Add(int itemId, int count, uint64_t requestId, std::string& outReason) {
-        if (processed_.count(requestId)) { outReason = "duplicate-request-idempotent"; return true; }
-        if (itemId <= 0) { outReason = "invalid-item"; return false; }
-        if (count <= 0) { outReason = "invalid-count"; return false; }
-        if (count > kMaxBatch) { outReason = "batch-exceeds-limit"; return false; }
+    // Single-threaded, non-reentrant, in-memory only. Only successful Add binds a key.
+    // Every exception before publication leaves slots, successful records, and out unchanged.
+    bool Add(int itemId, int count, uint64_t requestId, Result& out) {
+        const auto found = processed_.find(requestId);
+        if (found != processed_.end()) {
+            if (found->second.itemId != itemId || found->second.count != count) {
+                out = {Code::Conflict, requestId, itemId, count, 0, 0};
+                return false;
+            }
+            out = found->second.result;
+            return true;
+        }
+        if (itemId <= 0) { out = {Code::InvalidItem, requestId, itemId, count, 0, 0}; return false; }
+        if (count <= 0) { out = {Code::InvalidCount, requestId, itemId, count, 0, 0}; return false; }
+        if (count > kMaxBatch) { out = {Code::BatchLimit, requestId, itemId, count, 0, 0}; return false; }
 
-        // Phase 1: dry-run plan, no mutation.
+        // All potentially allocating planning precedes any visible domain change.
         int remaining = count;
-        std::vector<std::pair<size_t, int>> plan;  // slot index -> amount written
+        std::vector<std::pair<size_t, int>> plan;
         for (size_t i = 0; i < slots_.size() && remaining > 0; ++i) {
             if (slots_[i].itemId != itemId) continue;
             const int room = kMaxStack - slots_[i].count;
@@ -50,24 +125,29 @@ public:
             plan.emplace_back(i, put);
             remaining -= put;
         }
-        if (remaining > 0) { outReason = "capacity-exhausted-rolled-back"; return false; }
+        if (remaining > 0) { out = {Code::Capacity, requestId, itemId, count, 0, 0}; return false; }
 
-        // Phase 2: commit.
-        for (const auto& step : plan) {
-            Slot& s = slots_[step.first];
-            if (s.itemId == 0) { s.itemId = itemId; s.count = step.second; }
-            else { s.count += step.second; }
-        }
-        processed_.insert(requestId);
-        outReason = "ok";
-        return true;
+        const int64_t before = Count(itemId);
+        const Result prepared{Code::Ok, requestId, itemId, count, before, before + count};
+        // FINAL potentially throwing operation: node allocation and possible rehash.
+        // std::allocator allocation may throw; single-element unordered_map emplace
+        // has no effect on exception with these nonthrowing hash/equality/value types.
+        // Reserve alone would not prepare a node. No custom allocator/hook is allowed.
+        const auto inserted = processed_.emplace(requestId, SuccessRecord{itemId, count, prepared});
+        if (!inserted.second) { out = {Code::Conflict, requestId, itemId, count, 0, 0}; return false; }
+        // No observer/concurrent call may see record-before-slots. This is NOT a CPU
+        // atomic operation, a durable commit, or a multi-threaded transaction.
+        Publish(plan, itemId);
+        out = prepared;
+        return true; // plan destruction only deallocates standard-allocator storage.
     }
 
-    bool Remove(int itemId, int count, std::string& outReason) {
-        if (count <= 0) { outReason = "invalid-count"; return false; }
-        int have = 0;
-        for (const Slot& s : slots_) if (s.itemId == itemId) have += s.count;
-        if (have < count) { outReason = "not-enough-items"; return false; }
+    // Local removal primitive; intentionally no requestId/deduplication API.
+    bool Remove(int itemId, int count, Result& out) noexcept {
+        if (itemId <= 0) { out = {Code::InvalidItem, 0, itemId, count, 0, 0}; return false; }
+        if (count <= 0) { out = {Code::InvalidCount, 0, itemId, count, 0, 0}; return false; }
+        const int64_t have = Count(itemId);
+        if (have < count) { out = {Code::NotEnough, 0, itemId, count, 0, 0}; return false; }
         int left = count;
         for (Slot& s : slots_) {
             if (left == 0) break;
@@ -75,33 +155,48 @@ public:
             const int take = std::min(s.count, left);
             s.count -= take;
             left -= take;
-            if (s.count == 0) { s.itemId = 0; }
+            if (s.count == 0) s.itemId = 0;
         }
-        outReason = "ok";
+        out = {Code::Ok, 0, itemId, count, have, have - count};
         return true;
     }
 
-    int Count(int itemId) const {
-        int total = 0;
+    int64_t Count(int itemId) const noexcept {
+        int64_t total = 0;
         for (const Slot& s : slots_) if (s.itemId == itemId) total += s.count;
         return total;
     }
-    int UsedSlots() const {
+    int UsedSlots() const noexcept {
         int n = 0;
         for (const Slot& s : slots_) if (s.itemId != 0) ++n;
-        return n;
+        return n; // slots_.size() <= INT_MAX from constructor.
     }
-    int StackCount(int itemId) const {
+    int StackCount(int itemId) const noexcept {
         int n = 0;
         for (const Slot& s : slots_) if (s.itemId == itemId && s.count > 0) ++n;
         return n;
     }
-    const std::vector<Slot>& Slots() const { return slots_; }
+    const std::vector<Slot>& Slots() const noexcept { return slots_; }
+    const Successes& SuccessfulRequests() const noexcept { return processed_; }
 
 private:
+    static size_t CheckedCapacity(int capacity) {
+        if (capacity < 0) throw std::invalid_argument("negative inventory capacity");
+        return static_cast<size_t>(capacity);
+    }
+    void Publish(const std::vector<std::pair<size_t, int>>& plan, int itemId) noexcept {
+        // Valid indices; all resulting counts in [1,99]. Only bounded scalar writes.
+        for (const auto& step : plan) {
+            Slot& s = slots_[step.first];
+            if (s.itemId == 0) { s.itemId = itemId; s.count = step.second; }
+            else s.count += step.second;
+        }
+    }
     std::vector<Slot> slots_;
-    std::unordered_set<uint64_t> processed_;
+    Successes processed_;
 };
+
+#ifndef INVENTORY_MODEL_ONLY
 
 int gPass = 0;
 int gFail = 0;
@@ -123,16 +218,16 @@ std::string Fmt(const char* fmt, ...) {
 // ---- functional cases -------------------------------------------------------
 void TestStacking() {
     Inventory inv(20);
-    std::string r;
+    Result r;
     bool ok = inv.Add(1001, 150, 1, r);
     Check(ok && inv.Count(1001) == 150 && inv.StackCount(1001) == 2 && inv.UsedSlots() == 2,
           "T1 basic stacking splits into new slot",
-          Fmt("count=%d stacks=%d used=%d", inv.Count(1001), inv.StackCount(1001), inv.UsedSlots()));
+          Fmt("count=%lld stacks=%d used=%d", static_cast<long long>(inv.Count(1001)), inv.StackCount(1001), inv.UsedSlots()));
 }
 
 void TestTopUpFirst() {
     Inventory inv(20);
-    std::string r;
+    Result r;
     inv.Add(1001, 40, 1, r);
     inv.Add(1001, 100, 2, r);
     const auto& s = inv.Slots();
@@ -140,65 +235,65 @@ void TestTopUpFirst() {
     const bool secondRest = s[1].count == 41;
     Check(firstFull && secondRest && inv.Count(1001) == 140,
           "T2 tops up existing stack before new slot",
-          Fmt("slot0=%d slot1=%d total=%d", s[0].count, s[1].count, inv.Count(1001)));
+          Fmt("slot0=%d slot1=%d total=%lld", s[0].count, s[1].count, static_cast<long long>(inv.Count(1001))));
 }
 
 void TestCapacityRollback() {
     Inventory inv(2);
-    std::string r;
+    Result r;
     inv.Add(1001, 50, 1, r);
     inv.Add(1002, 99, 2, r);
     const std::vector<Slot> before = inv.Slots();
     bool ok = inv.Add(1001, 200, 3, r);
     const bool unchanged = before == inv.Slots();
-    Check(!ok && unchanged && r == "capacity-exhausted-rolled-back",
+    Check(!ok && unchanged && r.code == Code::Capacity,
           "T3 capacity exhaustion is atomic (no partial write)",
-          Fmt("ok=%d unchanged=%d reason=%s", ok ? 1 : 0, unchanged ? 1 : 0, r.c_str()));
+          Fmt("ok=%d unchanged=%d reason=%s", ok ? 1 : 0, unchanged ? 1 : 0, Reason(r.code)));
 }
 
 void TestIdempotency() {
     Inventory inv(20);
-    std::string r1, r2;
+    Result r1, r2;
     inv.Add(1003, 10, 42, r1);
     bool second = inv.Add(1003, 10, 42, r2);
-    Check(second && inv.Count(1003) == 10 && r2 == "duplicate-request-idempotent",
+    Check(second && inv.Count(1003) == 10 && r1 == r2,
           "T4 duplicate requestId is deduplicated",
-          Fmt("total=%d secondReason=%s", inv.Count(1003), r2.c_str()));
+          Fmt("total=%lld secondReason=%s", static_cast<long long>(inv.Count(1003)), Reason(r2.code)));
 }
 
 void TestInvalidArguments() {
     Inventory inv(20);
-    std::string r;
+    Result r;
     const bool zero = inv.Add(1004, 0, 1, r);
-    const std::string zeroReason = r;
+    const Code zeroReason = r.code;
     const bool neg = inv.Add(1004, -5, 2, r);
     const bool big = inv.Add(1004, kMaxBatch + 1, 3, r);
     const bool badItem = inv.Add(-1, 10, 4, r);
     Check(!zero && !neg && !big && !badItem && inv.UsedSlots() == 0,
           "T5 invalid item/count/batch rejected without mutation",
           Fmt("zero=%d(%s) neg=%d big=%d badItem=%d",
-              zero ? 1 : 0, zeroReason.c_str(), neg ? 1 : 0, big ? 1 : 0, badItem ? 1 : 0));
+              zero ? 1 : 0, Reason(zeroReason), neg ? 1 : 0, big ? 1 : 0, badItem ? 1 : 0));
 }
 
 void TestRemovePartial() {
     Inventory inv(20);
-    std::string r;
+    Result r;
     inv.Add(1001, 150, 1, r);           // [99, 51]
     bool ok = inv.Remove(1001, 120, r); // -> [0, 30]
     const auto& s = inv.Slots();
     Check(ok && inv.Count(1001) == 30 && s[0].itemId == 0 && s[1].count == 30 && inv.UsedSlots() == 1,
           "T6 partial removal frees emptied slot",
-          Fmt("left=%d used=%d", inv.Count(1001), inv.UsedSlots()));
+          Fmt("left=%lld used=%d", static_cast<long long>(inv.Count(1001)), inv.UsedSlots()));
 }
 
 void TestRemoveGuard() {
     Inventory inv(20);
-    std::string r;
+    Result r;
     inv.Add(1001, 10, 1, r);
     bool ok = inv.Remove(1001, 11, r);
-    Check(!ok && inv.Count(1001) == 10 && r == "not-enough-items",
+    Check(!ok && inv.Count(1001) == 10 && r.code == Code::NotEnough,
           "T7 removal above owned amount rejected",
-          Fmt("ok=%d left=%d", ok ? 1 : 0, inv.Count(1001)));
+          Fmt("ok=%d left=%lld", ok ? 1 : 0, static_cast<long long>(inv.Count(1001))));
 }
 
 // ---- micro benchmark --------------------------------------------------------
@@ -206,7 +301,7 @@ void BenchTransaction() {
     constexpr int kSlots = 40;
     constexpr int kOps = 400000;
     Inventory inv(kSlots);
-    std::string r;
+    Result r;
     std::vector<double> latNs;
     latNs.reserve(kOps);
     double checksum = 0.0;
@@ -217,13 +312,13 @@ void BenchTransaction() {
         const int item = 5000 + (i % 30);
         const auto t0 = std::chrono::steady_clock::now();
         if (i % 3 == 0) {
-            std::string rr;
+            Result rr;
             inv.Add(item, 5, 2000000ULL + i, rr);
-            checksum += rr.size();
+            checksum += std::strlen(Reason(rr.code));
         } else {
-            std::string rr;
+            Result rr;
             inv.Remove(item, 3, rr);
-            checksum += rr.size();
+            checksum += std::strlen(Reason(rr.code));
         }
         const auto t1 = std::chrono::steady_clock::now();
         latNs.push_back(std::chrono::duration<double, std::nano>(t1 - t0).count());
@@ -241,11 +336,13 @@ void BenchTransaction() {
                 1e9 / (totalNs / latNs.size()), checksum);
 }
 
+#endif // INVENTORY_MODEL_ONLY
 }  // namespace
 
-int main() {
+#ifndef INVENTORY_MODEL_ONLY
+int main(int argc, char** argv) {
     std::printf("gameplay-core | inventory transaction test suite\n");
-    std::printf("compiler=%s c++17 O2\n", __VERSION__);
+    std::printf("compiler=%s c++17 (flags recorded by runner)\n", __VERSION__);
     std::printf("--------------------------------------------------------------------------\n");
     TestStacking();
     TestTopUpFirst();
@@ -254,8 +351,11 @@ int main() {
     TestInvalidArguments();
     TestRemovePartial();
     TestRemoveGuard();
-    BenchTransaction();
+    if (argc == 2 && std::strcmp(argv[1], "--benchmark") == 0) BenchTransaction();
+    else if (argc != 1) { std::fprintf(stderr, "usage: inventory_txn [--benchmark]\n"); return 2; }
     std::printf("--------------------------------------------------------------------------\n");
     std::printf("RESULT pass=%d fail=%d\n", gPass, gFail);
     return gFail == 0 ? 0 : 1;
 }
+
+#endif // INVENTORY_MODEL_ONLY

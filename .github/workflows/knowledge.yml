@@ -75,6 +75,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -O -B evidence/tests/damage-core/scripts/test_runner_contract.py --out "$env:RUNNER_TEMP/damage-runner-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" --cxx g++-14 --pwsh pwsh 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/damage-runner-console-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT.txt"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Inventory memory contracts and five-target runner preservation (Linux)
+        if: ${{ !cancelled() && runner.os == 'Linux' }}
+        timeout-minutes: 8
+        run: |
+          python -B evidence/tests/gameplay-core/scripts/run_inventory_contract.py --cxx g++-14 --timeout-seconds 120 --output-dir "$env:RUNNER_TEMP/inventory-contract-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/inventory-contract-console-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT.txt"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -O -B evidence/tests/gameplay-core/scripts/run_inventory_contract.py --self-test --pwsh (Get-Command pwsh -ErrorAction Stop).Source --timeout-seconds 120 --output-dir "$env:RUNNER_TEMP/inventory-runner-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/inventory-runner-console-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT.txt"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: SQLite scope and terminal transaction contracts (Python, both platforms)
         if: ${{ !cancelled() }}
         timeout-minutes: 4
@@ -196,6 +204,12 @@ jobs:
             ${{ runner.temp }}/damage-runner-${{ github.run_id }}-${{ github.run_attempt }}/**/*.txt
             ${{ runner.temp }}/damage-contract-console-${{ github.run_id }}-${{ github.run_attempt }}.txt
             ${{ runner.temp }}/damage-runner-console-${{ github.run_id }}-${{ github.run_attempt }}.txt
+            ${{ runner.temp }}/inventory-contract-${{ github.run_id }}-${{ github.run_attempt }}/**/*.json
+            ${{ runner.temp }}/inventory-contract-${{ github.run_id }}-${{ github.run_attempt }}/**/*.txt
+            ${{ runner.temp }}/inventory-runner-${{ github.run_id }}-${{ github.run_attempt }}/**/*.json
+            ${{ runner.temp }}/inventory-runner-${{ github.run_id }}-${{ github.run_attempt }}/**/*.txt
+            ${{ runner.temp }}/inventory-contract-console-${{ github.run_id }}-${{ github.run_attempt }}.txt
+            ${{ runner.temp }}/inventory-runner-console-${{ github.run_id }}-${{ github.run_attempt }}.txt
             ${{ runner.temp }}/sqlite-contract-${{ github.run_id }}-${{ github.run_attempt }}.txt
             ${{ runner.temp }}/sqlite-runner-${{ github.run_id }}-${{ github.run_attempt }}.txt
           if-no-files-found: warn
