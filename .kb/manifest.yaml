@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-04 (Damage numerical, field and DOT contracts; mechanically recalculated).
+# Generated: 2026-10-04 (SQLite normalized scope and terminal-row contracts; mechanically recalculated).
 version: 4
 
 okf:
@@ -294,8 +294,8 @@ documents:
   "evidence/tests/gameplay-core/README.md":
     kind: README
     maturity: L0
-    bytes: 17914
-    lines: 210
+    bytes: 22720
+    lines: 234
   "evidence/tests/match-core/README.md":
     kind: README
     maturity: L0
@@ -1869,8 +1869,8 @@ documents:
   "知识/07-网络与游戏服务端/持久化与分布式一致性/03-幂等重试与消息语义.md":
     kind: doc
     maturity: L2
-    bytes: 26834
-    lines: 340
+    bytes: 32578
+    lines: 366
   "知识/07-网络与游戏服务端/持久化与分布式一致性/03-缓存与消息队列.md":
     kind: doc
     maturity: L2

@@ -75,6 +75,21 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -O -B evidence/tests/damage-core/scripts/test_runner_contract.py --out "$env:RUNNER_TEMP/damage-runner-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" --cxx g++-14 --pwsh pwsh 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/damage-runner-console-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT.txt"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: SQLite scope and terminal transaction contracts (Python, both platforms)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 4
+        run: |
+          Remove-Item Env:PYTHONOPTIMIZE -ErrorAction SilentlyContinue
+          python -B evidence/tests/gameplay-core/src/idempotency_sqlite.py 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/sqlite-contract-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT.txt"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -O -B evidence/tests/gameplay-core/src/idempotency_sqlite.py 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/sqlite-contract-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT.txt" -Append
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: SQLite evidence runner failure and preservation contracts (Linux)
+        if: ${{ !cancelled() && runner.os == 'Linux' }}
+        timeout-minutes: 4
+        run: |
+          python -O -B evidence/tests/gameplay-core/scripts/test_idempotency_runner.py 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/sqlite-runner-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT.txt"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Migration safety regression fixtures
         if: ${{ !cancelled() }}
         run: |
@@ -181,4 +196,6 @@ jobs:
             ${{ runner.temp }}/damage-runner-${{ github.run_id }}-${{ github.run_attempt }}/**/*.txt
             ${{ runner.temp }}/damage-contract-console-${{ github.run_id }}-${{ github.run_attempt }}.txt
             ${{ runner.temp }}/damage-runner-console-${{ github.run_id }}-${{ github.run_attempt }}.txt
+            ${{ runner.temp }}/sqlite-contract-${{ github.run_id }}-${{ github.run_attempt }}.txt
+            ${{ runner.temp }}/sqlite-runner-${{ github.run_id }}-${{ github.run_attempt }}.txt
           if-no-files-found: warn

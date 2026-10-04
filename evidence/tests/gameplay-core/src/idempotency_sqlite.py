@@ -50,9 +50,39 @@ class InjectedFailure(Exception):
     pass
 
 
+class StorageContractError(RuntimeError):
+    """The transaction cannot publish the promised single terminal record."""
+
+
+def validate_request(req):
+    # Authentication is the caller's job. These are representation checks, not
+    # proof that a caller owns a tenant/account. Do not coerce bool/float/str IDs.
+    for name in ("tenant", "account"):
+        value = getattr(req, name)
+        if type(value) is not int or not -(2**63) <= value < 2**63:
+            raise ValueError(f"{name} must be an exact signed-64-bit int")
+    for name in ("operation", "key"):
+        value = getattr(req, name)
+        if not isinstance(value, str) or not value:
+            raise ValueError(f"{name} must be a nonempty str")
+        if name == "key" and len(value) > 128:
+            raise ValueError("idempotency key exceeds 128 Python characters")
+        try:
+            value.encode("utf-8")
+        except UnicodeEncodeError as exc:
+            raise ValueError(f"{name} must be UTF-8 encodable") from exc
+    # No strip/lower/Unicode normalization/truncation: BINARY key equality.
+    # Zero/negative IDs are representable; existence is a separate DB check.
+    if req.sku != "potion" or type(req.quantity) is not int or not 1 <= req.quantity <= 20:
+        raise ValueError("invalid normalized request")
+
+
 def connect(path, timeout=5.0):
-    # Explicit BEGIN/COMMIT, not sqlite3's implicit transaction defaults.
-    return sqlite3.connect(path, timeout=timeout, isolation_level=None)
+    # Python 3.12 introduced autocommit; pin legacy control when available so
+    # isolation_level=None keeps explicit SQL BEGIN/COMMIT even if defaults change.
+    options = {"autocommit": sqlite3.LEGACY_TRANSACTION_CONTROL} if hasattr(
+        sqlite3, "LEGACY_TRANSACTION_CONTROL") else {}
+    return sqlite3.connect(path, timeout=timeout, isolation_level=None, **options)
 
 
 def initialize(path):
@@ -62,12 +92,13 @@ def initialize(path):
         PRAGMA journal_mode=DELETE;
         PRAGMA synchronous=FULL;
         CREATE TABLE wallet (
-            tenant INTEGER, account INTEGER, balance INTEGER NOT NULL,
+            tenant INTEGER NOT NULL, account INTEGER NOT NULL, balance INTEGER NOT NULL,
             items INTEGER NOT NULL DEFAULT 0,
             PRIMARY KEY (tenant, account), CHECK(balance >= 0));
         CREATE TABLE idem (
-            tenant INTEGER, account INTEGER, operation TEXT COLLATE BINARY,
-            intent_key TEXT COLLATE BINARY, request_hash TEXT NOT NULL,
+            tenant INTEGER NOT NULL, account INTEGER NOT NULL,
+            operation TEXT COLLATE BINARY NOT NULL,
+            intent_key TEXT COLLATE BINARY NOT NULL, request_hash TEXT NOT NULL,
             status TEXT NOT NULL, snapshot TEXT,
             PRIMARY KEY (tenant, account, operation, intent_key));
         CREATE TABLE job (
@@ -82,10 +113,7 @@ def initialize(path):
 
 
 def purchase(path, req=Request(), hook=lambda point: None, timeout=5.0):
-    if not isinstance(req.key, str) or not req.key or len(req.key) > 128:
-        raise ValueError("missing or invalid required idempotency key")
-    if req.sku != "potion" or type(req.quantity) is not int or not 1 <= req.quantity <= 20:
-        raise ValueError("invalid normalized request")
+    validate_request(req)  # Entire scope and payload, before opening a connection.
     # Price is authoritative catalog data in this toy model, never client input.
     cost = 100 * req.quantity
     db = connect(path, timeout)
@@ -124,9 +152,12 @@ def purchase(path, req=Request(), hook=lambda point: None, timeout=5.0):
             raise ValueError("account does not exist")
         snapshot = json.dumps({"state": state, "balance": wallet[0], "items": wallet[1]},
                               sort_keys=True, separators=(",", ":"))
-        db.execute("""UPDATE idem SET status=?, snapshot=?
-            WHERE tenant=? AND account=? AND operation=? AND intent_key=?""",
-                   (state, snapshot, *req.scope))
+        terminal_rows = db.execute("""UPDATE idem SET status=?, snapshot=?
+            WHERE tenant=? AND account=? AND operation=? AND intent_key=?
+              AND status='PROCESSING' AND snapshot IS NULL""",
+                                   (state, snapshot, *req.scope)).rowcount
+        if terminal_rows != 1:
+            raise StorageContractError(f"terminal update affected {terminal_rows} rows; expected exactly 1")
         hook("before_commit")
         db.execute("COMMIT")
         hook("after_commit")
@@ -355,6 +386,152 @@ class IdempotencyTests(unittest.TestCase):
                 purchase(self.path, replace(Request(), key=key))
         self.assertEqual(self.state(), (1000, 0))
         self.assertEqual(self.query("SELECT count(*) FROM idem"), [(0,)])
+
+
+    def assert_invalid_before_connect(self, req):
+        unopened = str(Path(self.temp.name) / "must-not-be-created.sqlite")
+        with self.assertRaises(ValueError):
+            purchase(unopened, req)
+        self.assertFalse(Path(unopened).exists())
+        self.assertEqual(self.state(), (1000, 0))
+        self.assertEqual(self.query("SELECT * FROM idem"), [])
+
+    def test_20_invalid_operation_rejected_before_connection(self):
+        for operation in (None, "", 1, True, 1.0, b"mall-buy-v1", "\ud800"):
+            with self.subTest(operation=repr(operation)):
+                self.assert_invalid_before_connect(replace(Request(), operation=operation))
+        # The original operation=None defect must reject on every retry.
+        for _ in range(2):
+            with self.assertRaises(ValueError):
+                purchase(self.path, replace(Request(), operation=None))
+        self.assertEqual(self.state(), (1000, 0))
+        self.assertEqual(self.query("SELECT * FROM idem"), [])
+
+    def test_21_identity_is_exact_int_in_sqlite_signed64_domain(self):
+        class IntSubclass(int):
+            pass
+        for field in ("tenant", "account"):
+            for value in (None, True, False, 1.0, "1", b"1", IntSubclass(1),
+                          -(2**63)-1, 2**63):
+                with self.subTest(field=field, value=repr(value)):
+                    self.assert_invalid_before_connect(replace(Request(), **{field: value}))
+
+    def test_22_signed64_endpoints_zero_and_negative_are_representable(self):
+        for field in ("tenant", "account"):
+            for value in (-(2**63), -1, 0, 2**63-1):
+                with self.subTest(field=field, value=value):
+                    req = replace(Request(), **{field: value})
+                    self.query("INSERT INTO wallet VALUES (?,?,1000,0)", req.scope[:2])
+                    first = purchase(self.path, req)
+                    self.assertEqual(purchase(self.path, req), first)
+                    self.assertEqual(self.state(*req.scope[:2]), (900, 1))
+        # Representable does not mean provisioned, and is not authentication.
+        with self.assertRaisesRegex(ValueError, "account does not exist"):
+            purchase(self.path, replace(Request(), account=99))
+        self.assertEqual(self.query("SELECT count(*) FROM idem"), [(8,)])
+
+    def test_23_key_equality_preserves_case_space_unicode_and_nul(self):
+        keys = ("A", "a", " A ", " ", "é", "e\u0301", "x"*128, "🧪"*128, "a\x00b")
+        for key in keys:
+            with self.subTest(key=repr(key)):
+                req = replace(Request(), key=key)
+                first = purchase(self.path, req)
+                self.assertEqual(purchase(self.path, req), first)
+        self.assertEqual(self.state(), (1000-100*len(keys), len(keys)))
+        self.assertEqual({row[0] for row in self.query("SELECT intent_key FROM idem")}, set(keys))
+
+    def test_24_operation_is_nonempty_without_silent_normalization(self):
+        for operation in ("mall-buy-v1", "mall-buy-v2", "Mall-buy-v1", " "):
+            req = replace(Request(), operation=operation)
+            first = purchase(self.path, req)
+            self.assertEqual(purchase(self.path, req), first)
+        self.assertEqual(self.state(), (600, 4))
+        self.assertEqual(self.query("SELECT count(*) FROM idem"), [(4,)])
+
+    def test_25_schema_rejects_null_for_all_six_scope_columns(self):
+        purchase(self.path)
+        for table, columns, base in (
+            ("wallet", ("tenant", "account"), [3, 20, 1000, 0]),
+            ("idem", ("tenant", "account", "operation", "intent_key"),
+             [3, 20, "mall-buy-v1", "direct", Request().digest, "PROCESSING", None]),
+        ):
+            schema = {row[1]: row[3] for row in self.query(f"PRAGMA table_info({table})")}
+            for index, column in enumerate(columns):
+                with self.subTest(table=table, column=column):
+                    self.assertEqual(schema[column], 1)
+                    values = base.copy()
+                    values[index] = None
+                    with self.assertRaises(sqlite3.IntegrityError):
+                        self.query(f"INSERT INTO {table} VALUES ({','.join('?' for _ in values)})", values)
+                    with self.assertRaises(sqlite3.IntegrityError):
+                        self.query(f"UPDATE {table} SET {column}=NULL")
+        self.assertEqual(self.state(), (900, 1))
+        self.assertEqual(self.query("SELECT count(*) FROM wallet"), [(3,)])
+        self.assertEqual(self.query("SELECT status FROM idem"), [("SUCCEEDED",)])
+
+    def test_26_real_trigger_zero_terminal_rows_rolls_back_success_and_rejection(self):
+        # RAISE(IGNORE) on this isolated test DB is real SQLite rowcount=0,
+        # not a mocked cursor. It models a broken storage-side contract.
+        self.query("""CREATE TRIGGER suppress_terminal BEFORE UPDATE OF status ON idem
+            BEGIN SELECT RAISE(IGNORE); END""")
+        for quantity in (1, 11):
+            with self.subTest(quantity=quantity):
+                with self.assertRaisesRegex(StorageContractError, "affected 0 rows"):
+                    purchase(self.path, replace(Request(), quantity=quantity))
+                self.assertEqual(self.state(), (1000, 0))
+                self.assertEqual(self.query("SELECT * FROM idem"), [])
+        self.query("DROP TRIGGER suppress_terminal")
+        first = purchase(self.path)
+        self.assertEqual(purchase(self.path), first)
+        self.assertEqual(self.state(), (900, 1))
+
+    def test_27_real_terminal_sql_error_rolls_back_effect_and_placeholder(self):
+        self.query("""CREATE TRIGGER fail_terminal BEFORE UPDATE OF status ON idem
+            BEGIN SELECT RAISE(ABORT, 'terminal failure'); END""")
+        with self.assertRaisesRegex(sqlite3.IntegrityError, "terminal failure"):
+            purchase(self.path)
+        self.assertEqual(self.state(), (1000, 0))
+        self.assertEqual(self.query("SELECT * FROM idem"), [])
+
+    def test_28_hook_new_connection_reentry_before_and_after_commit(self):
+        def reenter_before(point):
+            if point == "after_debit":
+                purchase(self.path, timeout=0)
+        with self.assertRaises(sqlite3.OperationalError) as caught:
+            purchase(self.path, hook=reenter_before)
+        self.assertEqual(caught.exception.sqlite_errorcode, sqlite3.SQLITE_BUSY)
+        self.assertEqual(self.state(), (1000, 0))
+        self.assertEqual(self.query("SELECT * FROM idem"), [])
+        replies = []
+        def reenter_after(point):
+            if point == "after_commit":
+                replies.append(purchase(self.path, timeout=0))
+        first = purchase(self.path, hook=reenter_after)
+        self.assertEqual(replies, [first])
+        self.assertEqual(self.state(), (900, 1))
+
+    def test_29_explicit_sql_transaction_control(self):
+        db = connect(self.path)
+        try:
+            self.assertIsNone(db.isolation_level)
+            if hasattr(sqlite3, "LEGACY_TRANSACTION_CONTROL"):
+                self.assertEqual(db.autocommit, sqlite3.LEGACY_TRANSACTION_CONTROL)
+            self.assertFalse(db.in_transaction)
+            db.execute("BEGIN IMMEDIATE")
+            self.assertTrue(db.in_transaction)
+            db.execute("ROLLBACK")
+            self.assertFalse(db.in_transaction)
+        finally:
+            db.close()
+
+    def test_30_invalid_key_and_payload_rejected_before_connection(self):
+        for key in ("", None, 1, True, 1.0, b"intent", "x"*129, "🧪"*129, "\ud800"):
+            with self.subTest(key=repr(key)):
+                self.assert_invalid_before_connect(replace(Request(), key=key))
+        for quantity in (0, -1, 21, True, 1.0, "1", None):
+            with self.subTest(quantity=repr(quantity)):
+                self.assert_invalid_before_connect(replace(Request(), quantity=quantity))
+        self.assert_invalid_before_connect(replace(Request(), sku="unknown"))
 
 
 if __name__ == "__main__":
