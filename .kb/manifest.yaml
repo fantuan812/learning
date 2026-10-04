@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-04 (Tick policy contracts and exact model records; mechanically recalculated).
+# Generated: 2026-10-04 (Teaching evidence rules and preserved-source defect policy; mechanically recalculated).
 version: 4
 
 okf:
@@ -324,7 +324,7 @@ documents:
   "references/OKF-兼容规范.md":
     kind: doc
     maturity: L2
-    bytes: 5207
+    bytes: 6037
     lines: 61
   "references/Obsidian协作指南.md":
     kind: doc
@@ -349,12 +349,12 @@ documents:
   "references/仓库结构.md":
     kind: doc
     maturity: L2
-    bytes: 9029
+    bytes: 9527
     lines: 111
   "references/写作规范.md":
     kind: doc
     maturity: L2
-    bytes: 9851
+    bytes: 13321
     lines: 149
   "references/知识库架构.md":
     kind: doc
@@ -369,8 +369,8 @@ documents:
   "scripts/README.md":
     kind: README
     maturity: L0
-    bytes: 2914
-    lines: 46
+    bytes: 6951
+    lines: 73
   "工作日志/2026-08-03-假人AI-A星优化与耗时测试.md":
     kind: doc
     maturity: L0
