@@ -4661,6 +4661,12 @@
       "path": "evidence/cpp/expected-contract/README.md",
       "domain": "systems",
       "kind": "experiment"
+    },
+    {
+      "id": "kb-66e49e316c62",
+      "path": "evidence/cpp/foundation-contracts/README.md",
+      "domain": "systems",
+      "kind": "experiment"
     }
   ],
   "concepts": [
@@ -4997,6 +5003,21 @@
     {
       "from": "kb-75ba4957307f",
       "to": "kb-e7719e843e78",
+      "type": "verified_by"
+    },
+    {
+      "from": "kb-79484ac343bf",
+      "to": "kb-66e49e316c62",
+      "type": "verified_by"
+    },
+    {
+      "from": "kb-3a6fbe2c74a9",
+      "to": "kb-66e49e316c62",
+      "type": "verified_by"
+    },
+    {
+      "from": "kb-75ba4957307f",
+      "to": "kb-66e49e316c62",
       "type": "verified_by"
     }
   ]

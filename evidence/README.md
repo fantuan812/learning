@@ -29,6 +29,7 @@ maturity: L0
 | [labs/profiling](labs/profiling/README.md) | 性能定位：6 种插桩样式开销（0.33ns 计数 → 310ns 日志）+ 帧预算换算、卡顿检测（中位数阈值+迟滞）、Tick 预算降级状态机 | 已执行（MinGW g++ 16.1.0） | [10-性能问题定位完整链路](../知识/08-工程实践与质量/调试与性能分析/10-性能问题定位完整链路.md) |
 | [labs/skinning-contract](labs/skinning-contract/README.md) | 蒙皮空间/inverse bind/palette/权重裁剪数值反例 | 已执行（Python 3.12/Linux，16 项；非 UE 运行） | [07-动画资产与骨骼基础](../知识/04-图形动画与物理仿真/动画求值与角色表现/07-动画资产与骨骼基础.md) |
 | [cpp/expected-contract](cpp/expected-contract/README.md) | 内嵌载荷、动态资源、布局与异常传播边界 | 已执行（Linux / GCC14 / libstdc++14；O0/O2 各 28 项，非性能基准） | [异常、类型系统与标准库实现 §3.1](../知识/01-编程与计算机基础/C++语言与对象模型/02-异常、类型系统与标准库实现.md#31-内嵌存储与错误路径的保证边界) |
+| [cpp/foundation-contracts](cpp/foundation-contracts/README.md) | 一次性原子发布、固定容量对象池、variant/span/expected 字节解码合同 | 已执行（Linux / GCC14；O0/O2/UBSan 功能测试及3类隔离负例，非性能基准） | [Atomic](../知识/01-编程与计算机基础/并发与同步/02-Atomic与C++内存模型.md)、[对象布局与池](../知识/01-编程与计算机基础/C++语言与对象模型/01-对象布局、虚函数与内存分配.md)、[类型与错误](../知识/01-编程与计算机基础/C++语言与对象模型/02-异常、类型系统与标准库实现.md) |
 | labs/page-fault | Page Fault / mmap 实验 | 规划（需 Linux） | W1-10 |
 | labs/cache-benchmark | Cache stride / branch / SIMD Benchmark | 规划 | W1-12 |
 | [algorithms/astar](algorithms/astar/README.md) | A* 二叉堆 vs 线性扫描 + 路径缓存（补齐工作日志缺失项） | 已执行（MSVC 2022） | [07-假人AI完整链路](../知识/06-游戏AI/战斗战术与机器人/07-假人AI完整链路.md) |

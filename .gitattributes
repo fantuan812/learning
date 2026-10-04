@@ -1,2 +1,5 @@
 # Keep Markdown byte-based manifest identical on Linux and Windows.
 *.md text eol=lf
+
+# Preserve the compiler caret diagnostic byte-for-byte in this raw result only.
+evidence/cpp/foundation-contracts/observed-gcc14-2026-10-04/old_byte_stride.stderr.txt whitespace=-blank-at-eol

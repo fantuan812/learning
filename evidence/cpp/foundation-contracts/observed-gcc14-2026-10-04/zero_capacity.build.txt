@@ -1,0 +1,13 @@
+In file included from /tmp/foundation-contracts-revised/zero_capacity.cpp:2:
+/workspace/scratch/234c8048d85d/learning-content-main-20261004/evidence/cpp/foundation-contracts/contracts.cpp: In function ‘int contract_main()’:
+/workspace/scratch/234c8048d85d/learning-content-main-20261004/evidence/cpp/foundation-contracts/contracts.cpp:274:1: warning: no return statement in function returning non-void [-Wreturn-type]
+  274 | }
+      | ^
+/workspace/scratch/234c8048d85d/learning-content-main-20261004/evidence/cpp/foundation-contracts/contracts.cpp: In instantiation of ‘class FixedPool<int, 0>’:
+/tmp/foundation-contracts-revised/zero_capacity.cpp:4:19:   required from here
+    4 | FixedPool<int, 0> invalid;
+      |                   ^~~~~~~
+/workspace/scratch/234c8048d85d/learning-content-main-20261004/evidence/cpp/foundation-contracts/contracts.cpp:29:21: error: static assertion failed
+   29 |     static_assert(N > 0);
+      |                   ~~^~~
+/workspace/scratch/234c8048d85d/learning-content-main-20261004/evidence/cpp/foundation-contracts/contracts.cpp:29:21: note: the comparison reduces to ‘(0 > 0)’
