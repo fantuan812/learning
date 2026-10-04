@@ -32,7 +32,7 @@ maturity: L0
 | [cpp/foundation-contracts](cpp/foundation-contracts/README.md) | 一次性原子发布、固定容量对象池、variant/span/expected 字节解码合同 | 已执行（Linux / GCC14；O0/O2/UBSan 功能测试及3类隔离负例，非性能基准） | [Atomic](../知识/01-编程与计算机基础/并发与同步/02-Atomic与C++内存模型.md)、[对象布局与池](../知识/01-编程与计算机基础/C++语言与对象模型/01-对象布局、虚函数与内存分配.md)、[类型与错误](../知识/01-编程与计算机基础/C++语言与对象模型/02-异常、类型系统与标准库实现.md) |
 | labs/page-fault | Page Fault / mmap 实验 | 规划（需 Linux） | W1-10 |
 | labs/cache-benchmark | Cache stride / branch / SIMD Benchmark | 规划 | W1-12 |
-| [algorithms/astar](algorithms/astar/README.md) | A* 二叉堆 vs 线性扫描 + 路径缓存（补齐工作日志缺失项） | 已执行（MSVC 2022） | [07-假人AI完整链路](../知识/06-游戏AI/战斗战术与机器人/07-假人AI完整链路.md) |
+| [algorithms/astar](algorithms/astar/README.md) | A* 独立 oracle、LRU 故障对照与真实路径返回成本；撤回旧常数计时，旧日志保全 | 已执行（Linux / GCC14 / C++17；功能合同与固定网格观测，非历史项目补测或线上容量） | [07-假人AI完整链路](../知识/06-游戏AI/战斗战术与机器人/07-假人AI完整链路.md)、[11-AI与寻路时间预算](../知识/07-网络与游戏服务端/运行调度与过载保护/11-AI与寻路时间预算.md) |
 | [algorithms/aoi](algorithms/aoi/README.md) | AOI Simulator（100/1K/10K Entity，正确率+比较次数+耗时） | 已执行（MSVC 2022） | [05-AOI与InterestManagement](../知识/07-网络与游戏服务端/状态复制与兴趣管理/05-AOI与InterestManagement.md) |
 | server/bot-budget | Bot AI/寻路时间预算 | 规划 | W4-01 |
 

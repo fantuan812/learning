@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-04 (foundation contracts and evidence navigation; mechanically recalculated).
+# Generated: 2026-10-04 (A-star cache contracts and actual observations; mechanically recalculated).
 version: 4
 
 okf:
@@ -204,7 +204,7 @@ documents:
   "evidence/README.md":
     kind: README
     maturity: L0
-    bytes: 7594
+    bytes: 7837
     lines: 53
   "evidence/algorithms/aoi/README.md":
     kind: README
@@ -219,8 +219,8 @@ documents:
   "evidence/algorithms/astar/README.md":
     kind: README
     maturity: L0
-    bytes: 4130
-    lines: 79
+    bytes: 16560
+    lines: 191
   "evidence/cpp/README.md":
     kind: README
     maturity: L0
@@ -614,7 +614,7 @@ documents:
   "知识/02-数学与游戏算法/README.md":
     kind: README
     maturity: L0
-    bytes: 9349
+    bytes: 9367
     lines: 108
   "知识/02-数学与游戏算法/数学与数值计算/01-向量与矩阵基础.md":
     kind: doc
@@ -714,7 +714,7 @@ documents:
   "知识/02-数学与游戏算法/路径搜索与导航/01-图论基础与搜索算法.md":
     kind: doc
     maturity: L2
-    bytes: 30801
+    bytes: 30908
     lines: 703
   "知识/02-数学与游戏算法/路径搜索与导航/02-A星算法与优化.md":
     kind: doc
@@ -1643,9 +1643,9 @@ documents:
     lines: 598
   "知识/06-游戏AI/战斗战术与机器人/07-假人AI完整链路.md":
     kind: doc
-    maturity: L5
-    bytes: 23001
-    lines: 307
+    maturity: L2
+    bytes: 26759
+    lines: 310
   "知识/06-游戏AI/战斗战术与机器人/07-战斗AI编排与战术协同.md":
     kind: doc
     maturity: L2
@@ -2003,9 +2003,9 @@ documents:
     lines: 558
   "知识/07-网络与游戏服务端/运行调度与过载保护/11-AI与寻路时间预算.md":
     kind: doc
-    maturity: L4
-    bytes: 32777
-    lines: 486
+    maturity: L2
+    bytes: 35485
+    lines: 493
   "知识/07-网络与游戏服务端/运行调度与过载保护/12-世界时间确定性与GameClock.md":
     kind: doc
     maturity: L2

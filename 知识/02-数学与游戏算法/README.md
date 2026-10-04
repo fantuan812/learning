@@ -94,7 +94,7 @@ maturity: L0
 
 - [Evidence · aoi：AOI / Interest Management 模拟器](<../../evidence/algorithms/aoi/README.md>)
 - [A* 队列、重开与终止合同反例](<../../evidence/algorithms/astar-contract/README.md>)
-- [Evidence · astar：A* 优化前后对比基准](<../../evidence/algorithms/astar/README.md>)
+- [Evidence · astar：A* 与路径缓存的正确性及测量合同](<../../evidence/algorithms/astar/README.md>)
 - [AOI 与大规模场景可运行证据（可见性 / Tick 成本 / 广播带宽 / 动态分线）](<../../evidence/tests/aoi-scale/README.md>)
 
 ## 主题路线

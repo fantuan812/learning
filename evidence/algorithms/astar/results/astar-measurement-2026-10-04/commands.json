@@ -1,0 +1,150 @@
+[
+  {
+    "argv": [
+      "/usr/bin/g++",
+      "--version"
+    ],
+    "cwd": null,
+    "started_utc": "2026-10-04T12:08:10.589623+00:00",
+    "timeout_seconds": 180.0,
+    "elapsed_seconds": 0.0011455079984443728,
+    "returncode": 0,
+    "timed_out": false,
+    "stdout": "g++ (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+    "stderr": "",
+    "label": "compiler_version",
+    "expected_returncode": 0
+  },
+  {
+    "argv": [
+      "/usr/bin/g++",
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Wformat=2",
+      "-Werror",
+      "-pedantic",
+      "/workspace/scratch/234c8048d85d/learning-astar-quality-20261004/evidence/algorithms/astar/src/astar_benchmark.cpp",
+      "-o",
+      "/tmp/astar-measurement-22z6cmr4/astar"
+    ],
+    "cwd": "/tmp/astar-measurement-22z6cmr4",
+    "started_utc": "2026-10-04T12:08:10.590911+00:00",
+    "timeout_seconds": 180.0,
+    "elapsed_seconds": 1.9565988780013868,
+    "returncode": 0,
+    "timed_out": false,
+    "stdout": "",
+    "stderr": "",
+    "label": "compile",
+    "expected_returncode": 0
+  },
+  {
+    "argv": [
+      "/tmp/astar-measurement-22z6cmr4/astar",
+      "--self-test"
+    ],
+    "cwd": null,
+    "started_utc": "2026-10-04T12:08:12.547950+00:00",
+    "timeout_seconds": 180.0,
+    "elapsed_seconds": 0.02300678599931416,
+    "returncode": 0,
+    "timed_out": false,
+    "stdout": "PASS exhaustive_3x3_oracle_both_corner_policies\nPASS heuristic_regression_5x5\nPASS invalid_endpoints\nPASS validator_rejects_wrong_start_first_block_edge_cost\nPASS capacity_zero\nPASS capacity_one_and_overwrite\nPASS lru_hit_touches_recency\nPASS overwrite_touches_without_duplicate_nodes\nPASS miss_does_not_change_eviction\nPASS empty_unreachable_is_cached_not_a_miss\nPASS returned_path_is_an_independent_copy\nPASS epoch_invalidation_and_profile_isolation\nPASS cached_results_match_uncached_on_mixed_sequence\nSELF_TEST passed=13 failed=0 exhaustive_queries=23040 implementations=2 policies=2 mutant_no_touch=0\n",
+    "stderr": "",
+    "label": "functional",
+    "expected_returncode": 0
+  },
+  {
+    "argv": [
+      "/tmp/astar-measurement-22z6cmr4/astar",
+      "--self-test",
+      "--mutant-no-touch"
+    ],
+    "cwd": null,
+    "started_utc": "2026-10-04T12:08:12.571327+00:00",
+    "timeout_seconds": 180.0,
+    "elapsed_seconds": 0.021064312000817154,
+    "returncode": 1,
+    "timed_out": false,
+    "stdout": "PASS exhaustive_3x3_oracle_both_corner_policies\nPASS heuristic_regression_5x5\nPASS invalid_endpoints\nPASS validator_rejects_wrong_start_first_block_edge_cost\nPASS capacity_zero\nPASS capacity_one_and_overwrite\nFAIL lru_hit_touches_recency: hit must evict B, not A\nPASS overwrite_touches_without_duplicate_nodes\nPASS miss_does_not_change_eviction\nPASS empty_unreachable_is_cached_not_a_miss\nPASS returned_path_is_an_independent_copy\nPASS epoch_invalidation_and_profile_isolation\nPASS cached_results_match_uncached_on_mixed_sequence\nSELF_TEST passed=12 failed=1 exhaustive_queries=23040 implementations=2 policies=2 mutant_no_touch=1\n",
+    "stderr": "",
+    "label": "negative_lru_no_touch",
+    "expected_returncode": 1
+  },
+  {
+    "argv": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-B",
+      "/workspace/scratch/234c8048d85d/learning-astar-quality-20261004/evidence/algorithms/astar/scripts/test_benchmark.py"
+    ],
+    "cwd": "/tmp/astar-measurement-22z6cmr4",
+    "started_utc": "2026-10-04T12:08:12.592663+00:00",
+    "timeout_seconds": 180.0,
+    "elapsed_seconds": 0.35235639399979846,
+    "returncode": 0,
+    "timed_out": false,
+    "stdout": "",
+    "stderr": "test_duplicate_sample_is_rejected (__main__.RunnerContract.test_duplicate_sample_is_rejected) ... ok\ntest_existing_output_is_rejected_and_preserved (__main__.RunnerContract.test_existing_output_is_rejected_and_preserved) ... ok\ntest_hit_count_cannot_exceed_requests (__main__.RunnerContract.test_hit_count_cannot_exceed_requests) ... ok\ntest_invalid_timing_denominator_is_rejected (__main__.RunnerContract.test_invalid_timing_denominator_is_rejected) ... ok\ntest_missing_compiler_fails_not_skips (__main__.RunnerContract.test_missing_compiler_fails_not_skips) ... ok\ntest_missing_measurement_cannot_pass (__main__.RunnerContract.test_missing_measurement_cannot_pass) ... ok\ntest_nearest_rank_quantiles (__main__.RunnerContract.test_nearest_rank_quantiles) ... ok\ntest_nonfinite_duration_is_rejected (__main__.RunnerContract.test_nonfinite_duration_is_rejected) ... ok\ntest_nonzero_is_a_failure (__main__.RunnerContract.test_nonzero_is_a_failure) ... ok\ntest_timeout_is_a_failure_with_partial_output (__main__.RunnerContract.test_timeout_is_a_failure_with_partial_output) ... ok\n\n----------------------------------------------------------------------\nRan 10 tests in 0.281s\n\nOK\n",
+    "label": "runner_contract_tests",
+    "expected_returncode": 0
+  },
+  {
+    "argv": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-B",
+      "/workspace/scratch/234c8048d85d/learning-astar-quality-20261004/evidence/algorithms/astar-contract/astar_contract.py"
+    ],
+    "cwd": "/tmp/astar-measurement-22z6cmr4",
+    "started_utc": "2026-10-04T12:08:12.945396+00:00",
+    "timeout_seconds": 180.0,
+    "elapsed_seconds": 0.02849227300248458,
+    "returncode": 0,
+    "timed_out": false,
+    "stdout": "stale: cost=22 pops=5 stale=1 A_expansions=1 without_filter=2\nreopen: disabled=5 enabled=4 A_expansions=2\ngoal: on_discovery=10 on_valid_pop=2\nties: fifo_cost=2 larger_g_cost=2 fifo_expansions=3 larger_g_expansions=2\n",
+    "stderr": "",
+    "label": "existing_astar_contract_examples",
+    "expected_returncode": 0
+  },
+  {
+    "argv": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-B",
+      "/workspace/scratch/234c8048d85d/learning-astar-quality-20261004/evidence/algorithms/astar-contract/test_astar_contract.py"
+    ],
+    "cwd": "/tmp/astar-measurement-22z6cmr4",
+    "started_utc": "2026-10-04T12:08:12.974194+00:00",
+    "timeout_seconds": 180.0,
+    "elapsed_seconds": 1.861915166999097,
+    "returncode": 0,
+    "timed_out": false,
+    "stdout": "heuristic_regression[python]: cost=5.82842712474619 oracle=5.82842712474619 mutant=None\nheuristic_regression[cpp]: cost=5.82842712474619 oracle=5.82842712474619 mutant=None\nmutable_queue: old_cost=5 optimal=3 fixed_cost=3\nPASS: 14 tests; 200 graph cases; 11520 small-grid + 1 heuristic-regression queries per language; C++11 -Werror\n",
+    "stderr": "test_10_python_article_boundaries_and_all_small_grids (__main__.ArticleTests.test_10_python_article_boundaries_and_all_small_grids) ... ok\ntest_11_cpp_article_boundaries_and_all_small_grids (__main__.ArticleTests.test_11_cpp_article_boundaries_and_all_small_grids) ... ok\ntest_13_python_octile_regression_matches_bellman_ford (__main__.ArticleTests.test_13_python_octile_regression_matches_bellman_ford) ... ok\ntest_14_cpp_octile_regression_matches_bellman_ford (__main__.ArticleTests.test_14_cpp_octile_regression_matches_bellman_ford) ... ok\ntest_01_stale_pops_are_not_expansions (__main__.ContractTests.test_01_stale_pops_are_not_expansions) ... ok\ntest_02_mutating_a_key_does_not_repair_heap (__main__.ContractTests.test_02_mutating_a_key_does_not_repair_heap) ... ok\ntest_03_admissible_inconsistent_requires_reopen (__main__.ContractTests.test_03_admissible_inconsistent_requires_reopen) ... ok\ntest_04_goal_discovery_is_too_early (__main__.ContractTests.test_04_goal_discovery_is_too_early) ... ok\ntest_05_equal_priorities_do_not_compare_node_objects (__main__.ContractTests.test_05_equal_priorities_do_not_compare_node_objects) ... ok\ntest_06_equal_f_policy_changes_work_not_cost (__main__.ContractTests.test_06_equal_f_policy_changes_work_not_cost) ... ok\ntest_07_strict_relaxation_stops_zero_cost_cycle (__main__.ContractTests.test_07_strict_relaxation_stops_zero_cost_cycle) ... ok\ntest_08_graph_boundaries (__main__.ContractTests.test_08_graph_boundaries) ... ok\ntest_09_fixed_seed_graphs_match_independent_oracle (__main__.ContractTests.test_09_fixed_seed_graphs_match_independent_oracle) ... ok\ntest_12_cpp_old_failure_and_snapshot_fix (__main__.ContractTests.test_12_cpp_old_failure_and_snapshot_fix) ... ok\n\n----------------------------------------------------------------------\nRan 14 tests in 1.789s\n\nOK\n",
+    "label": "existing_astar_contract_tests",
+    "expected_returncode": 0
+  },
+  {
+    "argv": [
+      "/tmp/astar-measurement-22z6cmr4/astar",
+      "--csv",
+      "/workspace/scratch/234c8048d85d/learning-astar-quality-20261004/evidence/algorithms/astar/results/astar-measurement-2026-10-04/samples.csv",
+      "--queries",
+      "1000",
+      "--repeats",
+      "5",
+      "--seed",
+      "20261004"
+    ],
+    "cwd": "/tmp/astar-measurement-22z6cmr4",
+    "started_utc": "2026-10-04T12:08:14.836587+00:00",
+    "timeout_seconds": 180.0,
+    "elapsed_seconds": 10.423583245999907,
+    "returncode": 0,
+    "timed_out": false,
+    "stdout": "CLOCK steady=1 period_num=1 period_den=1000000000 min_positive_ns=20\nBENCHMARK queries=1000 repeats=5 seed=20261004 cache_capacity=128 grid=100x100 corner_cutting=0 checksum=14425110324026660392\nTiming samples are observations, never speed assertions. Batched percentiles are percentiles of batch means.\n",
+    "stderr": "",
+    "label": "benchmark",
+    "expected_returncode": 0
+  }
+]

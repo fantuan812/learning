@@ -43,6 +43,12 @@ jobs:
         run: |
           python -B evidence/algorithms/astar-contract/test_astar_contract.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: A-star cache correctness and observed measurement (Linux)
+        if: ${{ !cancelled() && runner.os == 'Linux' }}
+        timeout-minutes: 5
+        run: |
+          python -B evidence/algorithms/astar/scripts/run_benchmark.py --output-dir "$env:RUNNER_TEMP/astar-measurement-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" --compiler g++-14 --queries 1000 --repeats 5 --seed 20261004 --timeout 180
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Migration safety regression fixtures
         if: ${{ !cancelled() }}
         run: |
@@ -126,5 +132,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: knowledge-validation-${{ matrix.os }}
-          path: ${{ runner.temp }}/knowledge-validation.json
+          path: |
+            ${{ runner.temp }}/knowledge-validation.json
+            ${{ runner.temp }}/astar-measurement-${{ github.run_id }}-${{ github.run_attempt }}/*.json
+            ${{ runner.temp }}/astar-measurement-${{ github.run_id }}-${{ github.run_attempt }}/*.csv
           if-no-files-found: warn
