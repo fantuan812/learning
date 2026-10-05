@@ -1,502 +1,654 @@
 ---
 type: Concept
 title: "05 StateTree 状态树（State Tree）"
+description: "解释 StateTree 的层级选择、任务完成与退出、实例数据寿命，并组装可追踪成功、失败和取消的 AI 巡逻追击片段。"
 status: stable
 verified: []
 maturity: L2
+updated: 2026-10-05
+sources:
+  - id: statetree-overview
+    title: "StateTree Overview：Selection Flow / Data Flow / Blueprint Integration"
+    resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/overview-of-state-tree-in-unreal-engine
+  - id: statetree-context
+    title: "FStateTreeExecutionContext：临时上下文与数据要求"
+    resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/StateTreeModule/FStateTreeExecutionContext
+  - id: statetree-task
+    title: "FStateTreeTaskBase：原生任务、完成参与和生命周期"
+    resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/StateTreeModule/FStateTreeTaskBase
+  - id: statetree-node
+    title: "FStateTreeNodeBase：节点与实例数据类型"
+    resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/StateTreeModule/FStateTreeNodeBase
+  - id: statetree-state
+    title: "UStateTreeState：编辑器状态与 TasksCompletion"
+    resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/StateTreeEditorModule/UStateTreeState
+  - id: statetree-moveto
+    title: "FStateTreeMoveToTask：经 AITask_MoveTo 移动 Controller 的 Pawn"
+    resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/GameplayStateTreeModule/FStateTreeMoveToTask
+  - id: statetree-moveto-data
+    title: "FStateTreeMoveToTaskInstanceData：移动输入与请求对象"
+    resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/GameplayStateTreeModule/FStateTreeMoveToTaskInstanceData
+  - id: statetree-ai-schema
+    title: "UStateTreeAIComponentSchema：Controller 与被控制 Pawn 上下文"
+    resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/GameplayStateTreeModule/UStateTreeAIComponentSchema
+  - id: statetree-completed
+    title: "FStateTreeTaskBase::StateCompleted：不覆盖条件转换"
+    resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/StateTreeModule/FStateTreeTaskBase/StateCompleted
+  - id: statetree-weak
+    title: "FStateTreeWeakExecutionContext：活动身份与异步有效性"
+    resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/StateTreeModule/FStateTreeWeakExecutionContext
+  - id: bt-overview
+    title: "Behavior Tree Overview：UE 行为树本身是事件驱动的"
+    resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/behavior-tree-in-unreal-engine---overview
+  - id: mass-overview
+    title: "Mass Gameplay Overview：StateTree / Signals / SmartObject 集成"
+    resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/overview-of-mass-gameplay-in-unreal-engine
 ---
+
 # 05 StateTree 状态树（State Tree）
-> 知识成熟度：L2（本轮审计修订时补标）。
-> 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
-> 兼容性边界：适用于 UE5.8 编辑器/运行时，UE4.27 与早期 UE5 仅作迁移背景，具体模块以正文为准。
-> 官方参考：[Unreal Engine UE5.8 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
-> 最后更新：2026-08-06（本轮元数据维护）。
 
-## 概述
+> 知识成熟度：L2。主要结论来自 Epic 公开文档/API 的静态核对；代码是原创教学候选，轨迹是纸面推导，不是引擎日志。
+> 版本基准：2026-10-05 访问的当前公开页面，页面标题为 UE 5.8；个别回调的签名来源另标为 UE 5.5。没有访问可认证的本机 UE checkout，原文的“UE 5.8.0 / CL 55116800 / 全部源码已验证”不能继续作为证据。
+> 适用范围：组件驱动的 Actor/Pawn AI 与 StateTree 通用执行模型。Mass 仅说明集成边界；不推断 UE4、早期 UE5 或特定项目完全兼容。
+> 未验证项：UHT、UE 编译/链接、PIE、StateTree Debugger、实际移动取消/销毁重入和性能均未运行。最后更新：2026-10-05，实质修订执行、数据及失败路径。
 
-StateTree 是虚幻引擎 5 提供的数据驱动**状态树**框架：把 AI/游戏逻辑组织成一棵**分层状态（State）树**，状态之间通过**显式转换（Transition）**相连，节点所需数据通过**属性绑定（Property Binding）**从外部注入——**没有行为树那种集中式黑板**。
+## 1. 为什么需要 StateTree
 
-StateTree 自 UE 5.1 起随 Mass 生态逐步成型，5.4 后模块化趋于稳定。在本机 UE 5.8 源码中，相关代码分布在：
+考虑一个守卫：没有目标时巡逻；有远处目标时追击；抵达后停留；寻路失败时退避；目标丢失时取消追击。只写一个枚举和若干回调很快会遇到三个问题：谁更新目标，哪个状态拥有移动请求，退出后旧回调还能不能改变新状态？StateTree 把这些责任组织为**层级状态、显式转换、节点及数据绑定**。
 
-- **StateTreeModule**（`Engine/Plugins/Runtime/StateTree/Source/StateTreeModule`）：运行时核心——`UStateTree` 资产、节点基类（Task/Evaluator/Condition/Consideration）、`FStateTreeExecutionContext` 执行上下文、Schema、属性绑定、事件系统；
-- **StateTreeEditorModule**：编辑器（State Tree Editor、`UStateTreeEditorData`、`UStateTreeState` 编辑器节点定义）；
-- **GameplayStateTreeModule**（`Engine/Plugins/Runtime/GameplayStateTree`）：AI 集成层——`UStateTreeComponent`、`UStateTreeAIComponent`、`UBTTask_RunStateTree`（行为树内运行状态树）、`StateTreeMoveToTask`（寻路移动）、`StateTreeRunEnvQueryTask`（EQS）；
-- **配套**：GameplayInteractions（`Engine/Plugins/Runtime/GameplayInteractions`，交互行为）、SmartObjects（智能对象，StateTree 行为常挂在 SmartObject 上）。
+它把状态机的状态/转换与树式选择组合起来。树形结构解决“共享一段行为和转移”的组织问题，转换解决“何时重新选择”，Task 负责动作，Condition 负责判断，Evaluator 提供可绑定数据。资产编辑器能帮助检查连接，但不会替项目决定失败策略、对象寿命或线程权限。
 
-定位一句话：**行为树是"任务树 + 黑板"的抢占式决策；StateTree 是"状态机 + 数据绑定"的显式决策**。前者适合"随时可以打断重来"的行为编排，后者适合"状态明确、转换可枚举"的逻辑，二者在 5.8 中可以通过 `UBTTask_RunStateTree` 互相嵌套。
+[官方总览的 Selection Flow 与 Data Flow](https://dev.epicgames.com/documentation/en-us/unreal-engine/overview-of-state-tree-in-unreal-engine)是概念入口。其中“第一个任务完成触发转换”的简述，须结合第 3 节当前完成聚合配置理解；不能用它覆盖所有版本与 All/Any 配置。
 
-本文所有类名、枚举与 API 均对照本机 UE 5.8 源码验证。
+### 1.1 先分开资产、编辑器定义和运行实例
 
-## 核心概念（表格）
-
-| 概念 | 英文 / 类型 | 说明 |
+| 层 | 类型 / 职责 | 不能混同的东西 |
 | --- | --- | --- |
-| 状态 | State / `UStateTreeState` | 树上的一个节点：一组任务 + 进入条件 + 转换；可嵌套子状态 |
-| 状态类型 | `EStateTreeStateType` | State（普通）/ Group（仅组织子状态）/ Linked（链接到本树另一状态）/ LinkedAsset（链接到另一资产）/ Subtree（可被链接的子树） |
-| 任务 | Task / `UStateTreeTaskBase` | 状态里的执行单元（移动、播放动画、攻击），返回运行中/成功/失败 |
-| 求值器 | Evaluator / `UStateTreeEvaluatorBase` | 树级"传感器"：每帧/每树周期更新外部数据或参数，不产生决策 |
-| 条件 | Condition / `UStateTreeConditionBase` | 布尔判断：用于"进入条件"或"转换条件" |
-| 效用 | Consideration / `UStateTreeConsiderationBase` | 打分式条件（0~1），配合 Utility 选择行为挑选子状态 |
-| 转换 | Transition / `FStateTreeTransition` | 状态间的边：触发器 + 条件 + 目标类型 + 可选延迟 |
-| 触发器 | `EStateTreeTransitionTrigger` | 何时尝试转换：状态成功/失败/完成、每帧 Tick、收到事件、委托 |
-| 转换目标 | `EStateTreeTransitionType` | 转到指定状态/父状态/下一个兄弟状态/结束成功/结束失败等 |
-| 事件 | Event / `FStateTreeEvent` | 带 GameplayTag 与可选载荷的异步消息，驱动 OnEvent 转换 |
-| 模式 | Schema / `UStateTreeSchema` | 规定"这棵树允许哪些节点、上下文数据是什么"的约束资产 |
-| 上下文数据 | Context Data | 外部注入的对象（Actor、AIController、组件等），通过绑定提供给节点 |
-| 属性绑定 | Property Binding | 编辑器里把上下文/参数/外部属性"连线"到节点属性的机制，编译期解析 |
-| 参数 | Parameters / `FInstancedPropertyBag` | 资产级全局参数 + 状态级参数，运行时可被覆盖 |
-| 实例数据 | InstanceData / `FStateTreeInstanceData` | 每次运行（每棵树实例）独立的节点状态存储，多实体不串扰 |
-| 运行状态 | `EStateTreeRunStatus` | Running（运行中）/ Stopped（被停止）/ Succeeded / Failed |
-| 执行上下文 | `FStateTreeExecutionContext` | 运行时驱动器：Start / Tick / Stop / SendEvent |
-| 树引用 | `FStateTreeReference` | 对状态树资产的引用（可带参数覆盖），挂在组件/BT 任务上 |
-| 组件 | `UStateTreeComponent` | 挂在 Actor 上运行状态树的组件（继承 `UBrainComponent`） |
-| AI 组件 | `UStateTreeAIComponent` | 带 AI 上下文的 StateTree 组件（保证可访问 AIController） |
-| 编辑器数据 | `UStateTreeEditorData` | 编辑器侧持有节点定义与编译源数据，运行时不可见 |
-
-## 原理详解
-
-### 1. 资产结构：一棵状态树长什么样
-
-`UStateTree`（`StateTree.h`）是资产本体，包含：Schema、上下文数据描述、**全局求值器**（`GetGlobalEvaluatorsBegin/Num`）、**全局任务**（`GetGlobalTasksBegin/Num`、`CompletionGlobalTasksMask`，如"整棵树共同完成的移动任务"）、全局参数（`Parameters`，`FInstancedPropertyBag`，`GetDefaultParameters()` 返回默认值）以及根状态（状态树）。
+| 共享资产 | `UStateTree`，保存可执行配置和绑定等编译结果 | 不是每个 AI 的可变进度 |
+| 编辑器状态 | `UStateTreeState`，状态类型、子状态、条件、任务、转换、参数 | 来自 `StateTreeEditorModule`，不是运行时逐个持有的 UObject 状态图 |
+| 运行实例 | `FStateTreeInstanceData`，保存本实例的执行状态和节点数据 | A、B 两个 AI 必须使用各自的实例存储 |
+| 一次驱动视图 | `FStateTreeExecutionContext`，对实例执行 Start/Tick/Stop 等操作 | 是临时对象，不跨帧缓存 |
+| 外部世界 | AIController、Pawn、目标、Subsystem 等 | 存储独立不等于这些外部对象也独立或永远有效 |
 
 ```mermaid
 flowchart TD
-    Asset["UStateTree 资产"] --> Schema["Schema<br/>约束节点与上下文"]
-    Asset --> Ctx["Context Data 描述<br/>Actor / AIController / 组件"]
-    Asset --> GE["全局 Evaluators<br/>（树级传感器）"]
-    Asset --> GT["全局 Tasks<br/>（树级持续任务）"]
-    Asset --> Params["全局 Parameters<br/>FInstancedPropertyBag"]
-    Asset --> Root["RootState（UStateTreeState）"]
-    Root --> S1["State: 巡逻"]
-    Root --> S2["Group: 战斗<br/>（仅组织子状态）"]
-    S2 --> S21["State: 追击"]
-    S2 --> S22["State: 攻击"]
-    S1 --> T1["Tasks: 移动/播放动画"]
-    S1 --> C1["EnterConditions 进入条件"]
-    S1 --> TR1["Transitions 转换列表"]
-    S21 --> TR2["Transitions: 事件/条件转换"]
+    Asset["UStateTree 共享资产"] --> Schema["Schema：允许的节点与上下文"]
+    Asset --> Eval["Evaluator / 全局任务 / 参数"]
+    Asset --> Definition["编辑器状态定义，经编译供运行时使用"]
+    Definition --> Idle["Idle 或 Patrol"]
+    Definition --> Combat["普通父 State：Combat，可挂共享任务"]
+    Combat --> Chase["子 State：Chase"]
+    Combat --> Arrived["子 State：Arrived"]
+    Asset -.-> A["AI A：独立 InstanceData"]
+    Asset -.-> B["AI B：独立 InstanceData"]
 ```
 
-编辑器中状态节点定义在 `UStateTreeState`（`StateTreeEditorModule/Public/StateTreeState.h`）里，运行时编译（Linker）后扁平化为节点索引、绑定表与转换表，`FStateTreeExecutionContext` 只消费编译结果。
+模块定位按公开 API 页的 Header / Include 栏核对：`StateTreeModule` 提供原生节点与执行上下文；`StateTreeEditorModule` 提供编辑器定义；`GameplayStateTreeModule` 提供组件、AI Schema 和 MoveTo 等任务。本文不将这些路径说成已在本机源码树逐文件查验。
 
-### 2. 状态（State）与状态类型
+### 1.2 选择的是一条活动状态链
 
-`UStateTreeState` 的主要字段（源码验证）：
+固定采用“按子状态顺序尝试”的策略时，选择会检查候选 Enter Conditions，并继续寻找可进入的子状态。选中叶子后，从根到叶的相关状态一起活动。普通父 State 可以挂共享任务，不能只让叶状态有任务；`Group` 的组织用途与这种带任务的普通父状态应分开。
 
-| 字段 | 说明 |
-| --- | --- |
-| `Name` / `Description` / `Tag` / `ColorRef` | 名称、描述、GameplayTag、编辑器配色 |
-| `Type`（`EStateTreeStateType`） | State / Group / Linked / LinkedAsset / Subtree |
-| `SelectionBehavior`（`EStateTreeStateSelectionBehavior`） | 选中本状态后如何处理子状态（见下） |
-| `Tasks`（`TArray<FStateTreeEditorNode>`） | 本状态的任务列表；Schema 也可规定单任务（`SingleTask`） |
-| `EnterConditions` | 进入条件：全部为真才允许选中本状态 |
-| `Considerations` + `Weight` | 效用打分（Utility），配合"最高效用"选择行为 |
-| `Transitions` | 转换列表（见第 4 节） |
-| `Parameters`（`FStateTreeStateParameters`） | 状态参数（`FInstancedPropertyBag`）+ 覆盖标记（`PropertyOverrides`） |
-| `LinkedSubtree` / `LinkedAsset` | 链接子树 / 链接其他状态树资产（复用逻辑） |
-| `RequiredEventToEnter`（`FStateTreeEventDesc`） | 选中本状态前必须收到的事件 |
-| `CustomTickRate` / `bHasCustomTickRate` | 自定义 tick 频率（降低高频状态开销） |
-| `bCopyParameterBindingsOnTick` | 每 tick 复制参数绑定（默认进入/退出时复制） |
-| `TasksCompletion`（`EStateTreeTaskCompletionType`） | 状态何时算"完成"：`All`（全部任务完成）/ `Any`（任一完成） |
-| `Children` / `Parent` / `ID` / `bEnabled` | 树结构、唯一 ID、启停 |
+例如 `Root → Combat → Chase`：Combat 的朝向任务可以与 Chase 的移动任务同时活动。“同时”描述逻辑活动关系，不保证在不同线程上运行，更不允许任意工作线程读写 UObject。
 
-**选择行为**（`EStateTreeStateSelectionBehavior`）决定状态激活时如何下钻：
+- Enter Conditions 决定**这次选择是否可以进入**，不是永久监视器。进入后目标变远，不会单凭该进入条件变假就自动退出
+- Transition Conditions 决定**本次触发是否允许尝试转换**。条件表达式可能有组合；本文只使用单条件或明确的 AND，不把任意列表都解释为无条件全 AND
+- 转换指向一个状态，不等于已经成功选中它。如果它要求选子状态而所有子状态都不可选，候选选择会失败
+- 当前 API 有顺序、随机、Utility 等选择策略；本文不依赖默认选项、随机平局规则或某个未经核对的效用公式
 
-| 枚举 | 行为 |
-| --- | --- |
-| `None` | 本状态不可被直接选中 |
-| `TryEnterState`（Try Enter） | 直接进入本状态（即使有子状态） |
-| `TrySelectChildrenInOrder`（默认） | 按子状态顺序尝试选中第一个可进入的 |
-| `TrySelectChildrenAtRandom` | 随机顺序尝试 |
-| `TrySelectChildrenWithHighestUtility` | 选效用分最高的子状态（平局按顺序） |
-| （随机效用） | 按归一化效用概率随机挑选 |
+具体字段见 [UStateTreeState](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/StateTreeEditorModule/UStateTreeState)。转换的目标与实际选中结果是不同概念，见 [FStateTreeTransitionResult](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/StateTreeModule/FStateTreeTransitionResult)。
 
-运行时的"当前在哪"是一串**激活状态栈**（`FStateTreeActiveStates`）：从根到叶的路径（例如 根 → 战斗 Group → 攻击 State），父状态任务与子状态任务同时运行。
+## 2. 数据放在哪里，能活多久
 
-### 3. 运行时生命周期
+### 2.1 持久存储和临时 Context
 
-`FStateTreeExecutionContext`（`StateTreeExecutionContext.h`）是运行时驱动器，典型使用：
+[ExecutionContext 的官方说明](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/StateTreeModule/FStateTreeExecutionContext)明确要求它是短期辅助对象；Owner 的寿命至少覆盖所用 InstanceData。Owner 是 UObject 语义，用于实例化对象的归属和日志，不隐含 AActor，更不隐含被控制的 Pawn。
 
-```cpp
-FStateTreeInstanceData InstanceData; // 每个运行实例一份
-FStateTreeExecutionContext Context(*Owner, *StateTree, InstanceData);
+下面是寿命伪代码，不是省略 Schema 初始化后仍可直接复制的 C++ 实现：
 
-Context.Start();               // 启动：运行全局 Evaluator/任务，选择初始状态
-Context.Tick(DeltaTime);       // 每帧推进
-Context.SendEvent(Tag, Payload); // 发送事件（OnEvent 转换响应）
-Context.Stop();                // 停止
-EStateTreeRunStatus Status = Context.GetStateTreeRunStatus(); // Running/Succeeded/Failed...
+```text
+宿主 A 持有：共享 StateTree 资产引用 + A 的持久 InstanceData
+宿主 B 持有：同一资产引用 + B 的持久 InstanceData
+
+启动 A：
+    构造临时 Context(A 的 Owner, 资产, A 的 InstanceData)
+    提供 Schema Context Data 和节点所需 External Data，验证有效
+    Start；保存宿主需要的运行结果；函数结束即丢弃 Context
+下一次推进 A：
+    用同一份 A 的 InstanceData 构造新的临时 Context
+    重新满足并验证数据要求，再 Tick
+停止 A：
+    在 Owner/实例存储仍可用时构造临时 Context，Stop
+    撤销宿主自己的订阅/请求，之后才释放对应持久存储
+任何异步回调：不得捕获上述 Context 引用或借用的数据视图
 ```
 
-一帧内的推进顺序：
+每帧同时重建 InstanceData 会丢掉进度；每帧保存 Context 又会把短期视图当持久状态。二者都错。节点数据是否跨退出保留，取决于具体存储种类和执行寿命，也不能从“实例容器是持久的”推导出每个节点的所有数据一直存在。
 
-```mermaid
-flowchart TD
-    A["Tick(DeltaTime)"] --> B["全局 Evaluators Tick<br/>（更新上下文/外部数据）"]
-    B --> C{"当前状态是否完成？<br/>（任务返回成功/失败）"}
-    C -->|"是"| D["StateCompleted 逆序通知<br/>→ 评估 OnStateCompleted 转换"]
-    C -->|"否"| E["状态任务 Tick<br/>（bShouldCallTick）"]
-    D --> F["评估转换<br/>OnTick / OnEvent / 完成类触发器"]
-    E --> F
-    F -->|"转换成立"| G["ExitState 旧状态<br/>→ 选择新状态（条件/效用）<br/>→ EnterState 新状态"]
-    F -->|"不转换"| H["保持当前状态"]
-    G --> I["下一帧"]
-    H --> I
-```
+在普通组件集成中优先让官方组件负责驱动；只有自己实现宿主才需要直接组装 Context。Schema 声明的 Context Data 与节点请求的 External Data 是不同入口：前者要按 Schema 设置，后者由收集机制提供；不能笼统说“全由构造回调自动注入”。
 
-**节点生命周期回调**（均可在 C++ 子类中覆写）：
+### 2.2 绑定的是数据来源，不是全能安全保证
 
-| 节点 | 回调 | 时机 |
+| 数据 | 来源与责任 | 本例用法 |
 | --- | --- | --- |
-| Task | `EnterState(Context, Transition)` | 状态进入时；返回 `EStateTreeRunStatus`（Running 继续 tick；Succeeded/Failed 立即完成） |
-| Task | `Tick(Context, DeltaTime)` | 每帧（受 `bShouldCallTick` 控制） |
-| Task | `ExitState(Context, Transition)` | 状态退出时 |
-| Task | `StateCompleted(Context, Status, ActiveStates)` | 状态完成、新状态选中前，**逆序**通知（先子后父） |
-| Evaluator | `TreeStart` / `TreeStop` | 树启动/停止 |
-| Evaluator | `Tick(Context, DeltaTime)` | 每树周期（先于状态选择） |
-| Condition | `TestCondition(Context)` | 条件求值（进入条件/转换条件） |
-
-`UStateTreeTaskBase` 还有一组行为开关（源码验证）：`bShouldStateChangeOnReselect`（重选时是否触发状态切换）、`bShouldCallTick` / `bShouldCallTickOnlyOnEvents`（是否每帧/仅事件时 tick）、`bShouldCopyBoundPropertiesOnTick` / `bShouldCopyBoundPropertiesOnExitState`（绑定数据复制时机）。
-
-### 4. 转换（Transition）机制
-
-转换是 StateTree 的"灵魂"。`FStateTreeTransition`（`StateTreeState.h`）包含：
-
-- **Trigger（触发器）**：`EStateTreeTransitionTrigger`
-  - `OnStateSucceeded` / `OnStateFailed` / `OnStateCompleted`（成功或失败）；
-  - `OnTick`：每帧尝试；
-  - `OnEvent`：收到匹配的 GameplayTag 事件时；
-  - `OnDelegate`：收到委托（delegate）时。
-- **Conditions（转换条件）**：条件列表，全部为真才允许转换；
-- **Type（目标）**：`EStateTreeTransitionType`
-  - `GotoState`：转到指定状态；
-  - `Parent`：回到父状态；`NextState` / `NextSelectableState`：下一个（可选的）兄弟状态；
-  - `NextParent` / `NextSelectableParent`：父状态的下一个兄弟；
-  - `Succeeded` / `Failed`：整棵树结束（成功/失败）；`None`：不转换。
-- **EventTag（需要的事件）**：`OnEvent` 触发时匹配的 `FGameplayTag`；
-- **Priority（优先级）**：同帧多个转换同时成立时按优先级处理；**转换评估从叶到根**（源码注释：`transitions are visited from leaf to root`），子状态优先；
-- **bDelayTransition + 延迟时长**：转换可延迟执行；
-- **ReactivateTargetState**（`EStateTreeTransitionChangeTypeRules`）：转到自身/已激活状态时是否重新激活；
-- **Delegate**：绑定到外部委托（OnDelegate 触发）。
-
-示例：一个巡逻 AI 的转换拓扑
-
-```mermaid
-flowchart TD
-    Idle["Idle 待机"] -->|"OnTick: 有巡逻点"| Patrol["Patrol 巡逻"]
-    Patrol -->|"OnEvent: 发现目标"| Chase["Chase 追击"]
-    Chase -->|"OnTick: 距离 < 2m"| Attack["Attack 攻击"]
-    Attack -->|"OnTick: 目标死亡/丢失"| Patrol
-    Patrol -->|"OnTick: 无巡逻点"| Idle
-    Chase -->|"OnEvent: 丢失目标"| Patrol
-    Attack -->|"OnEvent: 目标逃跑"| Chase
-    Patrol -.->|"OnStateFailed: 寻路失败"| Idle
-```
-
-**事件**：`FStateTreeExecutionContext::SendEvent(const FGameplayTag Tag, const FConstStructView Payload, const FName Origin)`。事件是"推"式通信：发送方不关心谁响应，接收方用 `OnEvent` 转换 + EventTag 匹配。这是 StateTree 与行为树"黑板轮询"最大的区别之一。
-
-### 5. 数据流：无黑板设计
-
-行为树用黑板做"共享数据层"，StateTree 换成了三件套：
-
-| 机制 | 说明 | 对应源码 |
-| --- | --- | --- |
-| Context Data | Schema 声明的外部对象（Actor、AIController、StateTreeComponent…），运行时由外部注入（`FStateTreeExecutionContext` 构造参数中的 `FOnCollectStateTreeExternalData` 回调） | `StateTreeSchema.h`、`StateTreeExecutionContext.h` |
-| Property Binding | 编辑器可视化"连线"：把 Context 对象属性 / 参数 / 事件载荷绑定到节点属性；编译期解析为绑定表（`FStateTreePropertyBindings`），运行期按需复制（进入状态时，或 `bCopyParameterBindingsOnTick` 每帧） | `StateTreePropertyBindings.h` |
-| Parameters | 资产级全局参数（运行时可通过 `Start(FInstancedPropertyBag*)` 覆盖）与状态级参数（`FStateTreeStateParameters`，含 `PropertyOverrides` 覆盖标记）；5.8 起全局参数存入实例存储（版本枚举 `StoringGlobalParametersInInstanceStorage`） | `StateTree.h`、`StateTreeState.h` |
+| Schema Context | 宿主提供符合 Schema 的对象 | AIController；Actor context 对应被控制 Pawn |
+| 外部业务输入 | 项目自己的感知/Controller 更新 | `TargetActor`；丢失、失效或退出玩法时清空 |
+| Evaluator Output | 由输入计算的快照 | `bHasTarget`、`Distance`，无目标时显式无效 |
+| 参数 | 资产/状态/引用中的配置 | 距离阈值、等待时长、是否允许部分路径 |
+| Task InstanceData | 该实例本次动作的进度/资源 | 剩余时间；内置 MoveTo 的任务对象 |
 
 ```mermaid
 flowchart LR
-    subgraph 外部世界
-        Actor["Actor / AIController / 组件"]
-    end
-    subgraph 资产
-        Params["全局参数 + 状态参数"]
-        Nodes["Task / Evaluator / Condition 属性"]
-    end
-    subgraph 绑定层
-        Bind["Property Binding 绑定表<br/>（编译期解析，运行期复制）"]
-    end
-    Actor -->|"Context Data 注入"| Bind
-    Params --> Bind
-    Bind --> Nodes
-    E["Event（Tag + Payload）"] -.->|"SendEvent"| Trans["转换评估"]
+    Sense["感知或测试输入：更新 Controller.TargetActor"] --> Controller["AIController 上下文"]
+    Pawn["Actor 上下文：被控制 Pawn"] --> Binding["Schema 与属性绑定"]
+    Controller --> Binding
+    Params["参数：半径、时长"] --> Binding
+    Binding --> Eval["Evaluator：有效性和距离快照"]
+    Eval --> Condition["Condition：选择 / 转换判断"]
+    Binding --> Move["内置 MoveTo：移动请求"]
+    Condition --> Selection["候选选择"]
+    Move --> Completion["任务结果与完成转换"]
 ```
 
-没有黑板意味着：**没有"键名魔法字符串"、没有跨树隐式耦合**——所有数据流在资产编辑器中可视化、可在编译期校验类型。代价是：运行时数据访问必须经过绑定/上下文，不适合"任意代码随手写全局变量"的粗放风格。
+绑定源有可见性限制：进入条件可以读公共数据和父状态任务的可用数据；当前状态尚未进入，不能要求它未启动的任务先产生自己的进入条件输入。任务能读前面的可用任务输出，也不等于能随意反向依赖之后的任务。相关范围见总览 Data Flow。
 
-### 6. 编辑器与运行时组件
+A、B 的 InstanceData 分开，但若二者绑定到同一个可变目标管理对象、静态成员或共享容器，仍可能耦合。反射属性、强引用、弱引用和玩法有效性各有不同职责：`TObjectPtr` 非空不能证明 Actor 仍参与当前玩法，`TWeakObjectPtr` 不保活，解析成功也不授权跨线程使用。保持与 [UObject 与反射](../../03-引擎架构与资源系统/对象模型与生命周期/01-UObject与反射系统.md)及 [Actor/Component 生命周期](../../03-引擎架构与资源系统/对象模型与生命周期/02-Actor与Component生命周期.md)的边界一致。
 
-**编辑器**（StateTreeEditorModule）：状态为中心（State-Centric）的树视图 + 节点属性面板 + 编译错误面板 + 运行时调试器（高亮当前状态、显示转换历史与事件流）。`UStateTreeEditorData` 持有编辑期数据；保存时编译（Linker）产出运行时数据结构。
+## 3. Task 完成、State 完成、转换和退出是四件事
 
-**运行时组件**（GameplayStateTreeModule）：
+### 3.1 原生节点与 Blueprint 节点分层
 
-| 组件/类 | 说明 |
+原生基类为 `FStateTreeTaskBase`、`FStateTreeEvaluatorBase`、`FStateTreeConditionBase`，是 USTRUCT 路线；用于一般 Schema 的 CommonBase 仍属于这套 F 结构体继承体系。Blueprint 扩展对应 `UStateTreeTaskBlueprintBase`、`UStateTreeEvaluatorBlueprintBase`、`UStateTreeConditionBlueprintBase`，是 UObject 路线。不能写 `UCLASS : UStateTreeTaskBase` 再拼原生回调。
+
+| 原生入口 | 返回 / 责任 |
 | --- | --- |
-| `UStateTreeComponent` | 继承 `UBrainComponent`（同时实现 `IGameplayTaskOwnerInterface` 与 `IStateTreeSchemaProvider`），挂在 Pawn/Actor 上运行状态树；属性 `StateTreeRef`（`FStateTreeReference`，Schema 固定为 `StateTreeComponentSchema`）；`SetStateTree` / `SetStateTreeReference` 切换资产；覆写 `TickComponent` 驱动执行；`ScheduleNextTick` 支持按需 tick（无事件时休眠） |
-| `UStateTreeAIComponent` | 继承 `UStateTreeComponent`，使用 `StateTreeAIComponentSchema`，**保证上下文可访问 AIController**，适合纯 AI 用途 |
-| `UBTTask_RunStateTree` / `UBTTask_RunDynamicStateTree` | 行为树任务：在 BT 里运行一棵状态树（Schema 为 `StateTreeAIComponentSchema`），实现"BT 挂局部状态机" |
-| `StateTreeMoveToTask` | 寻路移动任务（`AcceptableRadius` 默认取 AI 配置 `GET_AI_CONFIG_VAR(AcceptanceRadius)`），配合 AIController 的 MoveTo |
-| `StateTreeRunEnvQueryTask` | 运行 EQS 查询的任务（与 02 篇 EQS 打通） |
-| `StateTreeAITask` / `StateTreeAIConditionBase` | AI 侧任务/条件基类 |
-| `GameplayStateTreeBlueprintFunctionLibrary` | 蓝图侧工具（发送事件等） |
+| Task `EnterState(Context, Transition) const` | `EStateTreeRunStatus`：本任务开始后的结果 |
+| Task `Tick(Context, DeltaTime) const` | `EStateTreeRunStatus`，由 Tick 开关和宿主调度决定是否调用；不是 `void` |
+| Task `ExitState(Context, Transition) const` | `void`，退出该动作时释放自己拥有的资源 |
+| Task `StateCompleted(Context, Status, ActiveStates) const` | `void`，完成后、新选择前的通知；不是通用析构入口 |
+| Evaluator `TreeStart / Tick / TreeStop` | 更新或撤销树级数据来源，不以 Task 状态返回完成 |
+| Condition `TestCondition(Context) const` | `bool`，本次条件结果；它自己不发起移动 |
 
-### 7. 与行为树对比
+[原生 Task API](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/StateTreeModule/FStateTreeTaskBase)列出 Tick、绑定复制、重选与完成参与开关。Blueprint 任务则遵循其 [FinishTask/事件 API](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/StateTreeModule/UStateTreeTaskBlueprintBase)，不要将旧带返回值的 Blueprint 事件与原生 Tick 混用。
+
+### 3.2 显式配置谁负责状态完成
+
+当前公开编辑器 API 有 `UStateTreeState.TasksCompletion`，枚举 [EStateTreeTaskCompletionType](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/StateTreeModule/EStateTreeTaskCompletionType)包含 `All` / `Any`。Task 有 `bConsideredForCompletion`。因此“Task 返回 Succeeded”到“State 完成”之间有参与集合与聚合规则，再由完成转换决定去哪；不是返回成功就直接结束整棵树。
+
+以下只推导非混合失败的清楚分支，不假定默认值：
+
+| 配置与输入 | 可以推导的结果 |
+| --- | --- |
+| All；移动与监视都参与；移动 Succeeded，监视一直 Running | 不能靠“所有参与者完成”产生正常完成；若唯一出口是 OnStateCompleted，业务会卡住 |
+| All；仅移动参与，监视不参与且始终 Running；移动 Succeeded | 正常完成由移动负责；随后转移退出时，监视仍需清理 |
+| Any；移动与有限等待都参与；等待先 Succeeded，移动 Running | 已有参与者完成，可以触发完成转换；若因此退出，移动必须被取消 |
+| 上述任一配置；运行期间合法条件/事件转换选中别的状态 | 可以在自然完成之前退出，不必等待每个 Task 返回终态 |
+
+本例每个叶状态只放**一个负责完成的 Task**，显式设 All 且该 Task 参与完成。可选监视任务只能在另行验证后加入。未核对实现细节的分支包括：默认 All/Any、参与集合为空、混合 Succeeded/Failed 的优先级、非参与任务返回 Failed 的影响；本文不靠字段名称推断这些行为。
+
+### 3.3 完成通知不能替代退出清理
 
 ```mermaid
-flowchart LR
-    subgraph BT["行为树（01 篇）"]
-        BT1["选择/顺序/并行节点"]
-        BT2["任务 / 装饰器 / 服务"]
-        BT3["黑板 Blackboard<br/>（集中式键值数据）"]
-        BT4["Observe 观察者 + Abort 抢占"]
-    end
-    subgraph ST["StateTree（本篇）"]
-        ST1["状态 State（可嵌套）"]
-        ST2["Task / Evaluator / Condition"]
-        ST3["Property Binding + Context Data<br/>（无黑板）"]
-        ST4["显式 Transition + Event 事件"]
-    end
+flowchart TD
+    Running["活动状态中的任务"] --> Result["任务结果进入完成聚合"]
+    Result --> Complete["达到状态完成条件"]
+    Complete --> Notify["StateCompleted 通知"]
+    Notify --> Candidate["考虑相应完成转换与目标选择"]
+    Running --> Trigger["条件 / 事件转换候选"]
+    Trigger --> Candidate
+    Candidate --> Valid{"候选可选且通过冲突裁决？"}
+    Valid -->|是| Change["应用状态变化：退出失活任务，进入新任务"]
+    Valid -->|否| Unselected["不能把目标记成已进入，继续依引擎选择规则处理"]
 ```
 
-| 维度 | 行为树 | StateTree |
-| --- | --- | --- |
-| 结构 | 树：复合节点控制执行流 | 树：状态嵌套 + 显式转换 |
-| 数据 | 黑板（集中式键值对） | Context Data + 属性绑定 + 参数 |
-| 状态保持 | 节点实例内存（任务自行管理） | InstanceData（每实例独立） |
-| 事件 | 无原生事件，靠黑板观察者模拟 | 原生事件（Tag + Payload） |
-| 中断 | Decorator Abort（Lower/Self/None） | 转换 + 条件 + 优先级（叶→根） |
-| 完成语义 | 节点返回 Succeeded/Failed/Running | 状态任务完成 → OnStateCompleted 转换 |
-| 多任务 | 一个任务节点一件事 | 一个状态可挂多个任务 + 全局任务 |
-| 复杂度 | 深树难维护；抢占语义需经验 | 状态爆炸时转换数量增长；适合显式流程 |
-| 互操作 | 通过 UBTTask_RunStateTree 运行 StateTree | 可内嵌于 BT（BTTask） |
-| 典型场景 | 复杂战斗决策、长期巡逻编排 | 状态明确的流程、Mass 个体、交互行为 |
+这是因果关系图，不是未经源码核对的逐函数调用顺序。优先级、可选性及选择策略都参与结果，不能将“从叶到根检查”简化为不论 Priority 都是叶子胜出，也不能先画“无条件退出旧状态”再假装失败候选已经提交。
 
-### 8. 与 Mass / GameplayInteractions 配合
+[StateCompleted 专页](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/StateTreeModule/FStateTreeTaskBase/StateCompleted)说明完成通知采用逆序，且条件转换改变状态时不调用它。因此：
 
-- **Mass + StateTree**：Mass 负责群体数量与运动（04 篇），StateTree 负责**个体决策**——每个实体一份 `FStateTreeInstanceData`，由自定义 MassProcessor 驱动执行（把实体数据通过绑定暴露为上下文），决策结果写回 Fragment（如"切换到追击"→ 移动参数改变）。这就是 Lyra 等官方示例的 AI 组合方式。
-- **SmartObjects**（`Engine/Plugins/Runtime/SmartObjects`）：世界中的交互点（座位、门、工作台）用 `USmartObjectComponent` + `USmartObjectDefinition` 描述；StateTree 行为定义可挂载在 SmartObject 上（如"坐下"、"开门"）。
-- **GameplayInteractions**（`Engine/Plugins/Runtime/GameplayInteractions`）：提供交互行为框架，Mass 实体通过 SmartObject 找到交互点，用 StateTree 执行交互流程，交互时由 Representation 升级为 Actor 以播放动画/使用组件。
+- 完成通知用于需要的完成处理；本次移动请求、委托、Timer 等由拥有者在实际退出/停止协议中撤销
+- 清理需幂等：正常完成后再 Exit，或停止时再次清理，都不能重复提交完成、重发请求或影响别人的动作
+- 清理只针对自己创建的资源。不要为了取消本任务随意调用会中断同 Controller 其他动作的全局停止操作
+- 宿主的 EndPlay/停止入口要在可用阶段停止树，并撤销宿主建立的感知/事件订阅；不能依赖所有外部资源都由 StateTree 自动发现
 
-一句话架构：**Mass 决定"谁在哪、怎么动"，StateTree 决定"下一步做什么"，SmartObject 决定"能跟世界发生什么交互"**。
+### 3.4 持续父状态、重选和迟到回调
 
-## 示例：C++ 自定义 Task / Evaluator / Condition
+[EStateTreeStateChangeType](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/StateTreeModule/EStateTreeStateChangeType)区分 Changed（激活/失活）与 Sustained（保持活动关系）。`bShouldStateChangeOnReselect` 决定原已活动任务是否也接收 Enter/Exit；转换的重激活设置又会影响状态变化。故 `Combat/Chase → Combat/Arrived` 不意味着整个 Combat 或 InstanceData 都重建。
 
-目标：写一套"巡逻 → 追击"的最小 AI 节点，在 StateTree 编辑器中组合。
+第 5 节等待任务选择“保持中的状态不重新计时”：关闭重选回调开关，并在收到 Sustained 时保留进度。主例无自转换；如业务需要强制重启，必须另选明确重激活策略并成对撤销旧动作、初始化新动作，不能只把开关打开就沿用旧清理分支。
 
-**第 1 步：自定义 Evaluator（每帧更新目标距离）**
+自定义异步动作还需分开三件事：Owner/存储仍有效、本次状态仍活动、回调属于当前请求。旧请求 g1 退出，新请求 g2 开始后，g1 的迟到成功不能完成 g2。[FStateTreeWeakExecutionContext](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/StateTreeModule/FStateTreeWeakExecutionContext)提供可保存的弱上下文，其有效性涉及状态身份、Owner、Tree 和 Storage；它不是普通 Context 的长寿命许可，也不自动提供线程安全。项目仍须处理请求身份、订阅撤销、取消确认及调用线程。
+
+## 4. 把真实移动接进完整行为片段
+
+### 4.1 宿主、输入和起始前提
+
+使用 `UStateTreeAIComponent` 与 `UStateTreeAIComponentSchema`。这里把组件装在项目 AIController 上，由它控制具备导航移动能力的 Pawn；Schema 的 Actor context 用作 SelfActor。[AI Schema 文档](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/GameplayStateTreeModule/UStateTreeAIComponentSchema)明确给出 AIController 与被控制 Pawn 的上下文关系，不能改用 `Context.GetOwner()` 猜测 Pawn。
+
+准备步骤：
+
+1. 启用 StateTree / GameplayStateTree 插件，创建资产，明确选 AI Component Schema。项目 Controller 蓝图增加可反射的 Actor 引用 `TargetActor`，Schema 的 Controller Class 设为该项目类型，使该属性可绑定
+2. 在开始树前确认 Controller 已 Possess 正确 Pawn，Pawn 的移动组件与 NavMesh 配置匹配。无 Pawn 或 Context 不匹配属于启动/集成错误，应停止并修正，不伪装成“没目标”后继续移动
+3. 测试先用受控输入设置/清空 TargetActor；接感知系统后仍保留同一合同：目标丢失、死亡或退出玩法时清空，目标保持同一个 Actor 而位置改变时不要依赖“引用值改变”通知距离变化
+4. 绑定 Evaluator 的 SelfActor ← Schema Actor；Target ← Controller.TargetActor。初次 TreeStart 即计算快照，后续每次树推进刷新；输入失效时明确输出无目标。本文用持续推进下的 OnTick 转换，未配置按需休眠
+5. 编译资产，检查节点是否被 Schema 接受、每条绑定是否可见且类型匹配，再启动树。节点未显示时先查 CommonBase/Schema，而不是删除类型约束
+
+这是具体装配合同与待运行步骤，不是已建立的工程。输入生产者是外部前置条件，示例不假称实现了完整的敌我筛选/感知系统。
+
+### 4.2 真实 Chase 使用内置 Move To
+
+[FStateTreeMoveToTask](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/GameplayStateTreeModule/FStateTreeMoveToTask)经 AITask_MoveTo 移动给定 AIController 的 Pawn，移动抵达时成功、无法移动时失败。它的 [InstanceData](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/GameplayStateTreeModule/FStateTreeMoveToTaskInstanceData)有 AIController、TargetActor、Destination、移动选项和瞬态 MoveToTask/TaskOwner。此处由内置任务持有动作；不要再并排启动一个自己的 MoveTo，也不在每次 Tick 重建请求。
+
+| Chase 字段 | 本例显式值 / 绑定 |
+| --- | --- |
+| `AIController` | Schema 中的 Controller；确认它控制的就是 SelfActor |
+| `TargetActor` | Controller.TargetActor；追击期间本例使用同一固定目标 Actor 验证一次抵达，换目标前先清空、退出旧 Chase |
+| `Destination` | 本追击分支不另绑位置目标；用于下文纯位置巡逻分支时才单独配置 |
+| `AcceptableRadius` | 示例 100 cm（1 m），与几何分流阈值同单位 |
+| `bAllowPartialPath` | false，防止把走到不完整路径末端当成本例成功 |
+| `bReachTestIncludesAgentRadius` / `bReachTestIncludesGoalRadius` | 均 false，避免教学阈值又隐含添加两个胶囊半径 |
+| `bProjectGoalLocation` / `bRequireNavigableEndLocation` | 本例均 true，目标必须满足项目导航要求 |
+| `bTrackMovingGoal` | false；本例验证一次抵达，固定目标不启用持续追踪 |
+| 状态完成 | `TasksCompletion=All`；该移动任务参与完成，无第二个完成责任者 |
+
+移动目标是另一个合同：需要核对所用版本如何更新路径及何时终止，不能把“持续追踪”与“到达后自然成功”同时当作无条件承诺。底层 [SetContinuousGoalTracking](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/AIModule/UAITask_MoveTo/SetContinuousGoalTracking)明确将持续追踪与失败/外部取消联系；本文不推断所有 StateTree 选项与该底层开关的逐行映射。
+
+几何距离分流只用于初始决定“已近 / 需要尝试移动”，不等价于导航系统完整的到达测试（还涉及实际位置、投影与垂直容差等）。进入 Chase 后以内置任务结果为准，不用另一个纯距离监视器冒充移动成功。故移动成功的出口 Arrived **只要求目标有效，不再要求几何距离快照恰好 ≤100**。
+
+任务的 Enter/Tick/Exit 由集成调用，内置任务负责其 MoveToTask 生命周期；底层 [UAITask_MoveTo](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/AIModule/UAITask_MoveTo)有请求结果、观察器/Timer 重置与销毁入口。本文没有读取这些函数体或运行取消时序，不能承诺任何旧版本所有退出路径都已验证；落地时必须用下表核查退出后旧移动不再影响 Pawn。宿主仍负责自己的外部订阅。
+
+### 4.3 状态与出口：成功不回到 NoTarget-only 的 Idle
+
+此主例是一次“等目标 → 追击/已近 → 短停留 → 报告结果”的片段，不自动无限重试。根显式按顺序选子状态：Chase、Arrived、Idle；Recovery 排在最后，作为失败时直接指定的无条件兜底目标；健康起始输入由前三个状态覆盖，不会落到它。
+
+- Chase：进入条件 `bHasTarget && Distance > 100`；内置 Move To
+- Arrived：进入条件是有效目标，排在 Chase 后；初始近距（包括等号）落在这里，Chase 成功也能直接选它。等待 0.25 s 后树 Succeeded
+- Idle：无目标；等待任务设为无限等待。OnTick 有效远目标 → Chase；OnTick 有效近目标 → Arrived
+- Recovery：无进入条件限制；等待 1 s 后树 Failed，不回到 Chase。停止本片段后由上层根据目标、导航修复或明确重试意图决定是否启动下一次
+
+所有叶状态都显式设 All，且唯一 Task 参与完成。Idle/Arrived/Recovery 使用第 5 节等待任务。Chase 的 OnStateSucceeded → Arrived（条件：有效目标）；若完成时目标已失效则 → Idle。Chase 的 OnStateFailed 在目标有效时 → Recovery，无效时 → Idle；运行中丢目标的 OnTick 条件转换也优先去 Idle。Arrived 的 OnTick 丢目标 → Idle；OnStateSucceeded 在目标有效时 → 树 Succeeded，无效时 → Idle。Recovery 是 Patrol/Chase 共用的一次退避：不配置任何按目标存在性返回 Idle/Chase 的边，无论目标随后存在、丢失或本来就为空，都等待结束后树 Failed；只有宿主 Stop 可以从外部取消这一等待。等待配置异常失败 → 树 Failed，Recovery 内部失败也直接树 Failed。
+
+```mermaid
+flowchart TD
+    Start["启动：按顺序选择"] -->|有效且远| Chase["Chase：内置 Move To"]
+    Start -->|有效且近，含等号| Arrived["Arrived：短停留"]
+    Start -->|无目标| Idle["Idle：等待目标"]
+    Idle -->|OnTick 有效且远| Chase
+    Idle -->|OnTick 有效且近| Arrived
+    Chase -->|移动成功且目标有效| Arrived
+    Chase -->|目标丢失| Idle
+    Chase -->|移动失败且目标仍有效| Recovery["Recovery：退避一次"]
+    Arrived -->|目标丢失| Idle
+    Arrived -->|等待成功且目标有效| Success["整树 Succeeded"]
+    Recovery -->|等待结束或配置失败| Failure["整树 Failed"]
+```
+
+实际配置还要补两层防线：丢目标边的优先级高于本状态普通完成边；完成边自身也检查最新的有效性条件，不能只凭优先级假设消除竞态。条件读取该次树推进可见的输入快照，因此感知变更到响应有调度延迟；不承诺事件发出的同一瞬间已切换。请求事件方案见第 6 节。
+
+**保留实际巡逻入口：**要演示“巡逻中发现目标”，可把无目标起始分支替换为 Patrol：预先提供一个本次固定的有效导航位置 `PatrolDestination`，内置 Move To 的 TargetActor 保持空，Destination 只绑定该位置，其余移动选项明确配置。Patrol 内有效远/近目标的 OnTick 边与 Idle 相同，抢占后退出本次巡逻移动；Patrol 成功 → Idle，失败 → Recovery。Idle 在本片段中不自动跳回 Patrol，避免同一失败点立即重试。多点循环巡逻需要另加点位更新、失败次数与退避策略，不能假称本例已实现。
+
+## 5. 原生扩展示例：感知快照、条件、等待
+
+这三个块是原创候选头文件，放入同一游戏模块的 Private 目录示意，故不跨模块导出；若移动到公共模块接口，应补该模块实际的导出宏。模块依赖为 `Core`、`CoreUObject`、`Engine`、`StateTreeModule`；组件和 MoveTo 集成另依赖 `AIModule`、`GameplayTasks`、`GameplayStateTreeModule`，直接使用导航类型时加 `NavigationSystem`。不要把 `StateTreeEditorModule` 加进打包运行时依赖来获取编辑器状态类。
+
+每块的 generated.h 必须最后 include，由 UHT 生成；这里只写候选，不手造 generated.h 或 UE 类型桩。`FInstanceDataType` 别名与 `GetInstanceDataType()` 注册要配套，回调中的 `Context.GetInstanceData(*this)` 才是读写该运行实例，而不是修改共享节点模板。
+
+API 证据边界：当前页可核原生/CommonBase 继承、实例数据接口、Task 三个回调、条件派生类的 `TestCondition`。当前 Evaluator 专页未展开 TreeStart/Tick 函数，签名交叉来源是明确的 [UE 5.5 TreeStart](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/StateTreeModule/FStateTreeEvaluatorBase/TreeStart?application_version=5.5)及 [UE 5.5 Evaluator Wrapper 回调](https://dev.epicgames.com/documentation/unreal-engine/API/Plugins/StateTreeModule/Blueprint/FStateTreeBlueprintEvaluatorWrap-?application_version=5.5)。这不是对当前 SDK 二进制兼容性的认证，落地须以所用头文件/UHT 核验。
+
+### 5.1 Evaluator：先表达有效性，再表达距离
 
 ```cpp
-// UDistToTargetEvaluator.h
+// TargetSnapshotEvaluator.h — 原创教学候选，未通过 UHT/UE 编译
+#pragma once
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+#include "StateTreeEvaluatorBase.h"
+#include "StateTreeExecutionContext.h"
+#include "TargetSnapshotEvaluator.generated.h"
+
 USTRUCT()
-struct FDistToTargetEvaluatorInstanceData
+struct FTargetSnapshotData
 {
     GENERATED_BODY()
 
-    /** 绑定目标：外部注入的 Actor */
-    UPROPERTY(EditAnywhere, Category = "Output")
+    UPROPERTY(EditAnywhere, Category = "Input")
+    TObjectPtr<AActor> SelfActor = nullptr;
+
+    UPROPERTY(EditAnywhere, Category = "Input")
     TObjectPtr<AActor> Target = nullptr;
 
-    /** 输出：到目标的距离（绑定给其他节点） */
     UPROPERTY(EditAnywhere, Category = "Output")
-    float Distance = 0.f;
+    bool bHasTarget = false;
+
+    UPROPERTY(EditAnywhere, Category = "Output")
+    float Distance = MAX_flt;
 };
 
-UCLASS()
-class UDistToTargetEvaluator : public UStateTreeEvaluatorBase
+USTRUCT(meta = (DisplayName = "Target Snapshot"))
+struct FTargetSnapshotEvaluator : public FStateTreeEvaluatorCommonBase
 {
     GENERATED_BODY()
+    using FInstanceDataType = FTargetSnapshotData;
 
-public:
-    using FInstanceDataType = FDistToTargetEvaluatorInstanceData;
-
-    virtual void Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override
+    virtual const UStruct* GetInstanceDataType() const override
     {
-        FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
-        const AActor* Self = Context.GetOwner();
-        InstanceData.Distance = (Self && InstanceData.Target)
-            ? FVector::Distance(Self->GetActorLocation(), InstanceData.Target->GetActorLocation())
-            : MAX_FLT;
+        return FInstanceDataType::StaticStruct();
+    }
+
+    static void Refresh(FInstanceDataType& Data)
+    {
+        Data.bHasTarget = false;
+        Data.Distance = MAX_flt;
+        if (!IsValid(Data.SelfActor.Get()) || !IsValid(Data.Target.Get()))
+        {
+            return;
+        }
+        const double Value = FVector::Distance(
+            Data.SelfActor->GetActorLocation(), Data.Target->GetActorLocation());
+        if (FMath::IsFinite(Value) && Value >= 0.0 && Value < MAX_flt)
+        {
+            Data.Distance = static_cast<float>(Value);
+            Data.bHasTarget = true;
+        }
+    }
+
+    virtual void TreeStart(FStateTreeExecutionContext& Context) const override
+    {
+        Refresh(Context.GetInstanceData(*this));
+    }
+
+    virtual void Tick(FStateTreeExecutionContext& Context,
+        const float DeltaTime) const override
+    {
+        Refresh(Context.GetInstanceData(*this));
     }
 };
 ```
 
-> 说明：`FInstanceDataType` 约定是 StateTree 节点"实例数据"的惯用方式（节点属性都放进实例数据结构体，随 InstanceData 存储）；`Context.GetOwner()` 返回运行树的所有者（`StateTreeExecutionContext.h` 中 `TNotNull<UObject*> GetOwner()`）。此处为演示简化，真实 AI 项目建议通过 Schema 上下文 + 绑定获取目标，而非直接塞 Actor 属性。
+`bHasTarget=false` 和无效 Distance 是一对输出，不能只设置“大距离”然后让 `Distance > Radius` 自动等同于可追击。TreeStart 调用与 Tick 共用计算，防止初次选择把默认零距离误当已到达。它不持有订阅，也不发起移动；Owner 完全不参与 Pawn 类型推断。
 
-**第 2 步：自定义 Condition（距离阈值）**
+该快照以有效 SelfActor/Target 和已绑定输入为前提。`IsValid` 是对象检查，不等于完整玩法检查；感知生产者还必须在 EndPlay/死亡等业务失效时清空 Target。树外更新与树推进之间可能有一帧可见性差异，要在目标版本调试器检查绑定刷新；不要拿一份陈旧距离解释实时命中判定。
+
+### 5.2 Condition：有效目标的近 / 远比较
 
 ```cpp
-// UDistanceCondition.h
+// TargetRangeCondition.h — 原创教学候选，未通过 UHT/UE 编译
+#pragma once
+#include "CoreMinimal.h"
+#include "StateTreeConditionBase.h"
+#include "StateTreeExecutionContext.h"
+#include "TargetRangeCondition.generated.h"
+
 USTRUCT()
-struct FDistanceConditionInstanceData
+struct FTargetRangeData
 {
     GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, Category = "Input")
+    bool bHasTarget = false;
+
+    UPROPERTY(EditAnywhere, Category = "Input")
+    float Distance = MAX_flt;
+
+    UPROPERTY(EditAnywhere, Category = "Parameter", meta = (ClampMin = "0.0"))
+    float Radius = 100.0f;
 
     UPROPERTY(EditAnywhere, Category = "Parameter")
-    float MaxDistance = 1000.f;
-
-    /** 绑定 Evaluator 输出的距离 */
-    UPROPERTY(EditAnywhere, Category = "Input")
-    float Distance = MAX_FLT;
+    bool bRequireFar = true;
 };
 
-UCLASS()
-class UDistanceCondition : public UStateTreeConditionBase
+USTRUCT(meta = (DisplayName = "Valid Target In Range"))
+struct FTargetRangeCondition : public FStateTreeConditionCommonBase
 {
     GENERATED_BODY()
+    using FInstanceDataType = FTargetRangeData;
 
-public:
-    using FInstanceDataType = FDistanceConditionInstanceData;
+    virtual const UStruct* GetInstanceDataType() const override
+    {
+        return FInstanceDataType::StaticStruct();
+    }
 
     virtual bool TestCondition(FStateTreeExecutionContext& Context) const override
     {
-        const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
-        return InstanceData.Distance <= InstanceData.MaxDistance;
+        const FInstanceDataType& Data = Context.GetInstanceData(*this);
+        if (!Data.bHasTarget || !FMath::IsFinite(Data.Distance)
+            || !FMath::IsFinite(Data.Radius) || Data.Distance < 0.0f
+            || Data.Radius < 0.0f || Data.Distance == MAX_flt)
+        {
+            return false;
+        }
+        return Data.bRequireFar ? Data.Distance > Data.Radius
+                                : Data.Distance <= Data.Radius;
     }
 };
 ```
 
-**第 3 步：自定义 Task（移动到目标）**
+绑定 bHasTarget/Distance 到 Evaluator 输出。Chase 进入条件用 `bRequireFar=true`；Idle → Arrived 的近距边用 false；Arrived 本身进入条件只用 bHasTarget 的 Bool Compare，不能套近距比较来否认一个已经由 MoveTo 确认的成功。
+
+无目标条件使用显式 Bool Compare（bHasTarget=false），不要简单反转“有效且远”条件：后者的反面还包含“有效且近”，并不等于无目标。当前原生条件路线与回调可交叉看 [FStateTreeCompareBoolCondition](https://dev.epicgames.com/documentation/unreal-engine/API/Plugins/StateTreeModule/FStateTreeCompareBoolCondition)；本文自写类保留独立的极性参数，避免图写大于而代码写小于。
+
+### 5.3 Task：可取消的等待，不冒充移动
 
 ```cpp
-// UMoveToTargetTask.h
+// EpisodeWaitTask.h — 原创教学候选，未通过 UHT/UE 编译
+#pragma once
+#include "CoreMinimal.h"
+#include "StateTreeTaskBase.h"
+#include "StateTreeExecutionContext.h"
+#include "StateTreeExecutionTypes.h"
+#include "EpisodeWaitTask.generated.h"
+
 USTRUCT()
-struct FMoveToTargetTaskInstanceData
+struct FEpisodeWaitData
 {
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere, Category = "Parameter")
-    TObjectPtr<AActor> Target = nullptr;
+    bool bWaitIndefinitely = false;
 
-    UPROPERTY(EditAnywhere, Category = "Parameter")
-    float AcceptableRadius = 100.f;
+    UPROPERTY(EditAnywhere, Category = "Parameter", meta = (ClampMin = "0.0"))
+    float DurationSeconds = 0.25f;
+
+    UPROPERTY(Transient)
+    float RemainingSeconds = 0.0f;
+
+    UPROPERTY(Transient)
+    bool bActive = false;
 };
 
-UCLASS()
-class UMoveToTargetTask : public UStateTreeTaskBase
+USTRUCT(meta = (DisplayName = "Episode Wait"))
+struct FEpisodeWaitTask : public FStateTreeTaskCommonBase
 {
     GENERATED_BODY()
+    using FInstanceDataType = FEpisodeWaitData;
 
-public:
-    using FInstanceDataType = FMoveToTargetTaskInstanceData;
-
-    UMoveToTargetTask()
+    FEpisodeWaitTask()
     {
-        bShouldCallTick = true; // 每帧 Tick
+        bShouldCallTick = true;
+        bShouldCallTickOnlyOnEvents = false;
+        bShouldCopyBoundPropertiesOnTick = false;
+        bShouldCopyBoundPropertiesOnExitState = false;
+        bShouldStateChangeOnReselect = false;
+        bConsideredForCompletion = true;
+    }
+
+    virtual const UStruct* GetInstanceDataType() const override
+    {
+        return FInstanceDataType::StaticStruct();
+    }
+
+    static void Release(FInstanceDataType& Data)
+    {
+        Data.bActive = false;
+        Data.RemainingSeconds = 0.0f;
     }
 
     virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context,
         const FStateTreeTransitionResult& Transition) const override
     {
-        const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
-        AActor* Self = Context.GetOwner();
-        if (!Self || !InstanceData.Target)
+        FInstanceDataType& Data = Context.GetInstanceData(*this);
+        if (Transition.ChangeType == EStateTreeStateChangeType::Sustained)
         {
-            return EStateTreeRunStatus::Failed; // 缺条件：状态失败 → 触发 OnStateFailed 转换
+            return Data.bActive ? EStateTreeRunStatus::Running
+                                : EStateTreeRunStatus::Failed;
         }
-        // 真实项目在这里发起 AIController 的 MoveTo（参考 StateTreeMoveToTask 实现）
+        Release(Data);
+        if (!Data.bWaitIndefinitely
+            && (!FMath::IsFinite(Data.DurationSeconds) || Data.DurationSeconds < 0.0f))
+        {
+            return EStateTreeRunStatus::Failed;
+        }
+        if (!Data.bWaitIndefinitely && Data.DurationSeconds == 0.0f)
+        {
+            return EStateTreeRunStatus::Succeeded;
+        }
+        Data.RemainingSeconds = Data.DurationSeconds;
+        Data.bActive = true;
         return EStateTreeRunStatus::Running;
     }
 
-    virtual void Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override
+    virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context,
+        const float DeltaTime) const override
     {
-        const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
-        AActor* Self = Context.GetOwner();
-        if (Self && InstanceData.Target)
+        FInstanceDataType& Data = Context.GetInstanceData(*this);
+        if (!Data.bActive || !FMath::IsFinite(DeltaTime) || DeltaTime < 0.0f)
         {
-            const float Dist = FVector::Distance(Self->GetActorLocation(), InstanceData.Target->GetActorLocation());
-            if (Dist <= InstanceData.AcceptableRadius)
-            {
-                // 到达：完成任务。可用 Context 的完成通知机制结束本状态任务
-                // （StateTree 5.x 通过完成委托/状态完成语义触发 OnStateCompleted 转换）
-            }
+            Release(Data);
+            return EStateTreeRunStatus::Failed;
         }
+        if (Data.bWaitIndefinitely)
+        {
+            return EStateTreeRunStatus::Running;
+        }
+        Data.RemainingSeconds = FMath::Max(0.0f, Data.RemainingSeconds - DeltaTime);
+        if (Data.RemainingSeconds > 0.0f)
+        {
+            return EStateTreeRunStatus::Running;
+        }
+        Release(Data);
+        return EStateTreeRunStatus::Succeeded;
     }
 
     virtual void ExitState(FStateTreeExecutionContext& Context,
         const FStateTreeTransitionResult& Transition) const override
     {
-        // 停止移动、清理（真实项目在这里取消 MoveTo）
+        if (Transition.ChangeType != EStateTreeStateChangeType::Sustained)
+        {
+            Release(Context.GetInstanceData(*this));
+        }
     }
 };
 ```
 
-**第 4 步：在编辑器中组装**
+本任务没有移动请求、Timer、委托或异步捕获，全部进度在当前节点 InstanceData 内。一次真正激活先清旧状态；有限等待可同步成功、Tick 成功或参数失败；实际退出清理可重复调用。持续保留的父状态不清掉仍在用的计时状态；不要把这套 Sustained 分支直接搬到要求强制重启的任务。
 
-1. 创建 State Tree 资产，选择 Schema（AI 场景选 `StateTreeAIComponentSchema` 或 `StateTreeComponentSchema`）；
-2. 加全局 Evaluator `UDistToTargetEvaluator`；
-3. 建状态：`Idle`（条件：无目标）、`Chase`（任务：`UMoveToTargetTask`；进入条件：`UDistanceCondition` 距离 > 阈值；转换：`OnStateCompleted` → `Idle`，`OnEvent` 丢失目标 → `Idle`）；
-4. 把 Evaluator 输出 `Distance` 绑定到 Condition 的 `Distance` 输入（编辑器连线）；
-5. 在 Pawn 上加 `UStateTreeComponent`（或 `UStateTreeAIComponent`），引用该资产运行。
+Idle 的无限等待不是“漏写完成”的 bug：它的离开路径是条件转换。Arrived 配 0.25 s，Recovery 配 1 s；这些数字只用于纸面例子，时长随实际树推进而累计，不是实时期限或性能指标。结束玩法时宿主应停止树，不能继续靠存活的对象地址计时。
 
-## 选型对比
+## 6. 事件、编辑器观察与排错
 
-| 方案 | 优点 | 缺点 | 推荐场景 |
-| --- | --- | --- | --- |
-| 行为树（01 篇） | 生态成熟、抢占式决策自然、策划友好 | 黑板隐式耦合、事件模拟别扭、深树难调 | 复杂战斗 AI、长期巡逻编排、多技能决策 |
-| StateTree | 显式转换、事件驱动、数据绑定可校验、轻量可实例化 | 状态多时转换爆炸、生态相对年轻 | 状态明确流程、Mass 个体、交互行为、UI/流程逻辑 |
-| 手写状态机（枚举 + switch） | 完全可控、零依赖 | 难维护、难扩展、无可视化 | 极简逻辑（3~5 个状态） |
-| GameplayAbilitySystem | 技能表现层丰富（成本/冷却/标签） | 偏"技能"而非"决策" | 技能/动作表现，与决策层配合 |
+### 6.1 事件是另一种触发源，不是自动更新全部数据
 
-**建议**：决策层优先 StateTree（事件驱动、数据绑定），需要抢占式"能做什么就做什么"的弹性决策时用行为树；两者可用 `UBTTask_RunStateTree` 嵌套；技能表现交给 GAS。规模参考：Mass 万级实体上每实体一个 StateTree 实例是官方推荐组合（配合按需 tick）。
+StateTree 支持带 GameplayTag 和载荷的事件。组件宿主用 [SendStateTreeEvent](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/GameplayStateTreeModule/UStateTreeComponent/SendStateTreeEvent)入口；直接 Context 的 SendEvent 与宿主如何唤醒/推进是不同层的问题，不能统一要求“发事件后都必须手调 ScheduleNextTick”，也不能统一保证自定义驱动器自动唤醒。
 
-## 最佳实践
+把本例换成 TargetAcquired/TargetLost 事件时，应先更新真实输入，再发送已注册 Tag；接收状态的 OnEvent 转换还要检查目标有效性及目标状态可选性。距离随 Actor 位置变化没有必然的“引用变化事件”，要持续更新快照或让事件生产者维护近/远跨阈值事件。事件载荷类型与绑定、GameplayTag 精确/层级匹配配置都需核对；不要把它解释成普通字符串大小写比较，也不凭 Origin 字段假定系统自动过滤来源。
 
-1. **事件驱动优先于轮询**：能用 `OnEvent` + `SendEvent` 的转换就不要用 `OnTick` 轮询；大量 OnTick 转换等于把 StateTree 用成行为树，失去事件优势。
-2. **转换条件放 Transition Conditions**：不要在任务里写"if 目标太远就怎样"的分支，把条件放转换上，状态图才可读、可调试。
-3. **数据全部走绑定**：节点里不要 `FindActor`/`GetWorld()->GetFirstPlayerController()`；通过 Schema 上下文 + 属性绑定注入，保证可复用、可校验。
-4. **合理使用状态层级**：Group 只做组织，Leaf State 挂任务；共享行为用 `LinkedSubtree` / `LinkedAsset` 复用，避免复制粘贴状态。
-5. **控制转换数量**：状态图"横平竖直"，每状态 2~4 条转换；转换超过 6 条说明状态划分不合理，考虑拆状态或用子状态机。
-6. **小心转换优先级与 ReactivateTargetState**：同帧多转换时从叶到根评估（`Priority` 可调）；转到自身状态默认可能不重新激活，需要时配置 `ReactivateTargetState`。
-7. **利用 CustomTickRate 与按需 tick**：低频状态（待机）降低 tick 频率；`UStateTreeComponent::ScheduleNextTick` 支持事件驱动唤醒，Mass 场景收益显著。
-8. **用 Schema 约束团队**：不同用途（AI/交互/UI）建不同 Schema，限制可用节点与上下文，编译期拦截错误配置。
-9. **参数覆盖实现"一树多用"**：`FStateTreeReference` 的 overrides（组件上 `LinkedStateTreeOverrides`）可为不同个体覆盖参数，避免复制资产。
-10. **调试三板斧**：编辑器 StateTree 调试器（高亮当前状态、转换历史）、GameplayDebugger（运行时查看状态栈）、日志输出 `Context.GetStateTreeRunStatus()` 变化点。
+### 6.2 在编辑器看什么
 
-## 常见问题 FAQ
+先检查资产编译与绑定，再检查组件启动、Schema Context、实际活动链和转换结果。用目标版本的 StateTree 调试器或项目日志观察以下字段，而不是只看“树亮了没有”：
 
-**Q1：状态树没有执行，状态一直不动？**
-检查：① 组件是否添加并引用资产（`UStateTreeComponent::SetStateTree`）；② Schema 是否与组件匹配（`StateTreeComponentSchema` / `StateTreeAIComponentSchema`）；③ 资产是否编译成功（编辑器编译错误面板）；④ 根状态是否有可进入的路径（进入条件是否全部为真）；⑤ 组件 tick 是否被禁用（按需 tick 下无事件会休眠，`ScheduleNextTick` 需要触发源）。
+- Controller 与 Pawn 身份是否一致，Target 的有效性与快照更新时间
+- 当前活动根到叶链、请求的转换目标和实际选择结果
+- Chase 中内置任务的运行结果；是否允许部分路径、实际目标和接受设置
+- Task 的 Enter/Tick/Exit、Changed/Sustained、StateCompleted 是否属于同一次激活
+- 停止/丢失目标后是否还有本次移动、Timer 或订阅回调；旧请求结果是否误伤新一次行为
 
-**Q2：转换为什么不触发？**
-按顺序排查：① 触发器类型（`OnTick` 才每帧评估，`OnStateSucceeded/Failed` 只在完成时评估）；② 转换条件是否全部为真（条件绑定是否生效）；③ `OnEvent` 转换的事件 Tag 是否与 `SendEvent` 的 Tag 一致（大小写敏感）；④ 是否被同帧更高优先级的转换抢占（叶→根顺序）；⑤ 延迟转换（`bDelayTransition`）是否还没到期。
+这些是待执行观察点。本文没有打开 PIE 或 Debugger，也不把某个控制台命令、显示颜色或调试面板布局说成已验证。
 
-**Q3：任务卡在 Running 永远不结束？**
-`EnterState` 返回 `Running` 后，任务必须最终返回 Succeeded/Failed 或通过完成机制结束状态，否则状态永不完成、`OnStateCompleted` 转换永不触发。检查任务是否在合适时机调用了完成路径；只返回 Running 而不做任何收尾是常见 bug。
+### 6.3 FAQ：从数据到动作逐层排查
 
-**Q4：多个实例（多个 AI）会互相串数据吗？**
-不会——每个运行实例有独立的 `FStateTreeInstanceData`（构造 `FStateTreeExecutionContext` 时传入）。但注意：**不要用静态成员或全局变量保存节点状态**；节点配置（UPROPERTY 默认值）是共享的，运行期可变状态必须放 InstanceData。
+**树未启动：**先看组件/资产/Schema 是否匹配、Controller 是否控制 Pawn、必需 Context 是否有效，再看根是否有可选路径。恢复错误前不循环强行 Start。
 
-**Q5：StateTree 和行为树怎么选？**
-参考"选型对比"：需要抢占式弹性决策（随时打断重来）→ 行为树；状态明确、流程化、事件驱动 → StateTree；混合场景用 `UBTTask_RunStateTree` 在 BT 里挂状态机（如"全局用 BT 编排，单场战斗用 StateTree 管理阶段"）。
+**条件成立却没有转换：**Enter Condition 变真不主动要求转换；检查触发源、数据可见时机、条件表达式、目标及子状态可选性、Priority 和延迟配置。进入条件通过也不保证孩子可选。
 
-**Q6：Evaluator 和 Task 有什么区别？**
-Evaluator 是树级"传感器"：每树周期运行、不产生决策、输出数据供绑定；Task 是状态级"执行器"：随状态生命周期运行、可以完成状态。规则：**更新数据用 Evaluator，做动作用 Task**；需要按状态启停的持续性逻辑（如"追击时才刷新目标"）也可放 Task。
+**任务永远 Running：**确认它是 Idle 这种刻意等待外部转移的任务，还是必须有限完成的动作；然后看参与标志、All/Any、任务回调是否真的被调度。不能说所有 Running 状态永不退出。
 
-**Q7：SendEvent 发了但状态没反应？**
-① 确认接收方状态/转换用的是 `OnEvent` 触发器且 EventTag 匹配；② 事件只在转换评估时处理——如果树处于休眠（按需 tick）且没有触发 `ScheduleNextTick`，事件可能延迟到下一次 tick；③ 检查事件载荷类型是否与绑定目标兼容；④ 确认发送的 Origin/来源没有把事件过滤掉。
+**TargetLost 后还在走：**检查是否真正选中退出 Chase 的转换、Exit 路径是否撤销自己那次动作、是否还有另一个系统给同 Pawn 下达移动。不要仅在 StateCompleted 清理，也不要直接停止不属于本任务的请求。
 
-**Q8：Mass 实体上怎么跑 StateTree？**
-Mass 实体不是 Actor，不能直接挂 `UStateTreeComponent`。做法：自定义 MassProcessor 为每个实体持有 `FStateTreeInstanceData` + `FStateTreeExecutionContext`，把实体 Fragment 数据暴露为上下文/绑定输入，Processor 在实体 tick 时驱动 `Start/Tick/SendEvent`，并把决策结果写回 Fragment。表现升级为 Actor 时（Representation），再由 `UStateTreeComponent` 接管。
+**两只 AI 串状态：**检查是否误共用 InstanceData、修改共享节点成员，或绑定到同一个可变外部对象。强/弱引用形式不自动解决业务共享。
 
-**Q9：参数怎么覆盖？**
-资产级：`Start(FInstancedPropertyBag*)` / `Start(FStartParameters)` 传入初始参数；组件级：`FStateTreeReference` 带 overrides（`SetLinkedStateTreeOverrides` / `AddLinkedStateTreeOverrides(StateTag, Ref)`）；状态级：`FStateTreeStateParameters` 的 `PropertyOverrides` 覆盖（编辑器里对参数项打勾覆盖）。5.8 起全局参数存入实例存储，覆盖语义更一致。
+**同状态重选后订阅翻倍：**先明确重选是否需要重启；核对 Changed/Sustained 与回调开关，再检查每次登记有唯一匹配撤销。弱 Owner 尚有效不是“旧请求仍应被接受”的证据。
 
-**Q10：StateTree 能做"效用 AI"（Utility AI）吗？**
-可以——`Considerations`（`UStateTreeConsiderationBase`）为子状态打分，配合 `TrySelectChildrenWithHighestUtility`（或按效用概率随机）选择行为，`Weight` 调权重。这是 StateTree 内置的 Utility 支持，比行为树"手写装饰器打分"更规范。
+**普通参数覆盖与 LinkedStateTreeOverrides：**前者改本次配置值；后者替换链接状态树引用。它们不是同一个“覆盖参数”操作。按 [UStateTreeComponent](https://dev.epicgames.com/documentation/unreal-engine/API/Plugins/GameplayStateTreeModule/UStateTreeComponent)和所用引用 API 核对，本文不复用旧版本 Start 重载拼一段通用代码。
 
-## 关联阅读与前后置专题
+## 7. 纸面追踪与反例
 
-- [01-行为树详解](01-行为树详解.md)：行为树与 StateTree 的对比基础；`UBTTask_RunStateTree` 让两者嵌套协作；
-- [02-感知系统与EQS](02-感知系统与EQS.md)：感知结果通过属性绑定/事件送入 StateTree，`StateTreeRunEnvQueryTask` 在树内直接跑 EQS；
-- [03-NavMesh寻路](../导航移动与群体协同/03-NavMesh寻路.md)：`StateTreeMoveToTask` 底层依赖导航系统，理解寻路代价与接受半径有助于调参；
-- [04-Mass实体框架与群集模拟](../导航移动与群体协同/04-Mass实体框架与群集模拟.md)：Mass 提供群体数量与表现，StateTree 提供个体决策，二者是官方推荐组合；
-- [07-GameplayTasks-StateTree-GAS-AI协同](07-GameplayTasks-StateTree-GAS-AI协同.md)：StateTree 与 GameplayTasks、GAS 技能的现代 AI 架构整合；
-- [12-21 Mass与StateTree源码](../导航移动与群体协同/21-Mass与StateTree源码.md)：StateTree 编译流水线与执行上下文数据结构源码深度剖析；
-- [游戏AI/01-决策与架构/02-状态机与层次状态机](02-状态机与层次状态机.md)：层次状态机（HFSM）通用数学模型与状态转移理论；
-- UE 官方文档：StateTree（Unreal Engine 5 文档，含编辑器教程与 C++ 节点示例）；
-- 源码（本机 UE 5.8）：
-  - `Engine/Plugins/Runtime/StateTree/Source/StateTreeModule/Public/`：`StateTree.h`、`StateTreeState.h`（编辑器定义）、`StateTreeTypes.h`（转换/触发器/状态类型枚举）、`StateTreeExecutionContext.h`、`StateTreeTaskBase.h`、`StateTreeEvaluatorBase.h`、`StateTreeConditionBase.h`、`StateTreeConsiderationBase.h`、`StateTreeSchema.h`、`StateTreePropertyBindings.h`、`StateTreeEvents.h`；
-  - `Engine/Plugins/Runtime/GameplayStateTree/Source/GameplayStateTreeModule/Public/`：`Components/StateTreeComponent.h`、`Components/StateTreeAIComponent.h`、`BehaviorTree/Tasks/BTTask_RunStateTree.h`、`Tasks/StateTreeMoveToTask.h`、`Tasks/StateTreeRunEnvQueryTask.h`；
-  - `Engine/Plugins/Runtime/SmartObjects/`（`SmartObjectComponent.h`、`SmartObjectSubsystem.h`）与 `Engine/Plugins/Runtime/GameplayInteractions/`；
-- 示例工程：Lyra（AI 全面使用 StateTree + Mass）、CitySample（Mass 人群 + SmartObject 交互）、StateTree 插件自带的测试/示例资产。
+以下是给定装配合同的推导预期，尚未采集 UE 运行日志。调试时既查最终状态，也查动作所有权是否闭合。
+
+| 输入与操作 | 推导预期 / 判定 | 暴露的错误模式 |
+| --- | --- | --- |
+| Pawn/Controller 有效，Target 空 | 初始选 Idle，等待 Running；没有移动请求 | 以 MAX_flt 直接比较“远”会误进 Chase |
+| 有效目标距离 1500 cm，阈值 100 cm | 刷新后远条件为真；Idle/Patrol → Chase，启动内置移动 | 距离监视 Task 本身不会让 Pawn 开始走 |
+| 有效目标距离恰好 100 cm | 远为 false、近为 true；初始选 Arrived | 两边都用严格不等号会漏掉边界 |
+| Chase 移动成功，目标仍有效 | 单一完成责任者成功 → Arrived；短停留后树 Succeeded | 成功送到只允许 NoTarget 的 Idle 可能选不进 |
+| Chase 请求无法完成，目标有效 | Failed → 无条件可选 Recovery；退避一次后树 Failed | 直接重选 Chase 会对同一失败立即重发 |
+| Running Chase 中清空 Target | 输入刷新后丢目标条件退出 Chase → Idle；旧动作应撤销 | 清理仅放 StateCompleted 会漏掉条件退出 |
+| Patrol 移动中发现目标 | 退出当前巡逻动作，再进入 Chase/Arrived | 同时保留巡逻和追击请求造成抢控制 |
+| 无目标 Patrol 的移动失败 | 进入 Recovery，仍等待 1 s 后树 Failed | Recovery 若按 NoTarget 立即回 Idle，会绕过约定退避 |
+| 已进入 Recovery 后目标丢失或出现 | 继续本次等待后树 Failed；不因目标变化重试，宿主 Stop 仍可取消 | 共用恢复态必须保持同一个终止合同 |
+| 停止树或 Controller 结束玩法 | 停止活动任务，宿主撤销自己的订阅；不再接受旧结果 | UObject 未被回收不代表还可继续玩法 |
+| Combat 父任务持续，Chase → Arrived | 父仍活动时保留其资源；子移动退出，子等待进入 | 将所有转移解释为整实例释放 |
+| 同状态 Sustained 重选，等待开关不重启 | 保持剩余时长；真正 Changed 新激活才复位 | 无条件 Enter 初始化会无限重置等待 |
+| 一帧返回后下一帧继续 | 新临时 Context 使用同一 InstanceData；等待进度延续 | 保存栈上 Context 引用，或每帧清空存储 |
+| 同 Owner 上旧 g1 回调晚于新 g2 | 旧状态/请求身份不符应被丢弃；不能完成 g2 | 仅检查弱 Owner 存活不够 |
+| 目标父状态的所有候选子条件为 false | 不能报告已进入该目标；检查 fallback/失败处理 | “先 Exit 再找新状态”的伪源码顺序 |
+
+负向控制还应包括：清掉 Schema 的 Pawn 绑定、错绑另一 Controller、无导航、被销毁但未清空的目标、等待时长为负数、调度被禁用。前两项是集成错误，不能用 Recovery 的业务退避掩盖；必须停止并修正配置。
+
+## 8. 与行为树、Mass 及其他系统配合
+
+```mermaid
+flowchart LR
+    subgraph BT["UE Behavior Tree"]
+        B1["Selector / Sequence / Simple Parallel"]
+        B2["Task / Decorator / Service"]
+        B3["Blackboard、观察与 Abort"]
+    end
+    subgraph ST["StateTree"]
+        S1["活动状态链与选择策略"]
+        S2["Task / Evaluator / Condition"]
+        S3["属性绑定、显式转换与事件"]
+    end
+    BT -->|"BT 任务运行局部 StateTree"| ST
+```
+
+| 决策问题 | UE 行为树 | StateTree |
+| --- | --- | --- |
+| 如何表达结构 | 复合节点、条件和任务，优先级分支常用于决策 | 活动状态链与显式转换，适合表达阶段与退出规则 |
+| 如何推进 | 活动任务完成、观察/事件及执行请求；UE BT 本身是事件驱动 | 任务结果、转换触发与宿主调度；也可以需要 Tick |
+| 状态放哪里 | 共享节点配置与每 AI NodeMemory/黑板；可选节点实例化 | 共享资产配置与每运行实例数据；外部对象仍须单独管理 |
+| 并发意味着什么 | Simple Parallel 有主任务和后台子树等约束 | 多个活动状态/Task 可逻辑并发；不授予线程安全 |
+| 容易踩的坑 | 观察源缺失、Abort 协议或共享成员错误 | 目标不可选、完成参与误设、退出/重选和 Context 寿命错误 |
+| 如何选 | 按现有行为树工具链、优先级抢占需求与团队经验 | 按阶段结构、数据来源、转移可维护性与所用集成 |
+
+UE BT 的事件合同见 [Behavior Tree Overview](https://dev.epicgames.com/documentation/en-us/unreal-engine/behavior-tree-in-unreal-engine---overview)。不能为了突出 StateTree，把 BT 描述为“没有原生事件、每帧只会轮询黑板”。也没有本次测量证明 StateTree 普遍更快、转换超过固定条数就必须拆，或万级实体是无需实测的推荐容量。
+
+`UBTTask_RunStateTree` 可作为 BT 内运行局部状态机的集成方向；这不等于本文实现了双向任意嵌套。GAS 更关注能力执行、成本和冷却等职责，可以由决策层调用；不应仅因为使用 GAS 就取消决策层的动作所有权与退出协议。
+
+Mass 方面优先研究已有 Mass StateTree / Signals 集成，而不是默认自建每实体永久 Context 的 Processor。[Mass Gameplay Overview](https://dev.epicgames.com/documentation/en-us/unreal-engine/overview-of-mass-gameplay-in-unreal-engine)提供这些入口，以及 SmartObject 交互职责。Mass 数据、表现 Actor、StateTree 实例与调度属于不同层；表现切换成 Actor 不自动代表 UStateTreeComponent 接管决策。本文没有验证 Lyra 全部采用 StateTree+Mass，也没有给出通用吞吐或实例数量保证。
+
+实践上，绑定和 Schema 用于显式依赖与类型约束，状态层级用于共同动作/转换，事件与 Tick 按真实输入频率选，参数与链接资产按各自覆盖语义配置。需要优化时测量具体任务成本、活动实例数、更新频率和唤醒延迟，再决定拆树、批处理或降低频率。
+
+## 9. 来源定位、进一步阅读与验证边界
+
+本次实际核对的接口重点：Task 的 Enter/Tick 返回值、Exit/StateCompleted、完成参与与重选开关；Node 的实例类型接口；State 的 TasksCompletion；MoveTo 与其 InstanceData；Context 的临时寿命、Schema 与外部数据；Weak Context 的有效性及线程安全责任。Evaluator 原生继承可由[当前 Evaluator 页](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/StateTreeModule/FStateTreeEvaluatorBase)确认，CommonBase 用途见[Evaluator CommonBase](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/StateTreeModule/FStateTreeEvaluatorCommonBase)、[Condition CommonBase](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/StateTreeModule/FStateTreeConditionCommonBase)、[Task CommonBase](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/StateTreeModule/FStateTreeTaskCommonBase)。签名页面不完整的地方已在代码前标出，未用旧文的本机 CL 声明填补。
+
+- [01-行为树详解](01-行为树详解.md)：UE BT 的事件、存储和取消模型；与本文比较时保持引擎实现边界
+- [02-感知系统与EQS](02-感知系统与EQS.md)：进一步选择目标/提供输入，本例仅规定生产者合同，没有完成该专题的全面审计
+- [03-NavMesh寻路](../导航移动与群体协同/03-NavMesh寻路.md)：路径与移动前提；几何近距、导航投影、路径成功不是同一结论
+- [04-Mass实体框架与群集模拟](../导航移动与群体协同/04-Mass实体框架与群集模拟.md)、[07-GameplayTasks-StateTree-GAS-AI协同](07-GameplayTasks-StateTree-GAS-AI协同.md)：集成阅读，不能代替本轮具体 API 的证据
+- [02-状态机与层次状态机](02-状态机与层次状态机.md)：引擎无关状态机模型
+- [03-行为树通用原理](03-行为树通用原理.md)：通用 BT 讨论；其中“UE 原生 Parallel”“Tick 阶段缺一不可”等旧描述有已知边界，不能用于证明当前 UE 回调模型
+- [12-行为树与AI源码](12-行为树与AI源码.md)：保留历史源码材料；“InProgress 后无法切分支”“所有 Abort 必等 FinishLatentAbort”等旧推论不能沿用
+- [21-Mass与StateTree源码](../导航移动与群体协同/21-Mass与StateTree源码.md)：保留历史编译/源码入口；Context 应覆盖全实例寿命、转移必释放全部持久状态等旧解释与本文边界冲突，不能据其认证当前执行寿命
+- [World/Subsystem 体系](../../03-引擎架构与资源系统/世界组织与资源加载/07-World关卡与Subsystem体系.md)：清理自己建立的资源，不假设同伴 Subsystem 在退出时必然仍有效
+
+这些链接保留知识导航，不表示关联旧文或整个 AI 主题已经闭合。本篇下一步验证应在实际项目版本完成 UHT/编译、绑定可见性、首次选择、成功/失败/目标丢失、Sustained/重激活、Stop/EndPlay 和两 AI 隔离；随后才有资格讨论运行证据或性能。本次仍为 L2，`verified: []`。
