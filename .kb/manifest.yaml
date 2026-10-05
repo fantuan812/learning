@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-05 (ZoneGraph and SmartObject interaction lifecycle contracts; historical identity preserved).
+# Generated: 2026-10-05 (AI task and ability coordination lifecycle contracts; historical identity preserved).
 version: 4
 
 okf:
@@ -1624,8 +1624,8 @@ documents:
   "知识/06-游戏AI/感知决策与行为规划/07-GameplayTasks-StateTree-GAS-AI协同.md":
     kind: doc
     maturity: L2
-    bytes: 56446
-    lines: 1121
+    bytes: 94766
+    lines: 985
   "知识/06-游戏AI/感知决策与行为规划/12-行为树与AI源码.md":
     kind: doc
     maturity: L2
