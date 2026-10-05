@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-05 (UObject reflection and lifetime teaching contracts; mechanically recalculated).
+# Generated: 2026-10-05 (MMR exact-byte recovery and split evidence packaging; mechanically recalculated).
 version: 4
 
 okf:
@@ -299,8 +299,8 @@ documents:
   "evidence/tests/match-core/README.md":
     kind: README
     maturity: L0
-    bytes: 25639
-    lines: 303
+    bytes: 51313
+    lines: 643
   "index.md":
     kind: doc
     maturity: L2
@@ -1784,8 +1784,8 @@ documents:
   "知识/07-网络与游戏服务端/会话身份与在线服务/04-匹配与房间系统.md":
     kind: doc
     maturity: L2
-    bytes: 19681
-    lines: 356
+    bytes: 20402
+    lines: 358
   "知识/07-网络与游戏服务端/会话身份与在线服务/04-多人游戏框架与玩家状态.md":
     kind: doc
     maturity: L2
