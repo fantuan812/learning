@@ -3,91 +3,452 @@ type: Mechanism
 title: "UE 引擎源码分析 03：Actor 与 Component 生命周期源码剖析"
 status: stable
 verified: []
-maturity: L2
-updated: 2026-09-14
+maturity: L1
+updated: 2026-10-05
+sources:
+  - resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/AActor
+  - resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/FTickFunction
+  - resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-engine-actor-lifecycle
 ---
 
 # UE 引擎源码分析 03：Actor 与 Component 生命周期源码剖析
-> 知识成熟度：L2（已按 UE5.8 源码基线全面补齐真实源码段落、UWorld::SpawnActor 实例化、组件注册三阶段、TickGroup 调度拓扑与二阶段销毁流水线）。
-> 对应知识点：[01-引擎基础/02 Actor 与 Component 生命周期](02-Actor与Component生命周期.md)
+> 知识成熟度：L1。主要承诺是解释所存内部片段的条件和因果；未与旧文声称的私人引擎 checkout 对勘。旧 L2“全面补齐真实源码”缺乏本轮可验证身份，故按全文主要证据调整。公开 API 的局部核对另标，不把它升级为整篇内部实现认证。
+> 使用层入口：[Actor 与 Component 生命周期](02-Actor与Component生命周期.md)。最后更新：2026-10-05。
 
-> 以本机 UE5.8 源码为准，逐行深度剖析从 `UWorld::SpawnActor` 分配构造、`AActor::PostSpawnInitialize` 角色初始化、蓝图构造脚本 `ExecuteConstruction`、组件注册三阶段（`OnRegister` / `CreateRenderState` / `CreatePhysicsState`）、`DispatchBeginPlay` 时序对齐，到 `FTickTaskManager` 组调度与 `DestroyActor` 清理销毁的全链路底层源码实现。
+**版本基准**：2026-10-05 核对的 Epic 公开 UE5.8 标签资料，加本仓库历史节选；私有 CL55116800 尚未认证，不能合并为当前引擎实现基线。
 
----
+## 一、阅读合同与源码地图
 
-## 元数据
+### 1.1 四种证据必须分开
 
-- **版本基准**：UE 5.8.0 / CL 55116800 / 分支 `++UE5+Release-5.8`（本机安装目录 `C:\Program Files\Epic Games\UE_5.8\Engine`）。
-- **源码依据**：
-  - `Engine\Source\Runtime\Engine\Private\LevelActor.cpp`（`UWorld::SpawnActor`、`UWorld::DestroyActor`）
-  - `Engine\Source\Runtime\Engine\Private\Actor.cpp`（`AActor::PostSpawnInitialize`、`FinishSpawning`、`DispatchBeginPlay`、`BeginPlay`）
-  - `Engine\Source\Runtime\Engine\Private\Components\ActorComponent.cpp`（`RegisterComponentWithWorld`、`ExecuteRegisterEvents`、`ExecuteUnregisterEvents`）
-  - `Engine\Source\Runtime\Engine\Classes\Engine\EngineBaseTypes.h`（`ETickingGroup`、`FTickFunction`、`FActorTickFunction`）
-  - `Engine\Source\Runtime\Engine\Private\TickTaskManager.cpp`（`FTickFunction::RegisterTickFunction`、`FTickTaskLevel::AddTickFunction`、`FTickTaskManager::AddTickFunction`、`FTickTaskSequencer::QueueTickTask`、`StartFrame`/`RunTickGroup`）
-  - `Engine\Source\Runtime\Engine\Private\LevelTick.cpp`（`UWorld::Tick` 内的 TickGroup 逐组释放顺序）
-  - `Engine\Source\Runtime\Engine\Private\World.cpp`（`UWorld::BeginPlay`、`UWorld::HasBegunPlay`、`UWorld::SetBegunPlay`、无缝切换标记）
-  - `Engine\Source\Runtime\Engine\Private\WorldSettings.cpp`（`AWorldSettings::NotifyBeginPlay`）
-  - `Engine\Source\Runtime\Engine\Private\GameModeBase.cpp`、`Engine\Source\Runtime\Engine\Private\GameStateBase.cpp`（`StartPlay` → `HandleBeginPlay` → `NotifyBeginPlay`）
-  - `Engine\Source\Runtime\Engine\Private\Level.cpp`（`ULevel::RouteActorInitialize`、`ULevel::InitializeNetworkActors`）
-  - `Engine\Source\Runtime\Engine\Private\ActorConstruction.cpp`（`AActor::ExecuteConstruction` 与 SCS 执行序）
-  - `Engine\Source\Runtime\CoreUObject\Public\UObject\UObjectBaseUtility.h`（`MarkAsGarbage` 的真实归属）
-- **行号口径**：下文所有"（第 N 行起）"均以本机 UE 5.8 源码 checkout `C:\Users\zhaozhiqi\Documents\GitHub\UnrealEngine` 计，安装版 5.8.0 引擎（`C:\Program Files\Epic Games\UE_5.8\Engine`）可能相差数行；代码块内的行号为文内偏移，两套口径不混用。
-- **官方参考**：[Unreal Engine Actor 生命周期官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
-- **最后更新**：2026-09-14（补深：① `UWorld::SpawnActor` 与 `AActor::PostSpawnInitialize` 原始实现，含 `bDeferConstruction`、`SpawnCollisionHandlingMethod` 优先级链与 `LevelToSpawnIn` 三级回落；② `FinishSpawning`/`PostActorConstruction`/`ExecuteConstruction` 与三阶段组件初始化原始码；③ `RegisterComponentWithWorld`、`ExecuteRegisterEvents`/`ExecuteUnregisterEvents`、`CreatePhysicsState` 与 `AddOwnedComponent`/`AddInstanceComponent`；④ `DispatchBeginPlay`/`BeginPlay`、`AWorldSettings::NotifyBeginPlay` 延迟广播门禁与 `bActorSeamlessTraveled`；⑤ `FTickFunction` 注册与 `FTickTaskManager`/`FTickTaskSequencer` 组调度源码；⑥ `Destroy` → `DestroyActor` → `RouteEndPlay` 二阶段销毁链）。
+本文读过的“源码”首先是**学习仓库中已有的历史节选**。34 个代码围栏连同原注释、省略标记、空白与出现顺序完整保存在篇末 AS-H01 至 AS-H34。它们有真实的仓库字节身份，却没有本次可确认的私有引擎来源身份；有些块把不连续函数拼在一起，有些只有函数头或尾。
 
----
+1. **公开使用合同**：2026-10-05 核对 Epic 官方 API/文档，所读页面主要标 UE5.8；用于确认注册、opt-in、Tick、Destroy、World 启动等公开职责
+2. **历史字面推导**：如果 AS-Hxx 所示条件与调用按字面执行，会发生什么。可以手算 OR、判断循环内外和 Super 内局部关系；不能由省略片段推出完整函数所有分支
+3. **UObject 前置合同**：[UObject 基础](01-UObject与反射系统.md)、[反射源码](01-UPROPERTY与反射系统源码.md)、[GC 源码](02-UObject与垃圾回收源码.md) 已分清创建入口、Outer、受追踪强引用与最终释放。本篇不重新发明与之冲突的“Actor 特例”
+4. **工程观察**：本次没有。UHT、UE 编译/链接、PIE、Game/Editor/专服/客户端日志、真实 GC、性能和私有 CL 对勘均 **NOT_RUN**；文本/布尔校验不能填这个空位
 
-## 概述与生命周期全景流水线
+历史身份线索：旧文自述 UE5.8.0、CL 55116800、分支 `++UE5+Release-5.8`；安装目录 `C:\Program Files\Epic Games\UE_5.8\Engine`，行号则自述来自 `C:\Users\zhaozhiqi\Documents\GitHub\UnrealEngine`。旧记录称 2026-09-14 已把示意块替换为逐字源码，却又在原第 332 行称前四小节为压缩/改写版；两种说法冲突。保留这段历史和篇末各块旧路径/行号，并不继续认证“本机”“完整”“逐字”。
 
-在虚幻引擎中，Actor 是可被放置或动态生成在 `UWorld` 中的基本实体，而 ActorComponent 是承载具体行为、渲染与物理特性的功能构件。Actor 的生命周期由引擎严格划分为四个阶段：
+本轮定位使用稳定块 ID 和符号。原“第 N 行”若指已经替换的示意块，不能再用于定位；篇末保留的原文行区间是**修订前知识文档**行号，旧引擎行号则标为待核，两者不是同一坐标。
 
-```mermaid
-flowchart TD
-    subgraph Phase1[1. 生成与组装阶段 Spawning]
-        Spawn["UWorld::SpawnActor()"] --> NewObj["NewObject<AActor>() 物理内存分配"]
-        NewObj --> CDOCopy["FObjectInitializer 拷贝 CDO 默认组件"]
-        CDOCopy --> PreInit["OnActorPreSpawnInitialization 广播"]
-        PreInit --> PostSpawn["AActor::PostSpawnInitialize() 注入网络所有权"]
-        PostSpawn --> FinishSpawn["AActor::FinishSpawning()"]
-        FinishSpawn --> UCS["ExecuteConstruction() 蓝图构造脚本"]
-        UCS --> CompInit["PreInitializeComponents() -> InitializeComponents() -> PostInitializeComponents()"]
-    end
+### 1.2 按问题找入口
 
-    subgraph Phase2[2. 开始运行阶段 BeginPlay]
-        CompInit --> BeginCheck{"World->HasBegunPlay()?"}
-        BeginCheck -- 是 (动态生成) --> Dispatch["DispatchBeginPlay() 立即派发"]
-        BeginCheck -- 否 (关卡加载中) --> WaitWorld["等待 AGameModeBase::StartPlay 批量广播"]
-        Dispatch --> CompBegin["组件优先: UActorComponent::BeginPlay()"]
-        CompBegin --> ActorBegin["Actor 本地: AActor::BeginPlay() -> ReceiveBeginPlay()"]
-        ActorBegin --> TickReg["PrimaryActorTick 注册进 FTickTaskManager"]
-    end
+| 问题 | 历史块 | 待目标 checkout 读取的文件与符号 |
+|---|---|---|
+| 实例如何创建、选择 Level/模板？ | AS-H01–02 | `Engine/Source/Runtime/Engine/Private/LevelActor.cpp`：SpawnActor；`Private/Actor.cpp`：PostSpawnInitialize |
+| 延迟构造、SCS 和逻辑初始化何时接续？ | AS-H03–06 | `Private/Actor.cpp`：FinishSpawning/PostActorConstruction/InitializeComponents；`Private/ActorConstruction.cpp`：ExecuteConstruction |
+| 注册如何关联世界、资源、Owner？ | AS-H07–11 | `Private/Components/ActorComponent.cpp`；`Private/Actor.cpp`：OwnedComponents/InstanceComponents |
+| 谁发起 BeginPlay，谁实际回调？ | AS-H12–18 | `Private/Actor.cpp`、`World.cpp`、`WorldSettings.cpp`、`GameModeBase.cpp`、`GameStateBase.cpp`、`Level.cpp` |
+| Tick 的登记/启用/任务图怎样分工？ | AS-H19–26 | `Classes/Engine/EngineBaseTypes.h`；`Private/TickTaskManager.cpp`；组释放还需读 `Private/LevelTick.cpp` |
+| 请求销毁、玩法退出、组件清理怎么接上 GC？ | AS-H27–34 | `Private/Actor.cpp`、`LevelActor.cpp`、`Components/ActorComponent.cpp`；底层垃圾状态线索在 `Engine/Source/Runtime/CoreUObject/Public/UObject/UObjectBaseUtility.h` |
 
-    subgraph Phase3[3. 帧循环更新阶段 Ticking]
-        TickReg --> PrePhys["TG_PrePhysics: 输入/前置逻辑"]
-        PrePhys --> Phys["物理引擎解算 (Chaos / PhysX)"]
-        Phys --> PostPhys["TG_PostPhysics: 刚体结果回写/相机更新"]
-        PostPhys --> PostWork["TG_PostUpdateWork: 最终渲染前清理"]
-    end
+这张表保留可继续追踪的入口，不表示本环境已检查这些引擎文件存在。源码宏、CVar 默认值、专服分支和返回值的省略部分都需要目标版本验证。
 
-    subgraph Phase4[4. 优雅销毁阶段 Destruction]
-        DestroyReq["DestroyActor()"] --> EndPlay["AActor::EndPlay(EEndPlayReason)"]
-        EndPlay --> CompUnreg["ExecuteUnregisterEvents: 销毁物理与渲染状态"]
-        CompUnreg --> RemLevel["从 ULevel::Actors 列表移除"]
-        RemLevel --> MarkGC["MarkAsGarbage() 等待 GC 回收"]
-    end
+### 1.3 总览：几条可接续的协议
+
+```text
+普通 Spawn ── 对象/默认子对象已构造 ── 原生注册或 SCS 后补注册 ─┐
+延迟 Spawn ── 已有 C++ 实例 ── 调用方填参数 ── FinishSpawning ──┤
+关卡加载 / PIE复制 ── 各自加载/复制准备 ── 关卡初始化路线 ──────┤
+                                                              ↓
+       世界允许初始化：Pre → 对 registered && wants && !initialized 的组件 Initialize → Post
+       该 Actor 满足开始门禁：Dispatch → 派生 Begin.before → Super 内部 → Begin.after
+                                      Super 内：Actor Tick登记尝试 → 适用组件 Begin → Actor Receive
+
+运行期动态组件 ── 创建/属性/挂接 ── 注册 ── 按 Owner/World 当前状态接续自己的阶段
+Tick：每个 TickFunction 独立登记、启用、分组和建立依赖；不是上述箭头的无条件下一步
+退出玩法：派生 End.before → Super 内 Actor Receive/OnEnd → 已begun组件 End → End.after
+最终回收：垃圾状态 / GC判定 → BeginDestroy → ready等待 → FinishDestroy → 后续析构/free
 ```
 
-（上图为概念示意：只表达四个阶段与关键函数的对应关系，不代表真实调用栈深度、线程归属或分支完整性；各阶段的真实顺序与门禁条件以本文源码小节为准。）
+图只保留关键偏序，未表示全线程调用栈。EndPlay 可以先于对象内存寿命结束很久，流送复入还可再次进入玩法。组件注册/反注册也可以独立重复，不能按整张图每次从头重播。
 
----
+## 二、生成：先找分支，再读顺序
 
-## 核心源码深入剖析一：实体生成总指挥 `UWorld::SpawnActor`
+### 2.1 SpawnActor 分配之前已经可能失败
 
-### 1. `UWorld::SpawnActor` 真实源码（节选）
+[AS-H01](#as-h01) 保存生成入口：它先处理类是否合法、构造脚本上下文、Level 与模板选择、碰撞策略，然后才显示 `NewObject<AActor>`。因此“任何生成失败本质上都是先生成后 Destroy”不成立。该块已经有分配前的碰撞拒绝；分配后的构造/碰撞处理也可能失败，两种失败要区分。
 
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\LevelActor.cpp`（第 456 行起，节选；该函数真实范围为第 456 行至第 800 行）：
+按所示代码读参数优先级：
 
-（2026-09-14：原示意块已替换为 5.8 源码逐字版。下文第 2 小节"逐行技术深度解构"里的"（第 N 行）"是**被替换掉的示意块**的块内偏移，不对应下面源码的行号；下面源码中的行号以 checkout 文件为准）
+- `LevelToSpawnIn` 首先取 `SpawnParameters.OverrideLevel`；仅为空才使用 `Owner->GetLevel()` 或 `CurrentLevel`。所以 Owner 同关卡不是这一段不可覆盖的硬规则。是否允许某个具体跨关卡用法，还需核对完整上下文，不能只凭此行推荐跨关卡操作
+- `Template` 优先取显式 `SpawnParameters.Template`，没有才取 `Class->GetDefaultObject<AActor>()`；模板并不恒等于 CDO。已有模板类不匹配时，所示分支还受 `bNoFail` 影响
+- 碰撞策略从模板开始，可被显式 Override 覆盖；`bNoFail` 再把所示两个可能拒绝的策略改成对应 always-spawn 策略。它不是绕过任何失败门禁的万能开关
+- 预检组合模板根相对变换与用户变换；最终值不能一律认为就是调用者传入 Transform。具体数学实现及完整的缩放策略有省略，不用旧行号的推测填上
+
+`NewObject<AActor>(LevelToSpawnIn, ...)` 显示 Outer 为 Level。业务仍用 `SpawnActor`，因为世界登记、构造、复制等协议不止这一次分配；Outer 也不自动提供任意强所有权。[UObject 的入口与 Outer 合同](01-UObject与反射系统.md#三创建与初始化工厂outer-和默认子对象)
+
+该块的 `OnActorPreSpawnInitialization` 在对象创建后、`PostSpawnInitialize` 前广播。这可以帮助寻找早期观察点，但不能把它称为所有框架的推荐就绪点：用户代码可能重入，原生构造已经发生，后续注册和玩法状态尚未满足。`OnActorSpawned` / `AddNetworkActor` 在所示 CVar 条件下执行，具体 CVar 缺省及 `OnActorFinishedSpawning` 的完整实现未给出。
+
+**调用者结论**：记录失败输入、最早日志和返回值，区分预检拒绝与后验失败。AS-H01 的省略范围覆盖其他控制流，不能只看到末尾 `return Actor` 就宣称所有失败都会返回“已坏的非空指针”；也不能由函数名证明 `SpawnActor_Internal` 在某个私有目录全树不存在。
+
+### 2.2 PostSpawnInitialize：原生注册与延迟构造分叉
+
+[AS-H02](#as-h02) 的可见操作包括 CreationTime、网络角色交换、Owner/Instigator、默认组件创建通知和注册选择。头部概览注释提到整条管线的 Pre/Initialize/Post，但本函数体没有因此“直接调用每一项”。真正逻辑初始化在下游 AS-H04/06，必须继续读。
+
+关键状态 `bHasDeferredComponentRegistration` 表达“无原生场景根且为蓝图生成类”。此时先等 SCS 建立根，再接续注册；否则在有 World 的适用路径调用 `RegisterAllComponents`。它解释了为什么原生组件和蓝图构造组件未必在同一位置注册，而不是说明逻辑 Initialize 可以普遍早于注册。
+
+`bDeferConstruction=false` 会接 `FinishSpawning`；为 true 时 C++ Actor 与默认子对象已经创建，只是暂缓后续构造与装配。存在原生根的分支还保存原始生成变换供后续使用。旧文谈到的 `FixupNativeActorComponents` 缩放细节、`PostActorCreated` 精确插入点位于省略处：可保留为目标追踪方向，不能从当前可见块认证完整实现。
+
+### 2.3 FinishSpawning 不等于“调用一个空完成通知”
+
+[AS-H03](#as-h03) 在 `if (ensure(!bHasFinishedSpawning))` 内置位，随后调用 `ExecuteConstruction`、`PostActorConstruction`，再通知世界完成生成。读者应同时看条件和副作用：若已经完成，所存条件分支不会再次装配；但 `ensure` 的诊断/中断行为不能写成所有构建均必终止。
+
+因为 `PostActorConstruction` 可能推进 BeginPlay，调用方要在 `FinishSpawning` **之前**填好要让构造脚本和 BeginPlay 看见的输入。在 Finish 返回后才赋值，会错过该次回调。默认根变换和 deferred cache 的完整合成部分被省略，不将旧文手写公式视为本轮对勘结论。
+
+以下是已有 Actor 方法体片段，依赖基础篇 `MySpawnableActor.h` 与 `Engine/World.h`，在有效游戏线程/World 上使用；未工程编译。它只演示在 Finish 前设置已有字段，不是完整项目或延迟生成所有错误恢复代码。
+
+```cpp
+if (UWorld* World = GetWorld())
+{
+    const FTransform SpawnTransform(FRotator::ZeroRotator, FVector(0, 0, 100));
+    AMySpawnableActor* Spawned = World->SpawnActorDeferred<AMySpawnableActor>(
+        AMySpawnableActor::StaticClass(), SpawnTransform);
+    if (IsValid(Spawned))
+    {
+        Spawned->InitialLifeSpan = 10.0f; // 本次 BeginPlay 需要读取的输入
+        Spawned->FinishSpawning(SpawnTransform); // 可能在内部进入 BeginPlay
+        // 不假定返回后仍处于可继续业务使用的状态；本片段结束借用。
+    }
+}
+```
+
+### 2.4 PostActorConstruction：世界初始化与玩法启动是两道门
+
+[AS-H04](#as-h04) 先取 `World && World->AreActorsInitialized()`。为真时才调用 PreInitializeComponents、InitializeComponents，并在适用有效性条件下调用 PostInitializeComponents。世界尚未允许逻辑初始化时，不应期待这些日志立即出现；后续关卡初始化路径可接续。
+
+这里还有另一个条件：初始复制要求是否已满足。可见表达式 `bDeferBeginPlayAndUpdateOverlaps` 涉及角色交换和 reinstancing；因此“世界已开始”不意味着一个复制 Actor 已完成自己的初始状态。要定位延迟原因，需要知道是世界初始化未完成，还是这个 Actor 的复制/父子/预览门禁。
+
+所存开始条件是 `!bDeferBeginPlayAndUpdateOverlaps && (BeginPlayCallDepth > 0 || World->HasBegunPlay())`，后面还可被 ParentActor 和编辑器预览条件收窄。最小反例：世界正在批量开始，A 的 BeginPlay 尚未返回，A 在内部 Spawn B；此时深度大于零，即使世界的 begun 标志尚未最终设置，OR 左项也可能为 B 打开入口。不能改写成“世界布尔为 false，所以所有 Spawn 一律等待”。
+
+`PostInitializeComponents` 后检查 `bActorInitialized` 的 Fatal 分支，说明正确转发 Super 是协议的一部分。正常基类返回只是本 Actor 的状态，不是整个关卡和任意未来组件的全局完成屏障。
+
+未初始化世界的另一分支出现 `MarkAsGarbage → Modify(false) → ClearGarbage`。其注释说明与初始撤销记录有关；它是临时状态序列，不是“调用过 MarkAsGarbage，所以该 Actor 已永久退出并会在下一 GC free”。同一个函数名出现在不同协议里，意义要看前后条件。
+
+### 2.5 SCS：每个类内部的创建与末尾补注册
+
+[AS-H05](#as-h05) 显示构造重入保护、根变换处理、蓝图父类栈和注册补偿。可见循环从栈末向前遍历，每轮先处理该类的 `SimpleConstructionScript`（如果存在），随后就在**这一轮循环内部**调用 `CreateComponentsForActor(CurrentBPGClass, this)`。不能读成“所有类 SCS 都结束后只调用一次 CreateComponentsForActor”。父类栈的生成语义仍以实际目标函数为准。
+
+`FGuardValue_Bitfield` 设置构造脚本上下文，与 Spawn 入口拒绝在构造脚本中生成的条件相呼应；有显式允许参数的分支，不是无例外禁令。注册补偿先看 deferred 状态和 world 初始化，再在 PostSCSComponents 上过滤：未注册、`bAutoRegister`、有效、世界/Actor 登记状态，以及 SCS 新建/不在前集合等条件。
+
+这些筛选的因果是“只把适用的漏注册组件补上”，不是“任何蓝图组件必然已经注册”。`bAutoRegister=false` 是直接反例；未来动态组件尚未存在更不在这次循环中。
+
+### 2.6 Pre / Initialize / Post 三个名称里的实质
+
+[AS-H06](#as-h06) 合并了三个不连续实现；不能把相邻显示当作同一连续函数体。
+
+- Pre 的可见基类工作是 AutoReceiveInput：找到 PlayerController 则 EnableInput，找不到则登记等待。它不替任意派生框架保证 PlayerState、Pawn 输入或所有玩家已经存在
+- InitializeComponents 先枚举当前组件，外层要求 `IsRegistered()`；其中 `bAutoActivate && !IsActive()` 才激活，另一个条件 `bWantsInitializeComponent && !HasBeenInitialized()` 才调用逻辑初始化。激活与初始化是两个检查，不是同义词
+- Post 在有效时置 `bActorInitialized=true` 并更新复制组件信息。它不创建所有未来动态组件，也不保证每个组件执行过 opt-in Initialize
+
+把 R=registered、W=wants、I=initialized 代入 `R && W && !I`：只有 R=1、W=1、I=0 才调用。R=1/W=0/I=0 的组件即使有 override 也不进入；R=0/W=1/I=0 未注册也不进入；R=1/W=1/I=1 已初始化不重复进入。这是可手算的局部条件，与 [InitializeComponent API](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/UActorComponent/InitializeComponent) 的注册/opt-in 前提一致，仍不是 UE 实测。
+
+## 三、组件注册：状态、资源与关系分层
+
+### 3.1 ExecuteRegisterEvents 的三个工作层
+
+[AS-H07](#as-h07) 先在未注册时调用 OnRegister 并检查标志，再根据能否渲染、已有状态、Scene 和 `ShouldCreateRenderState` 决定创建渲染状态，最后调用允许延后的 CreatePhysicsState。
+
+“进入注册协议”并不代表每个组件有三种同样的资源。`UActorComponent` 逻辑组件可能没有图元；渲染状态基类工作与 `UPrimitiveComponent` 创建 SceneProxy 的派生工作不同。物理场景、`ShouldCreatePhysicsState` 和延后策略也可以使刚体并未立即建立。公开 [RegisterComponent](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/UActorComponent/RegisterComponent) 的资源描述要按适用组件类型理解。
+
+### 3.2 RegisterComponentWithWorld 为什么要分三支
+
+[AS-H08](#as-h08) 可见的早退包括无效、已注册和空 InWorld。无效/重复注册分支有日志，空 world 的日志被注释；所以不能把所有早退统一称为“静默”或“全部打日志”。其他早退位于省略区域，不能用旧讲解代替完整实现。
+
+建立 `WorldPrivate` 并执行注册事件后，分支如下：
+
+| 上下文 | 块内可见工作 | 不能补出的结论 |
+|---|---|---|
+| 非游戏 World | 登记组件 Tick | 自动进入正常游戏 BeginPlay |
+| 游戏 World、无 Owner | wants 且未初始化才 Initialize，之后登记 Tick | 无条件 Initialize；会自动得到 Owner 的 BeginPlay |
+| 游戏 World、有 Owner | 调用 `MyOwner->HandleRegisterComponentWithWorld(this)` | 当前块未给该函数体，不能声称已追完动态补 Initialize/BeginPlay/Tick 的每一条件 |
+
+公开 [UActorComponent::BeginPlay](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/UActorComponent/BeginPlay) 说明 Owner 已开始时动态组件可后补开始；具体内部组合仍列追踪缺口。缺源码不等于否定公开合同，也不意味着可以把三支合成无条件箭头。
+
+SCS 子组件补注册还要求 construction-script 来源、`bAutoRegister`、未注册且 Owner 相同；“Outer 树里所有东西都被同样管理”不是它的含义。末尾输入绑定仅在 Owner 已有 InputComponent 时执行，因此这段不能推出“必须注册早于 SetupPlayerInputComponent 才能绑定”；别处的输入建立/重绑流程尚未追踪。
+
+### 3.3 注销的局部反向顺序不等于所有生命周期逆序
+
+[AS-H09](#as-h09) 是 `DestroyPhysicsState → 有渲染状态时 DestroyRenderState_Concurrent → 已注册时 OnUnregister`。和 AS-H07 的创建阶段相比，这个局部顺序确实是反向的，不能一边列出逆序一边说“并非逆序”。但 BeginPlay/EndPlay、异步完成、重注册和最终 GC 并不因此成为一条严格反向流水线。
+
+检查宏校验派生调用是否维护基类标志，说明 Super 转发重要；宏在不同构建的行为需要目标配置。`_Concurrent` 后缀也不是业务在任意线程调用任意组件函数的许可证。资源命令可能跨线程、完成时刻可能晚于当前回调；具体线程约束需要读调用方、实现和任务同步。
+
+隐藏、Deactivate、禁用 Tick 与反注册不是一个操作。若只是想停止某项行为，应选对应接口；滥用全反注册可能重建资源，引入额外成本和重复回调。
+
+### 3.4 Render / Physics / Replication 三类“ready”不要混淆
+
+[AS-H10](#as-h10) 中基类 CreateRenderState_Concurrent 设置创建状态及脏标记，不包含完整的 SceneProxy 递交逻辑。CreatePhysicsState 外层条件是尚未创建、有物理场景且应该创建；内部 ShouldDefer 的计算省略，但可见分支会选择延期请求或 OnCreatePhysicsState。当前块不能证明旧文所列每个 CVar、BodySetup、Overlap 条件的完整合取式，更不能据此估算默认延迟次数。
+
+同块的 ReadyForReplication 仅设置一个准备状态。准备好、被加入复制候选、某个连接实际复制出去是不同层；看到置位不意味着网络包已经发出。
+
+### 3.5 OwnedComponents 与 InstanceComponents 的作用
+
+[AS-H11](#as-h11) 先要求组件 Owner 匹配，再加入 OwnedComponents，以是否已存在避免重复追加辅助集合。复制组件会进入 ReplicatedComponents 并调用复制登记接口；SCS/实例来源则分别分类。这里是“纳入管理”的证据，不是“立即通过网络发送”的证据。
+
+AddInstanceComponent 的可见操作只有设置 CreationMethod 和加入 InstanceComponents；它不是注册世界状态的代用品。另一方面，公开 RegisterComponent 合同明确必要时将组件加入所属 Actor 数组，不能因为当前节选没追到所有 AddOwnedComponent 调用点，就对读者说“注册过也不应期待被 Actor 枚举”。正确结论是：采用支持的 ActorComponent 创建/注册路径；内部登记点若需精确定位，再追 PostInitProperties、PostRename、编辑器 Undo 和 Owner helper。
+
+`Modify(false)` 的注释说明本调用不替上层编辑工具标脏；这和世界注册或网络复制是另一职责。不要把 OwnedComponents、Outer、Actor Owner、Scene attachment 合成一般强父子关系；保活与显式销毁仍按 UObject 和 Actor 各自协议处理。
+
+## 四、BeginPlay：派发、Super 与蓝图是三个边界
+
+### 4.1 基类实现的局部顺序
+
+[AS-H12](#as-h12) 中，AActor::BeginPlay 先检查 BeginningPlay 状态，设置初始寿命，尝试登记 Actor Tick；随后遍历**已注册且尚未 begun**的组件，分别登记组件 Tick 并调用 BeginPlay；适用时向 AutoDestroySubsystem 登记；再执行 Actor ReceiveBeginPlay，最后把 Actor 状态置为 HasBegunPlay。
+
+这句话的主体是“所存 AActor 基类实现”，不是任意派生 override。把 C++ override 写为 before → Super → after 后，局部偏序才清晰：
+
+| 观察位置 | 已完成什么 | 尚不能假设什么 |
+|---|---|---|
+| 派生 A.Begin.before | Dispatch 已到本 Actor 虚入口，正常路径处于 BeginningPlay | Super 的组件循环和 Actor Receive 尚未执行 |
+| Super 内 Actor Tick 登记尝试 | 寿命设置已读取此时 InitialLifeSpan | 实际 Tick 登记一定成功；本帧一定执行 |
+| Super 内某适用组件 BeginPlay | 该组件通过 registered/未 begun 条件 | 另一组件、另一 Actor 或未来组件也已就绪 |
+| Actor ReceiveBeginPlay | 本次适用组件循环已处理 | 所有外部异步资源完毕；Actor 状态已经翻为 HasBegunPlay |
+| 派生 A.Begin.after | 正常基类返回且已置 Actor begun | 每个可能存在的组件均执行过自己的 Initialize |
+
+[UE-10138 开发者说明](https://issues.unrealengine.com/issue/UE-10138) 支持原生 BeginPlay 内调用 Receive 的区别，但它是 UE4.7 的历史说明，不认证本篇 UE5 私有 CL 的全部函数体。
+
+一个日志在 Super 后，只能证明该打印点晚于 Super 内组件；不能据它说“组件比 Actor C++ 入口先”。同理，Super 前改变 `InitialLifeSpan` 可以被后续基类 SetLifeSpan 读取；“BeginPlay 里改该字段永远不生效”过宽。若在基类已经应用后更改运行时寿命，应使用相应寿命 API，而不是期待字段写入自动重设计时器。
+
+### 4.2 DispatchBeginPlay 维护的是进入协议
+
+[AS-H13](#as-h13) 对初始复制待处理状态和已 begun/有效性做门禁；随后记录调用深度，建立复制组件信息，置 BeginningPlay，启动适用复制并调用虚 BeginPlay。所存宏分支还可能跳过通常用户回调而直接置 HasBegunPlay，因此状态位本身不是“每个回调确实执行过”的日志证明。
+
+这里 `ensure` 检查状态和调用深度，不能拿它当完整运行时强制隔离。基类/派生正确返回是协议要求，不应自行把 BeginPlay 拆成跨帧异步 continuation 或手工绕过 Dispatch 调基类来“补一遍”。需要异步加载时，应让 BeginPlay 启动业务自己的异步状态机。
+
+BeginPlay 中的 Destroy 请求还可被记录为 `bActorWantsDestroyDuringBeginPlay`，在派发收尾继续销毁；重叠状态更新另受有效性和宏条件控制。由此不能说“进入 BeginPlay 后对象在整个回调直到下一帧都保证可普通使用”。每个可能重入的外部调用之后都需遵守项目自己的状态协议。
+
+### 4.3 World 启动：正常服务器链只是其中一条
+
+[AS-H14](#as-h14) 把几个世界函数拼在一起。HasBegunPlay 可见表达式包含 begun 标志、PersistentLevel 和其 Actor 数量；AreActorsInitialized 也不只是一个裸布尔。这个实现的具体形状未认证，不将它推广为跨版本公共不变量。
+
+所存正常 UWorld::BeginPlay 中先调用每个 WorldSubsystem 的 OnWorldBeginPlay，再在有 GameMode 时调用 StartPlay，随后才广播 UWorld 自己的同名 OnWorldBeginPlay 委托。这两个同名事件属于不同对象、不同位置，绝不能交换解释。
+
+[AS-H16](#as-h16) 和 [AS-H17](#as-h17) 展示 GameModeBase::StartPlay 接 GameStateBase::HandleBeginPlay，再经 [AS-H15](#as-h15) 的 WorldSettings::NotifyBeginPlay 遍历 Actor 派发并设置世界 begun。遍历顺序不是应用的跨 Actor 依赖协议；某 Actor 的 Dispatch 可以因自己的门禁不进入通常回调，动态加入对象更不能被一次 world 标志穷尽。
+
+**两个反例**：
+
+1. Actor 在自己的 BeginPlay 才订阅 WorldSubsystem 的“准备启动”广播，会错过正常初次前置钩子。这不是“订阅失败”，而是订阅晚于广播；应查询当前业务状态并配合订阅/补发协议
+2. 世界尚未最后置 begun 时，嵌套 Spawn 仍可满足 AS-H04 的调用深度分支。不能从 NotifyBeginPlay 末尾才置位，反推之前 Spawn 的一切 Actor 都只能等待
+
+当前公开 [UWorld::BeginPlay](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/UWorld/BeginPlay) 还明确：无 GameMode 时可执行 world 回调而不置 begun；网络客户端的 Actor BeginPlay 和设置 begun 由 GameState 复制路径驱动。该复制函数体本篇未展示，不补造同一服务器全链。WorldSubsystem 对已初始化 world 的晚加入可补 PostInitialize/OnWorldBeginPlay，不能把“正常初次前置”写成每次永远早于任何 Actor。[UWorldSubsystem](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/UWorldSubsystem)、[World 篇 §3.4](../世界组织与资源加载/07-World关卡与Subsystem体系.md#34-四种-subsystem-与生命周期)
+
+### 4.4 关卡加载和增量初始化
+
+[AS-H18](#as-h18) 是 `ULevel::RouteActorInitialize` 的状态机节选：Preinitialize 对尚未初始化 Actor 做 Pre，Initialize 做组件初始化和 Post 并检查状态，BeginPlay 阶段在 world 已开始时处理非 ChildActor，最终进入 Finished。循环按 Actor 数量与预算推进，中途可以 return；不能用它绘制“所有关卡必在同一帧完成”的图。
+
+Pre 阶段注释指出初始化可能生成新 Actor，所以循环条件会继续检查数组长度。它支持这个局部处理策略，不证明无限新增可以无成本完成，也不赋予组件遍历固定顺序。
+
+ChildActor 在这里被排除，结合 AS-H04 的父状态约束，可以解释它有专门启动路径；完整父组件实现尚未给出。`bActorSeamlessTraveled` 不出现在所示 BeginPlay 条件中，旧文给出的置位/清零、重构和网络启动 Actor 关系是另一条待查路径，不要把“无缝旅行”一词直接改写成 BeginPlay 的统一开关。
+
+## 五、Tick：先证实入口，再计算状态
+
+### 5.1 TickGroup 是调度意图，不是组件默认值清单
+
+```text
+TG_PrePhysics       需要在物理开始前准备输入的工作
+TG_DuringPhysics    可与物理推进交叠、不要求本帧最终物理结果的工作
+TG_PostPhysics      需要物理结果已完成后处理的工作
+TG_PostUpdateWork   较晚的帧内更新工作
+```
+
+这些是工作类别例，不是 CharacterMovement、SkeletalMesh、UI 或 Timer 的默认分组认证。Actor 和各组件有独立 TickFunction，组和依赖可不同；TimerManager 也不因“定时”二字就是其中某组固有成员。[Actor Ticking](https://dev.epicgames.com/documentation/en-us/unreal-engine/actor-ticking-in-unreal-engine)
+
+[AS-H19](#as-h19) 原枚举还含 **四个** Hidden 项：StartPhysics、EndPhysics、LastDemotable、NewlySpawned。最后者有特殊新生任务语义，不能当普通可选组。以下仅是所存枚举/旧调度描述的概念摘要，省略具体物理注入、等待策略和其他帧任务；不认证完整 LevelTick.cpp 路线。
+
+```text
+PrePhysics → StartPhysics → DuringPhysics → EndPhysics → PostPhysics → PostUpdateWork → LastDemotable
+NewlySpawned：特殊补排机制；何时执行仍依排队、上下文、预算与未展示分支
+```
+
+[AS-H20](#as-h20) 区分 TickGroup（最早可执行组）与 EndTickGroup（需要在哪一组内完成），并列能力、初始启用、专服、优先级、并行、批处理和手动派发等配置。声明没有给某个派生类/配置的默认值，尤其不能凭 `bAllowTickOnDedicatedServer` 一行就认定默认 false。`bRunOnAnyThread` 也要求该 Tick 的实现自身满足线程约束。
+
+### 5.2 Q、R 和 E：三个不同的状态
+
+先固定符号，避免同名“注册”换义：
+
+| 符号 | 所指 | 查证位置 |
+|---|---|---|
+| Q | Actor 包装器 `bTickFunctionsRegistered` | AS-H23 是否再次调用内部注册函数 |
+| R | 主 TickFunction 的实际 registered | AS-H21 的登记结果 / IsTickFunctionRegistered |
+| C | `bCanEverTick` 能力 | AS-H22 的主 Tick 门禁 |
+| S | `bStartWithTickEnabled` | 本次配置的初始意愿 |
+| E | 表达式求值时的 enabled | IsTickFunctionEnabled，不是 Q/R |
+
+[AS-H23](#as-h23) 的第一层是非模板且 Q 不等于请求值，才进 RegisterActorTickFunctions；随后把 Q 设成请求值。[AS-H22](#as-h22) 注册分支还要求 C=true，之后才设 Target、调用 `SetTickFunctionEnable(S || E)`、尝试实际登记。最后 [AS-H21](#as-h21) 的底层登记又会看是否已登记及 DS 条件。
+
+因此 Q=true 可能只说明包装器已处理过 true 请求。C=false 时主 Tick 没有登记；C=true 但专服禁止此 Tick 时也可能 R=false。不能用 Q 替代 R，更不能用 R 证明本帧执行。
+
+**仅在实际到达 AS-H22 的 OR 表达式时**：
+
+| S | E | 传给 SetTickFunctionEnable 的 S OR E |
+|---:|---:|---:|
+| 0 | 0 | 0 |
+| 0 | 1 | 1 |
+| 1 | 0 | 1 |
+| 1 | 1 | 1 |
+
+第三行直接反驳旧说法“重注册一定保留禁用”。但实验必须先确实到达这行代码，不能把包装器挡掉的重复请求当成 OR 的执行结果。
+
+### 5.3 六个纸面用例比一句“开关”更精确
+
+| 输入与操作 | 沿历史块推导 | 解释 |
+|---|---|---|
+| Q=1、R=1、S=1、E=0；再次请求包装器 true | Q 已相等，不进入主 Tick 注册；E 保持 0 | no-op 对照，不是实际重注册 |
+| 同上先包装器 false，再 true；C=1，允许底层登记 | 先注销，再重新到达 OR；1 OR 0=1，实际登记成功时 R=1 | 旧“禁用不会复活”的最小反例 |
+| Q=0、C=0；请求 true | 主 Tick 能力门禁跳过，包装器仍可置 Q=1，R 仍为 0 | 包装状态不等于主 Tick 登记结果 |
+| Q=0、C=1、S=1、E=0；专服且不允许 DS Tick | 先把 enabled 置 1，底层可拒绝登记，Q=1/R=0 | enable 不等于 registered |
+| Q=0、C=1、S=0、E=0；底层允许 | 可登记 disabled Tick，R=1/E=0 | registered 不等于 enabled |
+| R=1/E=1，间隔未到或当前组/依赖/暂停路径不满足 | 不能推出本帧调用 | 执行是调度结果，不是单一状态 |
+
+这些是局部控制流推导，假设正常基类转发、没有额外 override 副作用和未展示改写；不是真实 TickFunction 日志。当前 [FTickFunction API](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/FTickFunction) 支持注册、启用与能力的职责分离，但不展示本篇 OR 私有实现。
+
+AS-H23 中 `bDoComponents` 控制是否另外遍历组件，即使主包装状态没变化也不能简单说“整个函数绝对 no-op”；异步物理 Tick 的登记也是另一路。上表 no-op 专指主 Actor Tick 注册/OR 路径。BeginPlay 传 false 后自己处理组件；Destroy 尾段传 true 统一请求注销。线程上下文哨兵帮助检测 Super 链，不是把哨兵代码复制到派生类就能补回基类协议。
+
+### 5.4 底层登记、集合与每帧任务
+
+AS-H21 仅在实际登记成功路径创建必要的 InternalData、加入管理器并置 registered；注销时移出并清 registered，未登记时不会做同样移除。InternalData 间接持有内部状态，指针本身仍占空间；没有 sizeof/ABI 测量，不能说这种设计“不放大 Actor/Component 尺寸”。
+
+[AS-H24](#as-h24) 显示管理器找到关卡的 TickTaskLevel，并按 enabled/disabled 放入不同集合；启用集合在当前新生收集阶段还可加入 NewlySpawned。由“按关卡组织”不能推出“引擎绝无跨关卡全局容器”；这里只读到该入口的数据归属。disabled Tick 仍可在管理器中，所以“存在于管理器”不是“正在更新”。
+
+[AS-H25](#as-h25) 拼合 StartFrame、QueueAllTicks、Sequencer 的 QueueTickTask 与 RunTickGroup 片段：
+
+1. 帧上下文记录 delta、类型、线程/world，准备关卡列表和新生收集
+2. 启用集合为 Tick 排队；有 interval 的任务从当前迭代集合移出并重新安排间隔。冷却到期如何回投的完整实现未展示，但调度间隔与注销应分开理解
+3. QueueTickTask 属于 Sequencer，创建带 prerequisites 的任务并 hold；完成事件按实际 start/end group 记录。组描述的是任务释放/完成约束，不能等同于一个数组逐个调用
+4. 手动派发有自己的记录/完成事件；完整 release、兜底与防死锁行为需继续读实现
+5. RunTickGroup 检查当前组，释放任务并递增上下文组；新生 Tick 是否能在同帧后续执行还受未展示排队和预算分支约束，不能从末尾注释认证“所有新 Actor 必在下一组跑”
+
+旧文给出的 101 次循环、唯一非阻塞组、并发 CVar 和具体 LevelTick 行区间没有完整函数体支撑；保留为 §七的追踪线索。`SetTickFunctionEnable` 的内部移动集合和冷却重置实现也不在 AS-H21 内，不把接口名称补造成已读算法。
+
+### 5.5 依赖会改变时机，不提供任意跨线程安全
+
+[AS-H26](#as-h26) 在双方具备能力或已登记时加入唯一 prerequisite，并提供移除操作。依赖表达“本 Tick 等待目标 Tick”，有助于避免只靠同组或 Actor/组件关系猜顺序。[Actor Ticking](https://dev.epicgames.com/documentation/en-us/unreal-engine/actor-ticking-in-unreal-engine) 说明依赖和组可共同使用。
+
+实际 start/end group 可能因前置项推迟，旧文提及 `QueueTickFunction` / `QueueTickFunctionParallel` 的降组计算和 `CanDemoteIntoTickGroup` 循环，但完整实现未存入本篇；不能把那条手写 max 公式认证为目标 CL 的完整算法。显式依赖也不会使被依赖对象永久存活，更不会令任意 UObject 成员访问线程安全。项目要避免环并在合法寿命内增删依赖。
+
+## 六、销毁：请求、玩法退出与内存释放三层
+
+### 6.1 Destroy 返回值有用，但不是 free 通知
+
+[AS-H27](#as-h27) 先看已在销毁过程的状态，存在 world 才转给 DestroyActor，最后返回状态查询。公开 [AActor::Destroy](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/AActor/Destroy) 的调用者合同是 true 涵盖成功或已标记、false 表达不能销毁，并说明 latent 销毁。内部返回谓词并不把此合同否定成“返回值不是销毁是否成功”；真正要区分的是成功请求/状态与最终内存释放。
+
+[AS-H28](#as-h28) 可见 WorldSettings 拒绝、网络角色/许可、网络接管和 BeginPlay 期间延迟请求。某些 return 在任何正常退出玩法通知之前，所以“每次调用 Destroy 都同步 EndPlay/Unregister”是错的。BeginPlay 延迟分支可先报告接受，再由 AS-H13 收尾继续；派生或网络路径需另外核对。
+
+这里 `check(IsValidLowLevel())` 是引擎内部前提检查，不授权调用方把任意旧裸地址塞进来验证是否仍活着。来源合法的返回值、受控强借用或弱身份解析是前提；`IsValid`/销毁状态判断不能修复已经悬垂的裸指针。
+
+### 6.2 Destroyed、RouteEndPlay 和 EndPlay 的工作不同
+
+[AS-H30](#as-h30) 显示 Destroyed 先 RouteEndPlay(Destroyed)，再 ReceiveDestroyed 与 OnDestroyed。EndPlay 涵盖的原因比 Destroyed 更广，清理玩法期间资源通常应考虑 EndPlay，而不是只处理显式 Destroyed 事件。
+
+[AS-H31](#as-h31) 对 `bActorInitialized` 和 ActorHasBegunPlay 做条件检查，满足才调用 Actor EndPlay。RemovedFromWorld 分支会清重叠、重置 initialized 并移除适用网络参与；寿命 Timer 的清理在外层 initialized 内，UninitializeComponents 则在该外层之后另调用。因此没走 EndPlay 不等于没调用任何反初始化；反过来，也不能期待从未 begun 的对象有相同 EndPlay 日志。
+
+[AS-H32](#as-h32) 的基类顺序是：Actor 置未 begun → 停止适用复制 → Actor ReceiveEndPlay / OnEndPlay → 遍历已 begun 组件调用 EndPlay。派生 End.before 在进入此实现前；End.after 在它返回后。它并不是 BeginPlay 的“组件先/Actor 后”口号的简单反转，而是两个不同局部过程。
+
+```mermaid
+sequenceDiagram
+    participant Caller as 请求方
+    participant World as World销毁入口
+    participant Derived as 派生Actor
+    participant Base as Actor基类
+    participant Comp as 适用组件
+    Caller->>World: 请求Destroy
+    Note over Caller,World: 可拒绝、已标记或延后；以下只画继续且需EndPlay的局部路径
+    World->>Derived: 路由退出玩法
+    Derived->>Derived: End.before
+    Derived->>Base: Super::EndPlay
+    Base->>Base: 状态复位，ReceiveEndPlay和OnEndPlay
+    Base->>Comp: 仅对已begun组件EndPlay
+    Base-->>Derived: 返回
+    Derived->>Derived: End.after
+    Note over World,Comp: 路由后还有反初始化及其他清理；跨省略段的完整调用链未认证
+    Note over Caller,Comp: GC就绪、FinishDestroy、析构和free是之后的独立层
+```
+
+### 6.3 世界移除与组件资源撤销
+
+[AS-H29](#as-h29) 是 DestroyActor 的尾段，前段调用 Destroyed 及其他 detach/overlap 等处理不在这个尾段中，不应把两个省略片段冒充完整连续函数。尾段自身可确定的次序是：RemoveActor → 适用编辑器通知及移出广播 → UnregisterAllComponents → Actor/直接组件垃圾标记等 → 请求注销 Actor 与组件 Tick。旧图把反注册无条件画在从关卡 Actor 列表移除之前，与该段不符。
+
+“这些调用返回”也不证明所有渲染/物理跨线程资源已经物理释放；逻辑撤销、异步资源完成和 UObject 存储释放分开。`SetActorTickEnabled(false)` 只影响 Actor 主 Tick 的启用，不一并清理组件、Timer、委托或网络异步工作，不能作为普适销毁安全屏障。
+
+### 6.4 Component 的独立销毁分支
+
+[AS-H33](#as-h33) 合并组件 EndPlay 与 OnUnregister。EndPlay 要求组件已 begun，停止适用复制，且在未处于 BeginDestroy/不可达等条件下才可能调用蓝图 ReceiveEndPlay，最后复位 ready/begun。OnUnregister 则清注册状态和帧尾更新需求，不是再次等同于 EndPlay。
+
+[AS-H34](#as-h34) 可按状态手算：重入保护 → 若 begun 则 EndPlay → 若 initialized 则 Uninitialize → 清 ready → 若 registered 则 Unregister → 移出适用所属集合及根组件关系 → OnComponentDestroyed → MarkAsGarbage。各 if 解释了为何不同创建/失败入口的日志不同。
+
+原块末尾旧注释说 pending kill、清空其他引用；保留原字节，但不能用它认定“调用一返回所有别处指针都立即清零”。更不能反向因为内存尚未 free，就称 DestroyComponent 后 IsValid 仍为 true。垃圾状态、弱身份解析、反射字段更新时点及实际内存释放各有机制；业务应停止使用并管理自己的引用。
+
+### 6.5 RemovedFromWorld 不保证对象寿命结束
+
+公开 [Actor Lifecycle](https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-engine-actor-lifecycle) 给出流送快速卸载/重载且尚未 GC 时可能复用原 Actor 和局部值的边界。因此 EndPlay 是离开一个玩法期间的通知，并不是必然最终销毁的宣告。重新进入时要明确哪些数据保留、哪些重置，不能假设构造函数会替你重置。
+
+这也解释了为什么一次性全局注册不适合无条件放在每次 BeginPlay，而需要成对撤销或独立宿主管理。GameInstance/WorldSubsystem 的不同寿命在[World 篇](../世界组织与资源加载/07-World关卡与Subsystem体系.md) 中比较；没有哪个宿主可以替代所有 Actor 的玩法协议。
+
+### 6.6 垃圾标记之后还有哪些阶段
+
+MarkAsGarbage 的旧归属线索是 UObjectBaseUtility，旧文还给出 `RF_MirroredGarbage`、对象槽位 garbage 和 Async 标志的操作自述；本次没展示/对勘其函数体，不能把该自述升级为当前具体标志实现。可靠教学层是：显式 Actor 销毁和普通 UObject 不可达判定相互关联但不等同；强字段不阻止 Actor 的显式 Destroy。
+
+最终清理按 [UObject/GC Canonical](02-UObject与垃圾回收源码.md) 分成 BeginDestroy、ready 条件、FinishDestroy、之后的 C++ 析构和分配器释放。ready 未满足可继续等待，并非每个对象都等 GPU fence，也非下一次 GC 必 free。[FinishDestroy API](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/CoreUObject/UObject/FinishDestroy) 是清理回调合同，不是析构函数的别名。
+
+官方概述中的旧 PendingKill/下一 GC 简写，不能覆盖同页的复入、ready 延后或更具体 API 条件；历史块里的 MarkAsGarbage 临时事务序列同样不能被误作最终回收证据。失效的裸地址尤其不能当作状态探针，长期观察应保留合法弱身份并在合适时段/线程解析。
+
+## 七、缺口与可复现检查计划
+
+### 7.1 这些旧定位有价值，但尚未认证
+
+| 待补函数/历史线索 | 需要回答的问题 | 目前为何不能下结论 |
+|---|---|---|
+| SpawnActor 完整尾段、OnActorFinishedSpawning；旧 LevelActor.cpp 456–800、CVar 定义约 52 行 | 生成后失败如何影响返回、广播与网络登记；具体默认值 | AS-H01 有大段省略，CVar 定义未给出 |
+| PostSpawnInitialize 的变换/创建通知，FinishSpawning 的 deferred cache；旧 Actor.cpp 4276、4374 起 | 不同缩放策略、PostActorCreated、变换重新组合 | 对应内容部分位于省略处 |
+| HandleRegisterComponentWithWorld；旧 Actor.cpp 6427 起 | Owner initialized/begun 与动态组件补回调、Tick、复制准备的精确组合 | AS-H08 只见调用，未见完整函数体 |
+| 组件 PostInitProperties/PostRename/PostEditUndo；旧 ActorComponent.cpp 597、951/982、1390/1412 | OwnedComponents 的全部登记/迁移点 | 本篇只给 AddOwnedComponent/部分注册，不可从缺口否定公开合同 |
+| CreatePhysicsState 的 ShouldDefer；旧 ActorComponent.cpp 2398 起 | World/CVar、Primitive、Overlap、BodySetup 条件与异步完成 | AS-H10 省略计算，不能认证旧合取列表或默认值 |
+| 复制 OnRep、PostNetInit、ChildActorComponent | 客户端、初始复制和父子开始的实际路径 | 公开职责可确认，函数体与目标配置未给出 |
+| SetBegunPlay 与 seamless 标志；旧 World.cpp 4947/8833、Level.cpp 3709/3723、ActorConstruction.cpp 268、Actor.cpp 742 | 委托触发、跨图保留、重构与网络启动判断 | AS-H14–18 没有这些完整实现 |
+| SetTickFunctionEnable；旧 TickTaskManager.cpp 2439 起 | 已登记/未登记时移动集合、状态与冷却修改 | 本篇保存注册/注销，不含该函数体 |
+| QueueTickFunction/Parallel、ReleaseTickGroup、冷却与新生循环；旧 TickTaskManager.cpp 2622/2713、LevelTick.cpp 1742–1886 | 实际组/结束组、等待条件、循环预算、并发调度 | AS-H25 是拼合节选；旧“101次/唯一非阻塞组”未核 |
+| DestroyActor 中间段、垃圾状态/IsValid 实现；旧 LevelActor.cpp 839 起、UObjectBaseUtility.h 207 起 | 请求接受后各清理的精确连接及状态含义 | 不能由尾段或 API 简介拼出全函数或直接等同 free |
+
+“缺口”是明确停止外推的位置，不是把对应主题删除。上文保留局部因果，今后得到合法目标 checkout 后再核路径、Build.version/CL、函数全边界、宏/CVar、日志与返回值。
+
+### 7.2 最小实验矩阵：全部 NOT_RUN
+
+| 控制输入 | 需要记录的观察 | 能区分的错误模型 |
+|---|---|---|
+| 基础篇四文件候选，实际模块/头依赖 | UHT → C++ 编译 → 链接的原始输出 | 静态闭合不等于工程可用 |
+| wants true/false，注册/未注册，已初始化/未初始化 | OnRegister、Initialize、BeginPlay 和状态 | override 不等于 opt-in；重注册不等于再次 Initialize |
+| 普通/延迟 Spawn、关卡加载、动态组件 | 四种入口、World 状态、Finish 前后 | 一条无条件总链不足以解释 |
+| C++ Super 前后、蓝图 Receive、两个组件 | object path、frame/thread、同一实例身份 | 打印点不等于虚入口；不同组件顺序非保证 |
+| Tick 四行 OR，重复包装器请求与注销再注册对照 | Q、R、C、S、E、NetMode | no-op 不能代替 OR；Q 不等于 R |
+| 不同组、依赖、interval、pause、DS、新生 Tick | 实际排队/执行/完成位置 | enabled/registered 不保证本帧执行 |
+| Destroy 拒绝、BeginPlay 中请求、未 begun、组件销毁 | 返回值、退出/反注册、合法弱身份 | 请求/玩法退出/内存释放分层 |
+| 流送快卸快载，GC 前后对照 | 弱身份、局部值、End/Begin 配对 | 不是每次都会重新构造；相同地址不能单独证明同一对象 |
+| 世界初始启动/无 GameMode/客户端/晚加子系统 | WorldSubsystem 钩子、world delegate、Actor 开始 | 正常前置钩子不等于全员完成屏障 |
+
+每次实验至少附真实引擎版本/CL、项目 commit、平台/构建、World 类型/NetMode、输入、原始日志及失败负例。文本检查与手算表只覆盖文章内部一致性，不能给 `verified` 追加引擎运行事件。
+
+## 八、常见问题与排障
+
+**为什么构造函数里 GetWorld 不可靠？** 构造服务于 CDO 及多种实例路径，尚不保证运行期上下文已就绪；不是“所有构造都在编译期发生”，也不是“Actor Outer 应直接指 UWorld”。默认值/默认子对象放构造，运行依赖在适当钩子处理。
+
+**动态组件没有渲染或碰撞，是否 Register 一次就够？** 先检查创建与 Owner、属性/挂接、实际注册结果，然后看组件类型、资源资产、ShouldCreate 条件和延后创建；注册是必要协议，不是所有资源立即存在的充分条件。
+
+**世界已开始，为什么一个对象还是没 BeginPlay？** 世界状态、Actor 初始复制/ChildActor/预览状态、组件注册/Owner 接续各是不同门禁；到具体入口打点，不能强行手调 BeginPlay 替代协议。
+
+**停掉 Tick 后重注册为什么又 Tick？** 先看是否真正重进 AS-H22，再代入 S OR E。S=true/E=false 会置 true；重复包装器 true 的 no-op 是另一情况。还要确认实际 R 与本帧调度，不能只看一个 enable 日志。
+
+**DestroyComponent 后还没 GC，能不能再用？** 不行，未 free 不保证玩法可用或 IsValid 为 true。历史块已经调用垃圾标记；合法对象身份、退出协议与内存阶段不能互换。
+
+## 九、历史材料区：完整保留，按块阅读
+
+以下 AS-H01–AS-H34 均为本次修订前的原围栏字节。每块标出原知识文档行区间、旧引擎定位自述和具体阅读限制；这些定位不是本次对私有 checkout 的认证。原错误/过宽注释也不在围栏内修字，解释以块外正文为准。不能把这些节选作为独立可编译代码，也不能把相邻不连续片段当完整调用栈。
+
+### AS-H01
+
+原知识文档第 92–226 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\LevelActor.cpp`（第 456 行起，节选；该函数真实范围为第 456 行至第 800 行）：
+
+阅读限制：类与碰撞门禁可在分配前拒绝；显式 Template 不必是 CDO，OverrideLevel 优先。多处省略使返回处理和广播全链不可认证；原变换注释保留，但须结合实际表达式读，不能只读一句英文就概括最终 Transform。
 
 ```cpp
 AActor* UWorld::SpawnActor( UClass* Class, FTransform const* UserTransformPtr, const FActorSpawnParameters& SpawnParameters )
@@ -225,29 +586,11 @@ AActor* UWorld::SpawnActor( UClass* Class, FTransform const* UserTransformPtr, c
 }
 ```
 
-### 2. 逐行技术深度解构
+### AS-H02
 
-1. **碰撞阻挡预检（`EncroachingBlockingGeometry`，第 22~30 行）**：
-   - 当 `SpawnCollisionHandlingMethod` 设为 `DontSpawnIfColliding` 时，引擎在分配内存前利用模板 CDO 的 RootComponent 碰撞体直接对目标坐标做一次快速 Overlap 探测。若空间已被静态墙体占据，立即放弃生成，避免无效的内存申请与析构开销；
-2. **`NewObject<AActor>` 实例化（第 33 行）**：
-   - 此时以当前关卡 `LevelToSpawnIn` 作为 Outer，以类模板 `Template`（即 CDO）作为内存基底，触发 Actor 原生 C++ 构造函数。在该构造函数中通过 `CreateDefaultSubobject` 实例化的默认组件此时被挂载到对象树上；
-3. **`OnActorPreSpawnInitialization` 广播（第 37 行）**：
-   - 这是 UE5.8 推荐的监听起点。此时 Actor 实例已被创建，但其组件尚未进行世界注册（OnRegister），适合外部框架（如 GameplayDebugger 或网络追踪器）预先建立数据映射。
+原知识文档第 252–319 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 4276 行起，节选）：
 
-### 3. `UWorld::SpawnActor` 原始实现的四点关键结论
-
-上文第 1 小节已给出该函数的 5.8 逐字节选（`// …（节选：省略 N 行）` 为被跳过的原始行），这里只提炼与常见认知不同、值得单独记住的四点：
-
-真实实现中与常见认知不同、值得单独记住的三点：
-
-1. **`LevelToSpawnIn` 是三级回落**（第 533 行起）：先取 `SpawnParameters.OverrideLevel`；为空且指定了 `Owner` 时强制落在 `Owner->GetLevel()`（多人游戏里"部件与拥有者同关卡"是硬约束，没有开关）；两者都为空才退回 `CurrentLevel`。非编辑器构建下 `CurrentLevel` 由 `PersistentLevel` 兜底（第 465 行）。
-2. **失败门禁是顺序短路而非组合判断**（第 469 行起）：空类、`CLASS_Deprecated`、`CLASS_Abstract`、非 `AActor` 派生、模板类与生成类不一致、正在运行构造脚本、`bIsTearingDown`、Transform 含 NaN，各自独立 `return NULL` 且日志文案不同。调试"生成失败"时按 `LogSpawn` 的首条 Warning 定位即可。
-3. **`SpawnCollisionHandlingMethod` 的优先级链**（第 621 行起）：模板（通常来自类默认值）→ `SpawnCollisionHandlingOverride` 覆盖 → `bNoFail` 把两个"可能不生成"的策略升级为"总是生成"。`SpawnActor` 内的 `EncroachingBlockingGeometry` 只针对**原生组件**做一次提前淘汰，目的是避免白付一次 `NewObject` 的代价；真正按策略执行挤出或放弃的是 `PostActorConstruction()`（见"核心源码深入剖析二"第 3 小节）。
-4. **`OnActorSpawned` 与 `AddNetworkActor` 默认被推迟**（第 769 行、第 791 行）：CVar `s.DelayOnActorSpawnedUntilFinishedSpawning` 默认 true（`LevelActor.cpp` 第 52 行），因此这两个动作回到 `UWorld::OnActorFinishedSpawning` 中触发；只有把它设为 false 才是"`PostSpawnInitialize` 返回即完成网络登记"的旧行为。
-
-### 4. `AActor::PostSpawnInitialize` 的 checkout 原始实现（节选）
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 4276 行起，节选）：
+阅读限制：头部注释是整条生成管线概览，不是此函数每条实际调用。可见部分区分原生/SCS 注册及延迟构造，省略了部分变换和创建通知；这里的“所有组件”注释也不能涵盖未来动态组件或取消自动注册的组件。
 
 ```cpp
 void AActor::PostSpawnInitialize(FTransform const& UserSpawnTransform, AActor* InOwner, APawn* InInstigator, bool bRemoteOwned, bool bNoFail, bool bDeferConstruction, ESpawnActorScaleMethod TransformScaleMethod)
@@ -318,31 +661,11 @@ void AActor::PostSpawnInitialize(FTransform const& UserSpawnTransform, AActor* I
 	}
 ```
 
-逐条解构：
+### AS-H03
 
-1. **函数头注释描述的是整条管线**（第 4278 行至第 4286 行）：引擎作者明确写了"deferred 与 nondeferred 走同一序列"，但注意 `PreInitializeComponents()` 并不在这个函数体里被调用，它发生在后续的 `PostActorConstruction()` 中。
-2. **原生根组件决定最终变换**（第 4305 行起）：`FixupNativeActorComponents` 找到原生 `USceneComponent` 后，按 `TransformScaleMethod` 决定是"覆盖根缩放"（`OverrideRootScale`）还是"与模板相对缩放相乘"（`MultiplyWithRoot`/`SelectDefaultAtRuntime`），最后以 `ETeleportType::ResetPhysics` 落位。这解释了"传入 Transform 不等于最终 Actor 位置"：CDO 上的非默认相对变换会被复合进来。
-3. **组件注册可能被推迟**（第 4333 行）：当"没有原生场景根 + 是蓝图生成类"时 `bHasDeferredComponentRegistration = true`，`RegisterAllComponents()` 被推迟到 SCS 建立起场景根之后，由 `ActorConstruction.cpp` 第 908 行的补偿逻辑接续。
-4. **延迟构造的分叉只有几行**（第 4358 行至第 4367 行）：`bDeferConstruction == false` 直接 `FinishSpawning(UserSpawnTransform, true)`；为 true 且存在原生根组件时，把原始 Transform 存入 `GSpawnActorDeferredTransformCache`，供调用方日后用**另一个** Transform 调 `FinishSpawning` 时反算最终变换。
-5. **`PostActorCreated()` 先于构造脚本**（第 4354 行）：它不是 BeginPlay 那一类通知，而是"原生组件与场景状态已就绪"的通知点。
+原知识文档第 347–377 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 4374 行起，节选）：
 
-### 5. 事实边界与命名校正
-
-- **`UWorld::SpawnActor_Internal` 在 5.8 中不存在**：在 checkout `C:\Users\zhaozhiqi\Documents\GitHub\UnrealEngine\Engine` 全目录检索 `SpawnActor_Internal` 为 0 命中。从参数整理到 `PostSpawnInitialize` 的全部逻辑都在 `UWorld::SpawnActor` 单函数体内（第 456 行至第 800 行），没有拆分的 `_Internal` 层。
-- **本小节起为逐字口径**：第 1 小节至第 4 小节的既有代码块是压缩/改写版，其"（第 N 行）"是块内偏移；本小节起的"（第 N 行起）"是 checkout 真实文件行号，两套口径不可混用。
-- **静态结论 ≠ 运行态验证**：以上均为源码静态阅读结论，未在 Editor / DedicatedServer 上抓取实际时序（如 `LogSpawn` 轨迹、`stat Ticks`）。真实行为还受 `s.DelayOnActorSpawnedUntilFinishedSpawning`、`GEnableDeferredPhysicsCreation` 等 CVar 影响，需要另跑运行时验证。
-
----
-
-## 核心源码深入剖析二：延迟装配与蓝图构造 `AActor::FinishSpawning`
-
-无论是即时生成还是延迟生成（`bDeferConstruction=true`），Actor 最终均在 `FinishSpawning` 中完成装配与初始化。
-
-### 1. `AActor::FinishSpawning` 真实源码（节选）
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 4374 行起，节选）：
-
-（2026-09-14：原示意块已替换为 5.8 源码逐字版。原示意块把 `FinishSpawning` 与 `PostActorConstruction` 的内容合并成一段，现已拆分：`PostActorConstruction` 的逐字节选见下文第 3 小节；第 2 小节的"（第 N 行）"是被替换掉的示意块的块内偏移）
+阅读限制：条件内才推进 Finish；ensure 不是所有构建必终止。变换计算有省略，不能将旧手写公式认作完整实现。PostActorConstruction 可在 Finish 返回前推进玩法。
 
 ```cpp
 void AActor::FinishSpawning(const FTransform& UserTransform, bool bIsDefaultTransform, const FComponentInstanceDataCache* InstanceDataCache, ESpawnActorScaleMethod TransformScaleMethod)
@@ -376,28 +699,11 @@ void AActor::FinishSpawning(const FTransform& UserTransform, bool bIsDefaultTran
 }
 ```
 
-### 2. 逐行技术深度解构
+### AS-H04
 
-1. **`ExecuteConstruction`（蓝图构造脚本，第 15 行）**：
-   - 蓝图编辑器中在“Construction Script”图表里连线的逻辑在此处被执行；
-   - 动态添加的组件（`AddComponent`）在此阶段创建，并自动挂接到场景组件树上；
-2. **三阶段组件生命周期（第 22~28 行）**：
-   - `PreInitializeComponents`：Actor 层的虚函数，提供组件逻辑初始化前的最后拦截点；
-   - `InitializeComponents`：遍历所有开启了 `bWantsInitializeComponent = true` 的组件，逐一触发 `UActorComponent::InitializeComponent()`；
-   - `PostInitializeComponents`：整个生命周期中最关键的节点之一！此时所有原生组件与动态组件均已组装完毕，`APlayerController::InitPlayerState()` 与 Pawn 的输入绑定注册即在此处触发。
+原知识文档第 402–471 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 4430 行起，节选）：
 
-### 3. `FinishSpawning` 的下游：`AActor::PostActorConstruction`（checkout 原始实现，节选）
-
-第 1 小节是 `FinishSpawning` 的逐字节选，其四个要点如下；随后是它调用的 `PostActorConstruction()`——`FinishSpawning` 本身只负责变换与调序，真正的三阶段初始化与碰撞策略处理都在后者：
-
-逐条解构：
-
-1. `bHasFinishedSpawning` 由 `ensure` 守卫（第 4381 行）：重复调用只会触发断言，不会二次装配。
-2. **最终变换的计算分两步**（第 4385 行、第 4389 行起）：默认取根组件当前世界变换；仅当 `bIsDefaultTransform == false` 时才去 `GSpawnActorDeferredTransformCache` 取回原始生成变换，再用 `TemplateTransform * UserTransform` 反推出"尊重模板相对变换"的最终值。这是 `FinishSpawning` 中唯一容易被忽略的数学。
-3. `ExecuteConstruction` 被包在 `FEditorScriptExecutionGuard` 内（第 4414 行），编辑器构建下允许构造脚本期间执行脚本调用。
-4. `FinishSpawning` 本身只负责变换与调序，真正的初始化在 `PostActorConstruction()`（第 4420 行）；返回前还会调 `World->OnActorFinishedSpawning(this)`（第 4425 行），这正是 `OnActorSpawned` 被延迟后的实际触发点。
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 4430 行起，节选）：
+阅读限制：世界初始化、初始复制、调用深度 OR、父 Actor 与预览条件各自独立。原注释“all components”不能盖过 AS-H06 的注册/wants 过滤。末尾 MarkAsGarbage 后有 ClearGarbage，是事务序列，不是最终销毁。
 
 ```cpp
 void AActor::PostActorConstruction()
@@ -470,20 +776,11 @@ void AActor::PostActorConstruction()
 }
 ```
 
-逐条解构：
+### AS-H05
 
-1. `PreInitializeComponents()` 与 `InitializeComponents()` 都只在 `bActorsInitialized` 为真时执行（第 4438 行、第 4446 行）——世界尚未 `InitializeActorsForPlay` 时这两个钩子整体被跳过，由关卡初始化路径补做（见"核心源码深入剖析四"第 5 小节）。
-2. **`bDeferBeginPlayAndUpdateOverlaps`**（第 4444 行）：动态生成且发生角色交换的复制型 Actor（`bExchangedRoles && RemoteRole == ROLE_Authority`）必须等复制属性反序列化完才能 BeginPlay，这是"BeginPlay 里读到空属性"的根因之一。
-3. **碰撞策略在这里才真正生效**（第 4452 行起）：`AdjustIfPossibleBut*` 用 `World->FindTeleportSpot` 找空位，找不到就 `Destroy()`；`DontSpawnIfColliding` 用 `EncroachingBlockingGeometry` 复查，冲突即 `Destroy()`。此时 Actor 已 `NewObject` 且组件已注册，所以"生成失败"的本质是**生成后立即销毁**——调用方若只看返回值，可能拿到一个已进入销毁流程的指针。
-4. `PostInitializeComponents()` 后立刻校验 `bActorInitialized`（第 4504 行），未置位直接 `Fatal`：这就是"忘了在子类里调 `Super::PostInitializeComponents()`"的报错来源。
-5. **`bRunBeginPlay` 的完整判定**（第 4509 行）：`!bDeferBeginPlayAndUpdateOverlaps && (BeginPlayCallDepth > 0 || World->HasBegunPlay())`，并且 ChildActor 还要等父 Actor `HasActorBegunPlay() || IsActorBeginningPlay()`；编辑器预览 Actor 在 `WITH_EDITOR` 下被强制置为 false（第 4520 行）。
-6. **世界未初始化分支**（第 4534 行起）：`MarkAsGarbage()` → `Modify(false)` → `ClearGarbage()`。这是为了让编辑器撤销记录把该 Actor 当作"已销毁"（撤销时的一次 Add 才能生效），属于编辑器技巧，不是 GC 语义。
+原知识文档第 488–554 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\ActorConstruction.cpp`（第 818 行起，节选）：
 
-### 4. `AActor::ExecuteConstruction` 与 SCS 的真实执行序（节选）
-
-`FinishSpawning` 第 4415 行调用的就是它，真实实现位于另一个编译单元。
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\ActorConstruction.cpp`（第 818 行起，节选）：
+阅读限制：CreateComponentsForActor 位于每个类的循环内部；最终补注册仍受 auto-register、world 和来源条件过滤。本块有截断，不能独立编译或认证完整 SCS 算法。
 
 ```cpp
 bool AActor::ExecuteConstruction(const FTransform& Transform, const FRotationConversionCache* TransformRotationCache, const FComponentInstanceDataCache* InstanceDataCache, bool bIsDefaultTransform, ESpawnActorScaleMethod TransformScaleMethod)
@@ -553,16 +850,11 @@ bool AActor::ExecuteConstruction(const FTransform& Transform, const FRotationCon
 			}
 ```
 
-逐条解构：
+### AS-H06
 
-1. `bActorIsBeingConstructed` 配合 `ON_SCOPE_EXIT`（第 828 行）保证构造不可重入，编辑器构建下由 `checkf` 强制。
-2. 蓝图父类链 `ParentBPClassStack` 由 `GetGeneratedClassesHierarchy` 生成，SCS 循环是**从最基类到最派生类**（第 894 行 `for (int32 i = Num - 1; i >= 0; i--)`），全部执行完才 `CreateComponentsForActor` 创建时间轴等对象。
-3. `FGuardValue_Bitfield(GetWorld()->bIsRunningConstructionScript, true)`（第 893 行）正是 `SpawnActor` 门禁第 504 行检查的标志：构造脚本期间默认禁止生成新 Actor，除非显式传 `bAllowDuringConstructionScript`。
-4. **SCS 后有一次补偿注册**（第 907 行起）：若 `bHasDeferredComponentRegistration` 则补 `RegisterAllComponents()`；随后只对"SCS 新建或非 SCS 前已存在、且 `bAutoRegister` 的未注册组件"逐个 `USimpleConstructionScript::RegisterInstancedComponent`。这条路径解释了"蓝图里加的组件为什么在 BeginPlay 时必然已注册"。
+原知识文档第 567–622 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 6630 行起、第 6388 行起、第 6618 行起，三个互不连续的片段，均完整逐字）：
 
-### 5. `PreInitializeComponents` / `InitializeComponents` / `PostInitializeComponents` 的 checkout 原始实现
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 6630 行起、第 6388 行起、第 6618 行起，三个互不连续的片段，均完整逐字）：
+阅读限制：三个不连续函数的合集。调用条件为 registered && wants && !initialized，激活是另一条件。内层旧“Broadcast activation”注释不是 InitializeComponent 全部职责的定义；Post 状态不保证所有组件都执行 Initialize。
 
 ```cpp
 void AActor::PreInitializeComponents()
@@ -621,23 +913,11 @@ void AActor::PostInitializeComponents()
 }
 ```
 
-逐条解构：
+### AS-H07
 
-1. `PreInitializeComponents` 的基类实现只处理 `AutoReceiveInput`（第 6632 行起）：PlayerController 尚未就绪时走 `PersistentLevel->RegisterActorForAutoReceiveInput(this, PlayerIndex)` 延迟绑定。
-2. `InitializeComponents` 有两个隐式前置（第 6397 行、第 6404 行）：**组件必须已注册**，且满足 `bWantsInitializeComponent && !HasBeenInitialized()`；顺带在这里做 `bAutoActivate` 的激活。既有第 2 小节所称"遍历所有开启了 `bWantsInitializeComponent` 的组件"需要补上"且已注册"这一条件。
-3. `PostInitializeComponents` 基类只做两件事（第 6622 行起）：`bActorInitialized = true` 与 `UpdateAllReplicatedComponents()`。所以"PostInitializeComponents 时所有组件都已完成 InitializeComponent"成立，但"所有子 Actor 都已生成"不成立——ChildActor 由 `ChildActorComponent` 决定，生成时机更早。
+原知识文档第 642–665 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Components\ActorComponent.cpp`（第 2510 行起，完整逐字）：
 
----
-
-## 核心源码深入剖析三：组件注册三阶段 `RegisterComponentWithWorld`
-
-组件挂载到世界不仅是加入一个列表，而是同步建立渲染代理（PrimitiveSceneInfo）与物理刚体（BodyInstance）。
-
-### 1. `UActorComponent::ExecuteRegisterEvents` 完整真实源码
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Components\ActorComponent.cpp`（第 2510 行起，完整逐字）：
-
-（2026-09-14：原示意块已替换为 5.8 源码逐字版；第 2 小节的"（第 N 行）"是被替换掉的示意块的块内偏移。注销方向的对偶函数 `ExecuteUnregisterEvents` 的逐字版见第 4 小节）
+阅读限制：渲染与物理状态创建均有条件；OnRegister 不等于全部资源同步完成。逻辑组件没有必须创建 Primitive 代理的义务。
 
 ```cpp
 void UActorComponent::ExecuteRegisterEvents(FRegisterComponentContext* Context)
@@ -664,18 +944,11 @@ void UActorComponent::ExecuteRegisterEvents(FRegisterComponentContext* Context)
 }
 ```
 
-### 2. 逐行技术深度解构
+### AS-H08
 
-1. **`OnRegister()` 语义（第 6 行）**：
-   - 标记 `bRegistered = true`，建立组件与 Owner Actor 及 UWorld 的关联；
-2. **`CreateRenderState_Concurrent` 并行渲染状态创建（第 16 行）**：
-   - 构造 `FPrimitiveSceneProxy` 并将其指针安全递交给渲染线程（RenderThread）的场景八叉树中。注意后缀 `_Concurrent`，意味着当大批量流送加载组件时，该函数支持在多个工作线程并发执行；
-3. **`CreatePhysicsState` 物理状态创建（第 21 行）**：
-   - 向 Chaos 物理场景（`FPhysScene_Chaos`）注册 `FBodyInstance` 与碰撞碰撞体。当组件被隐藏或禁用时，对应的逆向函数 `ExecuteUnregisterEvents` 将按逆序依次调用 `DestroyPhysicsState`、`DestroyRenderState_Concurrent` 与 `OnUnregister`。
+原知识文档第 680–759 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Components\ActorComponent.cpp`（第 1967 行起，节选）：
 
-### 3. `UActorComponent::RegisterComponentWithWorld` 的 checkout 原始实现（节选）
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Components\ActorComponent.cpp`（第 1967 行起，节选）：
+阅读限制：早退日志不全相同；非游戏、无 Owner 与有 Owner 三支分开。HandleRegisterComponentWithWorld 函数体缺失；末尾要求 Owner 已有 InputComponent，不能推出“注册越早越能绑定”。
 
 ```cpp
 void UActorComponent::RegisterComponentWithWorld(UWorld* InWorld, FRegisterComponentContext* Context)
@@ -758,18 +1031,11 @@ void UActorComponent::RegisterComponentWithWorld(UWorld* InWorld, FRegisterCompo
 }
 ```
 
-逐条解构（三条容易被误判的路径）：
+### AS-H09
 
-1. **早期返回全是静默的**（第 1974 行起）：`IsValidChecked == false`、已注册、`InWorld == nullptr`、World 已清理（`IsCleanedUp()`）、Owner 属于 `CLASS_NewerVersionExists`（蓝图重编译后的死类），都是打日志后 `return`，不抛异常。排查"组件没注册"应优先看 `LogActorComponent`。
-2. **Tick 注册时机由世界类型与 Owner 决定**（第 2036 行起）：非游戏世界（编辑器预览世界）立刻 `RegisterAllComponentTickFunctions(true)`；游戏世界中**无 Owner** 的组件也立刻注册并自行 `InitializeComponent()`；**有 Owner** 的游戏世界组件则把后续交给 `MyOwner->HandleRegisterComponentWithWorld(this)`，由 Actor 决定是否 Initialize / BeginPlay / 注册 Tick。这就是"运行时 `RegisterComponent()` 的组件为什么能自动拿到 BeginPlay"的实现。
-3. **SCS 子组件补注册**（第 2054 行起）：只对 `IsCreatedByConstructionScript()` 的组件，遍历其 Outer 树中 `bAutoRegister && !IsRegistered && Owner 相同` 的子组件递归注册。手工 `NewObject` 出来的组件不在此豁免范围内，必须自己调 `RegisterComponent()`。
-4. 末尾的 `UInputDelegateBinding::BindInputDelegates`（第 2073 行起）：只有 Owner 已有 `InputComponent` 时才绑定，因此组件注册顺序会影响输入代理绑定，注册早于 `SetupPlayerInputComponent` 的组件才能绑上。
+原知识文档第 774–794 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Components\ActorComponent.cpp`（第 2534 行起，完整逐字）：
 
-### 4. `ExecuteUnregisterEvents` 的 checkout 原始实现
-
-`ExecuteRegisterEvents` 的逐字版已在第 1 小节，这里是它的对偶函数：注销方向，且顺序与注册并非严格逆序。
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Components\ActorComponent.cpp`（第 2534 行起，完整逐字）：
+阅读限制：这里局部阶段确为物理→渲染→OnUnregister 的反向撤销，但不证明整个生命周期严格逆序或跨线程资源已经物理释放。
 
 ```cpp
 void UActorComponent::ExecuteUnregisterEvents()
@@ -793,15 +1059,11 @@ void UActorComponent::ExecuteUnregisterEvents()
 }
 ```
 
-逐条解构：
+### AS-H10
 
-1. **注册与注销不是严格逆序**：注册是 `OnRegister → CreateRenderState_Concurrent → CreatePhysicsState`；注销是 `DestroyPhysicsState → DestroyRenderState_Concurrent → OnUnregister`。物理状态最后创建、最先销毁，渲染状态居中。
-2. **每阶段都有 `checkf` 守卫**（第 2516 行、第 2527 行、第 2543 行、第 2550 行）：子类没有正确转发 `Super::OnRegister()` / `Super::OnCreatePhysicsState()` / `Super::OnDestroyPhysicsState()` 时会在此断言，而不是无声失效。
-3. 第 1 小节"后缀 `_Concurrent` 意味着支持多线程并发执行"需要收窄：该后缀表示这些函数**可以在并发（非游戏线程）上下文中被调用**，实际并发发生在组件预注册与异步物理状态创建路径上；普通 `RegisterComponent()` 仍是游戏线程同步执行。
+原知识文档第 806–861 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Components\ActorComponent.cpp`（第 2243 行起、第 2398 行起、第 1643 行起，三个互不连续的片段；第一、三段完整逐字，第二段为节选）：
 
-### 5. `CreateRenderState_Concurrent` / `CreatePhysicsState` / `ReadyForReplication` 的 checkout 原始实现
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Components\ActorComponent.cpp`（第 2243 行起、第 2398 行起、第 1643 行起，三个互不连续的片段；第一、三段完整逐字，第二段为节选）：
+阅读限制：由基类脏状态可见部分、Physics 节选与 ReadyForReplication 拼合。ShouldDefer 的完整计算未显示，ready 标志不是实际网络发送。
 
 ```cpp
 void UActorComponent::CreateRenderState_Concurrent(FRegisterComponentContext* Context)
@@ -860,15 +1122,11 @@ void UActorComponent::ReadyForReplication()
 }
 ```
 
-逐条解构：
+### AS-H11
 
-1. `UActorComponent` 基类的 `CreateRenderState_Concurrent` 只翻转脏标记（第 2248 行起）——真正把 `FPrimitiveSceneProxy` 递交给渲染线程的是 `UPrimitiveComponent` 的重载。基类实现存在的意义是让非图元组件也能安全走完整条管线。
-2. **`CreatePhysicsState` 的延迟创建**（第 2408 行起）：仅当 `World->GetAllowDeferredPhysicsStateCreation()`、CVar `GEnableDeferredPhysicsCreation`、`bAllowDeferral`、确实是 `UPrimitiveComponent`、**不产生 Overlap 事件**（`!GetGenerateOverlapEvents()`）、且 `BodySetup->bCreatedPhysicsMeshes == false` 时才走 `DeferPhysicsStateCreation`；否则同步 `OnCreatePhysicsState()` 并广播 `GlobalCreatePhysicsDelegate`。所以"注册完立刻能查到物理体"对静态网格常常不成立。
-3. `ReadyForReplication`（第 1643 行，全文 4 行）只置 `bIsReadyForReplication = true`；组件真正进入复制的时机由 Owner 的 `AddComponentForReplication` / `AddOwnedComponent` 决定（见下一小节）。
+原知识文档第 873–911 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 3792 行起、第 3985 行起，均完整逐字）：
 
-### 6. `AActor::AddOwnedComponent` / `AddInstanceComponent` 的 checkout 原始实现
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 3792 行起、第 3985 行起，均完整逐字）：
+阅读限制：OwnedComponents 去重并维护辅助分类；AddInstanceComponent 不替代世界注册。复制登记不等于已发送数据，Outer/Owner/attachment 不能混成通用强所有权。
 
 ```cpp
 void AActor::AddOwnedComponent(UActorComponent* Component)
@@ -910,25 +1168,11 @@ void AActor::AddInstanceComponent(UActorComponent* Component)
 }
 ```
 
-逐条解构：
+### AS-H12
 
-1. `OwnedComponents` 是组件的权威登记表（第 3802 行），`GetComponents()` 遍历的就是它；重复添加由 `bAlreadyInSet` 短路，不会重复进入 `ReplicatedComponents` / `BlueprintCreatedComponents` / `InstanceComponents` 三个辅助分类表。
-2. **复制型组件在此刻就开始复制**（第 3806 行起）：`Component->GetIsReplicated()` 为真时立刻 `ReplicatedComponents.AddUnique` + `AddComponentForReplication`。但 `Actor.cpp` 第 6436 行的注释指出，需要初始化的组件要等 `InitializeComponent()` 之后才补 `AddComponentForReplication`（见 `HandleRegisterComponentWithWorld`，第 6427 行起）。
-3. `AddOwnedComponent` 内部调用的是 `Modify(false)`（第 3799 行，`bMarkDirty = false`）：**不会**把包标记为脏，编辑器工具代码需要自行 `Modify()`。
-4. `AddInstanceComponent`（第 3985 行，全文 5 行）只做两件事：把 `CreationMethod` 改为 `EComponentCreationMethod::Instance`、加入 `InstanceComponents`。它**不注册组件、也不加入 `OwnedComponents`**，`NewObject` 之后仍必须自己调 `RegisterComponent()`（与 FAQ Q3 一致）。
-5. `OwnedComponents` 的登记点全部由 `UActorComponent` 侧发起：`PostInitProperties`（`ActorComponent.cpp` 第 597 行起，`OwnerPrivate->AddOwnedComponent(this)`，且注释写明 `CreationMethod == Instance` 的组件要推迟到 Owner 初始化期间）、`PostRename`（第 951 行、第 982 行）与编辑器 `PostEditUndo`（第 1390 行、第 1412 行）。**事实边界**：`NewObject` + `RegisterComponent()` 这条纯运行期路径上 `Instance` 组件的 `OwnedComponents` 登记点未在本次静态阅读中完全追上，因此不要假设"注册过就一定出现在 `GetComponents()` 里"，需另跑运行态验证。
+原知识文档第 933–976 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 4808 行起，完整逐字）：
 
----
-
-## 核心源码深入剖析四：BeginPlay 派发机制 `AActor::BeginPlay`
-
-为什么世界未开始时生成的 Actor 不会立即触发 `BeginPlay`？源码揭示了严格的门禁。
-
-### 1. `AActor::BeginPlay` 完整真实源码
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 4808 行起，完整逐字）：
-
-（2026-09-14：原示意块已替换为 5.8 源码逐字版；本节下方"组件先于 Actor"原则中标注的"（第 16~26 行）"是被替换掉的示意块的块内偏移，对应下面源码第 4819 行至第 4833 行）
+阅读限制：这是 AActor 基类实现，不是派生 override 入口。适用组件循环先于 Actor Receive，状态最后置 begun；不同组件遍历次序和未来组件不在此保证之内。
 
 ```cpp
 void AActor::BeginPlay()
@@ -975,15 +1219,11 @@ void AActor::BeginPlay()
 }
 ```
 
-- **“组件先于 Actor”原则（第 16~26 行）**：
-  - 在源码循环中，所有挂载在 Actor 上的 `UActorComponent` 依次执行 `Component->BeginPlay()`；
-  - 只有当所有子组件全部完成 BeginPlay 之后，引擎才回过头触发蓝图的 `ReceiveBeginPlay`。这确保了在角色蓝图的 BeginPlay 节点中调用任意组件方法时，组件内部的初始化状态早已准备完毕。
+### AS-H13
 
-### 2. `AActor::DispatchBeginPlay` 的 checkout 原始实现（节选）
+原知识文档第 988–1050 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 4738 行起，节选）：
 
-`BeginPlay()` 只是"真正开始播放的动作"，决定"何时允许开始"的是外层 `DispatchBeginPlay`。二者是两个函数，既有第 1 小节把注意力集中在 `BeginPlay` 上，会漏掉状态机与网络门禁。
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 4738 行起，节选）：
+阅读限制：Dispatch 负责门禁与中间状态；宏分支可跳过通常回调，ensure 不是统一硬终止。BeginPlay 中销毁请求的续作和初始 overlap 各有条件。
 
 ```cpp
 void AActor::DispatchBeginPlay(bool bFromLevelStreaming)
@@ -1049,33 +1289,11 @@ void AActor::DispatchBeginPlay(bool bFromLevelStreaming)
 	}
 ```
 
-逐条解构：
+### AS-H14
 
-1. **网络门禁**（第 4741 行起）：`bActorIsPendingPostNetInit` 为真且存在复制系统时直接 `return`——复制型 Actor 要等初始状态应用完（`PostNetInit`）才允许 BeginPlay。
-2. **二次进入保护**（第 4749 行）：`HasActorBegunPlay()` 为真时 `World` 直接取 `nullptr`，整个函数体被跳过。这也是 `ULevel::RouteActorInitialize` 注释里"already begun play 时 no-op"的依据。
-3. **状态机推进顺序**（第 4758 行起）：`ensure` 断言此前必须是 `HasNotBegunPlay` → `BeginPlayCallDepth++` → `BuildReplicatedComponentsInfo()` → `ActorHasBegunPlay = BeginningPlay` → `StartReplicatingActor` → 最后才调用 `BeginPlay()`。**先置中间态、后执行用户代码**，因此 `BeginPlay` 内部 `HasActorBegunPlay()` 为假而 `IsActorBeginningPlay()` 为真。
-4. `BeginPlayCallDepth` 的断言（第 4784 行）要求 `BeginPlay()` 同步返回，不允许把 BeginPlay 拆进异步任务跨越该深度。
-5. `bActorWantsDestroyDuringBeginPlay`（第 4787 行）正是 `UWorld::DestroyActor` 第 896 行检测到"BeginPlay 期间请求销毁"后设置的标志，在此处才真正执行销毁。
-6. `UpdateInitialOverlaps(bFromLevelStreaming)` 在所有用户回调之后执行（第 4801 行）：BeginPlay 里的 Overlap 通知属于"首次重叠"，与流送加载路径共用同一入口。
+原知识文档第 1080–1126 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\World.cpp`（第 6797 行起、第 6153 行起，两个互不连续的片段）：
 
-### 3. `AActor::BeginPlay` 的逐条对照补充
-
-第 1 小节已给出该函数的 5.8 逐字原文，这里补齐上述解构中未覆盖或被压缩掉的六点：
-
-逐条对照（补齐既有解构）：
-
-1. `ensureMsgf(ActorHasBegunPlay == EActorBeginPlayState::BeginningPlay, ...)`（第 4812 行）：绕过 `DispatchBeginPlay()` 直接调 `BeginPlay()` 会当场断言。
-2. `SetLifeSpan(InitialLifeSpan)`（第 4813 行）：生命周期计时器在 BeginPlay 最早阶段启动，`SetLifeSpan(0)` 即取消——所以"BeginPlay 里改 `InitialLifeSpan`"不会生效，必须用 `SetLifeSpan`。
-3. `RegisterAllActorTickFunctions(true, false)`（第 4814 行）：**第二个实参 false 表示不遍历组件**，组件 Tick 由紧随其后的循环逐个 `RegisterAllComponentTickFunctions(true)` 注册；顺序是"Actor Tick 先、组件 Tick 后"。
-4. 组件循环条件（第 4822 行）是 `IsRegistered() && !HasBegunPlay()`，源码注释解释了原因：初始化期间被改名并移动 Outer 的组件 `bHasBegunPlay` 已为 true，因此不能只用 `bRegistered` 判断。
-5. `GetAutoDestroyWhenFinished()`（第 4835 行起）：为真时把 Actor 注册进 `UAutoDestroySubsystem`，由子系统在回收时销毁——这一段在压缩版中完全没有体现。
-6. `ReceiveBeginPlay()` 在最后（第 4846 行），随后才 `ActorHasBegunPlay = HasBegunPlay`（第 4848 行）："蓝图 BeginPlay 节点执行期间，Actor 仍处于 `BeginningPlay` 中间态"，所以此时调用 `HasActorBegunPlay()` 返回 false 是**正确行为**。
-
-### 4. 延迟广播的真实门禁：`AWorldSettings::NotifyBeginPlay` 与 `UWorld::HasBegunPlay`
-
-"世界没开始就不派发 BeginPlay"的判定点是 `PostActorConstruction` 里的 `World->HasBegunPlay()`（`Actor.cpp` 第 4509 行、第 4526 行），而 `HasBegunPlay()` 的语义比名字更严：它同时要求持久关卡的 Actor 列表非空。
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\World.cpp`（第 6797 行起、第 6153 行起，两个互不连续的片段）：
+阅读限制：World 查询与 BeginPlay 为不连续材料。Subsystem 方法先于 GameMode，UWorld 同名委托是后面的另一个位置；正常服务器局部链不能代表无 GameMode/客户端/晚加子系统。
 
 ```cpp
 bool UWorld::HasBegunPlay() const
@@ -1125,9 +1343,11 @@ void UWorld::BeginPlay()
 }
 ```
 
-批量广播的入口是 `AWorldSettings::NotifyBeginPlay()`，主调用链为 `AGameModeBase::StartPlay()` → `AGameStateBase::HandleBeginPlay()` → `GetWorldSettings()->NotifyBeginPlay()`；客户端则由 `OnRep_ReplicatedHasBegunPlay` 触发同一函数。
+### AS-H15
 
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\WorldSettings.cpp`（第 363 行起，完整逐字）：
+原知识文档第 1132–1150 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\WorldSettings.cpp`（第 363 行起，完整逐字）：
+
+阅读限制：遍历后设置 world begun 不代表每个 Dispatch 都执行过通常用户回调，也不阻止遍历中的嵌套生成通过调用深度分支。跨 Actor 顺序不能当业务契约。
 
 ```cpp
 void AWorldSettings::NotifyBeginPlay()
@@ -1149,7 +1369,11 @@ void AWorldSettings::NotifyBeginPlay()
 }
 ```
 
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\GameModeBase.cpp`（第 204 行起，完整逐字）：
+### AS-H16
+
+原知识文档第 1154–1159 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\GameModeBase.cpp`（第 204 行起，完整逐字）：
+
+阅读限制：这一段只展示 GameModeBase 向 GameState 的转交；不能由一行代码穷尽派生 GameMode、网络客户端或游戏状态机。
 
 ```cpp
 void AGameModeBase::StartPlay()
@@ -1158,7 +1382,11 @@ void AGameModeBase::StartPlay()
 }
 ```
 
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\GameStateBase.cpp`（第 205 行起，完整逐字）：
+### AS-H17
+
+原知识文档第 1163–1171 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\GameStateBase.cpp`（第 205 行起，完整逐字）：
+
+阅读限制：服务端可见路径设置复制状态并通知世界设置；对应客户端 OnRep 函数体未展示，不能伪造完整复制调用链。
 
 ```cpp
 void AGameStateBase::HandleBeginPlay()
@@ -1170,18 +1398,11 @@ void AGameStateBase::HandleBeginPlay()
 }
 ```
 
-逐条解构：
+### AS-H18
 
-1. **两层去重**：`NotifyBeginPlay` 先查 `!World->GetBegunPlay()`（第 366 行），广播完所有 Actor 后才 `World->SetBegunPlay(true)`（第 377 行）。因此 `HasBegunPlay()` 为真的那一刻，关卡内所有 Actor 的 `DispatchBeginPlay` 已跑完；反之在该时刻之前生成的 Actor 只会走 `bRunBeginPlay == false` 分支，等待批量广播或流送加载补做。
-2. `World->SetBegunPlay(true)` 同时是 `OnBeginPlay` 委托的触发点（`World.cpp` 第 4947 行起：同值直接 return，变化时 `OnBeginPlay.Broadcast(bBegunPlay)`）。
-3. **`UWorld::HasBegunPlay()` 的两重条件**（第 6797 行）：`GetBegunPlay() && PersistentLevel && PersistentLevel->Actors.Num()`——`bBegunPlay` 已置位但持久关卡 Actor 列表被清空的过渡期（切图 `CleanupWorld` 前后）会重新返回 false。`AreActorsInitialized()` 结构相同（第 6802 行），这两个函数是 `PostSpawnInitialize` / `PostActorConstruction` 大量使用的分流条件。
-4. `AGameModeBase::StartPlay()` 自身只有一行 `GameState->HandleBeginPlay()`（第 206 行）：**BeginPlay 的广播主体不在 GameMode 而在 `AWorldSettings`**。`AActor::GetWorldSettings()`（`Actor.cpp` 第 5405 行，实现为 `GetWorld()->GetWorldSettings()`）返回的就是那个 Actor，而它是唯一被禁止 `DestroyActor` 的 Actor（`LevelActor.cpp` 第 864 行 `if (GetWorldSettings() == ThisActor) return false;`）。
+原知识文档第 1186–1265 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Level.cpp`（第 3843 行起、第 3896 行起，节选）：
 
-### 5. `bActorSeamlessTraveled` 与关卡流送路径
-
-流送/切图加载进来的 Actor 走的是另一条 BeginPlay 入口：`ULevel::RouteActorInitialize`。
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Level.cpp`（第 3843 行起、第 3896 行起，节选）：
+阅读限制：这是有预算与状态的关卡初始化节选，包含动态增长数组、是否已初始化和非 ChildActor 条件。不能认证所有对象同帧、无条件完成。
 
 ```cpp
 		case ERouteActorInitializationState::Preinitialize:
@@ -1264,47 +1485,11 @@ void AGameStateBase::HandleBeginPlay()
 		}
 ```
 
-逐条解构：
+### AS-H19
 
-1. 三阶段状态机 `Preinitialize → Initialize → BeginPlay` 由 `RouteActorInitializationState` 推进，`while (RouteActorInitializationIndex < Actors.Num())` 允许**初始化期间新生成的 Actor 被本轮循环继续处理**（第 3845 行注释）。
-2. 各阶段职责：`Preinitialize` 阶段只调 `PreInitializeComponents()`；`Initialize` 阶段调 `InitializeComponents()` + `PostInitializeComponents()`，未置位 `bActorInitialized` 时 `Fatal`；`BeginPlay` 阶段**只处理 `!IsChildActor()` 的 Actor**（第 3904 行），ChildActor 由父 Actor 显式启动。
-3. `OwningWorld->HasBegunPlay()` 为假时 BeginPlay 阶段整体跳过（第 3898 行），状态直接进入 `Finished`——这就是"世界已开始后流送进来的关卡才有 BeginPlay"的实现。
-4. **`bActorSeamlessTraveled` 不是 BeginPlay 条件**：它在无缝切换时被置位（`World.cpp` 第 8833 行），随后在 `ULevel::InitializeNetworkActors()`（`Level.cpp` 第 3709 行）与 `ULevel::ClearActorsSeamlessTraveledFlag()`（第 3723 行）清零。它的真实作用是"跳过重跑构造脚本"（`ActorConstruction.cpp` 第 268 行 `bAllowReconstruction = !bActorSeamlessTraveled && ...`）以及"不把已初始化 Actor 当作网络启动 Actor"（`Actor.cpp` 第 742 行 `IsNetStartupActor()` 的判定项）。
-5. `ULevel::RouteActorEndPlayForRemoveFromWorld`（第 3931 行起）是配套的卸载路径：对关卡列表逐个 `RouteEndPlay(EEndPlayReason::RemovedFromWorld)`，与第 3 小节 `RouteEndPlay` 的 `RemovedFromWorld` 分支一一对应。
+原知识文档第 1309–1338 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Classes\Engine\EngineBaseTypes.h`（第 83 行起，完整逐字）：
 
----
-
-## 帧更新调度体系：`ETickingGroup` 拓扑依赖
-
-`FTickTaskManager` 在每帧主循环中，按照物理仿真前后将所有 Actor 和 Component 的 Tick 函数划分进四大核心时钟组：
-
-```text
-1. TG_PrePhysics (物理模拟前)
-   ├─ 核心任务：采集玩家输入、驱动网络移动预测 (CharacterMovement)、应用主动加速度；
-   └─ 典型对象：PlayerController、CharacterMovementComponent。
-
-2. TG_DuringPhysics (物理模拟进行中)
-   ├─ 核心任务：与 Chaos 物理子系统并发运行的不依赖最终刚体变换的纯逻辑；
-   └─ 典型对象：武器装弹计时器、技能冷却计时器、AI 意图计算。
-
-3. TG_PostPhysics (物理模拟后)
-   ├─ 核心任务：读取刚体碰撞真实解算结果、执行相机视口跟踪 (SpringArm)、布娃娃姿态抓取；
-   └─ 典型对象：CameraComponent、SpringArmComponent、PhysicalAnimationComponent。
-
-4. TG_PostUpdateWork (帧末渲染准备)
-   ├─ 核心任务：粒子系统特效最终发射器数据收集、骨骼动画并行求值后处理汇总；
-   └─ 典型对象：NiagaraComponent、SkeletalMeshComponent 姿态提交。
-```
-
----
-
-## 源码级 Tick 调度：`FTickFunction` 注册与 `FTickTaskManager` 组调度
-
-上一节是 TickGroup 的**语义**分层，本节给出 5.8 中真实的注册与调度源码。先修正一个常见路径错误：`FTickFunction` 的声明不在 `TickFunction.h`（该头文件在 5.8 中已不存在），而在 `Engine\Source\Runtime\Engine\Classes\Engine\EngineBaseTypes.h` 第 183 行。
-
-### 1. `ETickingGroup` 与 `FTickFunction` 的真实声明
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Classes\Engine\EngineBaseTypes.h`（第 83 行起，完整逐字）：
+阅读限制：Hidden 项有四个，NewlySpawned 是特殊机制。枚举成员顺序不能单独证明 LevelTick 的完整释放/等待时序。
 
 ```cpp
 enum ETickingGroup : int
@@ -1337,9 +1522,11 @@ enum ETickingGroup : int
 };
 ```
 
-`FTickFunction` 的对外配置字段如下：
+### AS-H20
 
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Classes\Engine\EngineBaseTypes.h`（第 183 行起，节选）：
+原知识文档第 1344–1399 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Classes\Engine\EngineBaseTypes.h`（第 183 行起，节选）：
+
+阅读限制：声明块有截断，能解释配置职责但不能确定构造默认值、sizeof、派生类配置或线程安全。
 
 ```cpp
 struct FTickFunction
@@ -1398,15 +1585,11 @@ public:
 	uint8 bDispatchManually : 1;
 ```
 
-逐条解构：
+### AS-H21
 
-1. 枚举里除四个"可对外设置"的组，还有三个隐藏组：`TG_StartPhysics` / `TG_EndPhysics` 是物理引擎自己启动与结束仿真的特殊组，`TG_LastDemotable` 是"允许被依赖降级到的最后一组"，`TG_NewlySpawned` 不是真组，而是"每轮组结束后反复重跑本帧新生成 Tick"的收容所。上一节的四层描述省略了这三个组，实际释放顺序见第 6 小节。
-2. **`TickGroup` 与 `EndTickGroup` 语义不同**（第 196 行、第 204 行）：前者是"最早可执行组"，后者是"必须在某组内完成"；普通同步 Tick 不需要手工设 `EndTickGroup`，只有异步 Tick 才需要。
-3. `bAllowTickOnDedicatedServer`（第 221 行）默认关闭，是"DS 上组件不 Tick"这类问题的根因；`bHighPriority`（第 227 行）让本 Tick 在组内先发（用于提前启动本组内必须完成的异步任务）；`bAllowTickBatching`（第 224 行）是 UE5 的 Tick 合并优化开关。
+原知识文档第 1411–1447 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\TickTaskManager.cpp`（第 2402 行起，完整逐字）：
 
-### 2. `FTickFunction::RegisterTickFunction` / `UnRegisterTickFunction` 的 checkout 原始实现
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\TickTaskManager.cpp`（第 2402 行起，完整逐字）：
+阅读限制：实际 registered 与 enable 分开；DS 可阻止登记。InternalData 是间接持有，不代表指针零成本，也不含 SetTickFunctionEnable 完整实现。
 
 ```cpp
 /**
@@ -1446,16 +1629,11 @@ void FTickFunction::UnRegisterTickFunction()
 }
 ```
 
-逐条解构：
+### AS-H22
 
-1. **DS 门禁在注册这一层**（第 2412 行）：`bAllowTickOnDedicatedServer || 世界不是 NM_DedicatedServer`，不满足则 TickFunction 根本不进管理器，之后 `SetTickFunctionEnable` 也无从生效。
-2. `InternalData` 是惰性分配的私有数据（第 2414 行起），保存 `bRegistered`、`TickTaskLevel`、`LastIntervalTickSeconds`、`RelativeTickCooldown` 等运行期状态。它是**指针而非内联成员**，因此 `FTickFunction` 可以安全内嵌在 `AActor` / `UActorComponent` 中而不放大对象尺寸。
-3. 重复注册走 `check(FTickTaskManager::Get().HasTickFunction(Level, this))`（第 2424 行）；未注册时调 `UnRegisterTickFunction` 是静默 no-op（第 2431 行）——不能用"调用过 UnRegister"推断已注销。
-4. 注册真正只做两件事：`FTickTaskManager::Get().AddTickFunction(Level, this)` 与 `InternalData->bRegistered = true`。**启用/禁用是另一条路径**（`SetTickFunctionEnable`，第 2439 行起）：它会先 `TickTaskLevel->RemoveTickFunction(this)`、改 `TickState`、再 `AddTickFunction(this)`，并在置为 Disabled 时把 `LastIntervalTickSeconds` 复位为 -1。
+原知识文档第 1460–1484 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 1684 行起，完整逐字）：
 
-### 3. `AActor::RegisterActorTickFunctions` / `RegisterAllActorTickFunctions` 的 checkout 原始实现
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 1684 行起，完整逐字）：
+阅读限制：真正到达表达式时 S OR E 的第三行 1 OR 0=1，不能解释成禁用必保留。需先通过包装器和能力门禁；底层登记仍可能失败。
 
 ```cpp
 void AActor::RegisterActorTickFunctions(bool bRegister)
@@ -1483,7 +1661,11 @@ void AActor::RegisterActorTickFunctions(bool bRegister)
 }
 ```
 
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 1708 行起，节选）：
+### AS-H23
+
+原知识文档第 1488–1534 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 1708 行起，节选）：
+
+阅读限制：Q 是包装器已处理的请求状态，R 是主 TickFunction 实际登记，二者不可换用。主路径被去重不代表组件分支或异步物理分支也绝对 no-op。
 
 ```cpp
 void AActor::RegisterAllActorTickFunctions(bool bRegister, bool bDoComponents)
@@ -1533,17 +1715,11 @@ void AActor::RegisterAllActorTickFunctions(bool bRegister, bool bDoComponents)
 }
 ```
 
-逐条解构：
+### AS-H24
 
-1. `PrimaryActorTick.Target = this` 必须在 `RegisterTickFunction` 之前赋值（第 1692 行起），否则 `FActorTickFunction::ExecuteTick` 中的 `IsValid(Target)` 判空会直接跳过 Tick（`Actor.cpp` 第 372 行起）。
-2. `SetTickFunctionEnable(bStartWithTickEnabled || IsTickFunctionEnabled())`（第 1693 行）：**注册时刻的启停状态会被保留**。因此运行时 `SetActorTickEnabled(false)` 之后再重注册，不会因为 `bStartWithTickEnabled` 而复活。
-3. `FActorThreadContext::Get().TestRegisterTickFunctions`（第 1705 行）是"调用链哨兵"：`RegisterAllActorTickFunctions` 在调用后断言它等于自己（第 1719 行），从而强制子类必须调用 `Super::RegisterActorTickFunctions()`。组件侧有同构机制（`ActorComponent.cpp` 第 1817 行、第 1822 行、第 1831 行）。
-4. `RegisterAllActorTickFunctions(bRegister, bDoComponents)` 的第二实参决定是否遍历组件（第 1723 行起）：`AActor::BeginPlay` 传 false（组件单独注册），`UWorld::DestroyActor` 传 true（`LevelActor.cpp` 第 1062 行，统一注销 Actor 与全部组件）。
-5. `bAsyncPhysicsTickEnabled` 的 Actor 走 `FPhysScene_Chaos::RegisterAsyncPhysicsTickActor` / `UnregisterAsyncPhysicsTickActor`（第 1734 行起），与 TickGroup 体系是两条独立通路。
+原知识文档第 1548–1584 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\TickTaskManager.cpp`（第 2202 行起、第 1680 行起，两个互不连续的片段，均完整逐字）：
 
-### 4. `FTickFunction` 落进管理器的两个 AddTickFunction
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\TickTaskManager.cpp`（第 2202 行起、第 1680 行起，两个互不连续的片段，均完整逐字）：
+阅读限制：两个 AddTickFunction 层级不连续；按关卡容器与 enabled/disabled 分类，不证明引擎不存在其他全局结构。
 
 ```cpp
 	/** Add the tick function to the primary list **/
@@ -1583,16 +1759,11 @@ void AActor::RegisterAllActorTickFunctions(bool bRegister, bool bDoComponents)
 	}
 ```
 
-逐条解构：
+### AS-H25
 
-1. `FTickTaskManager::AddTickFunction` 的 `check`（第 2205 行）只允许 `TickGroup < TG_NewlySpawned`：**不能主动把 Tick 调度到 `TG_NewlySpawned`**，它只能因"本帧生成得太晚"被动落入。
-2. 管理器按关卡分桶：`TickTaskLevelForLevel(InLevel)` 取出该关卡的 `FTickTaskLevel`，TickFunction 记住自己所属的 Level（第 2208 行），因此不存在跨关卡的全局 Tick 列表。
-3. `FTickTaskLevel::AddTickFunction` 按当前 `TickState` 分进 `AllEnabledTickFunctions` / `AllDisabledTickFunctions`（第 1684 行起）；若本帧正在派发（`bTickNewlySpawned`），同时计入 `NewlySpawnedTickFunctions`——这就是帧内新生成 Actor 的 Tick 能在同帧后续组里跑起来的机制。
-4. `HasTickFunction` 同时查三个集合（启用、禁用、降温中，第 1677 行），因此"降温中的间隔 Tick"在管理器视角仍然算已注册。
+原知识文档第 1597–1664 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\TickTaskManager.cpp`（第 2023 行起、第 1474 行起、第 872 行起、第 2120 行起，四个互不连续的片段，均节选）：
 
-### 5. 每帧调度：`StartFrame` → `QueueAllTicks` → `QueueTickTask` → `RunTickGroup`
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\TickTaskManager.cpp`（第 2023 行起、第 1474 行起、第 872 行起、第 2120 行起，四个互不连续的片段，均节选）：
+阅读限制：多个调度函数的拼合节选，结尾截断。旧末行“new actors go into next tick group”注释只能说明上下文推进意图，不能保证所有新生对象下一组实际执行；未给循环上限、完整等待/冷却实现。
 
 ```cpp
 		Context.TickGroup = ETickingGroup(0); // reset this to the start tick group
@@ -1663,30 +1834,11 @@ void AActor::RegisterAllActorTickFunctions(bool bRegister, bool bDoComponents)
 		Context.TickGroup = ETickingGroup(Context.TickGroup + 1); // new actors go into the next tick group because this one is already gone
 ```
 
-逐条解构：
+### AS-H26
 
-1. `StartFrame` 把 `Context.TickGroup` 复位为 `ETickingGroup(0)`（即 `TG_PrePhysics`）并置 `bTickNewlySpawned = true`（第 2023 行、第 2029 行），随后填 `LevelList` 并逐关卡 `StartFrame(Context)` 排队。
-2. `QueueAllTicks` 只遍历**启用集合**，逐个调 `TickFunction->QueueTickFunction(TTS, Context)`（第 1486 行）；带 `TickInterval` 的 Tick 排队后立刻 `It.RemoveCurrent()` 并 `RescheduleForInterval`（第 1489 行起）——**这就是"间隔 Tick 不在每帧集合里"的实现**，到期后由降温链表 `AllCoolingDownTickFunctions` 重新投递（第 1497 行起，注释 "Give credit for any overrun" 说明它还会补偿上一帧超时）。
-3. `QueueTickTask` 的真实归属是 **`FTickTaskSequencer`**（第 872 行，`FORCEINLINE` 定义在 sequencer 内），不是 `FTickTaskManager`。它用 `TGraphTask<FTickFunctionTask>::CreateTask(Prerequisites, ENamedThreads::GameThread)` 建任务并 `ConstructAndHold` 挂住（第 875 行），等 `ReleaseTickGroup` 统一放行——**TickGroup 的本质是任务图上的栅栏，而不是函数数组的顺序执行**。
-4. `bDispatchManually` 的 Tick 不进正常完成事件链，而是被塞进 `ManualDispatchTicks[TickGroup]` 等待手工派发（第 878 行起），最后由 `ReleaseTickGroup` 内的 `VerifyManualDispatch` 兜底执行以防死锁。
-5. `FTickTaskManager::RunTickGroup`（第 2120 行）先用 `check(Context.TickGroup == Group)` 强制顺序推进；`ReleaseTickGroup` 之后把 `Context.TickGroup` 加一（第 2134 行），**本组期间新生成的 Actor 因此落入下一组**；`bBlockTillComplete` 为真时还会循环 `QueueNewlySpawned`（第 2140 行起），循环上限 101 次，超过即判定"失控递归生成"并 `LogAndDiscardRunawayNewlySpawned`。
+原知识文档第 1691–1707 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\TickTaskManager.cpp`（第 2481 行起，完整逐字）：
 
-### 6. 真实组序与依赖降级（概念示意）
-
-`UWorld::Tick` 中的逐组释放顺序（`Engine\Source\Runtime\Engine\Private\LevelTick.cpp` 第 1742 行至第 1886 行）为：
-
-```text
-TG_PrePhysics → TG_StartPhysics → TG_DuringPhysics(bBlockTillComplete=false)
-→ TG_EndPhysics → TG_PostPhysics → …（游戏逻辑/相机/流送）… → TG_PostUpdateWork → TG_LastDemotable
-```
-
-1. `TG_DuringPhysics` 是唯一以 `bBlockTillComplete = false` 释放的组（`LevelTick.cpp` 第 1765 行，注释明确"不等待异步 Tick 全部完成"），这是"物理期间的 Tick 不能依赖最终刚体结果"的实现级依据。
-2. `TG_StartPhysics` / `TG_EndPhysics` 由 `SetupPhysicsTickFunctions(DeltaSeconds)`（第 1740 行）注入，用来启动物理仿真；普通项目不应往这两组塞 Tick。
-3. `UWorld::RunTickGroup(Group, bBlockTillComplete)`（第 783 行起）只是转发到 `FTickTaskManagerInterface::Get().RunTickGroup`。
-
-**依赖降级**：`FTickFunction::QueueTickFunctionParallel`（第 2713 行起，单线程版 `FTickFunction::QueueTickFunction` 第 2622 行起为同构逻辑，降级点在 2678 行）会把实际组取为 `max(前置项最大组, 自身 TickGroup, 当前上下文组)`（第 2769 行）；一旦被"降级"，必须落在可降级组上，源码用 `while (!CanDemoteIntoTickGroup(MyActualTickGroup)) ++` 逐组顺延（第 2773 行起）；`EndTickGroup` 更晚时再单独扩展 `ActualEndTickGroup`（第 2782 行起）。这意味着 `AddPrerequisite` 的代价可能是**整个 Tick 被推后一个或多个组**，而不是"同组内排到后面"。前置项的登记原文如下：
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\TickTaskManager.cpp`（第 2481 行起，完整逐字）：
+阅读限制：这里添加/移除 prerequisite，能力条件不等于本帧已执行。完整的实际组推迟算法与依赖环行为不在本块。
 
 ```cpp
 void FTickFunction::AddPrerequisite(UObject* TargetObject, struct FTickFunction& TargetTickFunction)
@@ -1706,17 +1858,11 @@ void FTickFunction::RemovePrerequisite(UObject* TargetObject, struct FTickFuncti
 }
 ```
 
-事实边界：以上组序与循环次数均为源码静态阅读结论，未用 `dumpticks` / `stat Ticks` / CSV 抓取运行时实际执行序；`FTaskSyncManager` 存在时还会在每组前后插入 `StartTickGroup` / `EndTickGroup` 回调（第 2130 行、第 2170 行），实际时序另受物理子步、`s.AllowConcurrentQueue` 等 CVar 影响。
+### AS-H27
 
----
+原知识文档第 1721–1740 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 5343 行起，完整逐字）：
 
-## 核心源码深入剖析五：二阶段销毁链 `Destroy` → `DestroyActor` → `RouteEndPlay`
-
-概述中的 Phase 4 只画了"通知 → 注销 → 移出列表 → 标记"的大方向，本节给出 5.8 的真实代码与顺序约束。
-
-### 1. `AActor::Destroy` 与 `UWorld::DestroyActor` 的门禁
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 5343 行起，完整逐字）：
+阅读限制：内部 pending 查询与公开 Destroy 成功/已标记返回合同可并存；它不是内存 free 通知，也不授权任意裸地址状态探测。
 
 ```cpp
 bool AActor::Destroy( bool bNetForce, bool bShouldModifyLevel )
@@ -1739,7 +1885,11 @@ bool AActor::Destroy( bool bNetForce, bool bShouldModifyLevel )
 }
 ```
 
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\LevelActor.cpp`（第 839 行起，节选）：
+### AS-H28
+
+原知识文档第 1744–1807 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\LevelActor.cpp`（第 839 行起，节选）：
+
+阅读限制：多种拒绝与 BeginPlay 中延迟请求清楚可见，但函数中段/尾段并不连续。原 IsValidLowLevel 是调用前提检查，不是对悬垂地址的安全检测。
 
 ```cpp
 bool UWorld::DestroyActor( AActor* ThisActor, bool bNetForce, bool bShouldModifyLevel )
@@ -1806,18 +1956,11 @@ bool UWorld::DestroyActor( AActor* ThisActor, bool bNetForce, bool bShouldModify
 	}
 ```
 
-逐条解构：
+### AS-H29
 
-1. `AActor::Destroy` 只是转发（第 5348 行起），且**先查 `IsPendingKillPending()`**：已在销毁流程中的 Actor 不会重复进入 `DestroyActor`；返回值是 `IsPendingKillPending()`，不是"销毁是否成功"。蓝图节点 `K2_DestroyActor` 直接调它（第 5362 行起）。
-2. **幂等**（第 857 行起）：已处于 pending kill 一律返回 true，避免重复派发销毁通知。
-3. **WorldSettings 不可销毁**（第 864 行）：`GetWorldSettings() == ThisActor` 直接返回 false，这是无缝切换与网络游戏依赖的硬规则。
-4. **游戏世界的角色门禁**（第 870 行起）：网络 Actor 要求 `ROLE_Authority || bNetForce || bNetTemporary`；非网络 Actor 受 CVar `AllowDestroyNonNetworkActors` 控制；`DestroyNetworkActorHandled()` 返回真表示"网络层接管清理"，此时返回 false 而不是销毁。
-5. **BeginPlay 期间请求销毁被推迟**（第 896 行起）：`IsActorBeginningPlay()` 为真时只设置 `bActorWantsDestroyDuringBeginPlay = true` 并返回 true，真正销毁发生在 `DispatchBeginPlay` 尾部（`Actor.cpp` 第 4787 行 `World->DestroyActor(this, true)`）。
-6. `FMarkActorIsBeingDestroyed`（第 912 行）是重入保护；其后依次是纹理流送通知 `IStreamingManager::NotifyActorDestroyed`、`OnActorDestroyed` 广播、`ThisActor->Destroyed()`（第 926 行）、子 Actor 逐个解绑、根组件从父级脱离、`ClearComponentOverlaps()`、`SetOwner(NULL)`。编辑器路径还会额外 `ThisActor->Modify()`（第 908 行）。
+原知识文档第 1822–1857 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\LevelActor.cpp`（第 1033 行起，完整逐字）：
 
-### 2. `UWorld::DestroyActor` 的清理主体与移除顺序
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\LevelActor.cpp`（第 1033 行起，完整逐字）：
+阅读限制：这是尾段，RemoveActor 在 UnregisterAllComponents 前。旧 pending-kill 注释与实际 MarkAsGarbage 名字均保留；不能由此断言下一 GC 必 free 或所有跨线程资源已经释放。
 
 ```cpp
 	// Remove the actor from the actor list.
@@ -1856,19 +1999,11 @@ bool UWorld::DestroyActor( AActor* ThisActor, bool bNetForce, bool bShouldModify
 }
 ```
 
-逐条解构（顺序即语义）：
+### AS-H30
 
-1. `RemoveActor(ThisActor, bShouldModifyLevel)`（第 1034 行）**先**把 Actor 从关卡列表移除；此后遍历关卡 Actor 的代码（如 `AWorldSettings::NotifyBeginPlay` 的 `FActorIterator`）不会再看到它。
-2. `OnActorRemovedFromWorld.Broadcast(ThisActor)`（第 1049 行）是关卡流送与外部框架的观察点。
-3. `UnregisterAllComponents()`（第 1052 行）逐组件走 `ExecuteUnregisterEvents`：物理状态 → 渲染状态 → `OnUnregister`（见第 4 小节）。
-4. `MarkAsGarbage()` + `MarkPackageDirty()` + `MarkComponentsAsGarbage()`（第 1055 行起）：**只标记，不释放**，对象内存回收留给 GC。
-5. `RegisterAllActorTickFunctions(false, /*bIncludeComponents=*/true)`（第 1062 行）注销 Actor 与全部组件的 TickFunction——注意这一步在 `MarkAsGarbage` **之后**，即"先标记销毁、后注销 Tick"。
+原知识文档第 1873–1881 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 3311 行起，完整逐字）：
 
-### 3. `AActor::Destroyed` → `RouteEndPlay` → `EndPlay` 的 checkout 原始实现
-
-`Destroyed()` 是 `DestroyActor` 第 926 行调用的入口，它把 EndPlay 语义分发给 Actor 与组件。
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 3311 行起，完整逐字）：
+阅读限制：Destroyed 是显式销毁相关通知，先路由 EndPlay 再 ReceiveDestroyed/OnDestroyed；EndPlay 的原因范围更大。
 
 ```cpp
 void AActor::Destroyed()
@@ -1880,7 +2015,11 @@ void AActor::Destroyed()
 }
 ```
 
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 3221 行起，完整逐字）：
+### AS-H31
+
+原知识文档第 1885–1923 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 3221 行起，完整逐字）：
+
+阅读限制：EndPlay 需 initialized 且 begun；UninitializeComponents 在外层 initialized 判断之外。RemovedFromWorld 重置状态可与后续复入关联，不等于最终析构。
 
 ```cpp
 void AActor::RouteEndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -1922,7 +2061,11 @@ void AActor::RouteEndPlay(const EEndPlayReason::Type EndPlayReason)
 }
 ```
 
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 3259 行起，完整逐字）：
+### AS-H32
+
+原知识文档第 1927–1956 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Actor.cpp`（第 3259 行起，完整逐字）：
+
+阅读限制：基类先置未 begun，再 Actor Receive/OnEndPlay，随后已 begun 组件。派生 Super 前后代码在本块之外，不可简写为任何 override 都是 Actor 先/后。
 
 ```cpp
 void AActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -1955,18 +2098,11 @@ void AActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 }
 ```
 
-逐条解构：
+### AS-H33
 
-1. `Destroyed()` 三件事（第 3313 行起）：`RouteEndPlay(EEndPlayReason::Destroyed)` → `ReceiveDestroyed()` → `OnDestroyed.Broadcast(this)`。
-2. `RouteEndPlay` 的**双重门禁**（第 3223 行、第 3225 行）：只有 `bActorInitialized` 为真、且 `ActorHasBegunPlay == HasBegunPlay` 时才调 `EndPlay`。因此"生成后从未 BeginPlay 的 Actor 被销毁"不会收到 `EndPlay` / `ReceiveEndPlay`——这是排障时"我的 EndPlay 没执行"的第一大原因。
-3. `ensureMsgf`（第 3230 行）强制子类 `EndPlay` 必须把状态改回 `HasNotBegunPlay`（即调用 `Super::EndPlay()`），否则断言。
-4. `RemovedFromWorld` 分支（第 3234 行起）：清空 Overlap、`bActorInitialized = false`、`World->RemoveNetworkActor(this)` 并 `StopReplicatingActor`——这是关卡流送卸载的专用路径，与 `Destroyed` 语义不同（对应 `ULevel::RouteActorEndPlayForRemoveFromWorld`，`Level.cpp` 第 3931 行起）。
-5. `UninitializeComponents()` 不受门禁约束（第 3253 行起）：无论是否走了 `EndPlay`，`RouteEndPlay` 末尾都会对所有"已初始化"的组件调 `UninitializeComponent()`。
-6. `AActor::EndPlay` 内部**先翻状态再回调**（第 3265 行 `ActorHasBegunPlay = HasNotBegunPlay`），然后停止复制、`ReceiveEndPlay` + `OnEndPlay` 广播，最后遍历组件逐个 `Component->EndPlay(EndPlayReason)`（第 3277 行起，仅对 `HasBegunPlay()` 的组件），同样用 `ensureMsgf` 要求组件调用 Super。
+原知识文档第 1971–2009 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Components\ActorComponent.cpp`（第 1664 行起、第 1616 行起，两个互不连续的片段，均完整逐字）：
 
-### 4. 组件侧：`EndPlay` / `OnUnregister` / `DestroyComponent`
-
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Components\ActorComponent.cpp`（第 1664 行起、第 1616 行起，两个互不连续的片段，均完整逐字）：
+阅读限制：EndPlay 与 OnUnregister 为不连续实现，GC/类条件可跳过蓝图回调。状态撤销不等于内存释放或所有异步资源已物理回收。
 
 ```cpp
 void UActorComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -2008,7 +2144,11 @@ void UActorComponent::OnUnregister()
 }
 ```
 
-以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Components\ActorComponent.cpp`（第 2153 行起，完整逐字）：
+### AS-H34
+
+原知识文档第 2013–2067 行。旧定位自述（未经本轮对勘）：以下代码摘自本机 UE 5.8 源码 `Engine\Source\Runtime\Engine\Private\Components\ActorComponent.cpp`（第 2153 行起，完整逐字）：
+
+阅读限制：按已有状态执行 EndPlay、Uninitialize、Unregister，再移除关系、通知和垃圾标记。末尾旧“NULL out any other refs”注释不保证所有指针同步清空；未 free 不能推出 IsValid=true。
 
 ```cpp
 void UActorComponent::DestroyComponent(bool bPromoteChildren/*= false*/)
@@ -2066,71 +2206,10 @@ void UActorComponent::DestroyComponent(bool bPromoteChildren/*= false*/)
 }
 ```
 
-逐条解构：
+## 十、关联阅读
 
-1. `UActorComponent::EndPlay` 的 `check(bHasBegunPlay)`（第 1668 行）：对未 BeginPlay 的组件调 `EndPlay` 会直接断言；`AActor::EndPlay` 的调用点已用 `HasBegunPlay()` 过滤（`Actor.cpp` 第 3279 行）。
-2. `EndPlay` 中对蓝图事件的调用有 **GC 期保护**（第 1681 行）：`!HasAnyFlags(RF_BeginDestroyed) && !IsUnreachable()` 为假时跳过 `ReceiveEndPlay`，避免在 GC 过程中回调蓝图。
-3. `OnUnregister`（第 1616 行，全文 11 行）只做状态复位：`bRegistered = false`、`RegistrationState = None`、`ClearNeedEndOfFrameUpdate()`；真正的资源释放发生在它之前的 `DestroyPhysicsState` / `DestroyRenderState_Concurrent`。
-4. `DestroyComponent` 的顺序（第 2153 行起）：`bIsBeingDestroyed` 重入保护 → `EndPlay(Destroyed)`（若已 BeginPlay）→ `UninitializeComponent()`（若已初始化）→ `bIsReadyForReplication = false` → `UnregisterComponent()` → 从 `BlueprintCreatedComponents` 或 `InstanceComponents` 移除 → `RemoveOwnedComponent` → 若是根组件则 `SetRootComponent(NULL)` → `OnComponentDestroyed(false)` → `MarkAsGarbage()`。
-5. **组件销毁是"同步注销 + 延后回收"**：与 Actor 的 `DestroyActor` 相比，组件在同一个调用栈里就把物理/渲染状态拆干净了，只有对象内存交给 GC；因此销毁组件后立即 `IsValid()` 判断仍然为真，但 `IsRegistered()` 已为假。
-
-### 5. `MarkAsGarbage` 的真实归属
-
-- `AActor::MarkAsGarbage` 与 `UActorComponent::MarkAsGarbage` **都不是自有成员**，而是继承自 `UObjectBaseUtility`：`Engine\Source\Runtime\CoreUObject\Public\UObject\UObjectBaseUtility.h` 第 207 行 `inline void MarkAsGarbage()`，实现为 `check(!IsRooted())` → `AtomicallySetFlags(RF_MirroredGarbage)` → `GUObjectArray.IndexToObject(InternalIndex)->SetGarbage()` → 清除 `Async` 标记（使对象对 GC 立即可见）。
-- 因此销毁链的终点不是"释放内存"，而是"让对象在下一次 GC 时被判定为显式销毁/不可达"。`UWorld::DestroyActor`（`LevelActor.cpp` 第 1055 行）、`UActorComponent::DestroyComponent`（`ActorComponent.cpp` 第 2204 行）与 `AActor::PostActorConstruction` 的世界未初始化分支（`Actor.cpp` 第 4539 行）调用的是同一个函数。
-
-### 6. 销毁链时序（概念示意）
-
-```mermaid
-sequenceDiagram
-    participant Caller as 调用方
-    participant Actor as AActor
-    participant World as UWorld
-    participant Comp as UActorComponent
-    Caller->>Actor: Destroy()
-    Actor->>World: DestroyActor(this)
-    World->>Actor: Destroyed()
-    Actor->>Actor: RouteEndPlay(Destroyed)
-    Actor->>Actor: EndPlay(Destroyed)（仅 bActorInitialized 且已 BeginPlay）
-    Actor->>Comp: EndPlay(Destroyed)（仅 HasBegunPlay 的组件）
-    World->>Actor: RemoveActor() 从关卡列表移除
-    World->>Actor: UnregisterAllComponents()
-    Actor->>Comp: ExecuteUnregisterEvents() 物理 → 渲染 → OnUnregister
-    World->>Actor: MarkAsGarbage() / MarkComponentsAsGarbage()
-    World->>Actor: RegisterAllActorTickFunctions(false, true)
-    Note over Actor,Comp: 内存释放延后到 GC，不在本调用栈内
-```
-
-事实边界：本节顺序为源码静态阅读结论，未在 Editor / DedicatedServer 实跑对照；`bShouldModifyLevel`、`bNetForce`、`AllowDestroyNonNetworkActors`、`UE_SUPPORT_FOR_ACTOR_TICK_DISABLE`、`IsGameWorld()` 等分支都会改变实际行为，需要运行时验证。
-
----
-
-## 常见问题与排障 FAQ
-
-**Q1：为什么在 C++ 构造函数中调用 `GetWorld()` 会返回 `nullptr`？**
-Actor 在编译期和创建初始阶段由 `StaticAllocateObject` 生成裸内存时，并没有 Outer 指向 UWorld，其构造函数是在 CDO 模板环境下执行的。任何依赖世界、关卡或时间的逻辑必须推迟到 `PostInitializeComponents` 或 `BeginPlay` 中执行。
-
-**Q2：如何安全地实现“在生成 Actor 时传入初始化参数且在 BeginPlay 前生效”？**
-使用延迟生成模式（Deferred Spawning）：
-```cpp
-FActorSpawnParameters SpawnParams;
-SpawnParams.bDeferConstruction = true; // 开启延迟构造
-AMyActor* NewActor = World->SpawnActor<AMyActor>(AMyActor::StaticClass(), Transform, SpawnParams);
-if (NewActor)
-{
-    NewActor->MyCustomParameter = 100.0f; // 此时 UCS 构造脚本和 BeginPlay 均未执行，可安全赋值
-    NewActor->FinishSpawning(Transform);  // 触发构造脚本与初始化
-}
-```
-
-**Q3：动态创建的组件为什么没有生效渲染和物理？**
-通过 C++ 运行期调用 `NewObject<UStaticMeshComponent>(this)` 创建的组件，默认处于未注册状态。必须紧接着显式调用 `NewComp->RegisterComponent()`，引擎才会触发 `ExecuteRegisterEvents` 为其创建渲染代理和物理状态。
-
----
-
-## 关联阅读与前后置专题
-
-- [01-UPROPERTY与反射系统源码](01-UPROPERTY与反射系统源码.md)：对象反射属性内存对齐与 CDO 拷贝机理；
-- [02-UObject与垃圾回收源码](02-UObject与垃圾回收源码.md)：UObject 物理内存分配与二阶段销毁底层源码；
-- [04-Gameplay框架与登录流程源码](../../07-网络与游戏服务端/会话身份与在线服务/04-Gameplay框架与登录流程源码.md)：GameMode 与 PlayerController 的 Spawn 时序与 Possess 机制；
-- [01-引擎基础/02-Actor与Component生命周期](02-Actor与Component生命周期.md)：生命周期使用层规范与避坑指南。
+- [Actor 与 Component 生命周期](02-Actor与Component生命周期.md)：四种入口、最小日志候选与使用层 FAQ
+- [UPROPERTY 与反射系统源码](01-UPROPERTY与反射系统源码.md)：共享字段描述与每实例值的分层
+- [UObject 与垃圾回收源码](02-UObject与垃圾回收源码.md)：对象身份、引用报告、ready 与最终释放
+- [Gameplay 框架与登录流程源码](../../07-网络与游戏服务端/会话身份与在线服务/04-Gameplay框架与登录流程源码.md)：网络框架创建与 Possess 的专题入口
+- [World 关卡与 Subsystem 体系](../世界组织与资源加载/07-World关卡与Subsystem体系.md)：宿主集合、依赖初始化与前置世界钩子
