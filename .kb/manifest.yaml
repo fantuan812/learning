@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-05 (Mass framework teaching and access contracts; historical identity preserved).
+# Generated: 2026-10-05 (ZoneGraph and SmartObject interaction lifecycle contracts; historical identity preserved).
 version: 4
 
 okf:
@@ -1564,8 +1564,8 @@ documents:
   "知识/06-游戏AI/导航移动与群体协同/06-ZoneGraph与SmartObjects.md":
     kind: doc
     maturity: L2
-    bytes: 25200
-    lines: 417
+    bytes: 59165
+    lines: 666
   "知识/06-游戏AI/导航移动与群体协同/21-Mass与StateTree源码.md":
     kind: doc
     maturity: L2
