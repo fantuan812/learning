@@ -24,6 +24,6 @@ maturity: L0
 - [05 博弈搜索与对战 AI（Minimax / Alpha-Beta / MCTS）](<05-博弈搜索与对战AI.md>)（概念与机制）
 - [06 模糊逻辑与连续决策（Fuzzy Logic）](<06-模糊逻辑与连续决策.md>)（概念与机制）
 - [07 GameplayTasks、StateTree、GAS 与 AI 协同闭环](<07-GameplayTasks-StateTree-GAS-AI协同.md>)（概念与机制）
-- [UE 引擎源码分析 12：行为树与 AI 源码剖析](<12-行为树与AI源码.md>)（源码解析）
+- [UE 行为树执行机制：公开合同与历史源码片段对照](<12-行为树与AI源码.md>)（源码解析）
 
 [游戏AI](<../README.md>) · [八域总览](<../../README.md>)

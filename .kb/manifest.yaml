@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-05 (UE behavior tree and StateTree lifecycle teaching; original source and results preserved).
+# Generated: 2026-10-05 (Generic BT and UE source explanations; historical excerpts and records preserved).
 version: 4
 
 okf:
@@ -99,7 +99,7 @@ documents:
   "00_Index/UE专题.md":
     kind: doc
     maturity: L0
-    bytes: 27458
+    bytes: 27469
     lines: 208
   "00_Index/axes/README.md":
     kind: README
@@ -189,7 +189,7 @@ documents:
   "00_Index/跨域关系.md":
     kind: doc
     maturity: L0
-    bytes: 8126
+    bytes: 8148
     lines: 75
   "AGENTS.md":
     kind: doc
@@ -1519,7 +1519,7 @@ documents:
   "知识/06-游戏AI/README.md":
     kind: README
     maturity: L0
-    bytes: 20311
+    bytes: 20322
     lines: 177
   "知识/06-游戏AI/学习适应与社会行为/03-学习型AI.md":
     kind: doc
@@ -1584,7 +1584,7 @@ documents:
   "知识/06-游戏AI/感知决策与行为规划/01-行为树详解.md":
     kind: doc
     maturity: L2
-    bytes: 58185
+    bytes: 58066
     lines: 790
   "知识/06-游戏AI/感知决策与行为规划/02-感知系统与EQS.md":
     kind: doc
@@ -1599,8 +1599,8 @@ documents:
   "知识/06-游戏AI/感知决策与行为规划/03-行为树通用原理.md":
     kind: doc
     maturity: L2
-    bytes: 30817
-    lines: 632
+    bytes: 47014
+    lines: 639
   "知识/06-游戏AI/感知决策与行为规划/04-Utility与GOAP.md":
     kind: doc
     maturity: L2
@@ -1609,7 +1609,7 @@ documents:
   "知识/06-游戏AI/感知决策与行为规划/05-StateTree状态树.md":
     kind: doc
     maturity: L2
-    bytes: 50666
+    bytes: 50628
     lines: 654
   "知识/06-游戏AI/感知决策与行为规划/05-博弈搜索与对战AI.md":
     kind: doc
@@ -1629,12 +1629,12 @@ documents:
   "知识/06-游戏AI/感知决策与行为规划/12-行为树与AI源码.md":
     kind: doc
     maturity: L2
-    bytes: 127339
-    lines: 1980
+    bytes: 135407
+    lines: 2044
   "知识/06-游戏AI/感知决策与行为规划/README.md":
     kind: README
     maturity: L0
-    bytes: 1471
+    bytes: 1482
     lines: 29
   "知识/06-游戏AI/战斗战术与机器人/02-战斗与Boss设计.md":
     kind: doc
