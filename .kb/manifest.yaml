@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-05 (MMR exact-byte recovery and split evidence packaging; mechanically recalculated).
+# Generated: 2026-10-05 (Actor Component and WorldSubsystem lifecycle teaching; static contracts and historical-source preservation).
 version: 4
 
 okf:
@@ -784,8 +784,8 @@ documents:
   "知识/03-引擎架构与资源系统/世界组织与资源加载/07-World关卡与Subsystem体系.md":
     kind: doc
     maturity: L2
-    bytes: 20497
-    lines: 323
+    bytes: 32583
+    lines: 400
   "知识/03-引擎架构与资源系统/世界组织与资源加载/08-关卡流送LevelStreaming.md":
     kind: doc
     maturity: L2
@@ -824,8 +824,8 @@ documents:
   "知识/03-引擎架构与资源系统/对象模型与生命周期/02-Actor与Component生命周期.md":
     kind: doc
     maturity: L2
-    bytes: 21186
-    lines: 436
+    bytes: 36597
+    lines: 525
   "知识/03-引擎架构与资源系统/对象模型与生命周期/02-UObject与垃圾回收源码.md":
     kind: doc
     maturity: L1
@@ -833,9 +833,9 @@ documents:
     lines: 2099
   "知识/03-引擎架构与资源系统/对象模型与生命周期/03-Actor与Component生命周期源码.md":
     kind: doc
-    maturity: L2
-    bytes: 109283
-    lines: 2136
+    maturity: L1
+    bytes: 113295
+    lines: 2215
   "知识/03-引擎架构与资源系统/对象模型与生命周期/07-容器与内存管理源码.md":
     kind: doc
     maturity: L2
