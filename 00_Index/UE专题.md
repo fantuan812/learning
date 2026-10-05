@@ -143,7 +143,7 @@ UE是技术栈，源码解析是内容类型，官方文档是来源。本视图
 - [03 NavMesh 寻路](<../知识/06-游戏AI/导航移动与群体协同/03-NavMesh寻路.md>)
 - [04 Mass 实体框架与群集模拟（Mass Entity Framework & Crowd Simulation）](<../知识/06-游戏AI/导航移动与群体协同/04-Mass实体框架与群集模拟.md>)
 - [06 ZoneGraph 与 SmartObjects](<../知识/06-游戏AI/导航移动与群体协同/06-ZoneGraph与SmartObjects.md>)
-- [UE 引擎源码分析 21：Mass 与 StateTree 源码分析](<../知识/06-游戏AI/导航移动与群体协同/21-Mass与StateTree源码.md>)（源码解析）
+- [Mass 与 StateTree 执行机制：公开合同与历史源码片段对照](<../知识/06-游戏AI/导航移动与群体协同/21-Mass与StateTree源码.md>)（源码解析）
 - [01 行为树详解（Behavior Tree）](<../知识/06-游戏AI/感知决策与行为规划/01-行为树详解.md>)
 - [02 感知系统与 EQS](<../知识/06-游戏AI/感知决策与行为规划/02-感知系统与EQS.md>)
 - [05 StateTree 状态树（State Tree）](<../知识/06-游戏AI/感知决策与行为规划/05-StateTree状态树.md>)
