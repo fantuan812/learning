@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-05 (AI task and ability coordination lifecycle contracts; historical identity preserved).
+# Generated: 2026-10-05 (Native GameplayTasks framework and visible source contracts; historical identity and excerpts preserved).
 version: 4
 
 okf:
@@ -1354,13 +1354,13 @@ documents:
   "知识/05-Gameplay与交互系统/玩法架构与任务协作/09-GameplayTask任务框架.md":
     kind: doc
     maturity: L2
-    bytes: 23586
-    lines: 447
+    bytes: 55167
+    lines: 596
   "知识/05-Gameplay与交互系统/玩法架构与任务协作/29-GameplayTasks源码.md":
     kind: doc
     maturity: L2
-    bytes: 26167
-    lines: 465
+    bytes: 44707
+    lines: 582
   "知识/05-Gameplay与交互系统/玩法架构与任务协作/39-Lyra源码总览与阅读路线.md":
     kind: doc
     maturity: L2
