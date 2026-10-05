@@ -1,0 +1,47 @@
+Room confirmation and allocation contracts
+PARTIAL HUMAN SUMMARY — NOT THE COMPLETE RAW EVIDENCE
+
+The filename suffix 20261004 is a batch identifier. Corrected-model and integration runs occurred on 2026-10-05 UTC; each earlier preparation record preserves its own timestamp.
+
+What changed
+- Only all-Accepted valid rooms with their own allocation may become Ready/Start.
+- A pre-start Decline/Drop permanently invalidates that original member set. The chosen teaching policy waits for the original timeout and does not automatically requeue survivors.
+- A room releases only the allocation it still owns. Cross Drop/Decline cannot requeue the same member repeatedly or consume another room's allocation.
+- Existing room IDs, including Closed, are rejected before writes with invalid_argument. InProgress Drop is rejected; Settle owns that release.
+These are serial, single-service memory contracts. They do not implement a production DS lease, concurrency or durable exactly-once processing.
+
+Final SHA-256
+model: e2d0e72fb445a38436d6e1d73f3f61e3873d2a73f43903372339938d978c8af9
+test: fae839a333532b859cc1375b75916e4737e6b0626da96f7715c16ba2a39fa7c0
+runner: 99c39faea88f4effa759ad2acf5ba48c8b443cb557f0c33a232b3cf9c218c33d
+
+Actual results
+- Linux GCC14.2, O0+NDEBUG/O2/UBSan: each 12 groups, 305 checks, 0 failures; retained R1-R31: 31/0.
+- Separately written legal-event oracle: 104/0 per mode. Local predicate/injected-state defensive probes: 12/0 separately, not added to claim coverage.
+- Nine intentionally faulty compiled variants produced designated new-case failures (native exit 1); each still passed the old 31 checks. AllDecided alone survives the legal-event oracle under D1 (104/0); the defensive probe fails 7/5. The explicitly two-site D1+AllDecided rollback fails 95/9 in legal events. These domains are not conflated.
+- Final ordinary Python and Python -O runner self-tests: 115/0 each. Independent review checked 38 prior-version CLI executions and inherited their unchanged protocol logic; final close-order success/EBADF negatives were actually rechecked.
+- The exact final Linux PowerShell CI block ran from 2026-10-05T01:06:45.863538Z to 01:07:39.923605Z, exit 0, with source hashes unchanged. A synthetic first Python exit 23 propagated and prevented the second command.
+- CI block SHA-256: 5279fa5bebb926e588c3bf8582d237d46765e85bb1ea4f58adf97e3317f917c4.
+
+Preservation and corrections
+The prior 77 result files, 282 protected materials and 18 other model/helper files are unchanged. The original independent baseline result (51 pass, 50 fail, exit 1) remains; failures include downstream consequences, not 50 independent defects.
+Eighteen early supplemental model_sha256 fields incorrectly named the unmutated model. Actual argv and translation-unit hashes were already correct. Original bytes remain, with exact-record corrections in author/room-author-verification/technical-corrections.json. Current direct retained builds record the actual source hash. Earlier 113-check and close-late runner results are historical, not evidence of the final 115-check version.
+
+Complete model/CLI/CI archive
+file: room_contract_20261004.raw.jsonl.gz
+format: learning.room.evidence.v1
+contents: 1 header + 1,704 file records; 15,994,847 original bytes
+JSONL size: 21,690,531 bytes
+gzip size: 3,984,932 bytes
+gzip SHA-256: 682285b7c6b7110db2d96ebf672ebcf59a2cc6f62d6a6a398e37d73ad64ba5ff
+JSONL SHA-256: 371818a9efd8c7daffb76e023b7bd479f1cd4cbedaeaf1910a66a11a483ac846
+
+Each record's bytes, length and SHA were compared to its original file. Deterministic gzip uses mtime=0 and an empty original filename. No aliases, followed symlinks, compiled binaries, internal review prose or unrelated MMR material are included. Executed synthetic scripts with .exe suffixes remain source evidence. All selected earlier attempts, expected failures and partial I/O-failure files are preserved. 1,704 logical files do not mean 1,704 executions. Archive-integrity checks and repository gates do not recursively archive themselves.
+
+Reproduce using distinct, nonexistent directories outside the repository
+python3 -B evidence/tests/match-core/scripts/run_room_contract.py --cxx g++-14 --mode all --negative-controls --timeout-seconds 120 --output-dir <NEW_EXTERNAL_DIRECTORY>
+python3 -O -B evidence/tests/match-core/scripts/run_room_contract.py --self-test --timeout-seconds 120 --output-dir <ANOTHER_NEW_EXTERNAL_DIRECTORY>
+
+README.md contains the complete normal/-O-safe gzip/base64/length/SHA recipe, with no extraction writes. The same recipe underwent 42 format checks: 2 successes and 40 expected rejections. Integrity does not establish semantic correctness. Capture is a bounded regular-file snapshot; escaped descendants are not guaranteed captured or terminated.
+
+Not run: native Windows/MSVC Room models, actual matchmaking pipelines, DS/network/Redis/DB services, distributed leases/fencing, durable transactions or new performance benchmarks. MMR/team issues remain separately qualified and queued. This batch adds no fully remediated core article.

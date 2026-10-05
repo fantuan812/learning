@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -46,7 +47,7 @@ struct Member {
     int64_t settledRevision = -1;
 };
 
-// 房间外部依赖：名额池（与 01 进入游戏的 DS 租约为同一概念，此处简化为计数）
+// 单服务、单线程内存名额池；不是真实 DS 租约、持久化去重或跨进程 fencing。
 struct AllocatorPool {
     int capacity = 0;
     int used = 0;
@@ -73,11 +74,14 @@ struct Room {
     int64_t settleRevision = 0;
     int settles = 0;
     std::vector<std::string> log;
-    std::vector<std::string> requeued;   // 拒绝/掉线后回到队列的玩家
+    std::vector<std::string> requeued;   // 指定退出者，以及超时仍未确认者
+    bool ownsAllocation = false;       // 资源事实：不能从 Accepted 人数推断
+    bool memberSetInvalidated = false; // D1：本生命周期不可重组或再次 Ready
 
-    bool AllDecided() const {
+    bool AllAccepted() const {
+        if (members.empty()) return false;
         for (const Member& m : members)
-            if (m.slot == Slot::kWaitConfirm) return false;
+            if (m.slot != Slot::kAccepted) return false;
         return true;
     }
     int CountAccepted() const {
@@ -97,12 +101,19 @@ struct Room {
     }
 };
 
+// API 前置：Room& 必须来自本服务 CreateRoom，且调用者不直接改写公开状态；
+// 成员 ID 非空且唯一；时间 tick/window 均非负，now + confirmWindow 可由 int64_t 表示。
+// pool.capacity 非负；成员/名额/事件计数及容器人数须在相应 int/int64_t 范围内可表示。
+// 不提供任意输入验证或分配异常的强事务保证；所有动作由调用者串行执行。
 struct MatchService {
     AllocatorPool pool;
     std::map<std::string, Room> rooms;
 
     Room& CreateRoom(const std::string& id, const std::vector<std::string>& ids,
                      int64_t now, int64_t confirmWindow) {
+        // D3 新失败合同：即使 payload 相同或旧房 Closed，也拒绝 ID 重用。
+        // 调用者须处理 invalid_argument；异常拒绝不等于幂等创建成功。
+        if (rooms.find(id) != rooms.end()) throw std::invalid_argument("room ID already exists");
         Room& r = rooms[id];
         r.id = id;
         r.state = RoomState::kMatched;
@@ -117,11 +128,23 @@ struct MatchService {
         return r;
     }
 
-    // 确认进服：幂等（重复确认不重复推进状态）
+    // 只消费本房仍持有的一份名额；成员 slot 与资源所有权彼此独立。
+    void ReleaseAllocation(Room& r) {
+        if (!r.ownsAllocation) return;
+        pool.Release();
+        r.ownsAllocation = false;
+    }
+
+    static bool PreStart(const Room& r) {
+        return r.state == RoomState::kMatched || r.state == RoomState::kAllocating ||
+               r.state == RoomState::kReady;
+    }
+
+    // 确认进服：有效生命周期内重复确认不推进状态；失效旧房全部拒绝。
     bool Confirm(Room& r, const std::string& id, int64_t now) {
         Member* m = r.Find(id);
         if (!m) return false;
-        if (r.state == RoomState::kClosed) return false;
+        if (r.state == RoomState::kClosed || r.memberSetInvalidated) return false;
         if (m->slot == Slot::kAccepted) return true;               // 幂等
         if (m->slot != Slot::kWaitConfirm) return false;           // 已拒绝/已掉线
         if (now > r.confirmDeadline) return false;                 // 迟到的确认无效
@@ -132,47 +155,46 @@ struct MatchService {
                 m->slot = Slot::kWaitConfirm;                       // 回滚，保持可重试
                 return false;
             }
+            r.ownsAllocation = true;
             r.state = RoomState::kAllocating;
             r.Push("Allocating");
         }
-        if (r.state == RoomState::kAllocating && r.AllDecided()) {
+        if (r.state == RoomState::kAllocating && r.ownsAllocation && r.AllAccepted()) {
             r.state = RoomState::kReady;
             r.Push("Ready");
         }
         return true;
     }
 
-    // 拒绝确认：回队列，且同一玩家不得无代价反复拒绝
+    // D1：只允许待确认者拒绝；首次退出使原成员集合失效，其他成员不自动回队。
     bool Decline(Room& r, const std::string& id) {
         Member* m = r.Find(id);
-        if (!m || r.state == RoomState::kClosed) return false;
-        if (m->slot == Slot::kDeclined) return false;               // 已经拒绝过
-        if (m->slot == Slot::kAccepted) return false;               // 已确认，不允许反悔
+        if (!m || !PreStart(r)) return false;
+        if (m->slot != Slot::kWaitConfirm) return false;
         m->slot = Slot::kDeclined;
         ++m->declinedCount;
         r.requeued.push_back(id);
-        if (r.state == RoomState::kAllocating) {                    // 释放已占名额
-            pool.Release();
+        r.memberSetInvalidated = true;
+        ReleaseAllocation(r);
+        if (r.state == RoomState::kAllocating) {
             r.state = RoomState::kMatched;
             r.Push("Allocating->Matched(decline)");
         }
         return true;
     }
 
-    // 掉线：回队列并释放名额（与拒绝同构，但不计惩罚）
+    // D2：只处理开局前 Drop；赛中拒绝且无副作用，Settle 负责赛中释放。
     bool Drop(Room& r, const std::string& id) {
         Member* m = r.Find(id);
-        if (!m || r.state == RoomState::kClosed) return false;
-        if (m->slot == Slot::kDropped) return false;
-        const bool wasAccepted = (m->slot == Slot::kAccepted);
+        if (!m || !PreStart(r)) return false;
+        if (m->slot != Slot::kWaitConfirm && m->slot != Slot::kAccepted) return false;
         m->slot = Slot::kDropped;
         r.requeued.push_back(id);
-        if (wasAccepted) {
-            pool.Release();
-            if (r.state == RoomState::kReady || r.state == RoomState::kAllocating) {
-                r.state = RoomState::kMatched;
-                r.Push("->Matched(drop)");
-            }
+        r.memberSetInvalidated = true;
+        ReleaseAllocation(r);
+        if (r.state == RoomState::kReady || r.state == RoomState::kAllocating) {
+            r.state = RoomState::kMatched;
+            r.Push("->Matched(drop)");
         }
         return true;
     }
@@ -181,39 +203,40 @@ struct MatchService {
     bool Timeout(Room& r, int64_t now) {
         if (r.state == RoomState::kClosed || r.state == RoomState::kInProgress) return false;
         if (now <= r.confirmDeadline) return false;
-        bool heldSlot = false;
         for (Member& m : r.members) {
-            if (m.slot == Slot::kAccepted) { heldSlot = true; m.slot = Slot::kDropped; }
+            if (m.slot == Slot::kAccepted) m.slot = Slot::kDropped;
             if (m.slot == Slot::kWaitConfirm) { m.slot = Slot::kDropped; r.requeued.push_back(m.id); }
         }
-        if (heldSlot) pool.Release();     // 一个房间只持有一个名额
+        ReleaseAllocation(r);
         r.state = RoomState::kClosed;
         r.Push("Closed(confirm_timeout)");
         return true;
     }
 
     bool Start(Room& r) {
-        if (r.state != RoomState::kReady) return false;
+        if (r.state != RoomState::kReady || r.memberSetInvalidated ||
+            !r.ownsAllocation || !r.AllAccepted()) return false;
         r.state = RoomState::kInProgress;
         r.Push("InProgress");
         return true;
     }
 
-    // 结算：结算版本号保证"只结算一次"；重复请求幂等返回同一版本
+    // 仅本进程内重复结算返回同一版本；不证明崩溃/跨服务 exactly-once。
     int64_t Settle(Room& r) {
         if (r.settles > 0) return r.settleRevision;      // 幂等：已结算，直接回同一版本
         if (r.state != RoomState::kInProgress && r.state != RoomState::kSettling) return -1;
+        if (!r.ownsAllocation) return -1;
         r.state = RoomState::kSettling;
         ++r.settleRevision;
         ++r.settles;
         for (Member& m : r.members) m.settledRevision = r.settleRevision;
         r.state = RoomState::kClosed;
-        pool.Release();                                 // 一个房间只持有一个名额，只释放一次
+        ReleaseAllocation(r);
         r.Push("Closed(settled)");
         return r.settleRevision;
     }
 
-    // 中途加入（backfill）：仅开局后、人数未满、且该玩家与房间 MMR 差在容忍内
+    // Backfill 仅检查进行中、容量和重复 ID；没有 MMR/party/断线重连策略。
     bool Backfill(Room& r, const std::string& id, int capacity) {
         if (r.state != RoomState::kInProgress) return false;
         if (static_cast<int>(r.members.size()) >= capacity) return false;
@@ -415,7 +438,7 @@ static void TestSlotLeakUnderChurn() {
           "R30 after a churny mixed sequence the pool holds exactly the live rooms",
           "used=" + std::to_string(svc.pool.used) + " expected=" + std::to_string(expected));
     Check(svc.pool.used <= svc.pool.capacity,
-          "R31 the pool never exceeded its capacity during the whole sequence",
+          "R31 final pool usage is within capacity (not a whole-sequence monitor)",
           "used=" + std::to_string(svc.pool.used) + "/" + std::to_string(svc.pool.capacity));
 }
 
