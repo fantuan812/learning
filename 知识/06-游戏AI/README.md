@@ -52,7 +52,7 @@ maturity: L0
 
 ## 源码解析
 
-- [UE 引擎源码分析 21：Mass 与 StateTree 源码分析](<导航移动与群体协同/21-Mass与StateTree源码.md>)
+- [Mass 与 StateTree 执行机制：公开合同与历史源码片段对照](<导航移动与群体协同/21-Mass与StateTree源码.md>)
 - [UE 行为树执行机制：公开合同与历史源码片段对照](<感知决策与行为规划/12-行为树与AI源码.md>)
 - [UE5.8 Lyra 源码解析 46：AI 机器人与队伍系统](<战斗战术与机器人/46-Lyra-AI机器人与队伍源码.md>)
 

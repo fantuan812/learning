@@ -18,6 +18,6 @@ maturity: L0
 - [03 NavMesh 寻路](<03-NavMesh寻路.md>)（概念与机制）
 - [04 Mass 实体框架与群集模拟（Mass Entity Framework & Crowd Simulation）](<04-Mass实体框架与群集模拟.md>)（概念与机制）
 - [06 ZoneGraph 与 SmartObjects](<06-ZoneGraph与SmartObjects.md>)（概念与机制）
-- [UE 引擎源码分析 21：Mass 与 StateTree 源码分析](<21-Mass与StateTree源码.md>)（源码解析）
+- [Mass 与 StateTree 执行机制：公开合同与历史源码片段对照](<21-Mass与StateTree源码.md>)（源码解析）
 
 [游戏AI](<../README.md>) · [八域总览](<../../README.md>)
