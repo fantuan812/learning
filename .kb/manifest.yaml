@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-05 (Room confirmation and allocation ownership contracts; mechanically recalculated).
+# Generated: 2026-10-05 (UObject reflection and lifetime teaching contracts; mechanically recalculated).
 version: 4
 
 okf:
@@ -814,13 +814,13 @@ documents:
   "知识/03-引擎架构与资源系统/对象模型与生命周期/01-UObject与反射系统.md":
     kind: doc
     maturity: L2
-    bytes: 23288
-    lines: 442
+    bytes: 33695
+    lines: 490
   "知识/03-引擎架构与资源系统/对象模型与生命周期/01-UPROPERTY与反射系统源码.md":
     kind: doc
     maturity: L2
-    bytes: 118372
-    lines: 2293
+    bytes: 105372
+    lines: 2351
   "知识/03-引擎架构与资源系统/对象模型与生命周期/02-Actor与Component生命周期.md":
     kind: doc
     maturity: L2
@@ -828,9 +828,9 @@ documents:
     lines: 436
   "知识/03-引擎架构与资源系统/对象模型与生命周期/02-UObject与垃圾回收源码.md":
     kind: doc
-    maturity: L2
-    bytes: 112603
-    lines: 2102
+    maturity: L1
+    bytes: 95609
+    lines: 2099
   "知识/03-引擎架构与资源系统/对象模型与生命周期/03-Actor与Component生命周期源码.md":
     kind: doc
     maturity: L2
