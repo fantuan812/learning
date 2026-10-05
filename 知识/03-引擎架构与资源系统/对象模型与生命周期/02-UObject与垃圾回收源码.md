@@ -3,118 +3,364 @@ type: Mechanism
 title: "UE 引擎源码分析 02：UObject 与垃圾回收源码剖析"
 status: stable
 verified: []
-maturity: L2
-updated: 2026-09-14
+maturity: L1
+updated: 2026-10-05
+sources:
+  - id: incremental-gc
+    resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/incremental-garbage-collection-in-unreal-engine
+  - id: object-pointers
+    resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/object-pointers-in-unreal-engine
+  - id: property-api
+    resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/CoreUObject/FProperty
+  - id: object-base-utility
+    resource: https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/CoreUObject/UObjectBaseUtility?lang=en-US
+  - id: actor-lifecycle
+    resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-engine-actor-lifecycle
+  - id: asserts
+    resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/asserts-in-unreal-engine
+  - id: cpp-construction
+    resource: https://eel.is/c%2B%2Bdraft/class.cdtor
 ---
 
 # UE 引擎源码分析 02：UObject 与垃圾回收源码剖析
-> 知识成熟度：L2（已按 UE5.8 源码基线全面补齐真实源码段落、GUObjectArray 槽位分配、增量可达性分析、GC 标记清除算法与对象销毁全流程）。
-> 对应知识点：[01-引擎基础/01 UObject 与反射系统](01-UObject与反射系统.md)
 
-> 以本机 UE5.8 源码为准，逐行深度剖析从 `NewObject<T>` 内存分配（`StaticAllocateObject`）、`GUObjectArray` 全局对象池注册，到 `CollectGarbageInternal` 可达性分析（`PerformReachabilityAnalysis`）、增量 GC 时间切片、弱引用解析清空，以及 `ConditionalBeginDestroy` 优雅析构的全链路底层源码实现。
+> 知识成熟度：L1。本文的主要承诺是解释对象槽位、引用扫描描述和分批清理的不变量；内部函数材料来自既有文档的历史节选，未与其所称私有 checkout 对勘。旧标 L2 曾宣称“全面补齐真实源码”，证据不足，本次按主要内部算法承诺调整。公开API核对与标准语言模型分别记录，不替整篇认证。
+> 使用前置：[UObject 与反射系统](01-UObject与反射系统.md)；元数据前置：[UPROPERTY 与反射源码](01-UPROPERTY与反射系统源码.md)。
 
----
+- **版本基准**：2026-10-05 核对的Epic公开UE5.8标签文档；历史私有CL仅作待复核线索，不代表当前环境
+- **最后更新**：2026-10-05，重写教学合同、条件化推导与证据边界
 
-## 元数据
+## 一、阅读合同：读到了什么，能推出什么
 
-- **版本基准**：UE 5.8.0 / CL 55116800 / 分支 `++UE5+Release-5.8`（本机安装目录 `C:\Program Files\Epic Games\UE_5.8\Engine`）。
-- **源码依据**（行号以 5.8 源码 checkout 为准，安装版 5.8.0 可能相差数行）：
-  - `Engine\Source\Runtime\CoreUObject\Public\UObject\UObjectBase.h`、`UObjectBaseUtility.h`、`UObject.h`（三层类拓扑）
-  - `Engine\Source\Runtime\CoreUObject\Public\UObject\UObjectGlobals.h`（`NewObject<T>` 模板声明、`CollectGarbage` / `TryCollectGarbage` 声明）
-  - `Engine\Source\Runtime\CoreUObject\Private\UObject\UObjectGlobals.cpp`（`StaticConstructObject_Internal`、`StaticAllocateObject`）
-  - `Engine\Source\Runtime\CoreUObject\Public\UObject\UObjectArray.h`（`FUObjectItem`、`FChunkedFixedUObjectArray`、`FUObjectArray` 槽位与序列号 API）
-  - `Engine\Source\Runtime\CoreUObject\Private\UObject\UObjectArray.cpp`（`AllocateUObjectIndex`、`FreeUObjectIndex`、`AllocateSerialNumber`）
-  - `Engine\Source\Runtime\CoreUObject\Private\UObject\GarbageCollection.cpp`（`UE::GC` 增量可达性分析、`PerformReachabilityAnalysis`、`MarkObjectsAsUnreachable`、`IncrementalPurgeGarbage`、`UnhashUnreachableObjects`、`CollectGarbage` / `TryCollectGarbage`、`UClass::AssembleReferenceTokenStreamInternal`）
-  - `Engine\Source\Runtime\CoreUObject\Private\UObject\GarbageCollectionInternalFlags.h`（`FGCFlags` 可达位读写）
-  - `Engine\Source\Runtime\CoreUObject\Private\UObject\GCScopeLock.h`（`FGCCSyncObject` GC 锁）
-  - `Engine\Source\Runtime\CoreUObject\Public\UObject\GarbageCollectionSchema.h`（`EMemberType`、`FSchemaView`、`FMemberPacked` schema 编码）
-  - `Engine\Source\Runtime\CoreUObject\Public\UObject\FastReferenceCollector.h`（`EGCOptions`、`VisitMembers` 成员遍历内核）
-  - `Engine\Source\Runtime\CoreUObject\Public\UObject\WeakObjectPtr.h`、`Private\UObject\WeakObjectPtr.cpp`（`FWeakObjectPtr` 序列号机制）
-- **官方参考**：[Unreal Engine 垃圾回收官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
-- **最后更新**：2026-09-14（补深：新增 `FUObjectItem` 槽位/chunk 扩容与序列号分配、`UE::GC` 增量可达性分析状态机、引用 schema（原 token 流）编码与 `VisitMembers` 跳读、增量清理三阶段与 `FGCCSyncObject`、`FWeakObjectPtr` 序列号失效与 `CollectGarbage`/`TryCollectGarbage` 语义五组真实源码；并把 `StaticConstructObject_Internal`、`PerformReachabilityAnalysis`、`IncrementalPurgeGarbage` 三处示例代码替换为逐字源码）。
+本次更新日为 2026-10-05。旧文自述 UE 5.8.0 / CL 55116800 / `++UE5+Release-5.8`；这一身份与旧行号保留为历史线索。实际核对对象是学习仓库中的文档、Epic公开文档（页面标签 UE 5.8）和已有普通 C++/Python 模型。未访问 UE 私有源码、Build.version、UHT 输出，也未运行引擎、PIE、真实 GC 或性能基准。
 
----
+后文把证据分三层：
 
-## 概述与对象生命周期全景模型
+1. **公开使用合同**：强弱引用、实验性增量可达性、写屏障、清理回调与检查宏的文档语义
+2. **节选的字面推导**：若所存代码按其所示执行，某条分支会怎样移动游标、修改哪个槽位、何时允许进入第二趟。即使来源身份待核，算术与控制流仍可检验
+3. **标准模型观察**：普通数组/结构体/整数的结果，只验证限定模型，不代表 UE ABI、并发、回收时序或性能
 
-在虚幻引擎中，所有参与游戏逻辑、反射与序列化的对象均依托于 `UObject` 体系。垃圾回收采用经典的**追踪式标记-清除算法（Tracing Mark-Sweep GC）**：
+历史代码集中在篇后，正文通过 `GC-Bxx` 标识引用；45个引擎围栏均保留原字节。某块有截断或原注释不准确时，不填造“真实实现”，而是限定它能回答的问题。本文没有新增 `verified` 事件。
+
+## 二、先分开三个容易混淆的数据结构
+
+| 结构 | 保存什么 | 它不回答什么 |
+|---|---|---|
+| 全局对象槽位表 | 对象身份索引、对象地址、序列号和内部状态 | 登记对象不等于使它成为根；槽位表不是完整引用图 |
+| 类/结构的引用 schema | 如何从实例中找到需要处理的引用位置或回调 | 描述不是每个实例当前引用值的拷贝 |
+| 可达性工作队列与清理状态 | 哪些对象还要扫描、哪些阶段做到哪里 | 队列名字不能替代跨时间片正确性协议 |
+
+同类实例 A.Target=X、B.Target=Y 可以共享一份“Target在偏移 o”的描述；扫描 A 时必须以 A 为基址，扫描 B 时换成 B。`FProperty` 自身引用一个目标类型 `UClass` 是描述层的边；实例引用 X/Y 是值层的边。把类型描述的 `ScriptAndPropertyObjectReferences` 误当所有实例字段值表，就无法解释 A 改值后 B 为什么不变。
+
+GC通常从受认可的根和显式引用报告出发，沿强边传播可达性。可达owner中的反射USTRUCT值可以继续暴露嵌套强引用；结构体不是独立GC节点。弱/软属性以及 `BindUObject` 弱绑定不会仅因出现在描述中而保活；没有宏的成员也可能通过其他显式机制报告。完整路径的正反例见基础篇。[Object Pointers](https://dev.epicgames.com/documentation/en-us/unreal-engine/object-pointers-in-unreal-engine)
+
+## 三、对象身份先登记，生命周期不能套普通 delete
+
+### 3.1 三层类是职责分工，不是“没有虚函数的快层”
+
+- `UObjectBase` 保存身份和基础状态，包含 `InternalIndex`、`ObjectFlags`、类、名字与 Outer 等；不能漏掉 ObjectFlags 后再说“仅有四字段”
+- `UObjectBaseUtility` 提供对象查询和状态/集群等工具；公开API仍列有 `CanBeClusterRoot`、`CanBeInCluster`、`CreateCluster`、`GetVersePath` 等虚方法
+- `UObject` 提供更完整的反射、序列化与生命周期行为；这不意味着前两层没有虚函数，公开 UObjectBase 也列有虚析构等接口
+
+依据：[UObjectBaseUtility 的 Public Virtual](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/CoreUObject/UObjectBaseUtility?lang=en-US)、[UObjectBase](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/CoreUObject/UObjectBase)。本轮撤回把 GetWorld 定位到 BaseUtility 的说法；公开页面未列某符号不能证明该私有 CL 已删除它。
+
+C++允许构造/析构期间的虚调用，其派发不进入尚未构造或已析构的更派生部分；纯虚调用还有单独限制。“不调虚函数”既不是构造合法性的全部条件，也不能保证没有其他未定义行为。UE构造时不应假定世界/网络服务可用，是对象初始化协议的问题。[C++构造期虚调用](https://eel.is/c%2B%2Bdraft/class.cdtor#4)、[纯虚调用边界](https://eel.is/c%2B%2Bdraft/class.abstract#6)
+
+### 3.2 NewObject 片段里的真实因果顺序
+
+[GC-B03](#gc-b03) 保存 `StaticConstructObject_Internal` 记录。依该片段：取创建参数→分配/复用对象→仅当未复用时调用类构造函数→解开重建守卫→处理适用的编辑器事务和通知→返回对象。
+
+重要的分支是 `!bRecycledSubobject`：已经存在而未销毁的子对象不会再走同一构造步骤。守卫的 `Unlock` 放在构造之后，表达保护半成品的意图；片段没有给出守卫完整实现，不能据一个名字证明全部并发安全。
+
+该函数体没有直接出现 `PostInitProperties()`，只说明此片段未直接调用；需要继续追 `FObjectInitializer` 等路径才能认证确切时序，不据它宣称某旧版本“在这里手调过”。新建、磁盘加载与默认子对象构造必须分开。业务入口按对象类别选择 NewObject、SpawnActor 或默认子对象接口，Outer也不自动成为任意UObject的父销子协议。
+
+## 四、槽位：地址、编号和序列号为何要分开
+
+### 4.1 先算字段下界，再谈 packing 收益
+
+[GC-B06](#gc-b06) 的声明把 `FlagsAndRefCount`、指针部分、`SerialNumber`、`ClusterRootIndex` 分开。按其 packed 分支的固定宽度类型，独立字段已经是：
+
+| 字段组 | 所示存储字节 |
+|---|---:|
+| `int64 FlagsAndRefCount` | 8 |
+| `uint32 ObjectPtrLow` | 4 |
+| `int32 SerialNumber` | 4 |
+| `int32 ClusterRootIndex` | 4 |
+| 未算填充/其他条件成员的合计 | 20 |
+
+按所存声明前的注释，`FlagsAndRefCount`低32位放RefCount，高32位放内部flags（packing时还容纳指针高位载荷）。把它们放入同一64位存储的局部设计意图，是让引用计数更新与“根标志＋引用计数”的联合观察相配合；它不等于每个对象都靠普通引用计数决定存亡，也不凭这段注释证明整个GC的无锁或并发正确性。
+
+因此原来的“16压到12字节”不可能从本段声明推出。真实 `sizeof` 还需要宏取值、指针对齐、padding、RemoteId、统计字段和编译器/平台。普通x86_64模型中packed与unpacked都可为24字节；这也不证明真实UE打包收益为零。字段载荷减少与最终类型大小减少不是同一结论。
+
+### 4.2 两套位坐标：指针高位存到 flag word 低位
+
+按旧注释的假设，指针先利用8字节对齐去掉3个必零位；剩余45位载荷可分为低32位和高13位。这里是**移位后指针的坐标**，不是说取原地址低32位再另外随意挪动。
+
+`FlagsAndRefCount` 的高32位字承担 flags，并在空闲位塞指针载荷。若 `MinFlagBit=14`：
+
+- `FlagsMask = 0xFFFFC000`，覆盖这个32位flag word的位14..31
+- `PtrMask = ~FlagsMask = 0x00003FFF`，覆盖该word的位0..13
+- 原指针的高13位载荷放在 **PtrMask覆盖的区域内**，不能写“PtrMask之外”
+- PtrMask在此假设下有14位，而载荷只需要13位；掩码容量与实际载荷宽度不能混成一个数
+
+这是对声明/注释的无符号32位算术解释；未展示的 `SetObject/GetObject` 才决定准确移位与组合。保留块中“shifted ... to the left”原注释不能替代实现核对，本篇不据此认证打包函数。
+
+### 4.3 分块和槽位复用各解决一个问题
+
+[GC-B10](#gc-b10) 至 [GC-B12](#gc-b12) 给出 `NumElementsPerChunk=64*1024`、除法/取模定位以及追加chunk的代码。它避免扩容时搬迁已有chunk中的槽位；稳定地址消除一种指针失效原因，却不独自保证无锁并发读取。新chunk发布、计数同步、槽位复用与对象释放仍有生命周期和同步协议；`TSAN_ATOMIC` 名字本身不是完整证明。
+
+[GC-B13](#gc-b13) 的索引来源有三支：复用显式旧索引、DisregardForGC范围、常规可用列表/追加。其关键写入顺序是取槽→设置构造状态及当前reachable位→写对象及身份数据→写 `InternalIndex`→再处理可能登记根的初始标志→解锁→通知。
+
+`InitialFlags` 在 `InternalIndex` 之后应用，是因为根登记路径需要有效索引。当前代reachable位与标志交换使用同一对象数组锁，是防止新对象落在错误代状态的必要连接；不能只解释“LIFO快”而漏掉它。
+
+### 4.4 index相同不等于同一个对象
+
+[GC-B14](#gc-b14) 的 `FreeUObjectIndex` 清掉槽位对象、序列号和相关状态，再按条件把索引放回可用表。[GC-B15](#gc-b15) 的 `AllocateSerialNumber` 在没有现成序列号时取候选号，CAS失败则采用已被其他调用者安装的值；计数耗尽走显式失败路径，而不是静默回绕复用旧身份。
+
+纸面输入：旧对象位于index=7，旧弱引用存(7,101)。槽位回收后serial=0，Get不能匹配；后来新对象也分到index=7但serial=102，旧弱引用仍不能匹配。这里失效的是**解析结果**，旧弱指针变量仍可存(7,101)，并不需要逐个清零。
+
+弱引用赋值是按需取得序列号的常见入口，但不能称唯一入口：本段分配函数公开给其他需要稳定身份的路径使用，创建函数还接受SerialNumber参数。没有全调用链与负载统计，就不能断言“绝大多数Actor/CDO终身为0”。弱解析代码还检查对象状态，可能早于槽位清零就返回空，详见[GC-B40](#gc-b40)至[GC-B45](#gc-b45)。
+
+## 五、schema：如何把“描述字段”变成“读取当前实例”
+
+### 5.1 构建阶段与消费阶段
+
+[GC-B21](#gc-b21) 展示 `UClass::AssembleReferenceTokenStreamInternal` 的历史形状：先取得父类schema，遍历当前类的反射属性，调用 `EmitReferenceInfo`，再构建或共享描述。公开 FProperty API 也有接受 `FSchemaBuilder` 的 `EmitReferenceInfo`，支持此职责划分。[FProperty API](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/CoreUObject/FProperty)
+
+UHT提供上游反射信息；这里的运行期构建器产生扫描描述。不能把“UHT不直接写这份runtime schema”扩大为“UHT与GC描述完全无关”。
+
+父schema的 `Append` 参与构造候选描述；仅当没有新增相关成员且ARO等条件满足 `bReuseSuper`，才直接使用父 `FSchemaView`，否则调用Build。不能把所有Append说成“不复制/不分配”。`CLASS_TokenStreamAssembled` 表达已组装状态并供递归诊断；标志位不是互斥锁，实际跨线程调用仍需要外层同步。
+
+### 5.2 Header[-1] 是一次按类型回退
+
+[GC-B18](#gc-b18) 中：
+
+`reinterpret_cast<const FSchemaHeader*>(GetWords())[-1].StructStride`
+
+应拆成两步：以Header为元素回退1个，随后读取该Header中的StructStride。地址公式是 `P - sizeof(Header) + offsetof(Header, StructStride)`；返回字段宽4字节，不代表指针只回退4字节。所示Header另有atomic计数，真实布局需绑定构建；标准模型测得Header为8、回退8、字段4，见后文。
+
+`FSchemaView` 的低位标签还要求数据指针对齐保证该位空闲。标签视图、Header存储和后面的成员字是三个概念，不能只说“前一个word”而省略实际类型尺寸假设。
+
+### 5.3 位宽手算：直接偏移和Jump的范围不同
+
+[GC-B19](#gc-b19) 给定 `TypeBits=5`、`OffsetBits=11`，因此 `WordOffset` 范围为0..2047，`OffsetRange=2048`。消费器中的 `InstanceCursor` 是 `uint64*`，以下字长取8字节。
+
+| 输入 | 算式 | 结果 |
+|---|---|---:|
+| 普通成员最大起始偏移 | 2047×8 | 16376字节 |
+| Jump，WordOffset=0 | (0+1)×2048×8 | 16384字节，16KiB |
+| Jump，WordOffset=1 | (1+1)×2048×8 | 32768字节，32KiB |
+| Jump，WordOffset=2047 | (2047+1)×2048×8 | 33554432字节，32MiB |
+
+`+1` 使最小跳跃为一个OffsetRange，避免零长度Jump；不是“把11位全1保留出来”。普通成员范围是2048个字位置，最大字段**起始**地址是16376；Jump额外乘了一次OffsetRange。任意大对象是否允许、布局是否对齐、构建器能否编码，仍受格式和对象实现约束，不能从可连续Jump推成“任何大小都合法”。
+
+### 5.4 同时跟踪两个游标才不会读错附注
+
+[GC-B20](#gc-b20) 中，`WordIt` 走schema字，`InstanceCursor` 走实例地址；当前Quad先被解包成四个成员。处理某个成员时 `++WordIt` 消费的是附注字，不是在解包数组中多跳一个成员。
+
+| 类型 | 对实例/回调的动作 | 是否消费下一个schema字 | 是否终止 |
+|---|---|---|---|
+| Reference、ReferenceArray | 读当前实例字段/数组 | 否 | 否 |
+| Jump | 只推进InstanceCursor | 否 | 否 |
+| StridedArray | 处理按步长排列的引用 | 是，StridedLayout | 否 |
+| StructArray、StructSet、FreezableStructArray、Optional | 递归使用内部描述 | 是，InnerSchema | 否 |
+| MemberARO | 对当前成员调用回调 | 是，函数字 | 否 |
+| ARO | 对实例调用回调 | 是，函数字 | 是 |
+| SlowARO | 用Member.WordOffset作索引 | **否** | 是 |
+| Stop | 停止扫描 | 否 | 是 |
+
+FieldPath、FieldPathArray、FreezableReferenceArray、DynamicallyTypedValue在所示分支也没有 `++WordIt`；条件编译的Verse部分被旧文省略，不能补猜其布局。
+
+手算输入：schema的W0包含四个已解包成员：Reference(偏移1)、StridedArray(偏移2)、Jump(0)、SlowARO(5)；W1是StridedLayout。开始WordIt=W0、实例基址=0：Reference读地址8；StridedArray读原基址+16并把WordIt增到W1；Jump把实例游标加16384但不动WordIt；SlowARO用索引5调用并返回，不再读W2，也不执行外层循环末尾增量。这是对消费者的抽象追踪，不声称构建器在真实工程一定输出这四种组合。
+
+## 六、标记与跨帧新增边：先守正确性，再谈预算
+
+### 6.1 O(1)只属于交换，不属于整次初始化
+
+[GC-B25](#gc-b25)和[GC-B26](#gc-b26)显示：首次可交换两个全局可达标志的“值”，使上一代reachable位在当前代解释为maybe-unreachable。交换本身O(1)，避免一轮普通全表清位；随后仍要处理根、cluster，并可能因KeepFlags做额外扫描，锁等待也不是零成本。垃圾引用追踪重入分支还会重置对象标志。
+
+[GC-B27](#gc-b27)中的InitialObjects与FGCObject referencer补入规则说明“谁先进入队列”另有成本和条件。因此不能用“交换两个值”推导“标记起点接近零开销”，更不能推导百万对象扫描的毫秒保证。
+
+### 6.2 最小写屏障反例
+
+输入：A已扫描且可达；B尚未扫描；B持有C；游戏逻辑在两个时间片之间写A.Target=B。
+
+- 没有被GC认可的写入屏障时，A可能不再被访问，新边便不在旧扫描结果里，B/C可被漏掉
+- 参与增量模式的TObjectPtr赋值屏障及时让B可达，后续工作队列/Pass处理B及C
+- 即时标记与何时遍历下游不同；没有完整调度函数，不能把某条条件片段说成“全部必须本帧完成”
+
+[Incremental GC 文档](https://dev.epicgames.com/documentation/en-us/unreal-engine/incremental-garbage-collection-in-unreal-engine)要求相应引用暴露路径使用TObjectPtr，并标明实验性、soft limit和工作线程限制。只把字段加UPROPERTY而继续不符合屏障协议的裸写，不能解决跨时间片正确性。强保活与线程安全也不同，不能借此给任意工作线程操作UObject开绿灯。
+
+### 6.3 启动、挂起和续跑分别读哪个状态
+
+[GC-B04](#gc-b04) 的 `IsSuspended` 分支决定是否初始化；续跑跳过初始化以继续已有工作。循环执行Pass；是否退出由挂起/超时与队列状态等条件决定，旧节选还省略了部分Verse行为，不能把它包装为所有配置完整循环。
+
+[GC-B22](#gc-b22)至[GC-B24](#gc-b24)的Options模板把部分模式条件变成编译期常量，有利于优化；它不消除所有运行期数据分支、队列、调用和计时成本。没有机器码与测量就不说“零运行分支成本”。
+
+[GC-B31](#gc-b31)显示：请求新GC时若旧增量轮仍在进行，先尝试完成旧轮，再重新获取锁并处理新请求。`checkf` 是诊断，不是所有发行构建的恢复协议。单行片段[GC-B32](#gc-b32)缺完整条件，本篇仅保留定位，不能据其复原整段布尔逻辑。
+
+### 6.4 三个增量开关不能互相替代
+
+公开同一UE5.8标签CVar表的2026-10-05索引记录列：Reachability=0、Gather=0、IncrementalBeginDestroyEnabled=1，ReachabilityTimeLimit=0.005；增量说明页给0.002作为启用样例。表的直接打开曾超时，索引只是公开缺省证据；工程实际值未查询。[控制台变量参考](https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-engine-console-variables-reference)
+
+默认增量销毁不能证明标记也跨帧，5ms/2ms不能混成同一个默认，也不是硬上限。已有节选中purge的0.002默认实参同样是另一个阶段；调用者传了值就覆盖默认，`bUseTimeLimit=false`时不靠它切片。
+
+## 七、销毁不是一次函数调用：回调、槽位与内存
+
+### 7.1 先等待资源清理，再析构
 
 ```mermaid
 flowchart TD
-    subgraph Allocation[1. 对象分配与构建阶段]
-        NewObj["NewObject<T>() 模板调用"] --> Alloc["GUObjectAllocator 分配内存字节"]
-        Alloc --> ArrayReg["GUObjectArray 分配槽位 Index 与 FUObjectItem"]
-        ArrayReg --> Ctor["调用 C++ 类构造函数 ClassConstructor"]
-        Ctor --> PostInit["PostInitProperties() 属性注入与 CDO 拷贝"]
-    end
-
-    subgraph GCPhase[2. 垃圾回收标记与分析阶段]
-        Trigger["触发 CollectGarbage()"] --> RootSet["搜集根集 Root Set (UE::GC::Private::GRoots / AddToRoot / KeepFlags 慢扫)"]
-        RootSet --> Reachable["PerformReachabilityAnalysis() 并行可达性遍历"]
-        Reachable --> Trace["沿 GC schema (FSchemaView) 跳读强引用并置可达位（Unreachable 标志在 Gather 阶段统一置位）"]
-    end
-
-    subgraph SweepPhase[3. 增量清除与析构阶段]
-        Trace --> WeakResolve["清空悬空弱指针 TWeakObjectPtr"]
-        WeakResolve --> BeginDestroy["ConditionalBeginDestroy() 触发异步资源清理"]
-        BeginDestroy --> FinishDestroy["FinishDestroy() 执行物理析构并归还内存槽位"]
-    end
+    R[本轮判断不可达] --> G[Gather待处理对象]
+    G --> B[ConditionalBeginDestroy]
+    B --> Q{IsReadyForFinishDestroy}
+    Q -->|未就绪| W[保存状态后续检查]
+    W --> Q
+    Q -->|就绪| F[ConditionalFinishDestroy及清理回调]
+    F --> I[释放槽位身份]
+    I --> D[C++析构]
+    D --> M[分配器释放内存]
+    M --> T[适用的收尾Trim与完成通知]
 ```
 
----
+公开生命周期页支持BeginDestroy→ready→FinishDestroy的职责；具体渲染对象可能等待异步资源，不能推广为所有UObject都调用同一种GPU fence。[Actor Lifecycle](https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-engine-actor-lifecycle)、[IsReadyForFinishDestroy](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/CoreUObject/UObject/IsReadyForFinishDestroy)
 
----
+后面槽位/析构次序是本文保存的具体节选推导，不是公共生命周期页对所有版本的保证。Actor销毁还有其自己的Destroy/EndPlay等协议，不能只靠强字段承诺对象永远可用。
 
-## UObject 三层类拓扑设计哲学
+### 7.2 void入口与内部完成状态
 
-```mermaid
-classDiagram
-    class UObjectBase {
-        +int32 InternalIndex
-        +EObjectFlags ObjectFlags
-        +UClass* ClassPrivate
-        +FName NamePrivate
-        +UObject* OuterPrivate
-    }
-    class UObjectBaseUtility {
-        +GetClass() UClass*
-        +GetOuter() UObject*
-        +GetName() FString
-        +GetPathName() FString
-        +IsA(UClass* SomeBase) bool
-    }
-    class UObject {
-        +PostInitProperties()
-        +PostLoad()
-        +BeginDestroy()
-        +FinishDestroy()
-        +AddReferencedObjects(Collector)
-    }
+[GC-B34](#gc-b34) 的 `IncrementalPurgeGarbage` 返回 **void**。内部 `bCompleted` 控制状态守卫、统计与完成广播，不是调用者能接收的bool。
 
-    UObjectBase <|-- UObjectBaseUtility
-    UObjectBaseUtility <|-- UObject
+片段先检查是否有待清理工作；Gather/Unhash尚未结束时保存进度；否则推进Destroy。限时路径把 `bCompleted` 与 `!bUseTimeLimit`相与，表示对象处理结束后仍保留下一次调用的收尾机会；`!GObjPurgeIsRequired`分支再Trim并完成。应说“内部仍标进行中”，不说“本帧返回未完成”。也不要保证Trim立刻把全部页归还OS，分配器实现与平台未核对。
+
+### 7.3 两个抽样计时循环的首次检查不同
+
+- [GC-B35](#gc-b35) 的Unhash循环把 `TimePollCounter` 初始化为0，并在处理一个对象后算 `(TimePollCounter++) % 10 == 0`。因此处理第**1、11、21…**项后检查，不是先满10项才第一次查
+- [GC-B36](#gc-b36) 的DestroyObjects使用 `ProcessedObjectsCount >= GIncrementalBeginDestroyGranularity` 并要求仍有剩余对象才抽查；计数还在两趟之间延续/按片段重置，不能套用Unhash固定10的说明
+
+计时抽样降低频繁读取时钟的次数，但单个回调或一批对象可能已经超预算，因而不是硬实时承诺。进度游标避免从头重做，不等于续跑毫无成本。
+
+### 7.4 union数组真正依赖的是前缀不变量
+
+[GC-B36](#gc-b36) 的第一趟在持对象数组锁时把每项 `ObjectItem` 读出并改写为 `Object`，随后释放对应索引；第二趟只在第一趟全部结束后开始。union自己没有自动标签，游标定义如何解释每个元素。
+
+取N=3，k是第一趟游标，d是析构游标；暂不计constinit空项：
+
+| 暂停点 | 数组逻辑含义 | 可否开始析构 |
+|---|---|---|
+| k=0 | Item, Item, Item | 否 |
+| k=1 | Object, Item, Item | 否 |
+| k=2 | Object, Object, Item | 否 |
+| k=3,d=0 | Object, Object, Object | 是 |
+| k=3,d=1 | null, Object, Object | 已在第二趟 |
+| k=3,d=3 | null, null, null | 第二趟完成 |
+
+第一趟不变量是 `[0,k)`已转换、`[k,N)`仍是槽位指针；中途可以混合，旧“任意时刻全数组同型”错误。第二趟不变量是已处理前缀清空、其余保存对象指针；所示constinit分支可在第一趟先产生null，析构分支单独跳过它。
+
+这让调用析构时不再需要原槽位或同一全局数组锁，缩短持锁范围；不是析构内任意业务操作都安全的证明。`InternalIndex`在片段中暂存负偏移，是内部协议，不能把“错用会崩”的注释当所有构建实际崩溃保证。
+
+## 八、公开调用与检查宏：调用发生不等于工作全部完成
+
+[GC-B47](#gc-b47)至[GC-B49](#gc-b49)区分：
+
+| 观察 | 能推出 | 不能推出 |
+|---|---|---|
+| CollectGarbage返回 | 此void调用结束 | 一定进行了回收；片段有initial-load/transaction早退 |
+| TryCollectGarbage返回false | 这次未进入相应收集路径 | 以后永远不会执行 |
+| TryCollectGarbage返回true | 片段已获取锁并调用内部GC | 有对象被回收、全周期已完成 |
+| full purge=true | 请求不按可选增量时间片主动让出 | 无锁等待、无清理等待、无早退/失败，或任何调用即时成功 |
+
+Try路径也不保证永远非阻塞：已有增量轮或超过重试条件可改走阻塞锁。用途是选择调度/尝试策略，不是一个“绝不卡”的API。内部统计状态可辅助引擎调试，业务代码应使用目标版本受支持的公开生命周期信号，不把私有全局量当稳定接口。
+
+[GC-B38](#gc-b38)显示GC等异步使用者退出、再取得相应独占条件；GCWantsToRun信号需要协作方主动支持，不能抢占一切线程。缺失的LockAsync完整路径与实际负载仍决定竞争情况，不能从这段推导“异步线程之间几乎无竞争”。
+
+[GC-B46](#gc-b46)中的 `check(!IsRooted())` 是内部前提诊断。官方说明check默认在Debug/Development启用，Shipping默认不执行，`USE_CHECKS_IN_SHIPPING`可改变配置；它不是发行版恢复逻辑。对rooted对象标垃圾仍违反使用前提，但不能仅从这条check推断Shipping必然崩溃或后续安全。[Asserts](https://dev.epicgames.com/documentation/en-us/unreal-engine/asserts-in-unreal-engine)
+
+## 九、可复现的小模型与未运行范围
+
+### 9.1 已有标准模型：算术、Header与字段下界
+
+下面是本次准备阶段实际运行的完整普通C++源码；GCC14.2.0、x86_64，命令 `g++ -std=c++20 -Wall -Wextra -pedantic model.cpp -o model && ./model`。它没有UE头文件。这里复载已有结果，没有为增加数字重复运行。
+
+```cpp
+#include <atomic>
+#include <cstddef>
+#include <cstdint>
+#include <iostream>
+#include <cassert>
+struct Header { std::uint32_t stride; std::atomic<std::int32_t> count; };
+struct PackedFieldModel { std::int64_t flags; std::uint32_t object_low, serial, cluster; };
+struct UnpackedFieldModel { std::int64_t flags; void* object; std::int32_t serial, cluster; };
+int main() {
+    constexpr std::uint64_t range = 1ull << (16-5);
+    constexpr auto min_jump = (0+1)*range*8;
+    constexpr auto max_jump = ((range-1)+1)*range*8;
+    constexpr auto max_direct_offset = (range-1)*8;
+    static_assert(min_jump==16384 && max_jump==33554432 && max_direct_offset==16376);
+    Header h[2]{}; h[0].stride = 123; Header* p = &h[1];
+    assert(p[-1].stride==123);
+    auto step = reinterpret_cast<std::uintptr_t>(p)-reinterpret_cast<std::uintptr_t>(&p[-1]);
+    assert(step==sizeof(Header));
+    std::cout << "min_jump_bytes="<<min_jump<<" max_jump_bytes="<<max_jump<<" max_direct_offset_bytes="<<max_direct_offset<<'\n';
+    std::cout << "header_size="<<sizeof(Header)<<" typed_minus_one_bytes="<<step<<" stride_field_size="<<sizeof(h[0].stride)<<'\n';
+    std::cout << "packed_model_size="<<sizeof(PackedFieldModel)<<" unpacked_model_size="<<sizeof(UnpackedFieldModel)<<" independent_packed_field_bytes="<<(8+4+4+4)<<'\n';
+}
 ```
 
-### 为什么引擎将基类拆分为三层？
+实际stdout：
 
-1. **`UObjectBase`（极简内存布局）**：
-   - 仅保留 `ClassPrivate`、`NamePrivate`、`OuterPrivate` 与全局池索引 `InternalIndex`；
-   - 构造时严格保证零虚函数调用（此时 C++ 派生类虚表尚未构建完毕），杜绝未定义行为；
-2. **`UObjectBaseUtility`（高频内联工具层）**：
-   - 包含 `IsA`、`GetClass`、`GetWorld`、`GetPathName` 等高频查询接口；
-   - 全部实现为非虚函数（Non-Virtual Inline Functions），消除每帧数百万次对象类型检查的虚表解引用（vptr dereference）开销；
-3. **`UObject`（完备业务反射对象）**：
-   - 引入反射、属性序列化、二阶段异步销毁虚接口（`BeginDestroy` / `FinishDestroy`）以及自定义 GC 引用标记钩子（`AddReferencedObjects`）。
+```text
+min_jump_bytes=16384 max_jump_bytes=33554432 max_direct_offset_bytes=16376
+header_size=8 typed_minus_one_bytes=8 stride_field_size=4
+packed_model_size=24 unpacked_model_size=24 independent_packed_field_bytes=20
+```
 
----
+编译和运行exit0，无stderr。Header访问建立在真实Header数组上，没有把未分配地址强转后读；整数地址差用于观察本环境步距。8/24是该模型在这个编译环境的结果，不是UE类型尺寸。模型未测任何GC性能。
 
-## 核心源码深入剖析一：对象创建 `StaticConstructObject_Internal`
+### 9.2 前缀状态纸面复现
 
-调用 `NewObject<T>` 时，底层统一进入 `StaticConstructObject_Internal`。
+给三个符号Item组成数组，k从0开始，每次将第k项变Object再加1；k<N就暂停，不进第二循环。k=N后令d从0开始逐项变null。按上表每步检查两个前缀即可反驳全数组始终同型。准备阶段Python3.12模型实际记录的是三次转换（k=1、2、3）和三次清空（d=1、2、3）。上表另列k=0初态，并省略对称的d=2行，因此表的六行不是模型六条输出的同一集合。模型只模拟标签，不创建或销毁UE对象，不证明线程/资源安全。
 
-### 1. `StaticConstructObject_Internal` 完整核心源码
+### 9.3 引擎核验计划，NOT_RUN
 
-摘自 UE5.8 源码 `Engine\Source\Runtime\CoreUObject\Private\UObject\UObjectGlobals.cpp`（第 4803 行起，至第 4875 行结束；函数体 73 行，整段完整收录，未节选。行号以 5.8 源码 checkout 为准，安装版 5.8.0 可能相差数行）：
+读者须在获授权的checkout自行设置UE_SRC；不存在/零命中都是待解释结果，不预先规定旧符号必须消失。以下替代旧个人机器绝对路径命令：
+
+```powershell
+if (-not $env:UE_SRC) { throw '先设置获授权的UE_SRC' }
+$CU = Join-Path $env:UE_SRC 'Engine/Source/Runtime/CoreUObject'
+Get-Content (Join-Path $env:UE_SRC 'Engine/Build/Build.version')
+rg -n 'struct FUObjectItem|class FChunkedFixedUObjectArray|AllocateSerialNumber' $CU
+rg -n 'AssembleReferenceTokenStreamInternal|VisitMembers|FSchemaHeader|FMemberPacked' $CU
+rg -n 'PerformReachabilityAnalysis|MarkObjectsAsUnreachable|SwapReachableAndMaybeUnreachable' $CU
+rg -n 'IncrementalPurgeGarbage|UnhashUnreachableObjects|DestroyObjects|TryCollectGarbage' $CU
+rg -n 'FGCFrameData|PurgeObjectsAndRecordsInSlot|FGCContext|FGCCallbacks|MarkPendingKill' $CU
+```
+
+应保存引擎revision、实际宏与平台、函数完整边界、命令退出码/输出后，才比较本文记录。源码存在不证明某路径执行；要测GC还要记录根图、写入线程、CVar实值、控制输入和各阶段观察。启用增量/弱引用/内存计量均未在本轮执行。
+
+旧文的全目录零命中、旧符号替换时间、安装版/checkout行号一致、固定性能收益等没有本轮证据，均不保留为当前事实。原节选中已经显示的有用机制仍完整保存。
+
+## 十、排障时把问题落到一层
+
+- **对象过早失效**：查根到owner的路径、外层结构字段、强弱性质、增量写屏障和线程；别只检查是否写了宏
+- **对象不回收**：查其他强字段、显式报告、StrongObjectPtr和根管理；循环强边是否有外部根才是关键
+- **弱引用指向新对象？** 先查index与serial是否一致、是否误存了裸地址；不要把地址复用当身份复用
+- **卡顿**：分别观察锁、初始根处理、引用扫描、Gather、清理回调、析构与分配器；soft budget不保证每项回调可被中断
+- **清理没结束**：区分void入口的内部状态、Try返回值和完整周期；等待对象就绪的原因不能靠强制重复GC修好
+
+相关：[Actor与Component生命周期源码](03-Actor与Component生命周期源码.md)、[反射源码](01-UPROPERTY与反射系统源码.md)、[C++对象生命周期与RAII](../../01-编程与计算机基础/C%2B%2B语言与对象模型/01-C%2B%2B对象生命周期与RAII.md)。
+
+## 历史节选索引与逐块材料
+
+以下材料来自旧文自述 UE 5.8.0 / CL 55116800 / `++UE5+Release-5.8` 的记录。逐字保留的是**学习仓库里的代码围栏**，不是新一次与该私有源码对勘。正文只把片段中可见的输入、分支和状态变化当作推理前提；公开API不能替这些函数体验真。代码内原有注释、条件宏、省略标记或拼写错误均未修改；其中有不连续或未闭合片段，不能把材料索引当成独立可编译程序。若与当前解释冲突，以本篇已明确给出的条件化推导为准。
+
+## 历史材料 A：创建与全局对象表
+
+### GC-B03
+
+**StaticConstructObject_Internal**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/UObjectGlobals.cpp`；旧文L119–193。旧文引擎行号线索：4803、4875（未复核）。
+
+阅读问题：未复用分支何时调用构造？守卫何时解锁？
 
 ```cpp
 UObject* StaticConstructObject_Internal(const FStaticConstructObjectParameters& Params)
@@ -192,156 +438,11 @@ UObject* StaticConstructObject_Internal(const FStaticConstructObjectParameters& 
 }
 ```
 
-### 2. 逐行技术深度解构
+### GC-B06
 
-1. **`StaticAllocateObject` 物理分配**：
-   - 该调用是唯一的分配入口，入参多达 11 个：类、Outer、名字、`EObjectFlags`、`EInternalObjectFlags`、是否允许复用子对象、复用结果出参、外部包、初值序列号、远程对象 Id、以及 `FGCReconstructionGuard` 守卫；
-   - 内部调用 `GUObjectAllocator.AllocateUObject` 按 `InClass->GetMinAlignment()` 与 `GetPropertiesSize()` 切出裸内存（此时对象尚未构造），并调用 `FUObjectArray::AllocateUObjectIndex` 在 `GUObjectArray` 中登记槽位，产生唯一 `InternalIndex`；
-   - 注意 `FGCReconstructionGuard GCGuard`：该守卫在分配期间持有 GC 的“禁止重建”语义，必须等对象**构造完成**后才 `Unlock()`，避免 GC 看到半构造对象；
-2. **`ClassConstructor` 构造函数执行**：
-   - 仅当 `!bRecycledSubobject` 时才调用 `(*InClass->ClassConstructor)(FObjectInitializer(Result, Params))`——被复用的子对象根本没被销毁过，重复构造会造成资源泄漏；
-   - 构造函数内部通过 `FObjectInitializer` 把 CDO / 模板的属性批量拷贝进新实例；
-3. **编辑器事务下的 `MarkAsGarbage` 舞蹈**：
-   - 编辑器下若对象是 `RF_Transactional`，引擎先 `MarkAsGarbage()` → `SaveToTransactionBuffer()` → `ClearGarbage()`，目的是把 `RF_MirroredGarbage` 标志写进撤销缓冲，使 Undo 时该对象被正确判定为垃圾；
-4. **5.8 与旧版差异（重要事实修正）**：
-   - 本函数在 5.8 中**没有** `MakeUniqueObjectName` 调用，也**没有**显式的 `Result->PostInitProperties()`——唯一名字与 `PostInitProperties` 分别下沉到 `StaticAllocateObject` 与 `FObjectInitializer` 路径内；
-   - 因此“`NewObject` 在这里分配名字并手动调 `PostInitProperties`”是旧版 UE4 的记忆性描述，不适用于 5.8。
+**FUObjectItem声明片段**。历史定位：`Engine/Source/Runtime/CoreUObject/Public/UObject/UObjectArray.h`；旧文L346–443。旧文引擎行号线索：41、136（未复核）。
 
----
-
-## 核心源码深入剖析二：垃圾回收可达性分析 `PerformReachabilityAnalysis`
-
-当 `CollectGarbage` 启动时，引擎通过 `PerformReachabilityAnalysis` 构建全场景存活引用图。
-
-### 1. `PerformReachabilityAnalysis` 完整真实源码
-
-以下代码摘自 UE5.8 源码 `Engine\Source\Runtime\CoreUObject\Private\UObject\GarbageCollection.cpp`（第 4643 行起，至第 4704 行结束，共 62 行；**节选**：省略 `WITH_VERSE_VM` 条件编译分支与 Verse GC 终止判定内部的 3 行。行号以 5.8 源码 checkout 为准，安装版 5.8.0 可能相差数行）：
-
-```cpp
-	void PerformReachabilityAnalysis(EObjectFlags KeepFlags, const EGCOptions Options)
-	{
-		LLM_SCOPE(ELLMTag::GC);
-
-		const bool bIsGarbageTracking = !GReachabilityState.IsSuspended() && Stats.bFoundGarbageRef;
-
-		if (!GReachabilityState.IsSuspended())
-		{
-			StartReachabilityAnalysis(KeepFlags, Options);
-			// We start verse GC here so that the objects are unmarked prior to verse marking them
-			StartVerseGC();
-		}
-
-		{
-			const double StartTime = FPlatformTime::Seconds();
-
-			while (true)
-			{
-				PerformReachabilityAnalysisPass(Options);
-
-				if (GReachabilityState.IsSuspended())
-				{
-					// We may have suspended either via incremental timeout, or because verse GC is still marking.
-					// If we are not incremental at all, keep going while verse GC adds to GReachableObjects.
-					// If we are incremental without a time limit, the goal is still to reach all objects, so never stop early.
-					if (EnumHasAnyFlags(Options, EGCOptions::IncrementalReachability) && GReachabilityState.IsTimeLimitExceeded())
-					{
-						break;
-					}
-				}
-				else if (Private::GReachableObjects.IsEmpty()
-					&& Private::GReachableClusters.IsEmpty()
-#if WITH_VERSE_VM || defined(__INTELLISENSE__)
-					&& Private::GReachableNativeStructs.IsEmpty()
-#endif
-					)
-				{
-					// We terminate verse GC here now that both sides have nothing left to mark.
-					// This check must happen only when !IsSuspended, so verse GC can no longer add to GReachableObjects.
-					StopVerseGC();
-					break;
-				}
-			}
-
-			const double ElapsedTime = FPlatformTime::Seconds() - StartTime;
-			if (!bIsGarbageTracking)
-			{
-				GGCStats.ReferenceCollectionTime += ElapsedTime;
-			}
-			UE_LOGF(LogGarbage, Verbose, "%f ms for Reachability Analysis", ElapsedTime * 1000);
-		}
-
-PRAGMA_DISABLE_DEPRECATION_WARNINGS
-		// Allowing external systems to add object roots. This can't be done through AddReferencedObjects
-		// because it may require tracing objects (via FGarbageCollectionTracer) multiple times
-		if (!GReachabilityState.IsSuspended())
-		{
-			const double StartTime = FPlatformTime::Seconds();
-			GGCStats.TraceExternalRootsTime += FPlatformTime::Seconds() - StartTime;
-		}
-PRAGMA_ENABLE_DEPRECATION_WARNINGS
-	}
-```
-
-### 2. 逐行技术深度解构
-
-1. **首轮与续跑的分岔（`GReachabilityState.IsSuspended()`）**：
-   - 该状态即“增量可达性分析是否处于挂起（上帧时间片用完，待本帧续跑）”；
-   - 非挂起：走 `StartReachabilityAnalysis(KeepFlags, Options)` → 内部把 `ResetReachabilityFlags` 之外的脏根刷新、`MarkObjectsAsUnreachable(KeepFlags)`、`MarkClusteredObjectsAsReachable`、`MarkRootObjectsAsReachable` 全部做完；
-   - 已挂起：跳过初始化，直接进入 `PerformReachabilityAnalysisPass` 消费上帧遗留的工作队列；
-2. **`while (true)` + `PerformReachabilityAnalysisPass` 才是真正的标记循环**：
-   - `PerformReachabilityAnalysisPass` 每次打开一个 `FContextPoolScope` 从池中取 `FWorkerContext`，把 `InitialObjects` 交给 `PerformReachabilityAnalysisOnObjects`，由函数指针表按 `EGCOptions` 位组合派发到 `PerformReachabilityAnalysisOnObjectsInternal<Options>`；
-   - 循环退出条件只有两个：增量超时 `break`，或全局待处理队列 `GReachableObjects` / `GReachableClusters` 同时为空（说明所有根及其下游依赖已扫描完）；
-3. **增量时间片不是硬上限**：
-   - 注释明确写出设计取舍：**非增量**模式即便 Verse GC 还在追加可达对象也要继续跑（不能提前退出，否则会漏标）；**增量但未设时限**时目标仍是“最终标记完全部对象”，因此也不提前退出；只有 `EGCOptions::IncrementalReachability` **且** `IsTimeLimitExceeded()` 才让出执行权；
-   - 时限值来自 `GIncrementalReachabilityTimeLimit`（默认 `0.005f`，即 5 ms），可由外部通过 `SetReachabilityAnalysisTimeLimit()` 改写；
-4. **`GReachableObjects` 是 GC Barrier 的入口**：
-   - 运行期写入屏障（write barrier）标记出的对象被压入 `Private::GReachableObjects`，在下一轮 Pass 的 `PopAllAndEmpty(InitialObjects)` 中被取出重新作为“新增根”参与标记——这正是“增量分析跨帧不会漏标”的机制；
-5. **`MarkObjectsAsUnreachable` 用了“交换”而非“清零”**：
-   - 首次进入时 `FGCFlags::SwapReachableAndMaybeUnreachable()` 把 `ReachableObjectFlag` 与 `MaybeUnreachableObjectFlag` 两个**全局静态值互换**，然后对根与集群重新置为可达。因为这一步是 O(1) 而不是对全部对象清零，5.8 的标记起点开销被压到接近零；
-   - `EInternalObjectFlags::Unreachable` 才是最终判定标志，由 `CollectGarbageInternal` 在 `GatherUnreachableObjects` 阶段统一置位（见后文第四部分）。
-
----
-
-## 核心源码深入剖析八：增量清扫与优雅析构 `IncrementalPurgeGarbage`
-
-为了避免成千上万个垃圾对象在单帧内集中析构造成严重的卡顿（Frame Hitch），UE5.8 采用**增量清扫（Incremental Purge）**。
-
-> 说明：本节的真实源码骨架、三阶段划分、`UnhashUnreachableObjects` 与 `FObjectPurge::DestroyObjects` 两趟清理、以及 `FGCCSyncObject` GC 锁，已在前文「核心源码深入剖析七」中逐字收录并解构；本节保留原有小节标题与结论，并补充真实签名（该函数的实现体在 `GarbageCollection.cpp`，`UObjectGlobals.cpp` 仅有声明）。
-
-### 1. `IncrementalPurgeGarbage` 真实签名与时间预算
-
-真实签名与默认预算摘自 `Engine\Source\Runtime\CoreUObject\Public\UObject\UObjectGlobals.h`（第 1023 行，1 行，整段完整收录）：
-
-```cpp
-COREUOBJECT_API void IncrementalPurgeGarbage( bool bUseTimeLimit, double TimeLimit = 0.002 );
-```
-
-- 参数一是 `bool bUseTimeLimit`（不是旧版常见的 `bPerformFullPurge`）；
-- 参数二是 `double TimeLimit`，默认 `0.002` 秒。**该默认值只在游戏线程按帧调用且 `bUseTimeLimit = true` 时生效**；`CollectGarbage(..., bPerformFullPurge = true)` 走的是 `false` 分支，会单帧跑完；
-- 真实实现体位于 `Engine\Source\Runtime\CoreUObject\Private\UObject\GarbageCollection.cpp` 第 4768 行起（不是 `UObjectGlobals.cpp`，该文件仅有声明与注释）。
-
-### 2. 逐行技术深度解构
-
-1. **二阶段析构保证线程安全（BeginDestroy $\to$ FinishDestroy）**：
-   - 虚幻引擎对象绝不直接在析构函数中销毁渲染资源；
-   - `BeginDestroy` 会向渲染线程投递一条命令销毁 GPU 资源，该步骤在 `UnhashUnreachableObjects` 里以 `Object->ConditionalBeginDestroy()` 逐个派发；
-   - `IsReadyForFinishDestroy` 内部通过 `FRenderCommandFence` 确认 GPU 确实已用完该资源后，才允许在 GameThread 执行 `FinishDestroy`；若未就绪，`IncrementalDestroyGarbage` 会把对象留在 `GUnreachableObjects` 中，下一帧再试。相关超时保护由控制台变量 `gc.MaxTimeForFinishDestroyGC`（默认 10 秒）与 `gc.AdditionalFinishDestroyTimeGC`（默认 40 秒额外等待）控制；
-2. **时间切片平滑**：
-   - 时间检查不是逐对象调用 `FPlatformTime::Seconds()`，而是每 `GIncrementalBeginDestroyGranularity` 个对象抽样一次（`UnhashUnreachableObjects` 中的 `TimePollCounter % TimeLimitEnforcementGranularityForBeginDestroy == 0`），源码注释说明这是为了避免计时本身成为开销；
-   - **事实边界**：“万级对象平摊在几十帧内、主线程完全无感”是对增量模式效果的定性描述，具体帧数与耗时取决于对象数量、`BeginDestroy` 工作量与机器性能，本机未做运行态采样，因此不给出具体毫秒/帧数结论；
-3. **清理收尾必须多花一帧**：`bCompleted = bCompleted && !bUseTimeLimit;` 加上 `if (!GObjPurgeIsRequired) { FMemory::Trim(); bCompleted = true; }`，意味着增量模式下对象全部清空的那一帧仍然返回“未完成”，下一帧才做 `FMemory::Trim()` 并广播 `FCoreUObjectDelegates::GarbageCollectComplete`。
-
----
-
----
-
-## 核心源码深入剖析三：对象数组与槽位分配 `FUObjectItem` / `FChunkedFixedUObjectArray`
-
-`GUObjectArray` 不是 `TArray<UObject*>`，而是一套“索引稳定、永不因扩容而移动已存在元素”的分块槽位表。它同时承担三件事：给对象发号（`InternalIndex`）、保存弱引用序列号（`SerialNumber`）、承载 GC 的存活位（`FGCFlags`）。
-
-### 1. `FUObjectItem` 内存布局（完整声明）
-
-摘自 `Engine\Source\Runtime\CoreUObject\Public\UObject\UObjectArray.h`（第 41 行起，至第 136 行结束，共 96 行，整段完整收录）：
+阅读问题：四个独立字段下界为何已经20字节？条件成员与原位移注释不能当已核sizeof。
 
 ```cpp
 struct FUObjectItem
@@ -442,24 +543,11 @@ public:
 	FUObjectItem& operator=(const FUObjectItem&) = delete;
 ```
 
-### 2. 整段解构
+### GC-B07
 
-1. **`FlagsAndRefCount` 是整个 GC 并发正确性的基石**：
-   - 64 位低 32 位放 `RefCount`（强引用计数，供 `TStrongObjectPtr` / 集群根判定使用），高 32 位放 `EInternalObjectFlags`；这样 `InterlockedInc/Dec` 可以只操作低半部分，同时“根标志 + 引用计数”的联合判定仍能无锁完成；
-   - 注释里给出了扩位方案（把 `RefCount` 压到 24 位以换更多 flag 位，代价是 `EInternalObjectFlags` 变成 64 位），说明当前 flag 位已接近用尽；
-2. **`UE_ENABLE_FUOBJECT_ITEM_PACKING` 是 5.8 的内存优化开关**：
-   - 开启后 `FUObjectItem` 不再存 8 字节裸指针，而是把指针低 32 位（右移 3 位、丢弃必然为 0 的对齐尾零）存进 `ObjectPtrLow`，高 13 位（`PtrMask` 之外的部分）塞进 `FlagsAndRefCount` 高 32 位中的空闲位；
-   - `static_assert(EInternalObjectFlags_MinFlagBitIndex >= 48 - 32 - 3)` 就是在编译期保证“高 32 位里至少有 13 位能挪给指针用”；
-   - 收益是 `FUObjectItem` 从 16 字节压到 12 字节量级；代价是访问对象指针需要一次位运算重组，且 `SetObject` 明确注释“**不是线程安全的，只允许在对象创建时调用**”；
-3. **`SerialNumber` 与 `ClusterRootIndex` 是 8 字节对齐的两个独立 `int32`**：
-   - `SerialNumber` 归弱引用所有（见后文第五部分），初始 0 表示“尚未有人需要它”；
-   - `ClusterRootIndex` 有一个双关技巧：`>= 0` 时表示“Owner Index”，`< 0` 时编码为 `-ClusterIndex - 1` 表示“这是某个集群的根”（见 `SetClusterIndex` / `GetClusterIndex` 的 `checkSlow(ClusterRootIndex < 0)`）；
-4. **`Object` 成员被显式标记为 `UE_DEPRECATED(5.6, ...)`**：
-   - 5.6 之后必须走 `GetObject()` / `SetObject()`，直接摸 `Object` 字段会在编译期告警，这是为将来默认开启 packing 做的铺垫。
+**IsUnreachable读取**。历史定位：`Engine/Source/Runtime/CoreUObject/Public/UObject/UObjectArray.h`；旧文L464–469。旧文引擎行号线索：311、314（未复核）。
 
-### 3. 可达性标志的实际读写接口：`IsUnreachable()` 与 `FGCFlags::SetUnreachable()`
-
-`FUObjectItem` 只提供**读**接口。摘自 `Engine\Source\Runtime\CoreUObject\Public\UObject\UObjectArray.h`（第 311 行起，至第 314 行结束，4 行，整段完整收录）：
+阅读问题：这里只读内部标志，不包含完整GC判定。
 
 ```cpp
 	UE_FORCEINLINE_HINT bool IsUnreachable() const
@@ -468,7 +556,11 @@ public:
 	}
 ```
 
-**事实修正**：5.8 中 **不存在** `FUObjectItem::SetUnreachable()`。`rg -n "SetUnreachable" UObjectArray.h` 无命中。写侧唯一入口在 GC 私有类 `FGCFlags` 中。摘自 `Engine\Source\Runtime\CoreUObject\Private\UObject\GarbageCollectionInternalFlags.h`（第 34 行起，至第 37 行结束，4 行，整段完整收录）：
+### GC-B08
+
+**FGCFlags::SetUnreachable**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/GarbageCollectionInternalFlags.h`；旧文L473–478。旧文引擎行号线索：34、37（未复核）。
+
+阅读问题：写入通过GC内部入口；单片段不证明全库唯一入口。
 
 ```cpp
 	FORCEINLINE static void SetUnreachable(FUObjectItem* ObjectItem)
@@ -477,7 +569,11 @@ public:
 	}
 ```
 
-同文件第 18 行至第 23 行的类注释给出了硬性纪律（整段引用）：
+### GC-B09
+
+**可达标志纪律注释**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/GarbageCollectionInternalFlags.h`；旧文L482–489。旧文引擎行号线索：18、23（未复核）。
+
+阅读问题：注释限制非GC代码读写内部代际位；不是业务同步API。
 
 ```cpp
 /**
@@ -488,11 +584,11 @@ public:
 */
 ```
 
-也就是说：业务代码只能**读** `Unreachable`（如 `TWeakObjectPtr::Get` 路径），**绝不能写**；另外两个位（`ReachableObjectFlag` / `MaybeUnreachableObjectFlag`）连读都不许在 GC 之外做。
+### GC-B10
 
-### 4. `FChunkedFixedUObjectArray` 分块扩容（完整实现）
+**FChunkedFixedUObjectArray与ExpandChunksToIndex**。历史定位：`Engine/Source/Runtime/CoreUObject/Public/UObject/UObjectArray.h`；旧文L497–548。旧文引擎行号线索：707、756、755（未复核）。
 
-摘自 `Engine\Source\Runtime\CoreUObject\Public\UObject\UObjectArray.h`（第 707 行起，至第 756 行结束，共 50 行；**节选**：省略第 755 行仅含空白的行，其余 49 行逐字保留）：
+阅读问题：分块如何避免搬迁旧槽位？CompareExchange不等于支持任意并发追加。
 
 ```cpp
 class FChunkedFixedUObjectArray
@@ -547,7 +643,11 @@ class FChunkedFixedUObjectArray
 public:
 ```
 
-扩容链路的入口是 `AddRange` / `AddSingle`，同文件第 893 行起，至第 905 行结束（13 行，整段完整收录）：
+### GC-B11
+
+**AddRange与AddSingle**。历史定位：`Engine/Source/Runtime/CoreUObject/Public/UObject/UObjectArray.h`；旧文L552–566。旧文引擎行号线索：893、905（未复核）。
+
+阅读问题：先检查上限、扩到最后位置，再增加NumElements。
 
 ```cpp
 	int32 AddRange(int32 NumToAdd)
@@ -565,7 +665,11 @@ public:
 	}
 ```
 
-读取路径 `GetObjectPtr` 同文件第 854 行起，至第 864 行结束（11 行，整段完整收录）：
+### GC-B12
+
+**GetObjectPtr**。历史定位：`Engine/Source/Runtime/CoreUObject/Public/UObject/UObjectArray.h`；旧文L570–582。旧文引擎行号线索：854、864（未复核）。
+
+阅读问题：除法/取模定位chunk与块内索引；有效性前提仍需调用者满足。
 
 ```cpp
 	inline FUObjectItem* GetObjectPtr(int32 Index)
@@ -581,11 +685,11 @@ public:
 	}
 ```
 
-**为什么必须分块**：`NumElementsPerChunk = 64 * 1024`，单块即 6.4 万个 `FUObjectItem`。若用一整块连续数组，扩容时所有已存在 `FUObjectItem` 的地址都会改变，而 `FWeakObjectPtr` 只存 `ObjectIndex`（不是 `FUObjectItem*`）虽然不怕地址漂移，但 GC 并行标记期间大量持有 `FUObjectItem*` 的上下文会被一次性打成野指针。分块保证“**已分配块的地址永不移动**”，从而允许无锁并发读取（`TSAN_ATOMIC(int32) NumElements`）。
+### GC-B13
 
-### 5. `FUObjectArray::AllocateUObjectIndex` 槽位复用（完整实现）
+**AllocateUObjectIndex**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/UObjectArray.cpp`；旧文L590–699。旧文引擎行号线索：233、340（未复核）。
 
-摘自 `Engine\Source\Runtime\CoreUObject\Private\UObject\UObjectArray.cpp`（第 233 行起，至第 340 行结束，共 108 行；整段完整收录，未节选）：
+阅读问题：索引三种来源以及InitialFlags为何在InternalIndex赋值后应用。
 
 ```cpp
 void FUObjectArray::AllocateUObjectIndex(UObjectBase* Object, EInternalObjectFlags InitialFlags, int32 AlreadyAllocatedIndex, int32 SerialNumber, FRemoteObjectId RemoteId)
@@ -698,20 +802,11 @@ void FUObjectArray::AllocateUObjectIndex(UObjectBase* Object, EInternalObjectFla
 }
 ```
 
-1. **三选一的索引来源**：
-   - 子对象重建（`AlreadyAllocatedIndex >= 0`）直接复用旧索引；
-   - `DisregardForGC` 池（初始加载期装入、永不参与 GC 的对象）走 `++ObjLastNonGCIndex` 连续分配，池满后仍可继续 `AddSingle()` 撑大（注释明确“此时还没有 GC 对象，撑大是安全的”），但一旦已存在 GC 对象就 `Fatal`；
-   - 常规池优先从 `ObjAvailableList` **弹出被回收的索引**（LIFO 复用，缓存友好），列表空时才 `AddSingle()` 申请新槽；
-2. **`FlagsAndRefCount` 被整型重置为 `PendingConstruction`**：
-   - 这一步同时清零了 `RefCount` 与旧标志，随后按需 `|=` 上当前代的 `Reachable` 位；
-   - 为什么要读 `FGCFlags::GetReachableFlagValue_ForGC()`？因为 `ReachableObjectFlag` / `MaybeUnreachableObjectFlag` 是两个会被 `SwapReachableAndMaybeUnreachable()` 互换的**值**。新对象必须在“当前代”里是可达的，否则会在本代标记阶段被误判为垃圾。注释也点明了：这里之所以安全，是因为分配与标志互换都持有同一个 `UObjectArray` 锁；
-3. **`DisregardForGC` 池不设可达位**（`if (!IsIndexDisregardForGC(Index))`）：GC 的扫描区间从 `ObjFirstGCIndex` 开始，这些对象根本不在扫描范围内，设位纯属浪费；
-4. **顺序敏感的三步**：`SetObject(Object)` → `ClusterRootIndex = 0` → 最后才 `Object->InternalIndex = Index`。注释解释了为什么 `InitialFlags` 必须放在 `InternalIndex` 赋值**之后**——设置 `RootSet` 等根标志会把索引写入 `UE::GC::Private::GRoots` 数组，而该路径需要读到有效的 `InternalIndex`；
-5. **`NotifyUObjectCreated` 在解锁之后**：创建监听器（如蓝图调试、GC 历史记录）在 `UnlockInternalArray()` 之后调用，避免监听器回调里再申请 UObject 造成自锁。
+### GC-B14
 
-### 6. `FUObjectArray::FreeUObjectIndex` 回收与槽位复位（完整实现）
+**FreeUObjectIndex**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/UObjectArray.cpp`；旧文L716–772。旧文引擎行号线索：382、436（未复核）。
 
-摘自 `Engine\Source\Runtime\CoreUObject\Private\UObject\UObjectArray.cpp`（第 382 行起，至第 436 行结束，共 55 行，整段完整收录）：
+阅读问题：槽位状态清理、身份失效及可回收索引的边界分别在哪里。
 
 ```cpp
 void FUObjectArray::FreeUObjectIndex(UObjectBase* Object)
@@ -771,11 +866,11 @@ void FUObjectArray::FreeUObjectIndex(UObjectBase* Object)
 }
 ```
 
-**回收即“序列号归零”**：`ObjectItem->SerialNumber = 0` 与 `Object->InternalIndex = INDEX_NONE` 是本函数真正的杀伤力所在——此刻起所有指向该槽位的 `FWeakObjectPtr` 都会因序列号不匹配而解析为 `nullptr`（细节见第五部分）。同时 `ObjAvailableList.Add(Index)` 把槽位交还复用池，所以“对象已被销毁但 `WeakPtr.Get()` 返回了另一个新对象”这种悬垂是**不可能**发生的：新对象会拿到一个新分配的序列号。
+### GC-B15
 
-### 7. 序列号是“懒分配”的（关键认知）
+**AllocateSerialNumber**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/UObjectArray.cpp`；旧文L780–813。旧文引擎行号线索：529、560（未复核）。
 
-很多资料误以为每个 UObject 在创建时就有全局唯一序列号。5.8 的真实实现是：**只有第一个弱引用指向该对象时，才调用 `AllocateSerialNumber` 分配**。摘自 `Engine\Source\Runtime\CoreUObject\Private\UObject\UObjectArray.cpp`（第 529 行起，至第 560 行结束，共 32 行，整段完整收录）：
+阅读问题：已分配值、CAS竞争与计数溢出分支如何避免静默身份混淆。
 
 ```cpp
 int32 FUObjectArray::AllocateSerialNumber(int32 Index)
@@ -812,29 +907,23 @@ int32 FUObjectArray::AllocateSerialNumber(int32 Index)
 }
 ```
 
-调用点只有弱引用与少数需要稳定身份的子系统，例如 `Engine\Source\Runtime\CoreUObject\Private\UObject\WeakObjectPtr.cpp` 第 43 行：
+### GC-B16
+
+**弱赋值的一处序列号调用**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/WeakObjectPtr.cpp`；旧文L817–819。旧文引擎行号线索：43（未复核）。
+
+阅读问题：这是一处调用点，不证明全部调用点只此一处。
 
 ```cpp
 			ObjectSerialNumber = GUObjectArray.AllocateSerialNumber(ObjectIndex);
 ```
 
-配套的计数器初值在同模块 `UObjectArray.cpp` 第 106 行至第 114 行的构造函数里，`PrimarySerialNumber(START_SERIAL_NUMBER)`；序列号全局单调递增，一旦溢出（回绕到 `<= START_SERIAL_NUMBER`）即 `Fatal` 崩溃，而不是静默复用旧号——这是**弱引用安全性的硬保证**：宁可崩，不可让两个对象共享同一个序列号。
+## 历史材料 B：schema布局、生成与消费
 
----
+### GC-B17
 
-## 核心源码深入剖析四：引用描述数据与 `VisitMembers` 的“跳读”
+**EMemberType**。历史定位：`Engine/Source/Runtime/CoreUObject/Public/UObject/GarbageCollectionSchema.h`；旧文L839–864。旧文引擎行号线索：24、47（未复核）。
 
-GC 之所以能在毫秒级扫描数百万对象，核心在于它**不遍历 `FProperty` 反射树**。5.8 的引用描述数据经历了两次演进：UE4/早期 UE5 的 **reference token 流**（`FGCReferenceTokenStream` + `FGCReferenceInfo`，对应 `UClass::InitReferenceTokenStream`），5.8 已重构为 **GC schema**（`FSchemaView` + `EMemberType`，对应 `UClass::AssembleReferenceTokenStream`）。
-
-### 1. 事实边界：旧名字在 5.8 中已不存在
-
-- `rg -n "FGCReferenceInfo|FGCReferenceTokenStream|InitReferenceTokenStream" Engine\Source\Runtime\CoreUObject` → **零命中**；
-- 5.8 中仍存在的“token”是 `FReferenceToken`（`Engine\Source\Runtime\CoreUObject\Public\UObject\ReferenceToken.h`），但它是**标签联合**，用来在引用关系图（GC history / 调试可视化）里区分 `UObject*`、`FGCObject*`、`Verse::VCell*` 等含指针类型，**不是**逐属性引用描述流；
-- 引用描述数据的真实载体是 `Engine\Source\Runtime\CoreUObject\Public\UObject\GarbageCollectionSchema.h`，类名 `UClass` 上的成员是 `UE::GC::FSchemaOwner ReferenceSchema`（`Class.h` 第 4139 行）。
-
-### 2. `EMemberType`：把每一种“引用形态”编码成一个字节（完整枚举）
-
-摘自 `Engine\Source\Runtime\CoreUObject\Public\UObject\GarbageCollectionSchema.h`（第 24 行起，至第 47 行结束，共 24 行，整段完整收录）：
+阅读问题：枚举底层uint8与紧凑编码中Type占5位不是同一概念。
 
 ```cpp
 enum class EMemberType : uint8
@@ -863,11 +952,11 @@ enum class EMemberType : uint8
 };
 ```
 
-注意 `Jump` 与三个 `ARO` 变体的存在——它们让 schema **不是纯数据表，而是一门微型指令集**。`Stop` 是终止符，`ARO` 是隐式终止（调用完就不再往下读）。
+### GC-B18
 
-### 3. `FSchemaView` 与 `FMemberPacked`：极端紧凑的位域编码
+**FSchemaHeader与FSchemaView**。历史定位：`Engine/Source/Runtime/CoreUObject/Public/UObject/GarbageCollectionSchema.h`；旧文L872–908。旧文引擎行号线索：105、139（未复核）。
 
-`FSchemaView` 的完整声明，同文件第 105 行起，至第 139 行结束（35 行，整段完整收录）：
+阅读问题：[-1]按Header元素步进，Origin标签还有对齐前提。
 
 ```cpp
 struct FSchemaHeader
@@ -907,7 +996,11 @@ public:
 };
 ```
 
-成员编码与“字”的联合体，同文件第 194 行起，至第 220 行结束（27 行，整段完整收录）：
+### GC-B19
+
+**FMemberPacked与FMemberWord**。历史定位：`Engine/Source/Runtime/CoreUObject/Public/UObject/GarbageCollectionSchema.h`；旧文L912–940。旧文引擎行号线索：194、220（未复核）。
+
+阅读问题：11位WordOffset的单位及union附注形状由消费者决定。
 
 ```cpp
 struct FMemberPacked
@@ -939,20 +1032,11 @@ union FMemberWord
 };
 ```
 
-1. **`FSchemaView` 只有一个 `uint64 Handle`**：
-   - 低 1 位（`OriginBit`）借用指针必然为 0 的对齐位，用来记 `EOrigin::Blueprint` / `Other`；高位是指向 `FMemberWord` 数组的指针；
-   - `GetStructStride()` 通过 `reinterpret_cast<const FSchemaHeader*>(GetWords())[-1]` 向**前**读 4 字节拿到 `StructStride`——schema 头就藏在前一个 word 位置，这是典型的“带负偏移头部”布局，省掉一次间接寻址；
-2. **一个 `FMemberWord` 是 8 字节，内部塞 4 个 `FMemberPacked`**：
-   - 每个 `FMemberPacked` 是 `uint16`：5 位 `Type` + 11 位 `WordOffset`；
-   - `WordOffset` 的单位是**字（8 字节）**，不是字节。所以能直接寻址的范围是 `2^11 * 8 = 16 KB`。超出这个范围就需要 `EMemberType::Jump` 指令把游标 `InstanceCursor` 往前推 `(Member.WordOffset + 1) * OffsetRange` 个字；
-   - 一个 64 位字同时描述 4 个成员，这就是“跳读”能如此致密的原因；
-3. **`FMemberWord` 是 `union`，同一位置按 `Type` 解释**：
-   - `Members[4]`（批量成员）、`InnerSchema`（嵌套 struct 的 schema 视图）、`ObjectARO` / `StructARO`（函数指针）、`StridedLayout`（跨步数组描述）五种含义共用 8 字节；
-   - 因为是 union，“成员字”与“附注字”的区分完全靠前一个成员的 `Type` 决定——例如 `StructArray` 后面紧跟的那个 word 必须按 `InnerSchema` 读。
+### GC-B20
 
-### 4. `VisitMembers`：真实的“跳读”内核
+**VisitMembers节选**。历史定位：`Engine/Source/Runtime/CoreUObject/Public/UObject/FastReferenceCollector.h`；旧文L957–1018。旧文引擎行号线索：684、748、734、739（未复核）。
 
-摘自 `Engine\Source\Runtime\CoreUObject\Public\UObject\FastReferenceCollector.h`（第 684 行起，至第 748 行结束，共 65 行；**节选**：省略第 734 行至第 739 行 `#if WITH_VERSE_VM` 起的 6 行；为便于阅读，函数签名由原单行拆为 `template<...>` 与 `AUTORTFM_INFER ... VisitMembers(...)` 两行排版；其余 59 行逐字保留）：
+阅读问题：跟踪WordIt与InstanceCursor；SlowARO无附注，StridedArray有附注。
 
 ```cpp
 template<class DispatcherType, typename ObjectType>
@@ -1017,17 +1101,11 @@ AUTORTFM_INFER FORCEINLINE_DEBUGGABLE void VisitMembers(DispatcherType& Dispatch
 }
 ```
 
-**逐行解释“为什么能跳着读”**：
+### GC-B21
 
-1. **内层循环一个 word 处理 4 个成员**：`const FMemberWordUnpacked Quad(WordIt->Members)` 一次性把 8 字节展开成 4 个 `FMemberUnpacked`，`MemberPtr = (uint8*)(InstanceCursor + Member.WordOffset)` 用**字偏移**直接算出成员地址。整个内层分支里没有任何 `GetOffset_ForGC` 或 `FProperty::ContainerPtrToValuePtr` 调用，全部是常数加法；
-2. **`Jump` 只改游标，不读内存**：`InstanceCursor += (Member.WordOffset + 1) * OffsetRange`——注意 `+1` 是因为 11 位全 1 需要留给更大的跨步。跳一次最多跨 `2048 * 8 = 16 KB`，因此一个类只要有若干个 `Jump` 就能覆盖任意大的内存布局；
-3. **成员与附注字严格配对**：`StructArray` / `StructSet` / `FreezableStructArray` / `Optional` / `ARO` / `MemberARO` / `SlowARO` 分支里都写了 `++WordIt`，把紧跟的 word 当作 `InnerSchema`、`StridedLayout` 或函数指针来读。这也是强约束：**schema 布局一旦由 `FSchemaBuilder::Build` 定型，就不能单独插入成员而不重建**；
-4. **`ARO` 是隐式 `Stop`**：遇到 `ARO` 就 `return`，把后续引用全部交给 `Object->AddReferencedObjects(Collector)` 手动上报；`MemberARO` 则只调当前成员的 `AddStructReferencedObjects`，之后继续读 schema；
-5. **`DispatcherType` 是策略模板参数**：`VisitMembers` 自己不关心“标记还是验证/追踪”。同一个内核被 `TReachabilityProcessor`（标记可达）、`TDebugReachabilityProcessor`（历史追踪）以及验证模式复用，这就是“一份 schema，多种 GC 用途”的实现方式。
+**AssembleReferenceTokenStreamInternal**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/GarbageCollection.cpp`；旧文L1032–1088。旧文引擎行号线索：7043、7097（未复核）。
 
-### 5. schema 是如何产出的：`UClass::AssembleReferenceTokenStreamInternal`
-
-尽管名字仍叫 *TokenStream*（为兼容 `CLASS_TokenStreamAssembled` 标志），它现在构建的是 `FSchemaView`。摘自 `Engine\Source\Runtime\CoreUObject\Private\UObject\GarbageCollection.cpp`（第 7043 行起，至第 7097 行结束，共 55 行，整段完整收录）：
+阅读问题：Append构造候选；符合bReuseSuper才整份共享父描述。
 
 ```cpp
 void UClass::AssembleReferenceTokenStreamInternal(bool bForce)
@@ -1087,21 +1165,84 @@ void UClass::AssembleReferenceTokenStreamInternal(bool bForce)
 }
 ```
 
-1. **UHT 不参与 schema 生成**：真正的“编译器”是运行期的 `FProperty::EmitReferenceInfo`。每个属性子类（`FObjectProperty`、`FArrayProperty`、`FStructProperty`…）在虚函数里决定自己往 `FSchemaBuilder` 推几个 `FMemberDeclaration`（`DeclareMember(Name, Offset, Type)`），`FPropertyStackScope` 只负责拼出可读的调试路径（`Member.StructMember.InnerStructMember`）；
-2. **`StartOffset = -GetPropertiesStartOffset()` 是为了把负偏移掰正**：schema 的 `WordOffset` 是无符号 11 位，负偏移无法表示，于是整体平移使所有属性偏移为正；
-3. **父类 schema 直接“拼接复用”而非复制成员**：`Schema.Append(SuperSchema, StartOffset - (-SuperClass->GetPropertiesStartOffset()))` 把父类全部成员（除末尾的 `Stop`/`ARO`）平移后接上；
-4. **`bReuseSuper` 是内存优化**：若子类没有新增任何成员，且两者的 `AddReferencedObjects` 函数指针相同，那么子类**直接共享父类的 `FSchemaView`**，完全不额外分配 schema 内存。对于大量空的蓝图子类，这个判定能省下可观内存；
-5. **`CLASS_TokenStreamAssembled` 只是防重入的懒加载锁**：`checkf(!HasAnyClassFlags(...))` 用于发现递归组装；这也是为什么该函数在非游戏线程调用时要求 GC 已上锁（见同名外层函数第 7019 行的 `Fatal` 检查）。
+## 历史材料 C：可达性状态与调度
 
----
+### GC-B04
 
-## 核心源码深入剖析六：`UE::GC` 增量可达性分析实现
+**PerformReachabilityAnalysis节选**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/GarbageCollection.cpp`；旧文L220–283。旧文引擎行号线索：4643、4704（未复核）。
 
-真正的 GC 主循环并不在 `PerformReachabilityAnalysis` 里，而在 `UE::GC` 命名空间内的 `FRealtimeGC` / `FReachabilityAnalysisState` 两个类。5.8 与旧版最大的结构差异是：**所有引用收集逻辑都被重写为“按 schema 派发的模板流水线”**，`FGCReferenceProcessor` / `FGCCollector` 这对 UE4 时代的类名在 5.8 中已经不存在（`rg` 在 `Engine\Source\Runtime\CoreUObject` 下零命中）。
+阅读问题：首轮和挂起续跑分开；省略Verse代码不应冒称完整所有配置。
 
-### 1. `EGCOptions`：增量开关就是一个位（完整枚举）
+```cpp
+	void PerformReachabilityAnalysis(EObjectFlags KeepFlags, const EGCOptions Options)
+	{
+		LLM_SCOPE(ELLMTag::GC);
 
-摘自 `Engine\Source\Runtime\CoreUObject\Public\UObject\FastReferenceCollector.h`（第 44 行起，至第 52 行结束，共 9 行，整段完整收录）：
+		const bool bIsGarbageTracking = !GReachabilityState.IsSuspended() && Stats.bFoundGarbageRef;
+
+		if (!GReachabilityState.IsSuspended())
+		{
+			StartReachabilityAnalysis(KeepFlags, Options);
+			// We start verse GC here so that the objects are unmarked prior to verse marking them
+			StartVerseGC();
+		}
+
+		{
+			const double StartTime = FPlatformTime::Seconds();
+
+			while (true)
+			{
+				PerformReachabilityAnalysisPass(Options);
+
+				if (GReachabilityState.IsSuspended())
+				{
+					// We may have suspended either via incremental timeout, or because verse GC is still marking.
+					// If we are not incremental at all, keep going while verse GC adds to GReachableObjects.
+					// If we are incremental without a time limit, the goal is still to reach all objects, so never stop early.
+					if (EnumHasAnyFlags(Options, EGCOptions::IncrementalReachability) && GReachabilityState.IsTimeLimitExceeded())
+					{
+						break;
+					}
+				}
+				else if (Private::GReachableObjects.IsEmpty()
+					&& Private::GReachableClusters.IsEmpty()
+#if WITH_VERSE_VM || defined(__INTELLISENSE__)
+					&& Private::GReachableNativeStructs.IsEmpty()
+#endif
+					)
+				{
+					// We terminate verse GC here now that both sides have nothing left to mark.
+					// This check must happen only when !IsSuspended, so verse GC can no longer add to GReachableObjects.
+					StopVerseGC();
+					break;
+				}
+			}
+
+			const double ElapsedTime = FPlatformTime::Seconds() - StartTime;
+			if (!bIsGarbageTracking)
+			{
+				GGCStats.ReferenceCollectionTime += ElapsedTime;
+			}
+			UE_LOGF(LogGarbage, Verbose, "%f ms for Reachability Analysis", ElapsedTime * 1000);
+		}
+
+PRAGMA_DISABLE_DEPRECATION_WARNINGS
+		// Allowing external systems to add object roots. This can't be done through AddReferencedObjects
+		// because it may require tracing objects (via FGarbageCollectionTracer) multiple times
+		if (!GReachabilityState.IsSuspended())
+		{
+			const double StartTime = FPlatformTime::Seconds();
+			GGCStats.TraceExternalRootsTime += FPlatformTime::Seconds() - StartTime;
+		}
+PRAGMA_ENABLE_DEPRECATION_WARNINGS
+	}
+```
+
+### GC-B22
+
+**EGCOptions**。历史定位：`Engine/Source/Runtime/CoreUObject/Public/UObject/FastReferenceCollector.h`；旧文L1106–1116。旧文引擎行号线索：44、52（未复核）。
+
+阅读问题：模式位提供模板派发输入，不代表配置默认开启。
 
 ```cpp
 enum class EGCOptions : uint32
@@ -1115,18 +1256,22 @@ enum class EGCOptions : uint32
 ENUM_CLASS_FLAGS(EGCOptions);
 ```
 
-`Parallel | EliminateGarbage | IncrementalReachability` 三个位的 8 种组合，在 `FRealtimeGC` 构造函数里被预绑定成 8 个函数指针（`GarbageCollection.cpp` 第 4249 行至第 4259 行；**节选**：仅引用前两组共 2 行，其余 6 组见原文件）：
+### GC-B23
+
+**两条预绑定函数指针记录**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/GarbageCollection.cpp`；旧文L1120–1123。旧文引擎行号线索：4249、4259（未复核）。
+
+阅读问题：只展示两条绑定，不能单凭这两行认证全部组合或机器码。
 
 ```cpp
 		ReachabilityAnalysisFunctions[GetGCFunctionIndex(EGCOptions::None)] = &FRealtimeGC::PerformReachabilityAnalysisOnObjectsInternal<EGCOptions::None | EGCOptions::None>;
 		ReachabilityAnalysisFunctions[GetGCFunctionIndex(EGCOptions::Parallel | EGCOptions::None)] = &FRealtimeGC::PerformReachabilityAnalysisOnObjectsInternal<EGCOptions::Parallel | EGCOptions::None>;
 ```
 
-这样做的收益是：`IncrementalReachability` 是否开启在**编译期**固化为模板参数，标记内层循环里所有 `IsWithIncrementalReachabilityAnalysis()` 判定（如 `IsTimeLimitExceeded()`）都被常量折叠掉，不存在运行期分支成本。
+### GC-B24
 
-### 2. `PerformReachabilityAnalysisOnObjectsInternal`：模板化的收集入口
+**PerformReachabilityAnalysisOnObjectsInternal**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/GarbageCollection.cpp`；旧文L1131–1151。旧文引擎行号线索：4217、4235（未复核）。
 
-摘自 `Engine\Source\Runtime\CoreUObject\Private\UObject\GarbageCollection.cpp`（第 4217 行起，至第 4235 行结束，共 19 行，整段完整收录）：
+阅读问题：非Shipping诊断分支与正常处理器分开；模板不消除数据依赖成本。
 
 ```cpp
 	template <EGCOptions Options>
@@ -1150,11 +1295,11 @@ ENUM_CLASS_FLAGS(EGCOptions);
 	}
 ```
 
-这里替换了旧版的 `FGCReferenceProcessor` + `FGCCollector`：`TReachabilityProcessor<Options>` 是**处理器**（决定“看到一个引用后干什么”：置可达位、记录历史、收集 weak 引用），`TReachabilityCollector<Options>` 是**收集器**（决定“从哪些对象、按什么顺序取引用”：工作窃取、批量分块）。非 Shipping 构建下会额外挂一个 `TDebugReachabilityProcessor`，用于 `gc.History` 之类的引用链追踪。
+### GC-B25
 
-### 3. `MarkObjectsAsUnreachable`：为什么标记起点是 O(1)（完整实现）
+**MarkObjectsAsUnreachable**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/GarbageCollection.cpp`；旧文L1159–1188。旧文引擎行号线索：4495、4522（未复核）。
 
-摘自 `Engine\Source\Runtime\CoreUObject\Private\UObject\GarbageCollection.cpp`（第 4495 行起，至第 4522 行结束，共 28 行，整段完整收录）：
+阅读问题：交换/重置之后仍有cluster和root工作。
 
 ```cpp
 	FORCENOINLINE void MarkObjectsAsUnreachable(const EObjectFlags KeepFlags)
@@ -1187,7 +1332,11 @@ ENUM_CLASS_FLAGS(EGCOptions);
 	}
 ```
 
-**这就是 5.8 最重要的算法优化**。`FGCFlags::SwapReachableAndMaybeUnreachable()`（`GarbageCollectionInternalFlags.h` 第 116 行至第 123 行，整段引用）：
+### GC-B26
+
+**SwapReachableAndMaybeUnreachable**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/GarbageCollectionInternalFlags.h`；旧文L1192–1201。旧文引擎行号线索：116、123（未复核）。
+
+阅读问题：O(1)仅指两值交换，取锁可能等待。
 
 ```cpp
 	FORCEINLINE static void SwapReachableAndMaybeUnreachable()
@@ -1200,14 +1349,11 @@ ENUM_CLASS_FLAGS(EGCOptions);
 	}
 ```
 
-它交换的是两个**静态 `EInternalObjectFlags` 值**，而不是遍历对象清位。等价效果：上一代的“Reachable”位现在代表“MaybeUnreachable”。于是：
-- 标记起点成本与对象数量**无关**（O(1)）；
-- 但代价是新对象分配时必须显式补上当前代的 `Reachable` 位——这正是前文 `AllocateUObjectIndex` 里 `ObjectItem->FlagsAndRefCount |= GetReachableFlagValue_ForGC() << 32` 存在的原因，且必须在同一个 `UObjectArray` 锁内完成，注释把这层耦合写得很明确；
-- 唯一的例外分支是“垃圾引用追踪二次进入”（`Stats.bFoundGarbageRef`），此时**不能**交换（会把上一轮结果反转），只能退化为 O(N) 的 `ResetReachabilityFlags` 遍历。
+### GC-B27
 
-### 4. `StartReachabilityAnalysis`：根集合就在这一步入场（完整实现）
+**StartReachabilityAnalysis**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/GarbageCollection.cpp`；旧文L1212–1242。旧文引擎行号线索：4542、4570（未复核）。
 
-同文件第 4542 行起，至第 4570 行结束（29 行，整段完整收录）：
+阅读问题：FGCObject referencer在特定构建条件下补入初始队列。
 
 ```cpp
 	void StartReachabilityAnalysis(EObjectFlags KeepFlags, const EGCOptions Options)
@@ -1241,32 +1387,41 @@ ENUM_CLASS_FLAGS(EGCOptions);
 	}
 ```
 
-**事实修正**：根集合不是“遍历 `GUObjectArray` 找带 `RootSet` 标志的对象”这么简单。真实路径是三条：
-1. `AddToRoot()` 写入的 `UE::GC::Private::GRoots` 索引数组（`MarkRootObjectsAsReachable` 里加 `GRootsMutex` 锁后 `ProcessDirtyRootsNoLock()` 刷新，再整份拷成 `TArray<int32> RootsArray` 供并行处理）；
-2. `KeepFlags != RF_NoFlags` 时额外做一次**全量慢扫描**（`GC.SlowMarkObjectAsReachable`），源码注释直白地写着 `// This is super slow as we need to look through all existing UObjects and access their memory to check EObjectFlags`；
-3. `FGCObject::GGCObjectReferencer` 在 Cooked 构建下若落在 `DisregardForGC` 池内，会被手动补进 `InitialObjects`，否则纯 C++ 类（非 UObject）的引用链会断。
+### GC-B28
 
-### 5. 增量时间片与“暂停/续跑”状态机
+**IterationTimeLimit赋值**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/GarbageCollection.cpp`；旧文L1255–1257。旧文引擎行号线索：6032（未复核）。
 
-`FReachabilityAnalysisState` 的三个关键行为：
-
-1. **每轮迭代的时限**（`GarbageCollection.cpp` 第 6032 行）：
+阅读问题：0表示该处不使用时限，不能当其他阶段开关。
 
 ```cpp
 			IterationTimeLimit = bReachabilityUsingTimeLimit ? GIncrementalReachabilityTimeLimit : 0.0;
 ```
 
-`GIncrementalReachabilityTimeLimit` 的默认值与外部改写入口（同文件第 310 行、第 6172 行）：
+### GC-B29
+
+**ReachabilityTimeLimit历史初值**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/GarbageCollection.cpp`；旧文L1261–1263。旧文引擎行号线索：310、6172（未复核）。
+
+阅读问题：0.005是本记录变量初值，不是工程当前CVar实值。
 
 ```cpp
 static float GIncrementalReachabilityTimeLimit = 0.005f;
 ```
 
+### GC-B30
+
+**时间预算写入口的一行**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/GarbageCollection.cpp`；旧文L1265–1267。旧文引擎行号线索：310、6172（未复核）。
+
+阅读问题：该行只说明值可被写入，不复原省略的函数合同。
+
 ```cpp
 	GIncrementalReachabilityTimeLimit = TimeLimitSeconds;
 ```
 
-2. **中途被强插一次 GC 时的处理**（`FReachabilityAnalysisState::CollectGarbage`，第 5963 行起，至第 5985 行结束，29 行，整段完整收录）：
+### GC-B31
+
+**FReachabilityAnalysisState::CollectGarbage**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/GarbageCollection.cpp`；旧文L1271–1295。旧文引擎行号线索：5963、5985（未复核）。
+
+阅读问题：挂起旧轮与新请求的先后及重新取锁。
 
 ```cpp
 void FReachabilityAnalysisState::CollectGarbage(EObjectFlags KeepFlags, bool bFullPurge)
@@ -1294,59 +1449,33 @@ void FReachabilityAnalysisState::CollectGarbage(EObjectFlags KeepFlags, bool bFu
 }
 ```
 
-要点：增量分析挂起期间若有人再调 `CollectGarbage`，引擎**不会**丢弃上轮工作，而是把 `bPerformFullPurge` 强制改成 `true` 先把当前这轮跑完并清扫干净，再重新发起新一轮；`checkf` 确保“冲刷”真的完成（注释警告 `Flushing incremental reachability analysis did not complete properly`）。随后因为 `PostCollectGarbageImpl` 已释放过 GC 锁，必须重新 `AcquireGCLock()`。
+### GC-B32
 
-3. **是否需要下一轮的判定**（同文件第 6132 行起的 `FReachabilityAnalysisState::PerformReachabilityAnalysis`，第 6145 行的注释是关键）：
+**缺少完整条件的单行记录**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/GarbageCollection.cpp`；旧文L1301–1303。旧文引擎行号线索：6132、6145（未复核）。
+
+阅读问题：仅留历史定位，不由该行猜整条判据。
 
 ```cpp
 		!bIsSuspended || // but only but only after the first iteration (which also does MarkObjectsAsUnreachable)
 ```
 
-判据是 `!IsTimeLimitExceeded() || (IsSuspended() && !GReachableObjects.IsEmpty())`——即“没有超时”或“虽然暂停了但屏障又塞进了新的可达对象”。后者意味着增量期间游戏线程创建的引用必须立刻生效，不能等到下一帧。
+## 历史材料 D：清理回调、两趟释放与GC锁
 
-### 6. 调用链时序图（概念示意）
+### GC-B05
 
-```mermaid
-sequenceDiagram
-    participant GT as 游戏线程
-    participant CG as CollectGarbage()
-    participant RS as FReachabilityAnalysisState
-    participant GC as FRealtimeGC
-    participant PURGE as IncrementalPurgeGarbage
+**IncrementalPurgeGarbage声明**。历史定位：`Engine/Source/Runtime/CoreUObject/Public/UObject/UObjectGlobals.h`；旧文L315–317。旧文引擎行号线索：1023（未复核）。
 
-    Note over GT,PURGE: 以下时序为源码调用关系示意，非运行态采样
-    GT->>CG: CollectGarbage(KeepFlags, bPerformFullPurge)
-    CG->>CG: AcquireGCLock() → FGCCSyncObject::GCLock()
-    CG->>RS: CollectGarbageInternal(KeepFlags, bPerformFullPurge)
-    RS->>RS: bReachabilityUsingTimeLimit = !bFullPurge && GAllowIncrementalReachability
-    RS->>GC: PerformReachabilityAnalysis(KeepFlags, Options)
-    GC->>GC: StartReachabilityAnalysis → MarkObjectsAsUnreachable
-    GC->>GC: FGCFlags::SwapReachableAndMaybeUnreachable (O(1) 起点)
-    GC->>GC: MarkClusteredObjectsAsReachable + MarkRootObjectsAsReachable
-    loop 每轮 Pass，直到队列空或超时
-        GC->>GC: PerformReachabilityAnalysisPass → CollectReferencesForGC
-        GC->>GC: VisitMembers 沿 schema 跳读并置可达位
-    end
-    alt 增量超时
-        GC-->>RS: 挂起，本轮结束，GC 锁释放
-        Note over GT: 本帧返回，下一帧继续 PerformReachabilityAnalysis
-    else 标记完成
-        GC->>GC: GatherUnreachableObjects 置 Unreachable
-        RS->>PURGE: IncrementalPurgeGarbage(bUseTimeLimit, TimeLimit)
-        PURGE->>PURGE: UnhashUnreachableObjects → ConditionalBeginDestroy
-        PURGE->>PURGE: IncrementalDestroyGarbage → 释放索引 + 析构
-    end
+阅读问题：返回void；默认实参是调用者省略第二参数时的值。
+
+```cpp
+COREUOBJECT_API void IncrementalPurgeGarbage( bool bUseTimeLimit, double TimeLimit = 0.002 );
 ```
 
----
+### GC-B34
 
-## 核心源码深入剖析七：增量清理三阶段与对象销毁
+**IncrementalPurgeGarbage节选**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/GarbageCollection.cpp`；旧文L1351–1450。旧文引擎行号线索：4768、4878（未复核）。
 
-清理阶段要解决的核心矛盾是：`BeginDestroy` 可能只需向渲染线程投一条命令就返回，也可能需要等 GPU 真正用完资源；而 `FinishDestroy` 必须等 `IsReadyForFinishDestroy()` 为真。5.8 把这一过程拆成**三个可时间切片的阶段**，并且用一个 `FObjectPurge` 单例对象保存跨帧进度。
-
-### 1. 阶段划分：`IncrementalPurgeGarbage` 的真实骨架
-
-摘自 `Engine\Source\Runtime\CoreUObject\Private\UObject\GarbageCollection.cpp`（第 4768 行起，至第 4878 行结束，共 111 行；**节选**：引用 97 行（含 2 行节选标记），其余 12 行为事务守卫、统计/CSV 宏与未引用的中间代码）：
+阅读问题：内部bCompleted如何影响状态守卫和完成广播，不能当返回值。
 
 ```cpp
 void IncrementalPurgeGarbage(bool bUseTimeLimit, double TimeLimit)
@@ -1449,17 +1578,11 @@ void IncrementalPurgeGarbage(bool bUseTimeLimit, double TimeLimit)
 }
 ```
 
-**真实签名与阈值**：`IncrementalPurgeGarbage(bool bUseTimeLimit, double TimeLimit)`，头文件默认值 `TimeLimit = 0.002`（`UObjectGlobals.h` 第 1023 行）——这是**游戏线程每帧**调用时的默认预算；`CollectGarbage` 走全量路径时以 `bUseTimeLimit = false` 调用，所以“2 ms”只在增量模式下生效。
+### GC-B35
 
-阶段划分（对照源码）：
-1. **Unhash 阶段**：`IsIncrementalUnhashPending()` 为真时先跑 `UnhashUnreachableObjects(bUseTimeLimit, TimeLimit)`，它内部先可能做 `GatherUnreachableObjects`（把可增量收集的不可达对象攒齐），再逐个调 `ConditionalBeginDestroy()`；
-2. **BeginDestroy 完成判定**：`IncrementalDestroyGarbage` 的第一段等待全部对象的 `FinishDestroy` 前置条件；若 `bTimeLimitReached` 为真则本帧不做析构，直接返回；
-3. **Destroy 阶段**：`IncrementalDestroyGarbage` 第二段释放索引与内存；
-4. **收尾 Trim**：注意 `bCompleted = bCompleted && !bUseTimeLimit;`——增量模式下即使对象全清完，本帧也**故意不返回完成**，多留一帧给 `FMemory::Trim()`（`if (!GObjPurgeIsRequired) { FMemory::Trim(); bCompleted = true; }`）把归还给分配器的页真正还给操作系统。
+**UnhashUnreachableObjects节选**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/GarbageCollection.cpp`；旧文L1464–1535。旧文引擎行号线索：6255、6364（未复核）。
 
-### 2. `UnhashUnreachableObjects`：Unhash 与 BeginDestroy 是同一阶段
-
-摘自同文件（第 6255 行起，至第 6364 行结束，共 110 行；**节选**：引用 69 行，其余 41 行为事务守卫、日志分支与统计代码）：
+阅读问题：Gather、BeginDestroy与处理第1/11/21项后的计时抽样。
 
 ```cpp
 bool UnhashUnreachableObjects(bool bUseTimeLimit, double TimeLimit)
@@ -1534,16 +1657,11 @@ bool UnhashUnreachableObjects(bool bUseTimeLimit, double TimeLimit)
 	bTimeLimitReached = (GUnreachableObjectIndex < GUnreachableObjects.Num());
 ```
 
-1. **`GUnreachableObjects` 是这次 GC 的“待清清单”**，元素类型是 `union FUnreachableObject { FUObjectItem* ObjectItem; UObject* Object; }`（`Engine\Source\Runtime\CoreUObject\Public\UObject\ReachabilityAnalysis.h` 第 47 行至第 51 行）——同一个 `union` 在 Unhash 阶段装 `ObjectItem*`，在销毁阶段换成 `UObject*`，避免维护两个数组；
-2. **时间检查是抽样而非每次**：`TimePollCounter % 10 == 0` 才调 `FPlatformTime::Seconds()`。注释在 `IncrementalDestroyGarbage` 里解释了原因——`FPlatformTime::Seconds()` 在部分平台上开销不可忽略，逐对象调用会显著拖慢清理；
-3. **进度是全局的**：`GUnreachableObjectIndex` 是文件级全局变量，跨帧累加。所以 GC 帧与帧之间没有“重新计算从哪里继续”的成本；
-4. **两个广播钩子**：`PreGarbageCollectConditionalBeginDestroy` / `PostGarbageCollectConditionalBeginDestroy`（`FCoreUObjectDelegates`），供外部系统在 BeginDestroy 前后做对称处理。
+### GC-B36
 
-### 3. `IncrementalDestroyGarbage` → `FObjectPurge::DestroyObjects`：两趟清理
+**FObjectPurge::DestroyObjects**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/GarbageCollection.cpp`；旧文L1548–1655。旧文引擎行号线索：877、982（未复核）。
 
-`IncrementalDestroyGarbage` 会先尝试对全部不可达对象派发 `ConditionalFinishDestroy()`，随后调用 `GUObjectPurge.DestroyObjects(...)`。后者是真正回收内存的地方，也是 5.8 一个**重要结构性改动**：旧版的 `PurgeObjectsAndRecordsInSlot` 已不存在，改为“**先释放索引，后调用析构**”的两趟循环。
-
-摘自 `Engine\Source\Runtime\CoreUObject\Private\UObject\GarbageCollection.cpp`（第 877 行起，至第 982 行结束，共 106 行；整段完整收录，未节选）：
+阅读问题：k前缀混合状态，k=N门以及d前缀清空；constinit空项另判。
 
 ```cpp
 	FORCENOINLINE bool DestroyObjects(bool bUseTimeLimit, double TimeLimit, double StartTime)
@@ -1654,15 +1772,11 @@ bool UnhashUnreachableObjects(bool bUseTimeLimit, double TimeLimit)
 	}
 ```
 
-1. **第一趟：只做 `FreeUObjectIndex`，持 `UObjectArray` 锁**。目的是**尽快把索引还给复用池**（注释：`we can reclaim GUObjectArray entries faster`）。因为 `FreeUObjectIndex` 会把 `FUObjectItem::SerialNumber` 清零，此刻所有弱引用已经失效；
-2. **同一个 `union` 被就地改写**：第一趟把 `UnreachableObject.ObjectItem` 覆盖成 `UnreachableObject.Object`。于是第二趟不需要 `FUObjectItem`，也就**不需要再持有 `GUObjectArray` 锁**——注释明确写出这一收益：`we don't need to lock GUObjectArray when calling UObject destructors`。调用用户析构函数（可能触发任意业务代码）时持一把全局锁是巨大的死锁风险，这里用一次 union 覆写换掉了它；
-3. **`InternalIndex` 被临时借用为 `OffsetToAllocation`**：`FreeUObjectIndex` 之后 `InternalIndex` 已无意义，于是用它暂存 `GetClass()->GetPropertiesStartOffset()`；第二趟再取负还原成 `OffsetToObject` 传给 `GUObjectAllocator.FreeUObject(Object, OffsetToObject)`。注释自嘲这是临时方案（`Temporary usage`），并指出存负数是**故意的**——“若之后误用 `InternalIndex` 就会直接崩，这是好事”；
-4. **顺序不可交换**：第二趟被 `if (ObjCurrentFreeIndexObjectIndex == GUnreachableObjects.Num())` 包住，必须**第一趟全部完成**才能开始析构。因此若第一趟因超时中断，本帧完全不调析构函数；这保证了任意时刻 `GUnreachableObjects` 中的元素语义是统一的（要么全是 `ObjectItem*`，要么全是 `UObject*`）；
-5. **`UE_WITH_CONSTINIT_UOBJECT` 特例**：编译期内联（constinit）的 UObject 属于静态存储，不能 `~UObject()` + `FreeUObject`，故把 `UnreachableObject.Object` 置为 `nullptr` 直接跳过内存回收。
+### GC-B37
 
-### 4. `FGCCSyncObject`：GC 锁为什么不会拖住所有线程
+**FGCCSyncObject成员**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/GCScopeLock.h`；旧文L1667–1693。旧文引擎行号线索：25、49（未复核）。
 
-摘自由 `Engine\Source\Runtime\CoreUObject\Private\UObject\GCScopeLock.h`（第 25 行起，至第 49 行结束，共 25 行，整段完整收录）：
+阅读问题：计数、共享mutex与等待event各负何责。
 
 ```cpp
 class FGCCSyncObject
@@ -1692,7 +1806,11 @@ public:
 	static FGCCSyncObject& Get();
 ```
 
-以及 `GCLock()` 的核心，同文件第 109 行起，至第 137 行结束（29 行，整段完整收录）：
+### GC-B38
+
+**GCLock**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/GCScopeLock.h`；旧文L1697–1727。旧文引擎行号线索：109、137（未复核）。
+
+阅读问题：异步持有者未让出时如何等待；协作信号不是抢占。
 
 ```cpp
 	void GCLock()
@@ -1726,38 +1844,13 @@ public:
 	}
 ```
 
-设计意图（类注释“Will not lock other threads if GC is not running”及其字段分工）：
-- `AsyncCounter` 是非游戏线程进入 `LockAsync()` 时增的**读锁计数**，GC 只等它归零，因此**GC 不在跑时，异步线程之间几乎无竞争**（`LockAsync` 只在 `GCCounter > 0` 时才去等 `GCUnlockedEvent`）；
-- `GCWantsToRunCounter` 是“GC 想跑但被卡住”的信号，但注释特别强调这**不会自动生效**——异步线程必须自己选择性地检查并提前释放锁，也就是说这是一种协作式让路，不是抢占；
-- `check(GCCounterValue == 1)` 明确 GC 锁**不支持递归**，所以任何 GC 期间可能被回调的代码都不允许再调 `AcquireGCLock()`。`AcquireGCLock()`（`GarbageCollection.cpp` 第 4740 行）额外做了耗时统计：Cooked 构建下等待超过 1 ms 就打 Warning（`"%f ms for acquiring GC lock"`），这正是排障“卡在等 GC 锁”的入口。
+## 历史材料 E：弱解析与收集公开入口
 
-### 5. `FGCFrameData` 与 `PurgeObjectsAndRecordsInSlot` 的事实核查
+### GC-B40
 
-按任务要求核查了两个旧版符号，结论如下（可复现）：
+**FWeakObjectPtr成员**。历史定位：`Engine/Source/Runtime/CoreUObject/Public/UObject/WeakObjectPtr.h`；旧文L1762–1770。旧文引擎行号线索：569、575（未复核）。
 
-```powershell
-rg -n "FGCFrameData" "C:\Users\zhaozhiqi\Documents\GitHub\UnrealEngine\Engine\Source\Runtime\CoreUObject" -g "*.h" -g "*.cpp"
-rg -n "PurgeObjectsAndRecordsInSlot" "C:\Users\zhaozhiqi\Documents\GitHub\UnrealEngine\Engine\Source\Runtime\CoreUObject"
-```
-
-两条命令在 5.8 的 `Runtime\CoreUObject` 下**均无命中**。也就是说：
-- `FGCFrameData` 在 5.8 中不存在。与“跨帧保存 GC 中间状态”等价的职责，实际由文件级全局量承担：`GObjCurrentFreeIndexObjectIndex`、`GObjCurrentPurgeObjectIndex`、`GUnreachableObjectIndex`、`ObjCurrentFreeIndexObjectIndex` / `ObjCurrentPurgeObjectIndex`（`FObjectPurge` 成员）、`GGatherUnreachableObjectsState`，再加上 `GObjIncrementalPurgeIsInProgress` / `GObjPurgeIsRequired` 两个状态位；
-- `PurgeObjectsAndRecordsInSlot` 是 UE4 时代一次一个槽位清理（对象 + 引用记录）的函数，5.8 已被上文 `FObjectPurge::DestroyObjects` 的“两趟批量”流程取代。
-
-因此本篇文章不引用这两个符号的任何“源码”，以免引入不存在的代码。
-
----
-
-## 弱引用与对象销毁：`FWeakObjectPtr` 序列号机制与 `MarkAsGarbage`
-
-### 1. `FWeakObjectPtr` 的真实成员与文件位置（事实修正）
-
-旧版资料普遍引用 `UObject\WeakObjectPtrTemplates.h`，但 5.8 的真实位置是：
-- 声明：`Engine\Source\Runtime\CoreUObject\Public\UObject\WeakObjectPtr.h`（第 48 行 `struct FWeakObjectPtr`）；
-- 部分实现：`Engine\Source\Runtime\CoreUObject\Private\UObject\WeakObjectPtr.cpp`；
-- `Engine\Source\Runtime\Core\Public\UObject\WeakObjectPtrTemplates.h` 只提供 `TWeakObjectPtr<T>` 模板包装（它转发到 `FWeakObjectPtr`），**不是**序列号机制的实现处。
-
-成员定义，摘自 `WeakObjectPtr.h`（第 569 行起，至第 575 行结束，7 行，整段完整收录）：
+阅读问题：默认空状态受条件宏影响；不要把所有弱指针存储失效等同清零。
 
 ```cpp
 #if UE_WEAKOBJECTPTR_ZEROINIT_FIX
@@ -1769,11 +1862,11 @@ rg -n "PurgeObjectsAndRecordsInSlot" "C:\Users\zhaozhiqi\Documents\GitHub\Unreal
 #endif // UE_WEAKOBJECTPTR_ZEROINIT_FIX
 ```
 
-注意 `UE_WEAKOBJECTPTR_ZEROINIT_FIX`：开启后 `InvalidWeakObjectIndex` 被定义为 `0`（未开启则是 `INDEX_NONE`，见同文件第 34 行与第 36 行），使得默认构造的弱指针天然是“空”，无需 `Reset()` 就已在零初始化内存下可用。
+### GC-B41
 
-### 2. `Get()` 的真实解析路径：先查序列号，再查标志位
+**Internal_GetObjectItem部分分支**。历史定位：`Engine/Source/Runtime/CoreUObject/Public/UObject/WeakObjectPtr.h`；旧文L1778–1807。旧文引擎行号线索：479、505、446、477（未复核）。
 
-`FWeakObjectPtr::Internal_GetObjectItem()` 的前置校验，摘自 `WeakObjectPtr.h`（第 479 行起，至第 505 行结束，共 27 行；**节选**：省略第 446 行至第 477 行 `UE_WITH_REMOTE_OBJECT_HANDLE` 开启分支的 32 行，其余 27 行逐字保留）：
+阅读问题：远程句柄分支被省略；本段只验证所示index/serial路径。
 
 ```cpp
 #else
@@ -1806,7 +1899,11 @@ rg -n "PurgeObjectsAndRecordsInSlot" "C:\Users\zhaozhiqi\Documents\GitHub\Unreal
 	}
 ```
 
-最终解引用，同文件第 559 行起，至第 564 行结束（6 行，整段完整收录）：
+### GC-B42
+
+**Internal_Get**。历史定位：`Engine/Source/Runtime/CoreUObject/Public/UObject/WeakObjectPtr.h`；旧文L1811–1818。旧文引擎行号线索：559、564（未复核）。
+
+阅读问题：身份匹配后还需对象状态有效。
 
 ```cpp
 	/** Private (inlined) version for internal use only. */
@@ -1817,7 +1914,11 @@ rg -n "PurgeObjectsAndRecordsInSlot" "C:\Users\zhaozhiqi\Documents\GitHub\Unreal
 	}
 ```
 
-`Get()` 本体在 `WeakObjectPtr.cpp` 第 116 行起，至第 120 行结束（5 行，整段完整收录）：
+### GC-B43
+
+**Get**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/WeakObjectPtr.cpp`；旧文L1822–1828。旧文引擎行号线索：116、120（未复核）。
+
+阅读问题：给Internal_Get传false，不代表强持有。
 
 ```cpp
 UObject* FWeakObjectPtr::Get(/*bool bEvenIfGarbage = false*/) const
@@ -1827,7 +1928,11 @@ UObject* FWeakObjectPtr::Get(/*bool bEvenIfGarbage = false*/) const
 }
 ```
 
-`GUObjectArray::IsValid` 的判定（`UObjectArray.h` 第 1115 行起，至第 1122 行结束，8 行，整段完整收录）：
+### GC-B44
+
+**GUObjectArray::IsValid**。历史定位：`Engine/Source/Runtime/CoreUObject/Public/UObject/UObjectArray.h`；旧文L1832–1841。旧文引擎行号线索：1115、1122（未复核）。
+
+阅读问题：bEvenIfGarbage改变检查条件，Unreachable仍参与。
 
 ```cpp
 	inline bool IsValid(FUObjectItem* ObjectItem, bool bEvenIfGarbage)
@@ -1840,16 +1945,11 @@ UObject* FWeakObjectPtr::Get(/*bool bEvenIfGarbage = false*/) const
 	}
 ```
 
-**完整失效判据（三层，任一层命中即返回 nullptr）**：
-1. `ObjectSerialNumber == 0` → 该弱指针从未绑定过对象（`Reset()` 后即此状态）；
-2. `SerialNumbersMatch(ObjectItem)` 为假 → 槽位已被回收并可能分配给了**另一个**对象，这是最关键的防线（依赖前文 `FreeUObjectIndex` 把 `SerialNumber` 清零 + `AllocateSerialNumber` 全局单调递增）；
-3. `IsValid` 为假 → 对象已带 `Unreachable` 或 `Garbage` 标志。
+### GC-B45
 
-强调一点：**`Get()` 不检查弱引用“是否曾经有效”，只检查“现在是否仍对应同一个对象”**。所以不存在引用计数，也不存在循环引用泄漏——`TWeakObjectPtr` 完全不阻止回收。
+**FWeakObjectPtr赋值**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/WeakObjectPtr.cpp`；旧文L1854–1878。旧文引擎行号线索：29、51（未复核）。
 
-### 3. 为什么 `ObjectSerialNumber` 是“懒分配”的
-
-`FWeakObjectPtr::operator=` 是唯一分配序列号的入口，`WeakObjectPtr.cpp` 第 29 行起，至第 51 行结束（23 行，整段完整收录）：
+阅读问题：对象为空时Reset；其他身份需求也能请求序列号。
 
 ```cpp
 void FWeakObjectPtr::operator=(FObjectPtr ObjectPtr)
@@ -1877,11 +1977,11 @@ void FWeakObjectPtr::operator=(FObjectPtr ObjectPtr)
 }
 ```
 
-工程含义很实际：**不创建弱引用的对象**（绝大多数 Actor、Component、CDO）在整个生命周期里 `SerialNumber` 一直为 0，`FUObjectItem` 也不会有额外的序列号写入开销。而 `rg -n "AllocateSerialNumber"` 的全部调用点只有 7 处（`WeakObjectPtr.cpp`、`ObjectPathId.cpp`、`OverriddenPropertySet.cpp`、`UObjectArchetype.cpp` ×2、`InstanceDataObjectUtils.cpp`、声明处），确认了“序列号是弱引用/对象路径这类需要稳定身份的场景专用”的判断。
+### GC-B46
 
-### 4. `MarkAsGarbage`：5.8 的真实名字与实现
+**MarkAsGarbage与ClearGarbage**。历史定位：`Engine/Source/Runtime/CoreUObject/Public/UObject/UObjectBaseUtility.h`；旧文L1886–1909。旧文引擎行号线索：204、225（未复核）。
 
-**事实修正**：`MarkPendingKill()` 在 5.8 中已不存在（`rg -n "MarkPendingKill" UObjectBaseUtility.h` 零命中）。真实 API 是 `MarkAsGarbage()`，与 `ClearGarbage()` 配对。摘自 `Engine\Source\Runtime\CoreUObject\Public\UObject\UObjectBaseUtility.h`（第 204 行起，至第 225 行结束，共 22 行，整段完整收录）：
+阅读问题：check默认构建边界、镜像标志与Async清理各自解释。
 
 ```cpp
 	/**
@@ -1908,14 +2008,11 @@ void FWeakObjectPtr::operator=(FObjectPtr ObjectPtr)
 	}
 ```
 
-三条关键语义：
-1. **`check(!IsRooted())`**：根集中的对象不允许被标记为垃圾。这是**断言而非运行时防护**——在 Shipping 构建下会直接崩，这也是引擎侧 `FCoreUObjectDelegates` 里那句“标记为 Garbage 却仍在 RootSet”的 Fatal 检查的镜像；
-2. **标志是“双写”的**：`RF_MirroredGarbage`（`EObjectFlags`，随对象内存走、参与序列化与撤销）与 `EInternalObjectFlags::Garbage`（存于 `FUObjectItem::FlagsAndRefCount`，供 GC 快读）必须同时置位。历史包袱导致两个域各存一份，任何一处漏写都会造成“对象被判定垃圾但序列化仍认为有效”的分裂状态；
-3. **清除 `EInternalObjectFlags::Async`**：异步加载中的对象默认对 GC 隐藏；显式标垃圾时必须摘掉 `Async`，否则 GC 会忽略它，形成“标了垃圾却永不回收”的泄漏。
+### GC-B47
 
-### 5. `CollectGarbage` 与 `TryCollectGarbage`：参数与返回语义
+**CollectGarbage与TryCollectGarbage声明**。历史定位：`Engine/Source/Runtime/CoreUObject/Public/UObject/UObjectGlobals.h`；旧文L1920–1924。旧文引擎行号线索：952、962（未复核）。
 
-两者声明在 `Engine\Source\Runtime\CoreUObject\Public\UObject\UObjectGlobals.h`，分别位于第 952 行与第 962 行（两处声明之间有 9 行注释，**节选**）：
+阅读问题：void/bool及full purge请求语义。
 
 ```cpp
 COREUOBJECT_API void CollectGarbage(EObjectFlags KeepFlags, bool bPerformFullPurge = true);
@@ -1923,7 +2020,11 @@ COREUOBJECT_API void CollectGarbage(EObjectFlags KeepFlags, bool bPerformFullPur
 COREUOBJECT_API bool TryCollectGarbage(EObjectFlags KeepFlags, bool bPerformFullPurge = true);
 ```
 
-实现分别在 `GarbageCollection.cpp` 第 6366 行与第 6393 行起。`CollectGarbage` 完整源码（第 6366 行至第 6391 行，26 行，整段完整收录）：
+### GC-B48
+
+**CollectGarbage**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/GarbageCollection.cpp`；旧文L1928–1955。旧文引擎行号线索：6366、6393、6366、6391（未复核）。
+
+阅读问题：initial load与事务早退反驳无条件完成保证。
 
 ```cpp
 void CollectGarbage(EObjectFlags KeepFlags, bool bPerformFullPurge)
@@ -1954,7 +2055,11 @@ void CollectGarbage(EObjectFlags KeepFlags, bool bPerformFullPurge)
 }
 ```
 
-`TryCollectGarbage` 的锁策略部分（第 6393 行至第 6439 行，**节选**：省略前 9 行与 `CollectGarbage` 完全相同的 `GIsInitialLoad` / AutoRTFM 守卫，保留锁获取与返回语义）：
+### GC-B49
+
+**TryCollectGarbage锁策略节选**。历史定位：`Engine/Source/Runtime/CoreUObject/Private/UObject/GarbageCollection.cpp`；旧文L1959–1994。旧文引擎行号线索：6393、6439（未复核）。
+
+阅读问题：true表示调用内部路径，重试/进行中条件仍可阻塞。
 
 ```cpp
 bool TryCollectGarbage(EObjectFlags KeepFlags, bool bPerformFullPurge)
@@ -1992,111 +2097,3 @@ bool TryCollectGarbage(EObjectFlags KeepFlags, bool bPerformFullPurge)
 	return true;
 }
 ```
-
-对照表：
-
-| 维度 | `CollectGarbage` | `TryCollectGarbage` |
-| --- | --- | --- |
-| 返回类型 | `void` | `bool` |
-| `KeepFlags` | 带该 `EObjectFlags` 的对象无条件保留（即使不可达） | 同上 |
-| `bPerformFullPurge` | 默认 `true`；为 `true` 时**不使用时间片**，单帧跑完整个清理（`bReachabilityUsingTimeLimit = !bFullPurge && GAllowIncrementalReachability`） | 同上 |
-| 初始加载期 | 记 Log 后**静默返回**（不回收） | 记 Log 后返回 `false` |
-| AutoRTFM 事务内 | 记 Log 后静默返回（事务内不能释放内存，否则无法回滚） | 返回 `false` |
-| 抢锁失败 | 不存在此情形：无条件 `AcquireGCLock()`，**阻塞主线程**直到 `AsyncCounter` 归零 | 先 `TryGCLock()`；失败则计数跳过，超过 `GNumRetriesBeforeForcingGC` 后才强制 `AcquireGCLock()` |
-| 增量分析进行中 | 同左 | 视为必须完成：直接 `AcquireGCLock()`，即便阻塞主线程 |
-| 返回 `true` 的含义 | 不适用 | **GC 锁已成功获取且 `CollectGarbageInternal` 已执行**，不代表“回收到了对象”，也不代表“清完了”——增量模式下本轮可能仍处于挂起 |
-
-最后一条尤其容易误用：`TryCollectGarbage` 返回 `true` 只表示“这次调用真的跑了 GC”，**不是**“垃圾已全部清空”。要判断清理是否彻底完成，应看 `GGCStats.bInProgress` 或直接使用 `bPerformFullPurge = true`。
-
-### 6. `FGCContext` / `FGCCallbacks` 的事实核查
-
-`rg -n "struct FGCContext|FGCCallbacks" Engine\Source\Runtime\CoreUObject -g "*.h"` 在 5.8 中**无命中**（包括 `GarbageCollection.h` / `UObjectGlobals.h`）。5.8 中与之职能对应、且真实存在的公开钩子是：
-- **委托**：`FCoreUObjectDelegates` 上的 `PreGarbageCollect` / `PostGarbageCollect` / `GarbageCollectComplete` / `GetPostPurgeGarbageDelegate()` / `PreGarbageCollectConditionalBeginDestroy` / `PostGarbageCollectConditionalBeginDestroy`；
-- **强制存活**：`FGCObject`（纯 C++ 类通过 `AddReferencedObjects` 参与引用图）与 `FGCObject::GGCObjectReferencer`；
-- **GC 期间禁止重入**：`FGCScopeGuard`（构造即禁止 GC）与 `FGCScopeTryGuard`（`GarbageCollection.h` 第 117 行、第 124 行）；
-- **只读统计**：`FStats`（`Engine\Source\Runtime\CoreUObject\Public\UObject\ReachabilityAnalysis.h` 第 80 行起），字段包括 `ReachabilityTimeLimit` / `UnhashingTimeLimit` / `DestroyGarbageTimeLimit` 与 `FIterationTimerStat`（`Total` / `Max` / `NumIterations` / `SlowestIteration`，用于定位“哪一轮迭代最慢”）。
-
-因此本篇文章不引用 `FGCContext` / `FGCCallbacks` 的任何源码。
-
----
-
-## 常见问题与排障 FAQ
-
-**Q1：如何排查特定对象为什么没有被垃圾回收？**
-在控制台输入 `obj list class=MyActor` 找到对象地址，随后使用 `obj refs name=MyActor_0` 命令，引擎将输出完整的从根集合（Root Set）到该对象的强引用引用链（Reference Chain），一秒定位是哪个强引用变量或 `AddToRoot` 阻止了回收。
-
-**Q2：GC 导致的卡顿通常发生在哪个阶段？**
-首先区分两种模式：`bPerformFullPurge = true`（`CollectGarbage` 默认）会单帧跑完标记与分析并释放 GC 锁，停顿主要落在标记与 `UnhashUnreachableObjects` / `IncrementalDestroyGarbage` 的同步等待上；`bPerformFullPurge = false` 且 `GAllowIncrementalReachability` 为真时，可达性分析按 `GIncrementalReachabilityTimeLimit`（默认 0.005 秒）分帧，停顿才被摊开。定性上，卡顿来源是标记期间的 `AcquireGCLock` 阻塞（其它线程必须让路）与 `BeginDestroy` 的同步等待，具体占比取决于场景与平台，本机未做运行态采样，不给百分比结论。优化手段是减少场景中无用小 Actor 的数量，或使用 MassEntity 避免产生海量 UObject。
-
-**Q3：什么时候使用 `AddToRoot()`？**
-仅对真正全局唯一常驻生命周期的管理器类（如自定义单例 Subsystem）使用。业务实体严禁滥用，否则极易导致关卡卸载后内存常驻泄露。注意 `MarkAsGarbage()` 内部有 `check(!IsRooted())`，对已 `AddToRoot()` 的对象标垃圾会直接在非 Shipping 构建下触发断言。
-
-**Q4：`TryCollectGarbage()` 返回 `true` 是否代表垃圾已清空？**
-不代表。返回 `true` 只说明本次调用成功获取 GC 锁并执行了 `CollectGarbageInternal`；在增量模式下本轮可达性分析仍可能处于挂起状态。需要“本次调用即清完”请用 `bPerformFullPurge = true`。
-
----
-
-## 验证命令与自检
-
-以下命令用于独立复现本文所有源码引用（`rg` 为 ripgrep；`$UE` 指 5.8 源码 checkout 根目录，本机为 `C:\Users\zhaozhiqi\Documents\GitHub\UnrealEngine`）。行号以 5.8 源码 checkout 为准，安装版 5.8.0 可能相差数行。
-
-```powershell
-$UE = 'C:\Users\zhaozhiqi\Documents\GitHub\UnrealEngine'
-$CU = "$UE\Engine\Source\Runtime\CoreUObject"
-
-# 1. 引用文件是否存在（应全部返回 True）
-@(
-  "$CU\Public\UObject\UObjectArray.h",
-  "$CU\Private\UObject\UObjectArray.cpp",
-  "$CU\Private\UObject\GarbageCollection.cpp",
-  "$CU\Private\UObject\GarbageCollectionInternalFlags.h",
-  "$CU\Private\UObject\GCScopeLock.h",
-  "$CU\Public\UObject\GarbageCollectionSchema.h",
-  "$CU\Public\UObject\FastReferenceCollector.h",
-  "$CU\Public\UObject\WeakObjectPtr.h",
-  "$CU\Private\UObject\WeakObjectPtr.cpp",
-  "$CU\Public\UObject\ReachabilityAnalysis.h",
-  "$CU\Public\UObject\UObjectGlobals.h",
-  "$CU\Public\UObject\UObjectBaseUtility.h"
-) | ForEach-Object { Test-Path $_ }
-
-# 2. 关键符号与行号（每行首列即行号）
-rg -n 'struct FUObjectItem'                      "$CU\Public\UObject\UObjectArray.h"
-rg -n 'class FChunkedFixedUObjectArray'          "$CU\Public\UObject\UObjectArray.h"
-rg -n 'AllocateUObjectIndex'                     "$CU\Private\UObject\UObjectArray.cpp"
-rg -n 'void FUObjectArray::FreeUObjectIndex'     "$CU\Private\UObject\UObjectArray.cpp"
-rg -n 'int32 FUObjectArray::AllocateSerialNumber' "$CU\Private\UObject\UObjectArray.cpp"
-rg -n 'PerformReachabilityAnalysis\(EObjectFlags' "$CU\Private\UObject\GarbageCollection.cpp"
-rg -n 'void MarkObjectsAsUnreachable'            "$CU\Private\UObject\GarbageCollection.cpp"
-rg -n 'void IncrementalPurgeGarbage'             "$CU\Private\UObject\GarbageCollection.cpp"
-rg -n 'bool UnhashUnreachableObjects'            "$CU\Private\UObject\GarbageCollection.cpp"
-rg -n 'bool DestroyObjects'                      "$CU\Private\UObject\GarbageCollection.cpp"
-rg -n 'void UClass::AssembleReferenceTokenStreamInternal' "$CU\Private\UObject\GarbageCollection.cpp"
-rg -n 'void VisitMembers'                        "$CU\Public\UObject\FastReferenceCollector.h"
-rg -n 'enum class EMemberType'                   "$CU\Public\UObject\GarbageCollectionSchema.h"
-rg -n 'class FGCCSyncObject'                     "$CU\Private\UObject\GCScopeLock.h"
-rg -n 'void SetUnreachable'                      "$CU\Private\UObject\GarbageCollectionInternalFlags.h"
-rg -n 'struct FWeakObjectPtr'                    "$CU\Public\UObject\WeakObjectPtr.h"
-rg -n 'inline void MarkAsGarbage'                "$CU\Public\UObject\UObjectBaseUtility.h"
-
-# 3. 反证：本文声明“5.8 中不存在”的符号应零命中
-rg -n 'FGCReferenceInfo|FGCReferenceTokenStream|InitReferenceTokenStream' $CU
-rg -n 'FGCFrameData'                $CU
-rg -n 'PurgeObjectsAndRecordsInSlot' $CU
-rg -n 'MarkPendingKill'             "$CU\Public\UObject\UObjectBaseUtility.h"
-rg -n 'SetUnreachable'              "$CU\Public\UObject\UObjectArray.h"
-rg -n 'struct FGCContext|FGCCallbacks' $CU -g '*.h'
-```
-
-**事实边界**：
-- 本文所有源码均来自 5.8 源码 checkout 的**静态阅读**，行号已用 `rg` 逐条核对；安装版 5.8.0 中 `UObjectGlobals.cpp::StaticConstructObject_Internal`、`GarbageCollection.cpp::PerformReachabilityAnalysis` / `IncrementalPurgeGarbage`、`UObjectArray.h::FUObjectItem` / `FChunkedFixedUObjectArray` 的行号与 checkout **一致**，其余文件未逐项比对；
-- 本文**不含任何运行态验证结论**：所有关于耗时、停顿分布、内存收益的表述都以源码注释与控制台变量默认值为依据，未在真实工程中采样，故不给具体毫秒/帧数/内存数字；
-- `UE_ENABLE_FUOBJECT_ITEM_PACKING`、`UE_WITH_REMOTE_OBJECT_HANDLE`、`WITH_VERSE_VM`、`UE_WITH_CONSTINIT_UOBJECT`、`UE_WEAKOBJECTPTR_ZEROINIT_FIX`、`THREADSAFE_UOBJECTS` 等宏的取值随构建配置与平台变化，源码中相应的条件编译分支**不会同时生效**。本文引用代码块时逐字保留了这些 `#if` 分支（便于对照原文件），但结论描述的是常见编辑器/打包构建下的路径。
-
----
-
-## 关联阅读与前后置专题
-
-- [01-UPROPERTY与反射系统源码](01-UPROPERTY与反射系统源码.md)：反射元数据生成与 `RefLink` 链表构建源码；
-- [03-Actor与Component生命周期源码](03-Actor与Component生命周期源码.md)：Actor 生成与 Destroy 生命周期流程；
-- [00-01 C++核心/01-C++对象生命周期与RAII](../../01-编程与计算机基础/C%2B%2B语言与对象模型/01-C%2B%2B对象生命周期与RAII.md)：底层 C++ 对象生命周期与智能指针选型对照。
