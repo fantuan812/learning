@@ -1,0 +1,63 @@
+Skill admission and time-representability evidence | batch 2026-10-04
+Summary only. This TXT is not the complete technical raw archive.
+Local collection/packaging spans 2026-10-04/05 UTC; individual commands retain actual UTC timestamps.
+
+Contract and teaching changes
+- Preserve the original normal gate order and accepted-only opaque request IDs per Actor.
+- A lower unseen ID may be accepted; a rejected attempt is not remembered; no original-result cache or intent binding is implemented.
+- Check the three selected-request deadline additions before gameplay writes. Overflow returns time-overflow with rejected+1 only.
+- Exact INT64_MAX is representable; unselected definitions must not cause headroom rejection.
+- Trusted configuration/Actor/authoritative-time/adapter and bounded-counter preconditions remain. Allocation exceptions do not have strong rollback.
+- Original hash is a custom integer/partial-state projection. Equal projections can hide CD 6000 versus CD 6100.
+- S9 is one predicted-mana scalar correction. Actor-copy/pending examples are separate teaching exercises, not a network prediction implementation.
+
+Final source identities (SHA-256)
+skill_pipeline.cpp: 1b1e1b2ba9fe7199ebd14fe8d3a7a81aac85c9b7bdaa679346b48b48f0dafd53
+skill_contract.cpp: b1ecdc003fe670a41c076a900668e7afc62cc394b33683be159e131974d3e055
+run_skill_contract.py: fa83c898acb1f0adbed3e9f5a424946ce37098029add2baf11845711f779f48d
+Main03 reviewed prose: fc4b7d9b6a42b76fce9e4d66139c49b5b38b746147ed6ec206e7363dc33fa382
+
+Actual bounded execution
+Linux, GCC 14.2.0, C++17, Python 3.12.14. No Windows/MSVC model, UE/GAS, real network/prediction/persistence, or new performance benchmark.
+O0+NDEBUG / O2 / UBSan: each retained 14 pass, new 42 contract/teaching cases, 267 checks, 116 operation-ledger entries, zero failures.
+The 42 include helper arithmetic and three separate teaching exercises; counts are not full game coverage.
+Independent literal/full-Actor oracle: 102 checks/0 failures in each of three build modes.
+Three model mutations: GCD spends mana, finite guard removed, deadline overflow incorrectly saturates.
+Two teaching mutations: legacy S9 scalar correction removed, new value-copy exercise changed to aliasing.
+Each genuine negative control compiled then produced the intended semantic FAIL and exit 1; compile failure/crash/timeout is not credited as a semantic kill.
+GCD corruption still passes all 14 old tests. The retained finite and scalar tests correctly detect their corresponding mutations.
+
+Runner and orchestration
+Final self-test 146/0; independently run normal Python and -O each 146/0.
+Additional optimize=0 CLI fault checks 61/0 and path/write-failure checks 18/0 cover the ordinary interpreter boundary explicitly.
+Normal reports reject contradictory expected/actual Actor ledgers and Handle reasons even when CHECK lines claim PASS and the program exits0.
+Failure reports used by real mutants still require the intended FAIL and exit 1. The parser does not prevent intentionally fabricated evidence.
+Actual isolated PowerShell execution of the exact Linux CI block: exit 0; a synthetic first native command exit 23 stops the block and does not run its second command.
+CI block SHA-256: dd4c2fe066d03831151ec08be1e3a0ade7ba7ab55468df4502d05243e5ba1142
+The new CI step is Linux-only, bounded to 8 minutes, and retains diagnostics. Remote CI status belongs to the actual commit/PR, not this pre-publication summary.
+
+Failures and historical evidence retained
+v1 self-test 124 checks / 1 failure used a 64 KiB limit that failed too early, before the intended log-write diagnostic.
+v2 self-test 132/0 corrected the fixture; v3 adds ledger contradictions and reaches 146/0.
+The 128 KiB RLIMIT fixture runs the synthetic program, then commands.json writing reaches EFBIG and returns nonzero with FINAL_LOG_FAILURE.
+Initial PowerShell cache startup failures and intermediate missing-not-yet-integrated link failures remain original records, not passed tests.
+Timed-out/partial captures retain their flags; finite capture snapshots do not promise all escaped-descendant future output.
+All 75 previous raw files and 282 protected originals remain byte-identical. Other models are not recertified by this batch.
+
+Lossless archive
+Path: skill_contract_20261004.raw.jsonl.gz
+1776 logical files: 958 direct file records + 818 direct aliases, plus one header record.
+Logical original bytes: 68821459; stored unique bytes: 55473435.
+JSONL bytes: 74356239; gzip bytes: 4878156; deterministic gzip mtime 0, no stored filename.
+gzip SHA-256: 66e93abe5a3b7b53334f124fdaa4fb47be0a34e39a89ce63c1743490dc37a6d2
+JSONL SHA-256: f8a366d6b0366d26e7cbd3b69179a30adc53fcaf44301d78b8941e25925d4bbc
+Every logical record was reconstructed and compared with its original source bytes.
+An alias points only to an earlier direct file and retains its own path/length/SHA; it is a storage optimization, not an additional execution.
+No alias chains/cycles/forward/missing targets, duplicate logical paths or traversal/absolute paths are accepted.
+Normal and Python -O archive recipe regressions: 48 actual positive/negative invocations passed their expected outcomes.
+Complete declared model/runner technical inputs and observed streams are in the archive; this summary and README describe packaging/validation separately.
+
+Reproduce from the repository root into fresh external directories
+python3 -B evidence/tests/gameplay-core/scripts/run_skill_contract.py --output-dir /tmp/skill-contract-NEW --cxx g++-14 --mode all --negative-controls --timeout-seconds 120
+python3 -O -B evidence/tests/gameplay-core/scripts/run_skill_contract.py --output-dir /tmp/skill-runner-NEW --self-test --timeout-seconds 120
+Use the README's explicit file+alias verification recipe, unchanged under -O. It reads and checks the archive only; it neither extracts nor executes stored commands.

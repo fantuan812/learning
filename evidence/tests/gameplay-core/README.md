@@ -11,7 +11,7 @@ tags:
 status: stable
 verified: []
 maturity: L0
-updated: 2026-10-04
+updated: 2026-10-05
 sources:
   - id: gcc-finite-math
     title: "GCC optimization options"
@@ -31,7 +31,7 @@ sources:
 
 1. 背包增删在"容量不足"时是否会留下半成品状态？重复提交（网络重传）会不会重复发放？
 2. Buff 的同级刷新、叠加、替换、互斥、高层覆盖低级、低级恢复、驱散、来源变更、周期重触发这九类交互，边界到底如何？
-3. 技能请求在冷却/公共冷却/资源/状态/距离/目标等门禁下的拒绝路径是否干净（无副作用）？相同输入流能否确定重放？客户端预测失败能否正确回滚？
+3. 技能请求被门禁拒绝时，除拒绝计数外，哪些完整Actor字段应保持？接纳过的ID如何去重？同输入的完整状态是否一致，以及单个蓝量纠正与完整客户端预测有什么区别？
 4. 属性修正器聚合用"全量重算"相比"脏标记增量重算"差多少？这个差值是否足以支撑服务端每 Tick 的属性刷新预算决策？
 
 ## 假设
@@ -39,7 +39,7 @@ sources:
 - 服务端逻辑是**单线程确定性**的：同一请求序列 + 同一初始状态 → 同一结果（对应帧同步/回放的确定性要求）。
 - 背包容量与堆叠上限是硬约束，事务必须**全成功或全回滚**，不允许部分写入。
 - Buff 的"高层覆盖低级"是压制（suppressed）而非删除，被压制者继续消耗自身剩余时长；高层结束后低级按剩余时长恢复。
-- 技能请求携带唯一 `requestId`，重复投递按幂等处理。
+- 技能请求的 `requestId` 是每Actor生命周期内的不透明请求身份：只记成功接纳过的ID；重复返回duplicate，失败请求可重试，不提供原结果缓存、意图绑定、单调序号或跨重启幂等。
 - 属性聚合保留最后Override，再按列表原顺序累加Add和连乘Mul，最后做加/乘；浮点运算不能任意重关联。当前有限输入/失败cache合同见下方修订。
 
 ## 历史环境（2026-09-11）
@@ -84,7 +84,7 @@ python3 -B evidence/tests/gameplay-core/scripts/run_inventory_contract.py \
 
 - 历史背包基准输入：40 槽、单堆叠上限 99、单次批量上限 999；400 000 次增删操作（2/3 为移除）。当前聚焦合同不运行这段基准；其它模型输入仍按各自历史条目理解。
 - 历史Buff：11个定义的12场景；当前独立合同另覆盖33场景，详见下方修订，不把旧输入与新覆盖混计。
-- 技能：3 个技能定义（瞬发攻击 / 不可打断长吟唱 / 免费自增益）；确定性重放为 4 000 次伪随机请求（xorshift64 固定种子 12345）。
+- 历史技能输入：3个定义（短吟唱攻击 / 不可打断长吟唱 / 免费自增益），4000次固定seed伪随机请求；旧摘要只覆盖部分状态。当前聚焦合同补完整Actor及时间加法边界，见下方修订。
 - 历史属性基准：20000实体×16修正器、200轮，每轮2000次有放回mutation尝试，不是恰好10%不同实体变脏；当前聚焦41场景不运行该基准。
 
 ## 指标与原始结果
@@ -93,7 +93,7 @@ python3 -B evidence/tests/gameplay-core/scripts/run_inventory_contract.py \
 | --- | --- | --- |
 | `inventory_txn` | T1–T7 | **pass=7 fail=0** |
 | `buff_conflict` | R1–R9 + E1–E3 | **pass=12 fail=0** |
-| `skill_pipeline` | S1–S10 | **pass=10 fail=0** |
+| 历史 `skill_pipeline` | S1–S10 | **历史pass=10 fail=0，非完整预测/重放证明** |
 | 历史 `attr_modifier_bench` | 首次mutation前400次同求值器抽样 | **历史mismatch=0（pass=401），非变更后合同** |
 
 关键数据（单次运行，原始值见 `results/`）：
@@ -108,7 +108,7 @@ python3 -B evidence/tests/gameplay-core/scripts/run_inventory_contract.py \
                  dirty_incremental p50=234.9us  p95=316.5us  p99=422.7us
                  p50_speedup=7.47x
 
-[skill_pipeline] 确定性重放 h1=908cfbcc0f3aa8f1 h2=908cfbcc0f3aa8f1 h3=be53337654527f00
+[skill_pipeline] 历史部分状态摘要 h1=908cfbcc0f3aa8f1 h2=908cfbcc0f3aa8f1 h3=be53337654527f00
 ```
 
 原始输出：[inventory_txn.txt](results/inventory_txn.txt) ｜ [buff_conflict.txt](results/buff_conflict.txt) ｜ [skill_pipeline.txt](results/skill_pipeline.txt) ｜ [attr_modifier_bench.txt](results/attr_modifier_bench.txt)
@@ -117,8 +117,8 @@ python3 -B evidence/tests/gameplay-core/scripts/run_inventory_contract.py \
 
 1. **历史背包断言只覆盖有限路径**：`T3` 检查容量拒绝时逐槽不变，`T4` 检查同键不再加物品，`T7` 检查超量移除。它们没有覆盖槽位修改后的去重节点/桶分配失败，也没有验证异参冲突和原结果重放；旧实现实际可在 `bad_alloc` 后重试双发。完整异常准备与无抛出发布边界见下方 2026-10-04 背包合同修订，旧 7 项全绿不能推出所有失败路径无副作用。
 2. **历史Buff十二场景只覆盖有限交互**：R6/E2仍有剩余时长与不过期复活的价值，但未覆盖受压刷新、三层赢家和可叠child周期事件；旧全绿不能证明九类交互的组合正确。R7只验证本模型按school删除所有匹配条目（含被压制者），不是所有游戏驱散都须全删。2026-10-04修订在下方补出具体反例、组内不变量、全状态oracle和明确政策。
-3. **技能请求管线的拒绝路径必须无副作用**：`S2`/`S4` 显示冷却与蓝量拒绝都不扣蓝、不写冷却；`S7` 显示网络重传只结算一次；`S9` 显示客户端预测在服务端拒绝后能回滚到权威值——这三条共同构成"客户端预测 + 服务端权威"的最小正确性骨架。
-4. **技能管线可确定重放**：相同 4 000 次请求流两次运行得到同一状态哈希，换种子则不同，满足回放/帧同步对确定性的基本要求。
+3. **技能旧断言没有证明完整拒绝合同**：S2/S4检查了部分蓝量/冷却，S3只查reason；GCD拒绝偷偷扣蓝的真实变体仍能通过原14项。正常业务拒绝本来会增加rejected，因此应检查完整Actor仅该计数变化。S7是当前Actor中成功接纳ID去重，S9确实演示单个predictedMana标量纠正；两者不构成持久结果重放或完整客户端预测系统。
+4. **旧技能摘要只是部分状态投影**：相同seed同build下摘要一致的观察保留，但该hash未覆盖全部冷却、GCD、施法与身份集合，不能用它证明完整状态或跨平台确定性。不同冷却状态可有同一摘要；当前验收按逐步字面结果与完整Actor字段比较，模型仍不含世界快照、网络确认队列和历史重模拟。
 5. **属性旧计时不是收益保证**：保留单次p50/p99与7.47x历史标签，撤回据此保证项目收益及“成本只与变更量相关”的结论。旧incremental仍全表扫dirty，O(N+kM)，且400检查在mutation前；当前源码加入新拒绝政策与成功后cache发布，旧计时不代表它的成本。变更后正确性和读屏障由下方独立合同另证。
 
 ## 局限
@@ -129,6 +129,119 @@ python3 -B evidence/tests/gameplay-core/scripts/run_inventory_contract.py \
 - **历史波动结论缺少可复核样本**：先前文字的1750–1760µs、7.4–7.8x范围没有在此附上完整多轮输出，本批不继续以它作为可重复收益结论。现有属性raw保留为历史单次记录；本轮没有重跑旧基准或用功能通过推断性能。
 - **模型简化**：背包为槽位模型（无绑定/唯一物品/耐久），Buff 为离散时长模型（无属性快照/快照重算），技能无目标筛选与命中判定，属性无依赖链与脏传播。
 - 本目录**不主张**线上容量结论；线上预算仍需在真实 DS 环境复测。
+
+## 2026-10-04 批次：技能接纳、时间边界与证据范围修订
+
+### 原来的绿灯漏掉了什么
+
+S3只检查返回gcd，若这一拒绝分支偷偷扣1蓝，旧14项仍能全部通过。新检查先独立固定正确的前置状态，再比较拒绝前后的全部Actor字段，只有rejected可以增一。另一反例中，两次合法请求得到相同旧摘要，但冷却分别为6000与6100；hash没有覆盖这个字段，不能承担完整状态oracle。
+
+S9原本有真实价值：服务端拒绝后，把一个本地蓝量整数纠正为权威值，删除赋值会失败。它没有客户端世界、pending请求表或历史重模拟。两个未确认请求A耗20、B耗40时，拒绝A后仍应保留B的预测，显示60；直接赋回100会丢掉B。此处是隔离教学反例，并未实现网络预测系统。
+
+### 模型保留的语义与新增拒绝
+
+[模型](src/skill_pipeline.cpp)按调用顺序处理，每Actor只记已经成功接纳过的不透明requestId。低ID晚到仍可能接纳；重复ID返回duplicate，即使意图改变也没有结果/意图校验；被拒ID可重试。它没有lastSeq水位、原结果缓存、epoch、记忆淘汰、跨重启去重或认证。
+
+调用方仍须提供正确选定的Actor、有效状态、执行期间不变的有效定义、非负不倒退的权威时间及可递增计数。距离/目标/阵营/技能习得由可信适配层核验；本例只检查hostile请求targetId非零和有限/范围距离。接纳时立即扣蓝并写CD/cast/GCD、接纳ID；Interrupt只重置可打断施法的两个字段，不退款，也没有Active/Recovery推进或伤害事件接线。
+
+本批明确新增time-overflow拒绝：保持全部旧gate先后，在第一次玩法写入前，分别安全计算本次选定定义的CD、cast和GCD候选。任何一个超出int64范围都只增加rejected；不能先发生有符号溢出再检测，未选定义的极大时长也不能导致误拒。恰好INT64_MAX仍可表示。容器插入仍可能抛异常，故“正常拒绝无玩法写入”不等于分配失败强原子性；不在此批改造事务协议。
+
+### 实际执行与覆盖边界
+
+本地采集为Linux、GCC14.2、C++17、Python3.12；批次跨2026-10-04/05 UTC，逐命令起止以原记录为准。最终同一CI命令块实际运行O0+NDEBUG、O2、UBSan：各保留旧14项，并通过42个合同/教学场景、267个显式检查，每次116条操作账本。42包含算术helper与三个隔离教学练习，不能全称为42种实际游戏流程。[独立字面测试](tests/skill_contract.cpp)按顺序列出输入、理由和完整Actor，map/set排序用于输出，不以DUT的弱hash自证。
+
+另一个提前固定的独立oracle在三构建中各102检查通过，包含三个deadline独立exact-MAX/超1、早期gate优先、未选MAX定义、溢出后同ID重试。不同清单的数字不相加当业务覆盖率。
+
+5个真实编译/运行变体分为**3模型负控**（GCD扣蓝、移除finite guard、把时间溢出错误饱和）与**2教学负控**（移除旧S9标量纠正、新值拷贝练习改为别名）。都要求编译成功后出现指定语义FAIL并exit1；崩溃/编译失败不算检测到语义错误。旧S11–S14及S9自身能发现对应变体的价值保留，两个教学负控不证明DUT拥有预测实现。
+
+[聚焦runner](scripts/run_skill_contract.py)只读导入Inventory的捕获/路径helper，不运行Inventory或五目标默认入口。最终自测146项通过；独立普通Python与-O各146/0，另有optimize=0的实际CLI故障61/0与路径/写失败18/0。覆盖编译失败不运行残留二进制、运行失败、超时、日志open/write失败、拒覆盖、中文/空格路径、非法UTF8/CRLF/NUL原流、缺/重复/畸形清单及FAIL却exit0。
+
+审查还实际发现“全CHECK PASS但账本expected/actual矛盾”的报告曾被接受；当前正常报告显式检查完整字段集合、expected==actual及Handle理由一致，语义负控允许其预期差异并须满足指定FAIL/exit1。这只是报告一致性，不能防测试程序故意伪造。有限文件快照也不保证已逃逸后代的未来输出全部捕尽；未使用的环境flag只记录存在布尔，不公开其值。
+
+v1自测124项有1失败：64KiB文件上限在编译产物写入就触发，未抵达预期日志写故障。该失败原样保留；修正fixture后132项通过，再补账本矛盾用例为146项。后者用128KiB限制，让合成程序先成功运行，再由约240KiB commands.json真实写入触发EFBIG、FINAL_LOG_FAILURE和非零。初次PowerShell缓存目录只读导致未启动的记录也保留，改用隔离HOME/XDG后才取得实际通过结果。
+
+```bash
+python3 -B evidence/tests/gameplay-core/scripts/run_skill_contract.py \
+  --output-dir /tmp/skill-contract-NEW --cxx g++-14 --mode all --negative-controls --timeout-seconds 120
+python3 -O -B evidence/tests/gameplay-core/scripts/run_skill_contract.py \
+  --output-dir /tmp/skill-runner-NEW --self-test --timeout-seconds 120
+```
+
+输出必须是尚不存在的仓库外目录；失败返回非零。raw的base64/长度/SHA为权威字节，分组日志只索引commands.json，避免嵌套复制整套输出。[Linux-only CI](../../../.github/workflows/knowledge.yml)有8分钟步骤上限、逐命令退出传播与诊断保留；本地真实相同PowerShell块exit0，合成首命令exit23会立即结束且不执行第二命令。未运行Windows/MSVC模型、UE/GAS、真实网络/预测/持久化或新性能基准；远端CI结果以该提交为准。
+
+### 无损原流与可复核归档
+
+[摘要](results/skill_contract_20261004.txt)不是完整raw。[技术原流归档](results/skill_contract_20261004.raw.jsonl.gz)收录所列模型/runner实验的原输入、命令、输出及既有真实失败。1776个逻辑文件共68,821,459原字节，以958个file记录和818个直接alias保存；实际存储55,473,435唯一字节，JSONL 74,356,239字节，确定性gzip 4,878,156字节。alias只去重存储，不减少原路径、原记录或失败，也不是额外执行次数；每个逻辑文件都已逐字节重建并与原文件比对。
+
+- gzip SHA256：`66e93abe5a3b7b53334f124fdaa4fb47be0a34e39a89ce63c1743490dc37a6d2`
+- JSONL SHA256：`f8a366d6b0366d26e7cbd3b69179a30adc53fcaf44301d78b8941e25925d4bbc`
+
+file保存原bytes的base64/长度/SHA；alias仅引用此前直接file，保有自己的逻辑路径/长度/SHA，禁止链、环、前向/缺目标、重复或越界路径。下面配方只校验，不解包、不执行归档命令。正常Python与-O共48项实际正负检查通过，覆盖损坏/截断、内外摘要、字段/长度、重复路径及坏alias；内层负例重算外层摘要，避免只撞第一层校验。旧75份raw和282原件原字节保全；原有其他模型结果不因本批通过而获得新的背书。
+
+```bash
+python3 -O - evidence/tests/gameplay-core/results/skill_contract_20261004.raw.jsonl.gz <<'PY'
+import base64, gzip, hashlib, json, sys
+from pathlib import Path, PurePosixPath
+
+GZIP_SHA256 = '66e93abe5a3b7b53334f124fdaa4fb47be0a34e39a89ce63c1743490dc37a6d2'
+JSONL_SHA256 = 'f8a366d6b0366d26e7cbd3b69179a30adc53fcaf44301d78b8941e25925d4bbc'
+COUNTS = (1776, 958, 818, 68821459, 55473435)
+
+def require(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+def safe_path(name):
+    require(isinstance(name, str) and name and '\\' not in name and '\0' not in name, 'bad path')
+    q = PurePosixPath(name)
+    require(not q.is_absolute() and '..' not in q.parts and name == q.as_posix() and
+            name != '.' and all(':' not in part for part in q.parts), 'unsafe path')
+    return name
+
+def verify(path, gzip_sha256=GZIP_SHA256, jsonl_sha256=JSONL_SHA256):
+    packed = Path(path).read_bytes()
+    require(hashlib.sha256(packed).hexdigest() == gzip_sha256, 'gzip SHA mismatch')
+    data = gzip.decompress(packed)
+    require(hashlib.sha256(data).hexdigest() == jsonl_sha256, 'JSONL SHA mismatch')
+    require(data.endswith(b'\n'), 'missing final newline')
+    rows = [json.loads(line) for line in data.decode('utf-8').splitlines()]
+    require(rows and isinstance(rows[0], dict), 'missing header')
+    header = rows[0]
+    require(header.get('kind') == 'archive_header' and
+            header.get('format') == 'learning.skill.evidence.v1', 'bad header')
+    direct = {}; seen = set(); aliases = 0; total_bytes = 0; unique_bytes = 0
+    for row in rows[1:]:
+        require(isinstance(row, dict), 'non-record')
+        kind = row.get('kind')
+        expected = {'kind', 'path', 'bytes', 'sha256', 'data_base64' if kind == 'file' else 'target'}
+        require(kind in ('file', 'alias') and set(row) == expected, 'unsupported record shape')
+        name = safe_path(row['path'])
+        require(name not in seen, 'duplicate logical path')
+        seen.add(name)
+        require(type(row['bytes']) is int and row['bytes'] >= 0, 'invalid length')
+        if kind == 'file':
+            raw = base64.b64decode(row['data_base64'], validate=True)
+            direct[name] = raw
+            unique_bytes += len(raw)
+        else:
+            target = safe_path(row['target'])
+            require(target in direct, 'alias must reference a previous direct file, never an alias')
+            raw = direct[target]
+            aliases += 1
+        require(len(raw) == row['bytes'], 'length mismatch')
+        require(hashlib.sha256(raw).hexdigest() == row['sha256'], 'record SHA mismatch')
+        total_bytes += len(raw)
+    actual = (len(seen), len(direct), aliases, total_bytes, unique_bytes)
+    names = ('logical_files', 'file_records', 'alias_records', 'logical_original_bytes', 'stored_unique_bytes')
+    require(all(type(header.get(name)) is int for name in names), 'header counters must be integers')
+    require(actual == tuple(header[name] for name in names) == COUNTS, 'archive counts mismatch')
+    return dict(zip(names, actual))
+
+if __name__ == '__main__':
+    require(len(sys.argv) == 2, 'usage: python [-O] verify.py ARCHIVE.raw.jsonl.gz')
+    print(json.dumps(verify(sys.argv[1]), sort_keys=True))
+PY
+```
 
 ## 2026-10-04 属性求值与 dirty-cache 合同修订
 

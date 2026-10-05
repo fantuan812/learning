@@ -1,5 +1,12 @@
-// Gameplay core evidence: skill request pipeline (validation, gates, idempotency,
-// deterministic replay, client prediction rollback).
+// Gameplay core evidence: single-writer skill admission gates, accepted-ID
+// suppression, partial telemetry repeatability and one scalar prediction correction.
+// Caller contract: authenticated Actor selection and valid existing state; immutable
+// valid definitions (nonnegative cost/durations and finite ordered nonnegative range),
+// nonnegative nondecreasing authoritative time, bounded counters, trusted distance/
+// target adapter. Handle does not authenticate, look up world targets or enforce all
+// those preconditions. Finite distance and time-addition representability ARE checked.
+// Normal error returns change rejected only; allocation/exception rollback is NOT
+// guaranteed (container insertion can throw after gameplay writes). No fast-math.
 // Build: g++ -std=c++17 -O2 -o skill_pipeline.exe skill_pipeline.cpp
 #include <cstdio>
 #include <cmath>
@@ -40,12 +47,24 @@ struct Actor {
     int castingSkill = 0;
     bool castingInterruptible = true;
     std::unordered_map<int, int64_t> cooldownEnd;
+    // Opaque IDs accepted by THIS Actor lifetime, not lastSeq or a result cache.
+    // Rejected attempts are not remembered; lower unseen IDs may arrive later.
     std::unordered_set<uint64_t> applied;
-    // telemetry for the replay hash
+    // Partial historical telemetry, not a complete Actor/intent/world state hash
     uint64_t acceptedHash = 1469598103934665603ULL;
     int accepted = 0;
     int rejected = 0;
 };
+
+// Check before adding: neither comparison itself can overflow. The signed form
+// avoids UB even at INT64_MIN/MAX; negative time/config remains outside the caller
+// contract rather than becoming a newly supported gameplay policy.
+bool CheckedTimeAdd(int64_t base, int64_t delta, int64_t& candidate) {
+    if (delta > 0 && base > std::numeric_limits<int64_t>::max() - delta) return false;
+    if (delta < 0 && base < std::numeric_limits<int64_t>::min() - delta) return false;
+    candidate = base + delta;
+    return true;
+}
 
 class SkillServer {
 public:
@@ -73,15 +92,24 @@ public:
             ++a.rejected; return "out-of-range";
         }
 
+        // Only this accepted path computes these three deadlines. Keep earlier
+        // rejection precedence and never inspect unused definitions for headroom.
+        // All candidates must be representable BEFORE the first gameplay write.
+        int64_t cooldownUntil = 0, castUntil = 0, gcdUntil = 0;
+        if (!CheckedTimeAdd(r.nowMs, d->cooldownMs, cooldownUntil) ||
+            !CheckedTimeAdd(r.nowMs, d->castMs, castUntil) ||
+            !CheckedTimeAdd(r.nowMs, GCD_MS, gcdUntil)) {
+            ++a.rejected; return "time-overflow";
+        }
         a.mana -= d->manaCost;
-        a.cooldownEnd[r.skillId] = r.nowMs + d->cooldownMs;
+        a.cooldownEnd[r.skillId] = cooldownUntil;
         a.castingSkill = r.skillId;
-        a.castingUntilMs = r.nowMs + d->castMs;
+        a.castingUntilMs = castUntil;
         a.castingInterruptible = d->interruptible;
-        a.gcdUntilMs = r.nowMs + GCD_MS;
+        a.gcdUntilMs = gcdUntil;
         a.applied.insert(r.requestId);
         ++a.accepted;
-        // FNV-1a over the accepted request keeps the replay hash comparable across runs.
+        // Historical custom integer fold of accepted ID/skill; many fields omitted.
         uint64_t h = a.acceptedHash;
         h ^= static_cast<uint64_t>(r.requestId * 1315423911u + r.skillId);
         h *= 1099511628211ULL;
@@ -97,13 +125,6 @@ private:
     std::unordered_map<int, SkillDef> defs_;
 };
 
-int gPass = 0;
-int gFail = 0;
-void Check(bool ok, const char* name, const std::string& detail) {
-    if (ok) { ++gPass; std::printf("PASS  %-52s %s\n", name, detail.c_str()); }
-    else    { ++gFail; std::printf("FAIL  %-52s %s\n", name, detail.c_str()); }
-}
-
 SkillServer MakeServer() {
     SkillServer s;
     s.Register(SkillDef{1, 6000, 20, 300, true,  0.0, 5.0, true});   // instant-ish attack
@@ -111,6 +132,15 @@ SkillServer MakeServer() {
     s.Register(SkillDef{3, 3000, 0, 0, true, 0.0, 100.0, false});    // self buff, free
     return s;
 }
+
+#ifndef SKILL_MODEL_ONLY
+int gPass = 0;
+int gFail = 0;
+void Check(bool ok, const char* name, const std::string& detail) {
+    if (ok) { ++gPass; std::printf("PASS  %-52s %s\n", name, detail.c_str()); }
+    else    { ++gFail; std::printf("FAIL  %-52s %s\n", name, detail.c_str()); }
+}
+
 
 void TestAccept() {
     SkillServer s = MakeServer();
@@ -184,7 +214,7 @@ void TestIdempotency() {
           " accepted=" + std::to_string(a.accepted));
 }
 
-// Deterministic replay: same scripted stream must reach the same state hash.
+// Repeat the bounded script and compare its partial telemetry projection only.
 uint64_t RunScript(uint64_t seed) {
     SkillServer s = MakeServer();
     Actor a;
@@ -213,7 +243,7 @@ void TestDeterminism() {
                   static_cast<unsigned long long>(h1),
                   static_cast<unsigned long long>(h2),
                   static_cast<unsigned long long>(h3));
-    Check(h1 == h2 && h1 != h3, "S8 identical input stream replays to identical state", buf);
+    Check(h1 == h2 && h1 != h3, "S8 identical stream repeats partial telemetry projection", buf);
 }
 
 void TestPredictionRollback() {
@@ -225,7 +255,7 @@ void TestPredictionRollback() {
     const std::string r = s.Handle(server, Request{5, 1, 9, 3000, 3.0});
     if (r != "accepted") predictedMana = server.mana; // reconcile back to authoritative value
     Check(r == "cooldown" && predictedMana == 100,
-          "S9 client prediction rolls back to authoritative on reject",
+          "S9 one predicted mana scalar is corrected on reject",
           "serverReason=" + r + " reconciledMana=" + std::to_string(predictedMana));
 }
 
@@ -235,7 +265,7 @@ void TestInterrupt() {
     s.Handle(a, Request{1, 1, 9, 0, 3.0});   // interruptible cast
     s.Interrupt(a);
     Check(a.castingUntilMs == 0 && a.castingSkill == 0,
-          "S10 interruptible cast is cancelled by damage",
+          "S10 direct Interrupt resets interruptible cast fields",
           "castingUntil=" + std::to_string(a.castingUntilMs));
 }
 
@@ -272,8 +302,10 @@ void TestRangeBoundaries() {
     Check(ok, "S14 finite inclusive range boundaries preserved", "[-1, 0, 5, 5.01]");
 }
 
+#endif  // SKILL_MODEL_ONLY
 }  // namespace
 
+#ifndef SKILL_MODEL_ONLY
 int main() {
     std::printf("gameplay-core | skill request pipeline test suite\n");
     std::printf("compiler=%s (build flags recorded by runner)\n", __VERSION__);
@@ -294,3 +326,4 @@ int main() {
     std::printf("RESULT pass=%d fail=%d\n", gPass, gFail);
     return gFail == 0 ? 0 : 1;
 }
+#endif  // SKILL_MODEL_ONLY
