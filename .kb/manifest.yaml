@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-05 (Actor Component and WorldSubsystem lifecycle teaching; static contracts and historical-source preservation).
+# Generated: 2026-10-05 (C++ move and false-sharing teaching contracts; historical evidence preserved).
 version: 4
 
 okf:
@@ -243,9 +243,9 @@ documents:
     lines: 72
   "evidence/labs/cpp-move/README.md":
     kind: README
-    maturity: L0
-    bytes: 4356
-    lines: 87
+    maturity: L2
+    bytes: 9175
+    lines: 108
   "evidence/labs/epoll-reactor/README.md":
     kind: README
     maturity: L0
@@ -253,9 +253,9 @@ documents:
     lines: 103
   "evidence/labs/false-sharing/README.md":
     kind: README
-    maturity: L0
-    bytes: 3756
-    lines: 66
+    maturity: L2
+    bytes: 7573
+    lines: 82
   "evidence/labs/profiling/README.md":
     kind: README
     maturity: L0
@@ -468,9 +468,9 @@ documents:
     lines: 242
   "知识/01-编程与计算机基础/C++语言与对象模型/02-Copy-Move与值语义.md":
     kind: doc
-    maturity: L3
-    bytes: 22696
-    lines: 310
+    maturity: L2
+    bytes: 47781
+    lines: 625
   "知识/01-编程与计算机基础/C++语言与对象模型/02-STL容器与Allocator.md":
     kind: doc
     maturity: L2
@@ -503,9 +503,9 @@ documents:
     lines: 327
   "知识/01-编程与计算机基础/并发与同步/03-LockFree与FalseSharing.md":
     kind: doc
-    maturity: L4
-    bytes: 21535
-    lines: 307
+    maturity: L2
+    bytes: 35100
+    lines: 414
   "知识/01-编程与计算机基础/并发与同步/04-线程池、任务调度与协程调度.md":
     kind: doc
     maturity: L2
