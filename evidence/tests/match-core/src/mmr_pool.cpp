@@ -1,11 +1,14 @@
 // evidence/tests/match-core/src/mmr_pool.cpp
 //
 // 匹配到对局 · 匹配池证据
-//   MMR 窗口随时间放宽、公平性取双方窗口交集、小队不可拆、超时降级、确定性、队列时间分布。
+//   MMR 窗口随时间放宽、公平性取双方窗口交集、固定快照小队同局、未来准入、确定性、队列时间分布。
 //
 // 构建：g++ -std=c++17 -O2 -Wall -o build/mmr_pool.exe src/mmr_pool.cpp
 
 #include <algorithm>
+#include <array>
+#include <limits>
+#include <set>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -44,9 +47,9 @@ struct Player {
 };
 
 struct Match {
-    std::vector<int> ids;
+    std::vector<int> ids;   // Historical name: values are indices into Pool::players, NOT stable IDs.
     double mmrDiff = 0.0;
-    bool relaxed = false;   // 双方至少一方的等待窗口已放宽到超过基础窗口
+    bool relaxed = false;   // spread > baseWindow diagnostic; does NOT prove time relaxation
     int64_t tick = 0;
 };
 
@@ -55,58 +58,93 @@ struct Config {
     double baseWindow = 50.0;      // 初始可接受分差（双方都要能接受）
     double growthPerTick = 4.0;    // 每 tick 增加的可接受分差
     double maxWindow = 600.0;      // 放宽上限
-    int64_t maxWaitTicks = 300;    // 超过则降级出队（机器人填充 / 提示）
-    int scanLimit = 200;           // 每次候选扫描上限（生产实现必须截断）
+    int64_t maxWaitTicks = 300;    // 仅设计阈值；本模型没有超时出队、机器人或硬等待保证
+    int scanLimit = 200;           // 每种策略的候选采集上限，不是访问次数/CPU硬上界
 };
 
+// Caller domain: a complete fixed snapshot, unique stable IDs, nonnegative
+// int64_t queuedAt/tick with monotonically advanced tick; players.size() <= INT_MAX.
+// 1 <= teamSize <= INT_MAX/2, scanLimit > 0; finite MMR, finite
+// 0 <= baseWindow <= maxWindow and growthPerTick >= 0, representable arithmetic.
+// Bucket mode additionally requires positive bucketWidth and floor(MMR/width),
+// ceil(maxWindow/width) representable as int. No concurrent roster mutation,
+// all-pair fairness, party co-team placement, optimal packing or starvation bound.
+// Allocation failures/OOM transactions are outside this serial success-path model.
 struct Pool {
     Config cfg;
     std::vector<Player> players;
     int64_t tick = 0;
 
     double WindowFor(const Player& p) const {
-        const double waited = static_cast<double>(tick - p.queuedAt);
+        const double waited = p.queuedAt > tick ? 0.0 : static_cast<double>(tick - p.queuedAt);
         return std::min(cfg.maxWindow, cfg.baseWindow + waited * cfg.growthPerTick);
     }
 
     // 匹配可行性：分差必须同时落在双方的窗口内（取交集）。
     // 否则长时间等待的一方会把刚入队的新玩家强行拖进一个不公平对局。
     bool Compatible(const Player& a, const Player& b) const {
+        if (a.queuedAt > tick || b.queuedAt > tick) return false;
         const double diff = std::fabs(a.mmr - b.mmr);
         return diff <= std::min(WindowFor(a), WindowFor(b));
     }
 
-    // 从候选里组一局（seed 必进）。返回是否成局。
-    bool TryForm(int seedIdx, std::vector<int>& cand, std::vector<Match>* out) {
-        Player& seed = players[static_cast<size_t>(seedIdx)];
-        if (seed.matched) return false;
-        if (static_cast<int>(cand.size()) < cfg.teamSize * 2 - 1) return false;
+    using Parties = std::map<int, std::vector<int>>;
+    Parties SnapshotParties() const {
+        Parties groups;
+        // Deliberately includes future and already matched members. A filtered
+        // waiting list cannot establish whether a visible party is complete.
+        for (size_t i = 0; i < players.size(); ++i)
+            if (players[i].partyId != 0)
+                groups[players[i].partyId].push_back(static_cast<int>(i));
+        return groups;
+    }
 
+    // Internal helper: valid indices and nonnull out. Public Step paths supply
+    // their complete snapshot roster; direct tests omit it to derive the same.
+    // First index remains the anchor. Only commit after a whole lobby fits.
+    bool TryForm(int seedIdx, std::vector<int>& cand, std::vector<Match>* out,
+                 const Parties* snapshot = nullptr) {
+        Player& seed = players[static_cast<size_t>(seedIdx)];
+        if (seed.matched || seed.queuedAt > tick) return false;
+        const size_t capacity = static_cast<size_t>(cfg.teamSize) * 2;
+        const Parties local = snapshot ? Parties{} : SnapshotParties();
+        const Parties& groups = snapshot ? *snapshot : local;
+        const std::set<int> available(cand.begin(), cand.end());
         std::stable_sort(cand.begin(), cand.end(), [&](int x, int y) {
             const double dx = std::fabs(players[static_cast<size_t>(x)].mmr - seed.mmr);
             const double dy = std::fabs(players[static_cast<size_t>(y)].mmr - seed.mmr);
             if (dx != dy) return dx < dy;
             return players[static_cast<size_t>(x)].id < players[static_cast<size_t>(y)].id;
         });
-
-        // 小队完整性：seed 若属于某小队，同队成员必须一起进同一对局
-        std::vector<int> chosen{seedIdx};
-        if (seed.partyId != 0) {
-            for (int idx : cand) {
-                if (players[static_cast<size_t>(idx)].partyId == seed.partyId &&
-                    std::find(chosen.begin(), chosen.end(), idx) == chosen.end())
-                    chosen.push_back(idx);
+        std::vector<int> chosen;
+        std::set<int> selected;
+        auto appendGroup = [&](int idx) {
+            const Player& p = players[static_cast<size_t>(idx)];
+            const std::vector<int> solo{idx};
+            const std::vector<int>& members = p.partyId == 0 ? solo : groups.at(p.partyId);
+            if (members.size() > capacity - chosen.size()) return false;
+            for (int member : members) {
+                const Player& c = players[static_cast<size_t>(member)];
+                if (c.matched || c.queuedAt > tick || !Compatible(seed, c) ||
+                    (member != seedIdx && available.count(member) == 0) || selected.count(member))
+                    return false;
             }
-        }
+            // Seed-first preserves the anchor used by the reciprocal predicate.
+            if (idx == seedIdx) { chosen.push_back(seedIdx); selected.insert(seedIdx); }
+            for (int member : members) {
+                if (member == seedIdx) continue;
+                chosen.push_back(member); selected.insert(member);
+            }
+            return true;
+        };
+        if (!appendGroup(seedIdx)) return false;
         for (int idx : cand) {
-            if (static_cast<int>(chosen.size()) >= cfg.teamSize * 2) break;
-            if (std::find(chosen.begin(), chosen.end(), idx) == chosen.end())
-                chosen.push_back(idx);
+            if (chosen.size() == capacity) break;
+            if (selected.count(idx) == 0) appendGroup(idx);
         }
-        if (static_cast<int>(chosen.size()) < cfg.teamSize * 2) return false;
-        chosen.resize(static_cast<size_t>(cfg.teamSize * 2));
+        if (chosen.size() != capacity) return false;
 
-        double lo = 1e18, hi = -1e18;
+        double lo = std::numeric_limits<double>::infinity(), hi = -std::numeric_limits<double>::infinity();
         for (int idx : chosen) {
             lo = std::min(lo, players[static_cast<size_t>(idx)].mmr);
             hi = std::max(hi, players[static_cast<size_t>(idx)].mmr);
@@ -127,7 +165,7 @@ struct Pool {
     std::vector<int> WaitingSorted() const {
         std::vector<int> waiting;
         for (size_t i = 0; i < players.size(); ++i)
-            if (!players[i].matched) waiting.push_back(static_cast<int>(i));
+            if (!players[i].matched && players[i].queuedAt <= tick) waiting.push_back(static_cast<int>(i));
         // 等待越久越优先；同等待时长按 id 稳定排序（保证确定性）
         std::stable_sort(waiting.begin(), waiting.end(), [&](int x, int y) {
             if (players[x].queuedAt != players[y].queuedAt)
@@ -138,9 +176,10 @@ struct Pool {
     }
 
     // 朴素实现：为每个种子线性扫描整个等待池。
-    // 保留它是为了量化"不建索引"的代价（见基准对比）。
+    // 三种候选策略可产生不同合法局；旧基准不能证明普遍性能。
     std::vector<Match> StepNaive() {
         std::vector<Match> out;
+        const Parties groups = SnapshotParties();
         std::vector<int> waiting = WaitingSorted();
         if (static_cast<int>(waiting.size()) < cfg.teamSize * 2) return out;
 
@@ -155,15 +194,15 @@ struct Pool {
                 cand.push_back(idx);
                 if (static_cast<int>(cand.size()) >= cfg.scanLimit) break;
             }
-            TryForm(seedIdx, cand, &out);
+            TryForm(seedIdx, cand, &out, &groups);
         }
         return out;
     }
 
-    // 生产形态：先按 MMR 分桶，只为每个种子扫描相邻桶。
-    // 匹配的全部成本就在这里——二分/分桶把"扫全池"降成"扫邻近区间"。
+    // 分桶策略：建索引并扫描邻近桶；名册、排序和失败访问同样有成本。
     std::vector<Match> Step(int bucketWidth = 25) {
         std::vector<Match> out;
+        const Parties groups = SnapshotParties();
         std::vector<int> waiting = WaitingSorted();
         if (static_cast<int>(waiting.size()) < cfg.teamSize * 2) return out;
 
@@ -180,9 +219,10 @@ struct Pool {
             const int span = static_cast<int>(std::ceil(w / bucketWidth));
             const int b0 = static_cast<int>(std::floor(seed.mmr / bucketWidth));
             std::vector<int> cand;
-            for (int b = b0 - span; b <= b0 + span; ++b) {
+            for (int64_t b = static_cast<int64_t>(b0) - span; b <= static_cast<int64_t>(b0) + span; ++b) {
                 if (static_cast<int>(cand.size()) >= cfg.scanLimit) break;
-                const auto it = buckets.find(b);
+                if (b < std::numeric_limits<int>::min() || b > std::numeric_limits<int>::max()) continue;
+                const auto it = buckets.find(static_cast<int>(b));
                 if (it == buckets.end()) continue;
                 for (int idx : it->second) {
                     if (idx == seedIdx) continue;
@@ -192,15 +232,15 @@ struct Pool {
                     if (static_cast<int>(cand.size()) >= cfg.scanLimit) break;
                 }
             }
-            TryForm(seedIdx, cand, &out);
+            TryForm(seedIdx, cand, &out, &groups);
         }
         return out;
     }
 
-    // 生产形态 B：一次性按 MMR 排序 + 二分定位窗口区间。
-    // 比"分桶 + map 查找"更省：没有容器查找开销，且天然只扫邻近区间。
+    // 排序策略：一次性按 MMR 排序 + 二分定位；不保证比另两种更省。
     std::vector<Match> StepSorted() {
         std::vector<Match> out;
+        const Parties groups = SnapshotParties();
         std::vector<int> waiting = WaitingSorted();
         if (static_cast<int>(waiting.size()) < cfg.teamSize * 2) return out;
 
@@ -231,7 +271,7 @@ struct Pool {
                 if (c.matched || !Compatible(seed, c)) continue;
                 cand.push_back(idx);
             }
-            TryForm(seedIdx, cand, &out);
+            TryForm(seedIdx, cand, &out, &groups);
         }
         return out;
     }
@@ -301,8 +341,11 @@ static void TestPartyIntegrity() {
     const auto ms = p.Step();
     bool partyTogether = false;
     for (const Match& m : ms) {
-        const bool has1 = std::find(m.ids.begin(), m.ids.end(), 1) != m.ids.end();
-        const bool has2 = std::find(m.ids.begin(), m.ids.end(), 2) != m.ids.end();
+        bool has1 = false, has2 = false;
+        for (int idx : m.ids) {
+            has1 = has1 || p.players[static_cast<size_t>(idx)].id == 1;
+            has2 = has2 || p.players[static_cast<size_t>(idx)].id == 2;
+        }
         if (has1 && has2) partyTogether = true;
     }
     int unmatchedParty = 0;
@@ -317,13 +360,20 @@ static void TestPartyIntegrity() {
           "matches=" + std::to_string(ms.size()));
 }
 
+// Input helpers require nonnegative int counts; allocation failure is not covered.
+static Pool ReplayPopulation(uint64_t seed, int count) {
+    Pool p;
+    Rng rng(seed);
+    for (int i = 0; i < count; ++i) {
+        const int mmr = 1400 + rng.Range(-120, 120);
+        const int64_t queued = rng.Range(0, 3);
+        p.players.push_back(Mk(i + 1, mmr, queued));
+    }
+    return p;
+}
+
 static void TestDeterminism() {
-    auto build = [](uint64_t seed) {
-        Pool p;
-        Rng rng(seed);
-        for (int i = 1; i <= 200; ++i) p.players.push_back(Mk(i, 1400 + rng.Range(-120, 120), rng.Range(0, 3)));
-        return p;
-    };
+    auto build = [](uint64_t seed) { return ReplayPopulation(seed, 200); };
     Pool a = build(12345);
     Pool b = build(12345);
     const auto ma = a.Step();
@@ -345,7 +395,7 @@ static void TestDeterminism() {
 }
 
 static void TestTimeoutAndRelaxation() {
-    // 池里只有一个高分玩家：窗口放宽到上限后仍匹配不上，必须走降级而不是无限等待
+    // 孤立高分者窗口封顶仍无法入场；独立超时出口只是设计需求，未实现
     Pool p;
     p.players.push_back(Mk(1, 3000, 0));
     for (int i = 0; i < 9; ++i) p.players.push_back(Mk(100 + i, 1000, 0));
@@ -367,20 +417,55 @@ static void TestTimeoutAndRelaxation() {
     // 极端玩家必须靠独立机制离队（机器人填充 / 明确提示 / 特殊队列），
     // 否则会静默地永久卡在队列里。
     const int64_t waited = p.tick - p.players[0].queuedAt;
-    Check(waited >= p.cfg.maxWaitTicks && p.cfg.maxWindow < 2000.0,
-          "M12 an explicit wait cap must exist, because the window cap cannot cover outliers",
+    Check(waited >= p.cfg.maxWaitTicks && p.cfg.maxWindow < 2000.0 && !p.players[0].matched,
+          "M12 maxWaitTicks is a design threshold only; the outlier is still waiting",
           "maxWaitTicks=" + std::to_string(p.cfg.maxWaitTicks) +
               " maxWindow=" + std::to_string(static_cast<int>(p.cfg.maxWindow)));
 }
 
-static void TestQueueTimeDistribution() {
-    // 人口：1200 人均分布 + 少量极端高分玩家（匹配的经典难例）
+static Pool QueuePopulation() {
     Pool p;
     Rng rng(2026);
     int id = 1;
     for (int i = 0; i < 1200; ++i) p.players.push_back(Mk(id++, 1400 + rng.Range(-150, 150), 0));
     for (int i = 0; i < 20; ++i) p.players.push_back(Mk(id++, 2600 + rng.Range(-40, 40), 0));
 
+    return p;
+}
+
+struct CohortStats {
+    int total = 0, matched = 0, unmatched = 0;
+    bool validTimes = true;
+    std::vector<int64_t> waits;
+};
+static CohortStats QueueCohort(const std::vector<Player>& population, bool extreme) {
+    CohortStats stats;
+    // Labels come from the fixed generator's IDs, never inferred from results.
+    for (const Player& p : population) {
+        if ((p.id > 1200) != extreme) continue;
+        ++stats.total;
+        if (!p.matched) { ++stats.unmatched; continue; }
+        ++stats.matched;
+        if (p.matchedAtTick < p.queuedAt) stats.validTimes = false;
+        else stats.waits.push_back(p.matchedAtTick - p.queuedAt);
+    }
+    std::sort(stats.waits.begin(), stats.waits.end());
+    return stats;
+}
+static bool CohortAccounting(const CohortStats& normal, const CohortStats& extreme) {
+    return normal.total == 1200 && extreme.total == 20 && normal.validTimes && extreme.validTimes &&
+        normal.matched + normal.unmatched == normal.total && extreme.matched + extreme.unmatched == extreme.total &&
+        normal.waits.size() == static_cast<size_t>(normal.matched) &&
+        extreme.waits.size() == static_cast<size_t>(extreme.matched);
+}
+static void PrintCohort(const char* label, const CohortStats& s) {
+    auto q = [&](double quantile) { return s.waits.empty() ? int64_t{-1} : s.waits[static_cast<size_t>(quantile * (s.waits.size() - 1))]; };
+    std::printf("        [cohort] %s total=%d matched=%d unmatched=%d p50=%lld p95=%lld p99=%lld max=%lld\n",
+        label, s.total, s.matched, s.unmatched, static_cast<long long>(q(.50)),
+        static_cast<long long>(q(.95)), static_cast<long long>(q(.99)), static_cast<long long>(q(1)));
+}
+static void TestQueueTimeDistribution() {
+    Pool p = QueuePopulation();
     std::vector<double> waits;
     for (int64_t t = 0; t <= 200; ++t) {
         p.tick = t;
@@ -399,12 +484,13 @@ static void TestQueueTimeDistribution() {
     std::printf("        [queue] wait_ticks p50=%.0f p95=%.0f p99=%.0f max=%.0f\n",
                 at(0.50), at(0.95), at(0.99), waits.empty() ? 0.0 : waits.back());
 
-    int extremeMatched = 0;
-    for (const Player& pl : p.players)
-        if (pl.mmr > 2500 && pl.matched) ++extremeMatched;
-    Check(extremeMatched <= 20,
-          "M14 extreme-MMR players are the population that actually suffers long queues",
-          "extreme matched=" + std::to_string(extremeMatched) + " / 20");
+    const auto normal = QueueCohort(p.players, false);
+    const auto extreme = QueueCohort(p.players, true);
+    PrintCohort("normal IDs1..1200", normal);
+    PrintCohort("extreme IDs1201..1220", extreme);
+    Check(CohortAccounting(normal, extreme),
+          "M14 cohort counts and valid waits are reported without causal tail attribution",
+          "labels are generator IDs; unmatched remain in the denominators");
 }
 
 static void TestFairnessVsBaseline() {
@@ -427,7 +513,7 @@ static void TestFairnessVsBaseline() {
     for (int round = 0; round < 60; ++round) {
         for (size_t i = idx.size(); i > 1; --i) std::swap(idx[i - 1], idx[static_cast<size_t>(rng.Next() % i)]);
         for (size_t b = 0; b + 10 <= idx.size(); b += 10) {
-            double lo = 1e18, hi = -1e18;
+            double lo = std::numeric_limits<double>::infinity(), hi = -std::numeric_limits<double>::infinity();
             for (size_t k = b; k < b + 10; ++k) { lo = std::min(lo, pop[static_cast<size_t>(idx[k])].mmr); hi = std::max(hi, pop[static_cast<size_t>(idx[k])].mmr); }
             randDiff += hi - lo; ++randPairs;
         }
@@ -443,20 +529,24 @@ static void TestFairnessVsBaseline() {
 // ---------------------------------------------------------------------------
 // 基准
 // ---------------------------------------------------------------------------
-static void BenchTickCost(int poolSize, int64_t waitTicks, const char* regime) {
+static std::array<Pool, 3> BenchmarkInputs(int poolSize, int64_t waitTicks) {
     Rng rng(4242);
-    auto buildPool = [&](int n) {
-        Pool p;
-        for (int i = 1; i <= n; ++i) p.players.push_back(Mk(i, 1400 + rng.Range(-250, 250), 0));
-        p.tick = waitTicks;
-        return p;
-    };
+    Pool canonical;
+    for (int i = 0; i < poolSize; ++i) {
+        const int mmr = 1400 + rng.Range(-250, 250);
+        canonical.players.push_back(Mk(i + 1, mmr, 0));
+    }
+    canonical.tick = waitTicks;
+    return {canonical, canonical, canonical};
+}
+static void BenchTickCost(int poolSize, int64_t waitTicks, const char* regime) {
+    const auto inputs = BenchmarkInputs(poolSize, waitTicks);
 
     struct Row { const char* name; double us; size_t matches; };
     std::vector<Row> rows;
 
     auto run = [&](const char* name, int mode) {
-        Pool p = buildPool(poolSize);
+        Pool p = inputs[static_cast<size_t>(mode)];
         const auto t0 = std::chrono::steady_clock::now();
         std::vector<Match> ms;
         if (mode == 0) ms = p.StepNaive();
@@ -496,19 +586,19 @@ static void TestIndexedMatchesLinear() {
     const auto ms2 = ps2.StepSorted();
 
     // 三种实现的候选扫描顺序不同，因此选出的"具体组合"可以不同（都是合法解）。
-    // 但成局数量必须基本一致——否则说明某条路径在浪费等待玩家。
+    // 下列数量接近只是固定人口的回归观测，不是任意人口合同。
     const size_t lo = std::min(ml.size(), std::min(mb.size(), ms1.size()));
     const size_t hi = std::max(ml.size(), std::max(mb.size(), ms1.size()));
     const size_t tol = std::max<size_t>(3, hi / 100);
     Check(!ml.empty() && hi - lo <= tol,
-          "M16 all three implementations form essentially the same number of matches",
+          "M16 this fixed population has similar match counts across the three heuristics",
           "linear=" + std::to_string(ml.size()) + " bucketed=" + std::to_string(mb.size()) +
               " sorted=" + std::to_string(ms1.size()) + " (tol=" + std::to_string(tol) + ")");
 
     bool same = ms1.size() == ms2.size();
     for (size_t i = 0; same && i < ms1.size(); ++i) same = ms1[i].ids == ms2[i].ids;
     Check(same && !ms1.empty(),
-          "M17 each implementation is deterministic on identical input (replayable)",
+          "M17 the sorted strategy repeats its result on this identical input",
           "the indexed paths may pick a different but equally valid set than the linear scan");
 }
 
@@ -522,11 +612,11 @@ int main() {
     TestQueueTimeDistribution();
     TestFairnessVsBaseline();
     TestIndexedMatchesLinear();
-    // 两种工况：窗口窄（刚入队，候选集小）vs 窗口放宽到覆盖整个池（索引失效）
+    // 两种工况：基础窗口50 vs 较宽窗口450；后者未覆盖500分人口跨度，也不证明索引失效
     BenchTickCost(10000, 0, "fresh queue, window=50");
-    BenchTickCost(10000, 100, "relaxed, window=600 ~= pool MMR span");
+    BenchTickCost(10000, 100, "relaxed, window=450; pool MMR span=500");
     BenchTickCost(100000, 0, "fresh queue, window=50");
-    BenchTickCost(100000, 100, "relaxed, window=600 ~= pool MMR span");
+    BenchTickCost(100000, 100, "relaxed, window=450; pool MMR span=500");
     std::printf("\nRESULT pass=%d fail=%d\n", g_pass, g_fail);
     return g_fail == 0 ? 0 : 1;
 }

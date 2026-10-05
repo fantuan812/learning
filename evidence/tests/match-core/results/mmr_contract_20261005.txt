@@ -1,0 +1,80 @@
+MMR snapshot-party and admission contract evidence, batch 20261005
+
+SCOPE
+Fixed complete population snapshot, serial same-lobby-or-wait party policy,
+reciprocal anchor/candidate windows, deferred queuedAt eligibility, stable
+population construction and independently observed cohort accounting.
+Not party co-team placement, all-pair fairness, concurrent queue admission,
+optimal packing, starvation bound, real DS/network/database or new performance.
+
+FINAL SOURCE IDENTITY
+mmr_pool.cpp SHA256 ca432b9813d8a4895d7eb9009a90a606b9b88ac611ac6b24fe48ea192b92f9a2
+mmr_contract.cpp SHA256 a145960f50c369cb98fddf7f3c2b0177c6fab917880254c339571b9ebd33edca
+run_mmr_contract.py SHA256 7f42d4cfb37170365c357ad3498139596d6284cf91b125518d3ae7efee0ef406
+
+ACTUAL EXECUTION
+Linux x86_64, GCC 14.2.0, Python 3.12.14, PowerShell 7.6.6.
+O0+NDEBUG, O2, UBSan: each 88 cases / 1198 checks / 0 failure.
+Retained historical assertions: 17 pass / 0 fail, not full contract coverage.
+Six independent-process repetitions byte-identical; no second C++ compiler or
+native Windows/MSVC execution, no cross-platform bitwise guarantee.
+Author: 16 genuine source mutants compile successfully and natively exit 1 with
+named semantic failures; compilation failure is not semantic detection.
+Independent: 23 fixtures, 471 observation records per compiler mode; each
+normal/-O Python oracle pass 7098 checks. Independent population/cohort oracle:
+1737 checks per mode/Python invocation, not additive coverage percentages.
+Independent 12 mutants compile and execute observer successfully, then checker
+exits 1 with intended witness; includes three strategy-specific regressions.
+Final runner self-test: 148 checks in ordinary Python and 148 in Python -O.
+Independent final runner: 78 actual CLI probes / 2712 assertions, ordinary/-O,
+including invalid JSON non-finite values, duplicate keys, mode mismatches,
+missing/duplicate protocol, compilation/runtime failure, timeout and stderr.
+Final Linux CI PowerShell block actually exit 0. Synthetic first command exit23
+causes whole block exit23 and does not invoke second self-test. Windows job skips
+this Linux-only MMR step. Repository two-platform CI is a separate publication gate.
+
+UNCHANGED ORIGINAL COHORT INPUT
+seed 2026, normal 1200, extreme 20, observed through tick200.
+normal matched1200 unmatched0 waits p50=0 p95=0 p99=0 max=36
+extreme matched20 unmatched0 waits p50=0 p95=1 p99=1 max=1
+These observations reject the prior attribution of the total tail exclusively
+to extreme players. They do not establish a general causal or performance law.
+The separate 3000 vs 1000 case still illustrates bounded windows need another
+waiting-exit policy; maxWaitTicks does not implement automatic queue removal.
+
+HISTORICAL FAILURES AND CORRECTIONS
+All old repository results remain byte-identical. The early runner genuinely
+accepted NaN, duplicate JSON keys and inconsistent mode with exit0. Those raw
+failures are retained, not replaced by final PASS. The final runner rejects them.
+The earlier 1dae8570... runner snapshot is historical; it is not final provenance.
+The final strict-JSON identity is 7f42d4cf... and matches both strict-json self-tests
+and the actual mmr-ci-equivalent-v2 block on 2026-10-05 03:10–03:12 UTC.
+No old main/large benchmark/wrapper was used to obtain these results.
+
+ARCHIVE
+The same original gzip is stored as15 ordered raw-byte slices under
+mmr_contract_20261005.raw/: manifest.json and part-001.bin..part-015.bin.
+First14 pieces are2097152bytes each; last piece458033bytes.
+Manifest SHA256 7c4f26561bcbcc2efdefa02554da0d28399ae72edb8978620c5621896406b70c.
+Reassemble using the README POSIX-only exclusive-output recipe into a new file
+outside the repository, then run the unchanged original archive verifier.
+Every piece and the complete reassembled gzip retain exact original bytes/SHA.
+Workspace rollback did not change model/test/runner/CI/article-note bytes.
+Previous local gates outside the gzip are unavailable; recovered archive reports
+are original bytes, and new split/restore gates are recorded as new executions.
+Format learning.mmr.evidence.v2, deterministic gzip mtime0 and no filename.
+Gzip bytes 29818161; SHA256 9da3c581cf2a0588338fd63cf9e05c7462effac9ea2531f67a3149b1a0180737
+JSONL bytes 271200124; SHA256 eb3361252f8ac42ba3e704c847b0a49accd3567d82a9757d973c3a55f679c3bd
+2702 logical paths = 1265 direct files + 1437 direct-file aliases.
+Original logical bytes 332129008; unique stored original bytes 264453662.
+Strict UTF8 text is used when it reproduces original bytes exactly; the format
+also supports canonical base64 for non-UTF8 bytes. This package's direct files
+all roundtrip as UTF8. No original command/stream fields were deleted or rewritten.
+All logical paths reproduced byte-for-byte against frozen originals in normal
+and optimized Python. The same verifier passed 100 small-fixture positive and
+negative schema/codec/hash/path/count/alias cases without repeated full decodes.
+The text summary is not raw evidence. The linked gzip carries technical source,
+fixtures, command records, byte-preserved streams and real failures. File counts
+are logical evidence artifacts, not execution counts or production incidents.
+Archive reconstruction, archive-regression results and repository-maintenance
+checks are not recursively included in the artifact they verify.
