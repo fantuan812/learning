@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-06 (UE delegate event lifecycle and visible source contracts; historical snippets and audit identities preserved).
+# Generated: 2026-10-06 (UE finite worker task and stop-publication contracts; historical evidence identities preserved).
 version: 4
 
 okf:
@@ -944,8 +944,8 @@ documents:
   "知识/03-引擎架构与资源系统/运行架构与任务调度/11-多线程与任务系统.md":
     kind: doc
     maturity: L2
-    bytes: 22303
-    lines: 471
+    bytes: 68848
+    lines: 913
   "知识/03-引擎架构与资源系统/运行架构与任务调度/README.md":
     kind: README
     maturity: L0
