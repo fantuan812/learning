@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-06 (Virtual memory, file mapping lifetime and bounded reader; historical identities preserved).
+# Generated: 2026-10-06 (Linux task scheduling, syscall boundaries and owned pretouch; historical identities preserved).
 version: 4
 
 okf:
@@ -529,8 +529,8 @@ documents:
   "知识/01-编程与计算机基础/操作系统与系统I-O/01-进程线程虚拟内存与系统调用.md":
     kind: doc
     maturity: L2
-    bytes: 19013
-    lines: 310
+    bytes: 46301
+    lines: 523
   "知识/01-编程与计算机基础/操作系统与系统I-O/02-虚拟内存、PageFault与mmap.md":
     kind: doc
     maturity: L2
