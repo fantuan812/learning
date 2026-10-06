@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-06 (UE finite worker task and stop-publication contracts; historical evidence identities preserved).
+# Generated: 2026-10-06 (C++ finite scheduler admission and coroutine ownership; historical identities preserved).
 version: 4
 
 okf:
@@ -509,8 +509,8 @@ documents:
   "知识/01-编程与计算机基础/并发与同步/04-线程池、任务调度与协程调度.md":
     kind: doc
     maturity: L2
-    bytes: 17979
-    lines: 352
+    bytes: 56904
+    lines: 931
   "知识/01-编程与计算机基础/并发与同步/05-进程间通信与跨进程同步.md":
     kind: doc
     maturity: L2
