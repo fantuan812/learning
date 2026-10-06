@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-05 (ModularGameplay initialization and Lyra source lifecycle contracts; historical identities and appendix bytes preserved).
+# Generated: 2026-10-06 (UE delegate event lifecycle and visible source contracts; historical snippets and audit identities preserved).
 version: 4
 
 okf:
@@ -869,13 +869,13 @@ documents:
   "知识/03-引擎架构与资源系统/模块化框架与对象通信/04-委托事件与对象通信.md":
     kind: doc
     maturity: L2
-    bytes: 15882
-    lines: 410
+    bytes: 61656
+    lines: 870
   "知识/03-引擎架构与资源系统/模块化框架与对象通信/06-委托与事件系统源码.md":
     kind: doc
     maturity: L2
-    bytes: 112187
-    lines: 1580
+    bytes: 152136
+    lines: 2003
   "知识/03-引擎架构与资源系统/模块化框架与对象通信/40-Lyra-Experience与GameFeature源码.md":
     kind: doc
     maturity: L2
