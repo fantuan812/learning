@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-06 (Concepts and Ranges contracts, lifetimes and synchronous typed dispatch; historical source identity retained).
+# Generated: 2026-10-06 (Linux permission, namespace, cgroup and seccomp boundaries; static paper cases and historical source identity retained).
 version: 4
 
 okf:
@@ -549,8 +549,8 @@ documents:
   "知识/01-编程与计算机基础/操作系统与系统I-O/04-权限安全与隔离.md":
     kind: doc
     maturity: L2
-    bytes: 13282
-    lines: 324
+    bytes: 47067
+    lines: 343
   "知识/01-编程与计算机基础/操作系统与系统I-O/README.md":
     kind: README
     maturity: L0
