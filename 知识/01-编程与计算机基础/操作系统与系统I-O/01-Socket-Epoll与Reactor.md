@@ -4,13 +4,17 @@ title: "01-Socket-Epoll与Reactor"
 status: stable
 verified: []
 maturity: L3
-updated: 2026-10-03
+updated: 2026-10-06
 sources:
   - resource: https://man7.org/linux/man-pages/man7/epoll.7.html
   - resource: https://man7.org/linux/man-pages/man2/epoll_ctl.2.html
   - resource: https://man7.org/linux/man-pages/man2/accept.2.html
   - resource: https://man7.org/linux/man-pages/man2/send.2.html
   - resource: https://man7.org/linux/man-pages/man2/recv.2.html
+  - title: "Linux man-pages 6.15：epoll(7)、epoll_ctl(2)、close(2)"
+    resource: https://www.kernel.org/pub/linux/docs/man-pages/man-pages-6.15.tar.xz
+  - title: "C++ N4950：intro.races（固定草案提交）"
+    resource: https://github.com/cplusplus/draft/blob/4e4de1df8ee941255b653b61d0a62050b34cf8c9/source/basic.tex#L5931-L6324
 ---
 # 01-Socket-Epoll与Reactor
 > 验证与基准：Linux 机制测试与 loopback TCP 测试见第 5、8 节；测试证明本实验契约，不代表生产容量。
@@ -21,6 +25,8 @@ sources:
 > 官方参考：[epoll(7) man page](https://man7.org/linux/man-pages/man7/epoll.7.html)、[epoll_ctl(2)](https://man7.org/linux/man-pages/man2/epoll_ctl.2.html)、[accept4(2)](https://man7.org/linux/man-pages/man2/accept.2.html)。
 > 最后更新：2026-10-03（核对 Linux man-pages，修正 ET/惊群/注册时序，补有界写缓冲与运行证据）。
 > 知识成熟度：L3（保留现级；Linux 小规模契约实验不等同生产压测、UE 验收或跨平台验证）。
+
+> 2026-10-06 静态勘误：仅修正第 3.8 节与 FAQ13 的线程归属、同步交接和晚到结果合同；依据现有源码、固定 man-pages 6.15 与 N4950。保留上述 2026-10-03 实验记录和 L3；本次未重跑原有 7 个机制测试及 20 个 TCP 集成测试，线程池扩展与纸面时序均不属于已实现或已实测能力。
 
 ## 1. 概述
 
@@ -135,9 +141,11 @@ Linux 5.1+ 的 io_uring 提供异步 IO（提交队列 + 完成队列，可批�
 
 epoll 解决"哪些 fd 就绪"，线程模型解决"谁处理就绪事件"：
 
-- 单线程 Reactor：无共享状态、无锁，但单核吞吐受限；
-- Reactor + 业务线程池：事件循环无锁，线程池内部按任务隔离（`std::atomic` 计数 + 无锁队列，见 [04-并发与内存模型](../../../00-计算机与工程基础/04-C%2B%2B并发与内存模型/README.md)）；
-- 多 Reactor（每线程一个 epoll fd + `SO_REUSEPORT`）：连接数分配均衡，但连接对象跨线程迁移时要明确所有权（见 [01-C++对象生命周期与RAII](../C%2B%2B语言与对象模型/01-C%2B%2B对象生命周期与RAII.md)）。
+- 单线程 Reactor：现有 Demo 的连接注册表、fd、输出队列及其偏移、EOF/暂停状态和事件关注掩码都由事件循环线程访问；这一范围的单所有者避免了连接字段的跨线程竞争，但“只有一个 Reactor”不能推出整个程序无共享状态、无锁，且单核吞吐仍受限；
+- Reactor + 业务线程池：这是现有 Demo 尚未实现的扩展。任务输入和结果应独立持有，不让 worker 借用连接对象或其缓冲；任务与结果队列都要有正确的同步交接，并明确容量不足时由谁拒绝任务、处理结果入队失败，以及成功入队后由谁可靠唤醒消费者（同步细节见 [02-Atomic与C++内存模型](../并发与同步/02-Atomic与C%2B%2B内存模型.md)）；
+- 多 Reactor（每线程一个 epoll fd + `SO_REUSEPORT`）：每条连接仍需明确所属线程；跨线程迁移时要交接所有权，不能让新旧 owner 同时访问连接字段（见 [01-C++对象生命周期与RAII](../C%2B%2B语言与对象模型/01-C%2B%2B对象生命周期与RAII.md)）。
+
+存在 `std::atomic` 计数并不证明任意任务 payload 已安全发布，也不自动允许 worker 读写连接字段。同步关系需由具体队列、锁或原子协议建立；固定 N4950 的 `intro.races` 区分了这些条件。
 
 选型原则：先单线程 Reactor + 线程池跑通，确需多核线性扩展再上多 Reactor；不要一开始就引入跨线程连接迁移。
 
@@ -259,7 +267,13 @@ IOCP（完成端口，Proactor 形态）；UE 的网络层跨平台封装了这�
 应尽快注册以免人为延迟，但“注册前到达的数据必然漏掉”不成立：ADD 可以发现已有就绪状态，本实验直接覆盖这个反例。真正要管理的是注册失败、并发读者消耗就绪状态与连接生命周期，而非把事件当作历史消息队列。
 
 **Q13：连接对象的内存归属谁负责？**
-事件循环拥有连接对象生命周期（RAII 随 fd 注销销毁）；业务线程池只持有短期引用，通过"任务完成回投 + 弱引用/代际"避免悬垂——与 [01-C++对象生命周期与RAII](../C%2B%2B语言与对象模型/01-C%2B%2B对象生命周期与RAII.md) 的 3.7 节一致。
+现有单线程 Demo 由事件循环中的 `clients` 拥有连接对象。注册时把应用 token 写入 `epoll_event.data.u64`；收到事件后先取 id，再执行 `clients.find(id)`，缺失就跳过，找到后才使用连接引用。正常单连接关闭分支在 `EPOLL_CTL_DEL` 成功后 `erase`，析构中的 `UniqueFd` 随之关闭 fd；这不是全部退出或异常路径都先 DEL 再销毁的保证。
+
+此身份校验依赖 token 不回绕、不提前复用：`next_id` 从 1 递增，0 留给 listener，当前源码没有回绕检测。使用它的前提是在任何一次分配会使计数回绕之前停止分配，且旧事件或旧结果仍可能存续时不复用 token。有限运行时间或最多 64 条活跃连接都不能证明累计分配不会回绕；上述前提不是 Demo 已实现的保护。
+
+若接入业务线程池，纸面上的晚到结果时序是：A（fd=7、token=41）提交独立持有输入的任务后关闭，owner 从注册表移除 41；B 随后复用 fd=7，但登记 token=42；A 的结果携带 41 经同步队列回投后，owner 查不到 41 就丢弃，不能只凭 fd=7 写入 B。即使 token 仍匹配且连接未逻辑关闭，同一连接的旧请求也要按请求标识或版本确认结果仍适用。现有 Demo 没有 worker 或请求结果账本，这段是接入时的设计推导。
+
+“对象仍活着、字段访问已同步、结果仍可接纳”是三份合同。“短期引用”不证明活期；`weak_ptr::lock` 成功后持有所得强引用只能维持对象活期，不能代替字段同步或结果适用性检查。取消请求也不等于任务已完成：若任务仍借用资源，须等实际完成的屏障，或由独立持有者使资源一直存活到任务不再使用。详见 [01-C++对象生命周期与RAII](../C%2B%2B语言与对象模型/01-C%2B%2B对象生命周期与RAII.md) 第 3.7～3.9 节。
 
 **Q14：为什么推荐"单线程事件循环 + 每连接一个状态对象"而不是每连接一个协程？**
 本实验用显式状态对象便于看清缓冲与状态转换。协程也能封装同样的非阻塞状态机；是否便于超时、取消、背压和生命周期审计取决于框架，不是语法本身决定。

@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-06 (io_uring submission, completion and resource lifetime; historical identities preserved).
+# Generated: 2026-10-06 (Socket/Reactor ownership and late-result erratum; original lab evidence retained).
 version: 4
 
 okf:
@@ -524,8 +524,8 @@ documents:
   "知识/01-编程与计算机基础/操作系统与系统I-O/01-Socket-Epoll与Reactor.md":
     kind: doc
     maturity: L3
-    bytes: 25193
-    lines: 319
+    bytes: 28235
+    lines: 333
   "知识/01-编程与计算机基础/操作系统与系统I-O/01-进程线程虚拟内存与系统调用.md":
     kind: doc
     maturity: L2
