@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-06 (Linux permission, namespace, cgroup and seccomp boundaries; static paper cases and historical source identity retained).
+# Generated: 2026-10-06 (Compiler and linker pipeline, ELF and ABI boundaries; finite legal O0 and independent O2 examples; historical preface retained).
 version: 4
 
 okf:
@@ -579,8 +579,8 @@ documents:
   "知识/01-编程与计算机基础/编译链接与ABI/01-编译链接与ABI全流程.md":
     kind: doc
     maturity: L2
-    bytes: 18148
-    lines: 312
+    bytes: 42618
+    lines: 490
   "知识/01-编程与计算机基础/编译链接与ABI/03-ISA汇编与调用约定.md":
     kind: doc
     maturity: L2
