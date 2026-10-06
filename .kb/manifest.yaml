@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-06 (Socket/Reactor ownership and late-result erratum; original lab evidence retained).
+# Generated: 2026-10-06 (STL allocator ownership, handle invalidation and exception guarantees; historical sample retained).
 version: 4
 
 okf:
@@ -474,8 +474,8 @@ documents:
   "知识/01-编程与计算机基础/C++语言与对象模型/02-STL容器与Allocator.md":
     kind: doc
     maturity: L2
-    bytes: 14230
-    lines: 339
+    bytes: 67273
+    lines: 721
   "知识/01-编程与计算机基础/C++语言与对象模型/02-异常、类型系统与标准库实现.md":
     kind: doc
     maturity: L2
