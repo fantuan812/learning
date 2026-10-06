@@ -4,10 +4,25 @@ title: "UE5.8 Lyra 源码解析 41：Pawn 初始化与模块化组件状态机"
 status: stable
 verified: []
 maturity: L2
+updated: 2026-10-05
+description: "以历史收录 Lyra 实现和公开 API 合同解释 Pawn 初始化、Avatar 交接及输入/能力资源边界。"
+sources:
+  - title: "Game Framework Component Manager"
+    resource: "https://dev.epicgames.com/documentation/en-us/unreal-engine/game-framework-component-manager-in-unreal-engine"
+  - title: "IGameFrameworkInitStateInterface"
+    resource: "https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/ModularGameplay/IGameFrameworkInitStateInterface"
+  - title: "Abilities in Lyra"
+    resource: "https://dev.epicgames.com/documentation/en-us/unreal-engine/abilities-in-lyra-in-unreal-engine"
+  - title: "FGameplayTagBlueprintPropertyMap"
+    resource: "https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/GameplayAbilities/FGameplayTagBlueprintPropertyMap"
 ---
 # UE5.8 Lyra 源码解析 41：Pawn 初始化与模块化组件状态机
 
 > Lyra 角色初始化最难的不是某个 API，而是多个复制对象和动态组件可能以不同顺序到达。
+> 当前知识成熟度：L2。主要承诺是对本篇历史收录项目代码的逐分支静态分析，并与 2026-10-05 已读取的 Epic 公开文档/API 合同核对；不是当前 UE/Lyra checkout 或运行认证。`verified: []` 保持不变。
+
+**以下引言、元数据表为原历史记录，原字节保留。** 其中“本机”、CL、绝对路径和静态核对完成是旧文自述，不是本次访问到的环境；标题中的 UE5.8 保留既有研究身份。现行结论与修正边界见表后说明。
+
 > 本篇从 `ULyraPawnExtensionComponent` 与 `ULyraHeroComponent` 出发，解释四段 InitState 如何替代 Delay、Tick 轮询和脆弱的 BeginPlay 假设。
 > 知识成熟度：L2（本机 UE 5.8 与 Lyra 5.8 源码、配置已静态核对；运行实验作为后续验证步骤）。
 
@@ -24,9 +39,19 @@ maturity: L2
 | 官方参考 | [Game Framework Component Manager](https://dev.epicgames.com/documentation/en-us/unreal-engine/game-framework-component-manager-in-unreal-engine)、[Abilities in Lyra](https://dev.epicgames.com/documentation/en-us/unreal-engine/abilities-in-lyra-in-unreal-engine) |
 | 最后更新 | 2026-08-17（补入 ALyraCharacter 与 GameFeatureAction_AddAbilities 实际源码分析） |
 
+### 本次阅读边界与使用方式
+
+- 本次修订日期：2026-10-05 UTC。全文及附录 20 份项目文件均参与静态核对，历史更新日志完整保留；没有把旧日志改写为本次结果
+- **公开合同**：Epic 当前 API 页面多数显示 UE5.8，支持接口语义，不认证旧文 CL 55116800。本文没有取得 `GameFrameworkInitStateInterface.cpp` / `GameFrameworkComponentManager.cpp` 完整实现
+- **历史实现**：附录代码与正文历史引文是仓库已有材料。可以沿这些语句推导条件和局部顺序，但没有重新认证其外部来源版本、完整工程依赖或可编译性。附录每个“本机/逐字”声明都按历史收录自述阅读
+- **教学表示**：字段摘要、重排调用、流程图及纸面追踪会就地标明，不能当作逐字源文件或新完成的生产实现
+- **未验证**：没有执行 UE、UHT、UBT、链接、PIE、网络/线程/GC实验、动画资产接线、输入热卸载或性能测试。纸面结果标为 `PAPER_EXPECTED`；仓库文本检查不提升到 L3/L4
+
+阅读目标是能追到“哪个入口重试、哪条边被挡住、谁拥有实际资源、退出时究竟撤销了什么”。四段状态是协调协议，不能取代输入、能力、动画各自的成功条件。
+
 ## 一、问题模型：为什么 BeginPlay 不够
 
-一个可操作的网络 Pawn 至少依赖：
+一个玩家控制网络 Pawn 的装配可能涉及以下条件；它们分属不同角色和阶段，不能作为对所有 Pawn 一次性求真的统一清单：
 
 - Pawn 自身已经生成并开始游戏；
 - 服务器已经选择并设置 `ULyraPawnData`；
@@ -43,7 +68,9 @@ maturity: L2
 
 因此“在 Pawn BeginPlay 一次性初始化全部系统”没有可靠前提。
 
-Lyra 的答案是：每个 Feature 报告自己的线性初始化状态，由 PawnExtension 协调所有 Feature 的会合点。
+所存 Lyra 实现让每个命名 Feature 报告本端的初始化阶段，PawnExtension 在当前已登记集合上设置会合点，Hero 再装配相关资源。服务器写数据、客户端收到复制后重新检查，是不同入口；状态推进本身不是仅 Authority 可用，也不自动把两端状态同步。
+
+例如拥有客户端先看到 Pawn、后收到 PlayerState：Hero 的首次检查应停在 Spawned，之后真正的 OnRep/转发才使它重试。反例是 BeginPlay 中无条件取 PlayerState；对象尚未到达时失败，延迟若干毫秒也没有提供该依赖已经成立的证据。
 
 ## 二、核心文件地图
 
@@ -61,6 +88,8 @@ Lyra 的答案是：每个 Feature 报告自己的线性初始化状态，由 Pa
 | 引擎 `GameFrameworkInitStateInterface.cpp` | `TryToChangeInitState`、`ContinueInitStateChain` |
 | 引擎 `GameFrameworkComponentManager.cpp` | Feature 状态存储、通知和扩展句柄 |
 
+表中 Lyra 文件以附录 1–20 的相对定位为准；引擎两份 cpp 是后续核对入口，不是已附原件。正文另引用的 `LyraAbilitySystemComponent.cpp` 短片段、`LyraCharacterMovementComponent` 缓存说明也没有完整文件支持，不扩展成其全部实现已核实。
+
 ## 三、四段状态在哪里注册
 
 `ULyraGameInstance::Init` 取得 `UGameFrameworkComponentManager`，按顺序注册：
@@ -76,7 +105,7 @@ InitState.Spawned
 
 这四个 Tag 属于整个 GameInstance 的共享状态字典。
 
-它们不是每个组件自行发明的一套状态。
+它们不是每个组件的私有枚举；自定义 Feature 必须使用所在 GameInstance 实际登记的 Tag 与顺序。附录 2 的 `Init` 在 Manager 有效时注册这四项，注册状态字典并不等于为任一 Actor/Feature 设置当前状态。
 
 共享顺序使 Component Manager 能判断“已达到该状态或更晚状态”。
 
@@ -85,7 +114,7 @@ InitState.Spawned
 InitState 的特征是：
 
 - 全局注册；
-- 线性前进；
+- 本文 Lyra 协议只允许精确相邻边线性前进；
 - 以 Feature 为单位；
 - 主要协调对象生命周期和数据可用性；
 - 支持监听另一个 Feature 到达某状态。
@@ -99,13 +128,15 @@ InitState 的特征是：
 
 这些应使用动画状态机、Gameplay Ability、Game Phase 或 StateTree 等系统。
 
+“前进”由项目的 `CanChangeInitState(Current, Desired)` 分支保障，不是 Manager 替所有玩法强制单调的承诺。所存两个组件的未知边、回退和跳跃最终返回 false；重复检查已完成的普通状态链不会再次跨过旧边。若资源后来失效，应进入退出/重建协议，不能只改回一个 Tag 就声称副作用已经回滚。
+
 ## 五、Feature 的身份是什么
 
 一个 Actor 可以拥有多个命名 Feature。
 
 实现 `IGameFrameworkInitStateInterface` 的对象通过 `GetFeatureName` 返回身份。
 
-本机 Lyra 5.8 中：
+本篇历史收录的两个显式接口实现者（附录 5–8）是：
 
 | 实现 | FeatureName | 职责 |
 | --- | --- | --- |
@@ -114,31 +145,25 @@ InitState 的特征是：
 
 其他 GameFeature 动态组件也可实现自己的 Feature。
 
-PawnExtension 不需要知道所有具体组件类型，只需要问 Component Manager：“所有 Feature 是否至少 DataAvailable？”
+身份至少要带上 Actor 与稳定的 FeatureName；不同 Actor 的 Hero 不是同一条状态记录。`UPawnComponent` 等框架基类提供便利访问，业务派生类仍需显式实现 `IGameFrameworkInitStateInterface` 并登记，不能仅因继承该基类就算一个 Feature。
+
+PawnExtension 不认识所有具体组件类型，而查询该 Actor **当时已经登记**的 Feature 是否至少 DataAvailable；未登记的必要功能和未来才加入者都不在这次屏障里。
 
 ## 六、底层接口如何推进状态
 
-引擎 `IGameFrameworkInitStateInterface::TryToChangeInitState` 的核心语义：
+[IGameFrameworkInitStateInterface 公开 API](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/ModularGameplay/IGameFrameworkInitStateInterface) 支持如下合同：取得 Actor、Manager 和当前 Feature 状态，询问 `CanChangeInitState(Current, Desired)`；允许后先调用原生 `HandleChangeInitState` 执行副作用，随后报告 Manager、通知观察者。旧文将最后两步写反，现已纠正。
 
-1. 找到 Actor 和 Component Manager；
-2. 查询当前 Feature 状态；
-3. 调实现方 `CanChangeInitState`；
-4. 允许时把新状态报告给 Manager；
-5. 调 `HandleChangeInitState` 执行该过渡的副作用。
+这是有来源支持的偏序：**Can → Handle → Manager 通知**。Handle 不是通知后的补做，也不是返回成功值的事务接口。它返回 void，内部 ensure 失败后早退不构成“取消状态提交”的返回信号；没有完整引擎 cpp，不能再编造内部写状态、队列排空、回滚及跨 Feature 的调用全序。
 
-`ContinueInitStateChain` 接受一个 Tag 数组。
+`ContinueInitStateChain` 沿给定数组尝试可行的后续状态，在门槛拒绝处停止。要继续，必须有 BeginPlay 的首次主动尝试，或后续 OnRep、Controller/Input 建立、依赖通知再次调用 `CheckDefaultInitialization`。只登记 Feature、只让数据变为非空、只等待时间流逝，都不会凭空创建重试事件。
 
-它从当前状态的下一项开始，连续尝试推进。
+Manager 的状态通知队列避免递归通知，不是用户副作用、扩展事件、注册时即时回调的通用重入锁。开启 InitState 注册的 `bCallImmediately` 时，已有匹配状态可立即回调；先准备本地上下文，不能依赖注册返回后才保存的句柄。对 AddExtensionHandler，本次公开资料没有证明其返回前的精确同步栈，只按潜在外部回调边界设计防护。
 
-遇到第一个 `CanChangeInitState=false` 就停止。
-
-后续某个复制回调或 Feature 通知再次调用 `CheckDefaultInitialization`，链条继续。
-
-这就是事件驱动重试，而不是每帧轮询。
+同样，[Manager 的 fake multicast/TMap 定义](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/ModularGameplay/UGameFrameworkComponentManager)不能推出“注册先后就是调用先后”；[TMap 文档](https://dev.epicgames.com/documentation/en-us/unreal-engine/map-containers-in-unreal-engine)不保证插入序等于迭代序。本篇没有观测具体乱序，也不靠未展示的顺序替依赖门控作证。
 
 ## 七、PawnExtension 是无 Tick 协调器
 
-构造函数明确设置：
+附录 6 的构造配置历史摘录如下，保留原节选排版：
 
 ```cpp
 PrimaryComponentTick.bStartWithTickEnabled = false;
@@ -157,13 +182,15 @@ SetIsReplicatedByDefault(true);
 - InputComponent 完成设置；
 - 其他 Feature 状态变化。
 
+精确回调筛选也重要：附录 6 的 PawnExtension 只在“其他 Feature 到 DataAvailable”通知时调用 Check；Hero 则只在 PawnExtension 到 DataInitialized 时重试。它们还有首次 Check 和 Character 转发入口，因此不能把某一个事件监听孤立成万能唤醒器。给新 Feature 增加不同依赖时，应重新核对所等状态与回调过滤是否相匹配。
+
 ## 八、PawnExtension 生命周期
 
 ### 8.1 OnRegister
 
 `OnRegister` 先确认 Owner 是 Pawn。
 
-随后检查同一个 Pawn 上只能有一个 PawnExtension。
+随后用 ensure 检查同一个 Pawn 上只有一个 PawnExtension。这些断言表达配置前提，不能当作无效 Owner 的完整容错：所存代码在检查后仍解引用 Pawn。
 
 最后调用 `RegisterInitStateFeature`。
 
@@ -171,7 +198,7 @@ SetIsReplicatedByDefault(true);
 
 ### 8.2 BeginPlay
 
-`BeginPlay` 执行：
+`BeginPlay` 的历史删节引文如下，完整注释在附录 6：
 
 ```cpp
 void ULyraPawnExtensionComponent::BeginPlay()
@@ -184,17 +211,19 @@ void ULyraPawnExtensionComponent::BeginPlay()
 }
 ```
 
-监听 `NAME_None` 表示关心该 Actor 上所有 Feature。
+监听 `NAME_None` 表示关心该 Actor 上所有 Feature；这里 `bCallImmediately=false`，随后显式尝试 Spawned 并主动检查，不能删掉首次启动而仅等待未来通知。
 
 ### 8.3 EndPlay
 
 `EndPlay` 先 `UninitializeAbilitySystem`，再 `UnregisterInitStateFeature`。
 
-清理顺序保证 Pawn 不再作为 ASC Avatar，且 Feature 委托被解绑。
+这就是所存源码的实际顺序，不能改述为它已先设置 Stopping。ASC 仅在自己仍是 Avatar 时做共享对象清理；若新 Pawn 已接管，只清本组件缓存（第二十节）。`UnregisterInitStateFeature` 负责其初始化监听/登记，不自动移除输入绑定、GameFeature 请求或所有能力。
+
+附录 5/6 没有自定义 OnUnregister 的对称实现，也没有展示同一组件运行中反注册再注册、未 BeginPlay 即退出、流送复入的完整业务恢复合同。因此本篇不把历史实现认证为这些路径均安全；迁移模板必须明确支持边界，见第三十四节。
 
 ## 九、PawnData 是角色装配说明
 
-`ULyraPawnData` 是只读 PrimaryDataAsset，包含：
+`ULyraPawnData` 是声明为 Const 的角色定义 PrimaryDataAsset。以下是从附录 3 抽出的**字段摘要**，省略 UPROPERTY/注释，不能当作完整头文件：
 
 ```cpp
 TSubclassOf<APawn> PawnClass;
@@ -232,6 +261,8 @@ PawnData = InPawnData
 
 客户端通过 `OnRep_PawnData` 重试状态推进。
 
+这是 PawnExtension 的 OnRep；PlayerState 的同名 OnRep 在附录 12 中为空，不能混为同一条回调。`ForceNetUpdate` 是请求及时复制的入口，不保证各连接同时拿到 PawnData、PlayerState、Controller，更不保证它们按本表顺序到达。
+
 “一次设置”让初始化定义保持稳定。
 
 如果产品需要运行中换职业，应设计明确的换 Pawn 或重新装配协议，而不是直接覆盖该字段。
@@ -256,35 +287,33 @@ PawnExtension 的 `CanChangeInitState` 在该过渡检查：
 
 ## 十二、DataAvailable → DataInitialized：全 Feature 会合
 
-PawnExtension 调用：
+PawnExtension 的会合表达式（由附录 6 重排换行，保留实际 Tag 命名空间）：
 
 ```cpp
 Manager->HaveAllFeaturesReachedInitState(
     Pawn,
-    InitState_DataAvailable);
+    LyraGameplayTags::InitState_DataAvailable);
 ```
 
-只有所有已注册 Feature 都至少到达 DataAvailable，协调器才进入 DataInitialized。
+查询仅检查**当时已经登记在该 Actor 上的集合**。例如 Ext 与 Hero 在 DataAvailable，已登记的 Extra 仍在 Spawned，这次会合为 false；Extra 达到 DataAvailable 并触发重试后才可继续。这使屏障前加入的动态组件能够参与会合，而无需 Pawn 硬编码类型。
 
-这个屏障允许 GameFeature 动态增加新 Feature。
+有两个不同反例：必要 Feature 根本没登记，Manager 不知道还缺它，不能替业务等它；Ext/Hero 已经过屏障后才登记 Extra，也不会自动回退或撤销原有 ASC/输入副作用。晚加入功能必须规定自己的依赖、追加和移除协议。需要全体重新装配的项目应另建参与期，而不是期待旧 Ready 追溯失效。
 
-基础 Pawn 不需要硬编码它们的类名。
-
-但也带来一条排障规则：任何 Feature 卡住都会让整个 PawnExtension 卡住。
+排障时只有“屏障尚未通过，且阻塞者已在集合中”才可推导它会挡住 Ext；必须同时记录注册集合、各状态和检查发生时点。
 
 ## 十三、DataInitialized → GameplayReady
 
-PawnExtension 当前直接允许该过渡。
+附录 6 中 PawnExtension 对精确的 DataInitialized → GameplayReady 直接返回 true。
 
 它的 `HandleChangeInitState` 在 DataInitialized 没有执行主要副作用。
 
 真正的 ASC、输入和摄像机初始化由监听该状态的 HeroComponent 完成。
 
-这体现“协调器宣布屏障，具体 Feature 执行职责”的分工。
+这体现“协调器通过数据会合，具体 Feature 执行职责”的分工。PawnExtension 自身到 GameplayReady 不是“Hero 和未来所有扩展已经成功绑定全部资源”的证明；Hero 的最后一条边在附录 8 也直接 true，并保留能力初始化检查的 TODO。验收必须核具体资源，不能只看最高 Tag。
 
 ## 十四、HeroComponent 的职责边界
 
-源码注释把 HeroComponent 定位为：
+附录 7 的历史类注释将 HeroComponent 定位为：
 
 > 为玩家控制 Pawn（以及模拟玩家的机器人）设置输入和摄像机，并依赖 PawnExtension 协调初始化。
 
@@ -308,14 +337,11 @@ PawnExtension 当前直接允许该过渡。
 
 HeroComponent 检查：
 
-1. `ALyraPlayerState` 必须存在；
-2. 非 Simulated Proxy 必须有 Controller；
-3. Controller 必须拥有对应 PlayerState；
-4. 本地控制且非 Bot 时，必须有 InputComponent；
-5. 必须是 `ALyraPlayerController`；
-6. PlayerController 必须有 LocalPlayer。
+1. 所有分支先要求 `GetPlayerState<ALyraPlayerState>()` 有效
+2. 仅当 LocalRole 不是 SimulatedProxy，要求 Controller、其 PlayerState 非空，且 `Controller->PlayerState->GetOwner() == Controller`
+3. 仅当 Pawn 本地控制且不是 Bot，再要求 Pawn InputComponent、`ALyraPlayerController` 及其 LocalPlayer
 
-这组门槛同时处理服务器、拥有客户端和远端代理。
+这是附录 8 的嵌套判断，不能扁平化为所有视角都需要 LyraPC/LocalPlayer。远端 Simulated 的 PlayerState 仍必须存在，但跳过非 Simulated 的 Controller 配对分支；服务器 Bot/非本地 Pawn 不因没有 LocalPlayer 被本地非 Bot 门槛挡住。
 
 ### 15.1 为什么检查 PlayerState Owner
 
@@ -327,7 +353,7 @@ Hero 还检查：
 Controller->PlayerState->GetOwner() == Controller
 ```
 
-这确保 Controller/PlayerState 配对已经完成，不是暂时看到一个尚未正确归属的对象。
+这检查 Controller 一侧 PlayerState 的 Owner 配对。它没有显式比较前一步从 Pawn 获取的 PlayerState 与 `Controller->PlayerState` 指针相等，不能把说明升级成源码未做的更强相等验证。
 
 ### 15.2 为什么 Bot 不需要 LocalPlayer
 
@@ -344,7 +370,7 @@ Hero 等待：
 
 这看起来像循环：PawnExtension 又在等待所有 Feature DataAvailable。
 
-实际顺序是：
+在前置数据满足且有重试入口的情况下，一条可行轨迹是：
 
 1. Hero 到 DataAvailable；
 2. 其他 Feature 到 DataAvailable；
@@ -366,8 +392,11 @@ sequenceDiagram
     Ext->>Mgr: PawnExtension = DataInitialized
     Mgr-->>Hero: OnActorInitStateChanged
     Hero->>Hero: CheckDefaultInitialization
+    Hero->>Hero: HandleChangeInitState 装配本次资源
     Hero->>Mgr: Hero = DataInitialized
 ```
+
+这里的依赖跨越不同阶段，因而有可行前缀。若错误地把 Hero 进入 DataAvailable 也改成等 Ext.DataInitialized，就变成 Ext 等 Hero.DataAvailable、Hero 又等 Ext.DataInitialized 的真环；通知再多也不会创造可推进边。图只表示一端的可能轨迹，不声明两个 Feature 的所有回调有固定全序。
 
 ## 十七、DataInitialized 过渡执行什么
 
@@ -375,7 +404,7 @@ HeroComponent 在 `DataAvailable → DataInitialized` 中执行核心装配。
 
 ### 17.1 取 Pawn 和 PlayerState
 
-两者都必须有效，否则提前返回。
+两者都必须有效，否则 `ensure(Pawn && LyraPS)` 失败后提前返回。由于 Handle 返回 void，不能把这个 return 说成完整事务回滚或保证本次状态绝不通知；因此资源检查与状态检查必须分开。
 
 ### 17.2 从 PawnExtension 取 PawnData
 
@@ -385,7 +414,7 @@ Hero 不保存自己的重复 PawnData 指针。
 
 ### 17.3 初始化 ASC
 
-调用：
+下列为附录 8 的**重排调用示意**，不是完整 Handle；只有找到 PawnExtension 的分支才调用：
 
 ```cpp
 PawnExtComp->InitializeAbilitySystem(
@@ -401,13 +430,17 @@ PawnExtComp->InitializeAbilitySystem(
 
 ### 17.4 初始化本地输入
 
-有 `ALyraPlayerController` 且 Pawn InputComponent 有效时，调用 `InitializePlayerInput`。
+实际外层条件是能取得 `ALyraPlayerController` 且 Pawn InputComponent 非空，然后调用 `InitializePlayerInput`。该函数内部又检查 PC、LyraLocalPlayer、EnhancedInput 子系统；这些是契约前提，不是 Handle 中一个“全成功”返回值。
 
-远端 Simulated Proxy 不执行本地输入绑定。
+典型远端 Simulated 没有本地输入上下文，不应做本地输入装配；不能从这个典型网络视角反推外层源码已经写了 `IsLocallyControlled`/Bot 的显式 guard。
 
 ### 17.5 绑定摄像机模式
 
 若 PawnData 有效并能找到 `ULyraCameraComponent`，将 DetermineCameraMode Delegate 绑定到 Hero。
+
+这条摄像机分支没有仅限本地 Pawn，原注释明确用于以后观战；绑定委托不等于立即把每个 Pawn 设为活动相机。`DetermineCameraMode` 优先返回能力覆盖模式，否则从 PawnData 取默认模式；清覆盖还检查拥有该覆盖的 AbilitySpecHandle，避免旧能力清掉后来者。
+
+所以 ASC、输入、摄像机是三个带前提的副作用分支。任一配置缺失时都不能仅凭 Hero 已到 DataInitialized 宣称三者无条件同时成功。
 
 ## 十八、为什么 ASC 放 PlayerState
 
@@ -426,24 +459,28 @@ PlayerState 还持有基础 AttributeSet。
 
 设计代价：
 
-- 每次 Possess/UnPossess 都要正确更新 Avatar；
+- 交接时保持 Owner/Avatar 与 Controller 信息正确，不能把每次 UnPossessed 等同反初始化；
 - Pawn 专属能力必须能撤销；
 - 客户端可能短暂同时看到旧 Pawn 和新 Pawn；
 - 获取 ASC 不能只在 Pawn 上 FindComponent。
 
+“长寿命”相对于 Pawn 死亡/替换，不是永远存在：附录 12 的 PlayerState 断线策略仍可 Destroy。Mixed 是所存构造配置，不证明每种客户端能同时读到所有属性、能力和效果。持久资源由其授予者管理，Pawn 的 Avatar 解绑没有拿到这些来源的全部撤销账。
+
 ## 十九、InitializeAbilitySystem 的精确语义
 
-`ULyraPawnExtensionComponent::InitializeAbilitySystem` 执行：
+按附录 6 所存 `InitializeAbilitySystem`，在有效 Pawn/ASC/Owner 的工程前提下可追踪以下局部顺序：
 
 1. 校验 ASC 和 OwnerActor；
 2. 相同 ASC 已初始化则直接返回；
 3. 当前有其他 ASC 时先反初始化；
 4. 读取 ASC 当前 Avatar；
-5. 若旧 Avatar 是另一个 Pawn，处理客户端延迟重叠；
+5. 若 ExistingAvatar 非空且不是当前 Pawn，检查旧 Avatar 交接；
 6. 缓存新 ASC；
 7. `InitAbilityActorInfo(InOwnerActor, Pawn)`；
 8. 从 PawnData 设置 TagRelationshipMapping；
 9. 广播 `OnAbilitySystemInitialized`。
+
+相同 ASC 的早退只比较缓存指针，不会重新检查 Owner/Avatar、重设 TagRelationship 或重新广播；不能当作修复任意失配的“重装”入口。`ensure(PawnData)` 失败只跳过关系映射，后面的初始化广播仍在该条件之外。Character 订阅此广播后连接 HealthComponent 并刷新移动模式 Tag，说明 Health 的桥接不要求它自动成为 InitState Feature。
 
 ### 19.1 旧 Avatar 重叠
 
@@ -451,29 +488,34 @@ PlayerState 还持有基础 AttributeSet。
 
 新 Pawn 已生成并被 Possess，但死亡的旧 Pawn 还没被移除。
 
-如果 ASC 仍指向旧 Avatar，代码找到旧 PawnExtension 并调用 `UninitializeAbilitySystem`。
+如果 ASC 仍指向非当前 Pawn 的旧 Avatar，且能找到其 PawnExtension，才调用那个组件的 `UninitializeAbilitySystem`。
 
-它断言旧 Avatar 不应有 Authority。
-
-服务器权威侧不应出现两个 Pawn 争用同一 ASC Avatar 的状态。
+`ensure(!ExistingAvatar->HasAuthority())` 表达“不应让两个权威 Pawn 争用”的设计预期，而不是遇到权威旧 Avatar 就提前 return 的防护。当前片段仍继续查旧 Extension；本次没有并发/网络实验来证明所有交接顺序都被覆盖。
 
 ## 二十、UninitializeAbilitySystem 的边界
 
-只有当前组件 Owner 仍是 ASC Avatar 时才执行完整清理。
+有缓存 ASC 且其 Avatar 仍等于本组件 Owner 时，才执行下面共享 ASC 清理分支；“完整”仅指此分支列出的动作，不是撤销所有玩法资源。
 
 清理包括：
 
 1. 取消能力，但忽略带 `Ability.Behavior.SurvivesDeath` 的类型；
 2. 清空能力输入缓存；
-3. 移除所有 Gameplay Cues；
+3. 调用 `RemoveAllGameplayCues`；当前[官方 UAbilitySystemComponent 父页](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/GameplayAbilities/UAbilitySystemComponent)将其范围限定为独立添加、不是 GameplayEffect 组成部分的 Cue，不能据此断言 GE 关联 Cue 或全部外部表现清零；
 4. OwnerActor 仍有效时只把 Avatar 设空；
 5. OwnerActor 无效时清空整个 ActorInfo；
-6. 广播 Uninitialized；
-7. 清空组件缓存指针。
+6. 在该 Avatar 守卫内部广播 Uninitialized。
+
+最后不论 Avatar 是否仍属于自己，都清空本组件缓存指针；若一开始就无缓存则直接返回。
+
+附录 6 能直接证明的是历史实现调用了 RemoveAllGameplayCues；上面的效果范围来自 2026-10-05 成功读取的当前官方父页对应条目，未反向认证旧 CL 的完整 GAS 实现。独立方法页此次 Cache miss，不作为成功来源。
 
 “SurvivesDeath”体现了 Owner/Avatar 分离的价值：
 
 一些 PlayerState 级能力可以跨 Pawn 死亡存活。
+
+还要区分取消能力、清理输入缓存/GameplayCue、撤销 AbilitySpec、移除 GameplayEffect、移除 AttributeSet。这里没有遍历所有授予句柄，也不销毁 PlayerState ASC；不能把 CancelAbilities 说成 TakeFromAbilitySystem。
+
+反例：A 缓存 ASC，但 ASC.Avatar 已为新 Pawn B。A 此后退出会跳过共享清理与 Uninitialized 广播，只将 A 的缓存设空；B 的 Avatar 关系保持。若 Avatar 仍为 A，且 Owner 非空，则只清 Avatar；Owner 为空才走 ClearActorInfo。
 
 ## 二十一、ALyraCharacter 如何转发生命周期事件
 
@@ -484,16 +526,18 @@ Character 不自己复制一套初始化状态机。
 | Character 回调 | PawnExtension 动作 |
 | --- | --- |
 | `PossessedBy` | `HandleControllerChanged` |
-| `UnPossessed` | Controller 变化/ASC 清理相关路径 |
+| `UnPossessed` | `HandleControllerChanged`；另解绑旧 Controller 队伍委托 |
 | `OnRep_Controller` | `HandleControllerChanged` |
 | `OnRep_PlayerState` | `HandlePlayerStateReplicated` |
 | `SetupPlayerInputComponent` | `SetupPlayerInputComponent` |
 
 这样无论服务器本地回调还是客户端 OnRep，最终都回到同一个 `CheckDefaultInitialization`。
 
+附录 6 的 `HandleControllerChanged` 在“缓存 ASC 仍以该 Pawn 为 Avatar”时检查 Owner：Owner 为空才 Uninitialize，否则调用 RefreshAbilityActorInfo，然后 Check。故 UnPossessed 通常是刷新/重试路径，不恒等于清空 Avatar；死亡、EndPlay、新 Pawn 接管是另外的显式反初始化入口。
+
 ### 21.1 源码补全：角色本体的转发、死亡和快速复制
 
-前文不能只把 `ALyraCharacter` 当成“回调转发器”。它还承担死亡收尾、移动模式 Tag 和 FastSharedReplication 三类实际职责。下面直接展开本机 `LyraCharacter.cpp` 的关键实现：
+前文不能只把 `ALyraCharacter` 当成“回调转发器”。它还承担死亡收尾、移动模式 Tag 和 FastSharedReplication 三类实际职责。下面保留 `LyraCharacter.cpp` 的历史删节引文；完整所存文本见附录 10，不能重新签认为本机当前实现：
 
 ```cpp
 void ALyraCharacter::PossessedBy(AController* NewController)
@@ -526,7 +570,7 @@ void ALyraCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 
 这段代码说明：服务器 `PossessedBy`、客户端 `OnRep_PlayerState` 和输入组件建立并不是三套初始化逻辑；它们都把事件交给 `PawnExtComponent`，由同一套 InitState 门控继续推进。`PossessedBy` 还同步 Controller 的队伍委托，避免 Pawn 自己维护一份会漂移的队伍来源。
 
-死亡路径也不是简单 `Destroy()`。先禁用输入、碰撞和移动，再等下一帧触发蓝图事件，最后只在自己仍是 ASC Avatar 时解绑：
+死亡路径也不是简单立即 `Destroy()`。OnDeathStarted 调 DisableMovementAndCollision；其中有 Controller 时只忽略移动输入，随后禁用胶囊碰撞、停止并禁用移动。OnDeathFinished 安排下一 tick 的 DestroyDueToDeath，后者先触发 K2_OnDeathFinished 再 UninitAndDestroy。以下为对应历史删节引文：
 
 ```cpp
 void ALyraCharacter::OnDeathStarted(AActor*)
@@ -559,7 +603,9 @@ void ALyraCharacter::UninitAndDestroy()
 }
 ```
 
-这里的 `GetAvatarActor() == this` 是关键保护：如果同一个 PlayerState 已经把 ASC 切换到新 Pawn，旧 Pawn 的 EndPlay 不能把新 Avatar 一起清掉。移动模式 Tag 和共享移动复制也由角色本体实际执行，而不是文档中的抽象名：
+这里的 `GetAvatarActor() == this` 是关键保护：如果共享 ASC 已转向新 Pawn，旧 Pawn 的死亡收尾不调用此反初始化；PawnExtension 自己的 EndPlay 再以同类守卫保护共享 ASC。权威端 Detach 后设置 0.1 秒 lifespan，各端隐藏 Actor；这不等于当前栈中已经释放对象内存。
+
+下列为附录 10 的**教学压缩/重排片段**，保留移动 Tag 与共享移动更新的用途，省略注释与上下文，不是逐字文件：
 
 ```cpp
 void ALyraCharacter::SetMovementModeTag(EMovementMode MovementMode, uint8 CustomMovementMode, bool bTagEnabled)
@@ -603,7 +649,11 @@ bool ALyraCharacter::UpdateSharedReplication()
 }
 ```
 
-因此 41 篇的实际覆盖现在包括：状态机事件转发、死亡解绑、移动 Tag 写入和“仅变化才快速复制”的服务器路径；附录中的完整文件不再只是供读者自行回读的指针。
+移动模式变化时，`OnMovementModeChanged` 先清旧模式 Tag 再设新模式 Tag；`InitializeGameplayTags` 会清理映射表里的旧 Pawn 遗留计数后设当前模式，蹲伏在 OnStart/OnEndCrouch 另设 Status_Crouching。Tag 不在映射表、无效或 ASC 尚未连接时，这段不写入。
+
+FastShared 的窄结论是：Authority 且 FillForCharacter 成功时，比较位置、旋转、线速度、移动模式、跳跃力、蹲伏字段；变化才生成一次新的 FastSharedReplication 调用，未变化也可返回 true。Equals 没比较时间戳，不能称“比较了所有字段”。附录 9 声明该 RPC 为 unreliable；附录 10 接收实现跳过 replay，只在 SimulatedProxy 分支应用移动/蹲伏等状态。
+
+源码注释还谈旧 bunch 的复用，但这里没有网络驱动、ReplicationGraph 和每连接完整执行证据。不能由“未生成新调用”推导所有连接都不再发送、可靠抵达、迟到者持久重播或任何生产带宽数字。
 
 ## 二十二、PlayerState 的 PawnData 与能力授予
 
@@ -611,7 +661,7 @@ bool ALyraCharacter::UpdateSharedReplication()
 
 该操作只应在 Authority 执行，且 PawnData 不应重复覆盖。
 
-PlayerState 遍历 PawnData 的 `AbilitySets`，调用：
+PlayerState 遍历非空 `AbilitySets` 条目；下面是附录 12 的**重排调用摘要**，第二参 nullptr 表示不向调用者返回该次授予账：
 
 ```cpp
 AbilitySet->GiveToAbilitySystem(
@@ -624,6 +674,10 @@ AbilitySet->GiveToAbilitySystem(
 GameFeature 或 Equipment 临时授予通常会保存 `FLyraAbilitySet_GrantedHandles`，以便卸载时撤销。
 
 是否保存句柄取决于授予来源生命周期。
+
+附录 12 在写入 PawnData、授予后发送 `NAME_LyraAbilityReady`（实际 FName 为 LyraAbilitiesReady），并 ForceNetUpdate；其 `OnRep_PawnData` 为空。客户端不会因此再次权威授予。`PostInitializeComponents` 先以 PlayerState 与当时 GetPawn 初始化 ActorInfo，非客户端游戏世界再订阅 ExperienceLoaded；后续 Hero 桥接实际 Pawn Avatar。
+
+传 nullptr 仍会授予，只是本调用者不取得 FLyraAbilitySet_GrantedHandles，不能再声称 PawnExtension 能按这份空账撤回全部 PlayerState 默认能力。临时来源与持久来源的结束时点必须分开。
 
 ## 二十三、AbilitySet 为什么保存三类句柄
 
@@ -642,38 +696,31 @@ GameFeature 或 Equipment 临时授予通常会保存 `FLyraAbilitySet_GrantedHa
 3. `RemoveSpawnedAttribute`；
 4. 清空本地句柄数组。
 
-这是一种明确的“资源获取即登记，生命周期结束即释放”模式。
+附录 14 的 Give 同样检查 Owner Authority：按 AttributeSet、Ability、Effect 顺序创建/授予；无效配置记录错误并跳过，AbilitySpec 带 SourceObject、等级和 InputTag。只有提供 OutGrantedHandles 才记录对应资源，有效能力/效果句柄才进入账本。
+
+这是一种按来源撤销的模式，不是成功事务保证：部分配置可被跳过，非权威 Take 会提前返回且不清账。取回只处理这份账拥有的三类资源，不能代替输入 callback、MappingContext、Avatar 或其他来源的清理。各引擎移除 API 对正在运行能力和外部效果的完整语义仍需目标版本验证。
 
 ## 二十四、基础输入初始化
 
-Hero 的 `InitializePlayerInput` 先取得：
+附录 8 的局部顺序是：检查传入 InputComponent；取得 Pawn（无 Pawn 则 return）；检查 PlayerController、`ULyraLocalPlayer` 与 EnhancedInputLocalPlayerSubsystem；调用 `ClearAllMappings()`；随后才进入 PawnExtension → PawnData → InputConfig 的嵌套分支。check 是工程前提断言，不是缺配置时的恢复方案；清映射发生在确认 InputConfig 之前。
 
-- Pawn；
-- PlayerController；
-- `ULyraLocalPlayer`；
-- `UEnhancedInputLocalPlayerSubsystem`。
+有 InputConfig 时遍历 DefaultInputMappings，同步加载 IMC。**UserSettings.RegisterInputMappingContext 和 Subsystem.AddMappingContext 都在 `Mapping.bRegisterWithSettings` 为 true 的同一分支里**；UserSettings 不存在可跳过注册，但 AddMappingContext 仍在该 flag 内调用。IMC 加载有效而 flag=false 时，这条路径既不登记也不 Add，不能按变量名猜成“只跳过设置登记”。其他来源是否有该 IMC 是另一问题。
 
-随后调用 `Subsystem->ClearAllMappings()`。
+之后 Cast 到 `ULyraInputComponent`，成功才 AddInputMappings、BindAbilityActions，以及绑定原生 Move/LookMouse/LookStick/Crouch/AutoRun。这里 BindHandles 是局部数组；本文未取得 ULyraInputComponent 完整文件，不能伪造其内部 action 数量和每项成功日志。
 
-然后从 PawnData 取 `ULyraInputConfig`。
-
-对 Hero 自身的 DefaultInputMappings：
-
-- 软加载 MappingContext；
-- 可选注册到 Enhanced Input UserSettings；
-- `AddMappingContext(IMC, Priority, Options)`。
-
-最后使用 `ULyraInputComponent` 绑定 Ability Actions 和原生 Move/Look/Crouch/AutoRun。
+最后的 bReadyToBindInputs 与两次事件发送位于上述配置/类型分支之外。因此在前置 PC/LP/Subsystem 有效时，即使 PawnData/InputConfig 缺失或 LyraIC cast 失败，也可能 ready=true 且发送事件，而目标绑定根本未建立。`ClearAllMappings` 清映射语境，不等于清空 UEnhancedInputComponent 中所有 action callbacks。
 
 ## 二十五、NAME_BindInputsNow 为什么必要
 
-Hero 完成基础输入后：
+`InitializePlayerInput` 走到末尾时执行如下局部顺序，不能把“走到末尾”换成“所有基础绑定成功”：
 
 ```text
 bReadyToBindInputs = true
 → 向 PlayerController 发送 BindInputsNow
 → 向 Pawn 发送 BindInputsNow
 ```
+
+所存代码只在 ensure(!bReadyToBindInputs) 通过时写 true，但两次事件发送在该 if 之外；重复进入此函数也不能仅靠这个 ensure 推导不会再次发送。
 
 GameFeature 输入 Action 可能：
 
@@ -689,36 +736,46 @@ GameFeature 输入 Action 可能：
 - `ExtensionRemoved`；
 - `ReceiverRemoved`。
 
-这使早到和晚到两种顺序都能收敛。
+完整追加入口为：Action 激活建立 ChangeContext 账 → AddToWorld 检查游戏 World/GameInstance → 注册 APawn 类扩展 handler 并持有请求句柄 → HandlePawnExtension 按事件分流 → 从 Pawn 当前 Controller 取 LocalPlayer/InputSystem → 找 Hero 且 ready → 遍历 `InputConfigs` 中 `Entry.Get()` 已加载者 → AddAdditionalInputConfig。此路径不是 LoadSynchronous，未加载条目会被跳过。
+
+扩展事件本身不保存全部过去通知供未来监听者重播；迟到处理依赖加入通知后的状态查询和项目约定的补偿入口。
+
+早到的 ExtensionAdded 可以先因 ready=false 不绑定，后续 BindInputsNow 再尝试；晚激活可在加入通知中查询现有 ready。这只接通了重试入口，不保证 exactly-once 或必定成功。所存 AddInputMappingForPlayer 在绑定之后才 `PawnsAddedTo.AddUnique(Pawn)`，没有先判断 Pawn 已在表中而拒绝追加；而且只要 LP/InputSystem 满足，即使 Hero 不存在或不 ready，也可能登记该 Pawn。
+
+因此同一 context、Pawn 和有效已加载 InputConfig，先 ExtensionAdded 再 BindInputsNow，两次都可能到 BindAbilityActions，PawnsAddedTo 仍只有一个 Pawn。这是入口次数与账本数量的纸面推导，不是已运行的重复键响应或实际 binding 条数观测。
 
 ## 二十六、扩展输入的清理
 
-AddInputBinding Action 按 ChangeContext 保存：
+附录 18 的 Action 按 ChangeContext 保存 ExtensionRequestHandles 与 Pawn 弱引用；弱引用追踪表不拥有实际 bindings。Reset 先 Empty 扩展请求数组，再逐个处理剩余 Pawn：有效者进 RemoveInputMapping，无效者 Pop。RemoveInputMapping 重新找当前 Controller/LP/InputSystem/Hero，对仍已加载的配置调用 RemoveAdditionalInputConfig，最后移除 Pawn 记录。找不到这些对象时也会删记录。
 
-- ExtensionRequestHandles；
-- 已增加输入的 Pawn 弱引用。
+**实际卸载缺口**：附录 8 的 AddAdditionalInputConfig 把 BindHandles 放在局部数组，返回后没有持久保存撤销 ID；RemoveAdditionalInputConfig 函数体只有 `//@TODO: Implement me!`。所以外层“调用 Remove 并删账”没有在这条链解绑实际输入，不能声称追加/移除对称、切换 Experience 已无残留或热重激活验证完成。组件最终销毁是否另有清理也是另一个生命周期，不能据此反向断言生产环境永久泄漏。
 
-停用时 `Reset`：
+释放请求句柄可能引出扩展移除处理；即使通知先消费了 Pawn 账，Reset 仍只处理其剩余项。本次未读完整 Manager 实现，不给释放/通知/销毁的精确全序，也不把清空保存 TSharedPtr 的数组当成撤掉外部仍持有的所有共享引用；单个 shared pointer 的释放操作是 Reset，不是虚构 handle 自身的 Empty/Release 方法。
 
-1. 清空扩展句柄；
-2. 遍历 Pawn；
-3. 调 Hero `RemoveAdditionalInputConfig`；
-4. 从活动集合移除。
+| 资源 | 身份/持有者 | 应核的撤销入口 | 不能替代的工作 |
+| --- | --- | --- | --- |
+| 扩展/组件请求 handle | Action + ChangeContext 的 shared handle | 最后共享持有者释放关联请求；组件请求的同类键另有引用计数 | 不自动代表输入和能力已撤销 |
+| MappingContext 激活 | LocalPlayer 输入子系统 + IMC/来源 | 按目标工程策略 RemoveMappingContext | 不代表 action callback 已解绑 |
+| UserSettings 登记 | 输入设置对象中的 IMC 注册 | 按配置寿命及目标版本登记策略回收 | 不等于当前激活态或 callback |
+| action binding | 实际 InputComponent 实例 + 每次创建的 handle | 仅移除本来源拥有的 binding handle | 不能只清 PawnsAddedTo |
+| AbilitySpec / Effect / AttributeSet | 授予来源 + ASC + 各类句柄/对象 | 各自 Give/Take 或 Action 的对应 API | 不由 UnregisterFeature/清 Avatar 代办 |
 
-输入追加与移除必须对称，否则切换 Experience 后会残留重复绑定。
+[RemoveBindingByHandle 公开 API](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/EnhancedInput/UEnhancedInputComponent/RemoveBindingByHandle)提供按句柄删除绑定的入口，但它的存在不能补全历史 TODO。[EnhancedInput 子系统接口](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/EnhancedInput/IEnhancedInputSubsystemInterface)的 RemoveMappingContext 是另一层资源。
+
+项目改进合同应在绑定前建立 context/参与期、receiver、InputComponent 实例、config/来源的幂等键；保存实际生成的 handles，退出先禁止新工作，再只撤销该来源资源。不要在卸载时根据新 Controller 猜原 InputComponent。若绑定期间请求退出，必须先满足第三十四节的窄前提：相关完整 Manager 外层栈内不能同步物理移除对象；晚返句柄仍归原参与记录，实际解除等待整个相关栈退出后的合法接收点。仅当前绑定调用返回不够。这里是待实现/验证的工程建议，历史源文件没有被改成一个不存在的完整方案。
 
 ## 二十七、角色初始化时序图
 
 ```mermaid
 sequenceDiagram
-    participant S as Server
-    participant C as Client
+    participant S as Server 数据生产者
+    participant C as 某一个 Client 接收入口
     participant Ext as PawnExtension
     participant Hero as HeroComponent
     participant Mgr as ComponentManager
     participant PS as PlayerState/ASC
 
-    S->>Ext: SetPawnData (Authority)
+    S->>S: SetPawnData 到服务端 PawnExtension (Authority)
     S->>C: Replicate PawnData / PlayerState / Controller
     Ext->>Mgr: Spawned
     Hero->>Mgr: Spawned
@@ -730,14 +787,15 @@ sequenceDiagram
     Mgr-->>Ext: yes
     Ext->>Mgr: DataInitialized
     Mgr-->>Hero: PawnExtension changed
-    Hero->>PS: InitAbilityActorInfo(PlayerState, Pawn)
-    Hero->>Hero: InitializePlayerInput / Camera
+    Hero->>Ext: Handle 内 InitializeAbilitySystem(PS.ASC, PS)
+    Ext->>PS: InitAbilityActorInfo(PlayerState, Pawn)
+    Hero->>Hero: Handle 内按前提初始化 Input / Camera
     Hero->>Mgr: DataInitialized
     Ext->>Mgr: GameplayReady
     Hero->>Mgr: GameplayReady
 ```
 
-图中复制事件顺序不是保证顺序，只展示所有门槛最终会合。
+图中 Ext/Hero/Manager 是同一被观察端的对象；Authority 一侧也有自己的状态链，未画成与客户端共享一个 Manager。复制箭头不保证到达顺序，Ext 与 Hero 最后 Ready 的相对次序也只是可能排列。图的结论受“所有必需参与者已登记、数据最终有效且有实际重试、没有依赖环”的前提约束；Handle 副作用在本 Feature 通知之前。
 
 ## 二十八、角色视角矩阵
 
@@ -749,11 +807,14 @@ sequenceDiagram
 | 初始化 ASC ActorInfo | 是 | 是 | 是，用于复制表现/标签 |
 | 绑定本地输入 | Listen 本地玩家可能 | 是 | 否 |
 | 权威授予 AbilitySet | 是 | 否 | 否 |
-| 摄像机控制 | 本地视角时 | 是 | 通常否 |
+| 摄像机模式委托装配 | 有 PawnData/Camera 可绑定 | 同前 | 同前，为以后观战准备 |
+| 立即成为活动摄像机 | 另由当前视角选择 | 另由当前视角选择 | 不由此绑定自动决定 |
 
 不要把“客户端”视为单一角色。
 
 Autonomous Proxy 和 Simulated Proxy 的初始化条件不同。
+
+本表为常见视角摘要，具体条件以第十一、十五、十七节源码分支为准；Bot 排除的是本地非 Bot 输入前提，不是所有 InitState 或 ASC 操作。初始化 ActorInfo 也不承诺远端此刻已有全部 Tag/Attribute。
 
 ## 二十九、为什么不用 Tick 或 Delay
 
@@ -764,7 +825,7 @@ Autonomous Proxy 和 Simulated Proxy 的初始化条件不同。
 3. 无法说明究竟缺哪个依赖；
 4. 多个组件各自 Delay 会形成组合竞态。
 
-Tick 轮询虽然最终可能成功，但：
+在本例里无必要地每帧轮询会增加以下代价，但不能把所有 Tick 使用都判为错误：
 
 - 每帧浪费检查；
 - 依赖隐式；
@@ -772,6 +833,8 @@ Tick 轮询虽然最终可能成功，但：
 - 很难处理 Feature 动态增加和移除。
 
 InitState 把依赖门槛写在 `CanChangeInitState`，把副作用写在 `HandleChangeInitState`，把重试绑定到真实事件。
+
+如果数据生产者没有可订阅事件，项目仍要选择明确的有限重试/轮询或超时策略；本篇未提供该实现。事件驱动本身不修复循环依赖、丢掉的首次 kick、错误过滤或长期缺失配置。停在可诊断状态比无限 Delay 后假报 ready 更可控。
 
 ## 三十、排障：状态卡在哪里
 
@@ -808,6 +871,8 @@ InitState 把依赖门槛写在 `CanChangeInitState`，把副作用写在 `Handl
 
 不要只盯 PawnExtension。
 
+还要核必需 Feature 是否根本没有登记，以及它是否在屏障通过后才加入；查询中看不见某个缺席者不等于业务完整。
+
 ### 30.5 Hero 卡在 DataAvailable
 
 检查 PawnExtension 是否已经 DataInitialized。
@@ -823,7 +888,10 @@ InitState 把依赖门槛写在 `CanChangeInitState`，把副作用写在 `Handl
 - `InitializePlayerInput` 是否执行；
 - `bReadyToBindInputs` 是否变为 true；
 - `NAME_BindInputsNow` 是否被发送；
-- MappingContext 的平台条件。
+- 该 IMC 是否加载，且所存路径的 bRegisterWithSettings 是否为 true；
+- 实际 LocalPlayer 子系统是否仍安装目标 MappingContext；
+- 当前 InputComponent 上是否有目标 action callbacks，是否出现同配置重复绑定；
+- 卸载是否真的持有并移除了绑定句柄，而不是仅看到 Pawn 账为空。
 
 ## 三十一、建议日志字段
 
@@ -844,9 +912,13 @@ InputComponent
 ASC Owner / Avatar
 ```
 
+再加参与期/ChangeContext、此次等待条件、已登记 Feature 集合、实际 InputComponent 身份、IMC 与 action handle 账、授予来源及撤销结果。状态日志、请求句柄数、bindings 数、AbilitySpec/GE/Attribute 数各自记录，不能共用一个“已清理”布尔值。这里是建议字段，没有生成运行日志。
+
 只打印“初始化失败”没有排障价值。
 
 ## 三十二、静态验证命令
+
+**历史命令示例，未在本次执行。** 下列旧机器路径与命令保留原字节，只说明原先如何定位符号，不认证这些目录在当前环境存在：
 
 ```powershell
 $Lyra = 'C:\Users\zhaozhiqi\Documents\Unreal Projects\LyraStarterGame'
@@ -867,7 +939,13 @@ rg -n "GiveToAbilitySystem|TakeFromAbilitySystem" `
   "$Lyra\Source\LyraGame\AbilitySystem\LyraAbilitySet.cpp"
 ```
 
+若在自己已获授权的 checkout 复核，先传入实际项目根和引擎根、读取 Build.version/项目配置并确认文件存在，再对上述相对文件与符号搜索；记录命令、stdout/stderr 和退出码。不要把旧绝对路径替换后称旧日志已复现。
+
+本次能够核对的是仓内收录文本、公开 API 合同和受保护字节。`check_repo` 未提供实际 UE checkout 时的源码路径检查为 NOT_RUN；路径字符串存在和 Markdown lint 通过都不是 UE 编译结果。
+
 ## 三十三、断点实验
+
+以下 A–D 均为**待在真实工程执行的实验方案**，不是已完成实验。运行前记录 UE/Lyra revision、网络模式、输入配置和资源基线；正例、反例及退出残留都要保留，不以断点命中替代资源终态。
 
 ### 实验 A：Listen Server + 1 Client
 
@@ -891,26 +969,16 @@ rg -n "GiveToAbilitySystem|TakeFromAbilitySystem" `
 
 ### 实验 D：动态 Feature
 
-创建一个实现 InitState 接口的测试组件，由 GameFeature AddComponents 注入。
+分两种时点安排同一个测试组件，不混成一种预期：
 
-让它暂时拒绝 DataAvailable，确认 PawnExtension 也停下。
+- D1：PawnExtension 尚未过 DataAvailable 会合时就登记测试 Feature，使其拒绝 DataAvailable。预期 Ext 被挡住；解除数据门槛并主动 Check 后，预期沿可行边继续
+- D2：Ext/Hero 已 GameplayReady 后才登记相同 Feature。预期原状态不自动回退，新 Feature 按自己的条件推进。若希望重新装配全体，需要另行设计参与期协议
 
-解除门槛并主动 `CheckDefaultInitialization`，确认整条链继续。
+每种记录参与集合、状态、IMC/action bindings、ASC 归属与能力账；再停用并检查实际残留。额外测试同一 Pawn 连续 ExtensionAdded/BindInputsNow、旧 Pawn 在新 Avatar 接管后退出，以及动画先于 ASC 的配置。历史输入 TODO 使“热卸载成功”目前无法仅靠本篇代码得到确认。
 
 ## 三十四、扩展一个新 Feature 的模板
 
-新组件应：
-
-1. 继承合适的 GameFrameworkComponent/PawnComponent；
-2. 实现 `IGameFrameworkInitStateInterface`；
-3. 返回稳定唯一的 FeatureName；
-4. `OnRegister` 调 `RegisterInitStateFeature`；
-5. `BeginPlay` 进入 Spawned 并检查默认初始化；
-6. 在复制回调、依赖通知中重试；
-7. `CanChangeInitState` 只判断门槛，不执行大副作用；
-8. `HandleChangeInitState` 执行对应过渡副作用；
-9. `EndPlay` 撤销资源并 Unregister；
-10. 不用 Tick 等待其他 Feature。
+先分清历史协调器与新组件合同。PawnExtension 的 Check 会要求其他实现者先尝试，再继续自己；普通业务组件不应无条件复制它的全员驱动职责。以下历史函数原字节保留，完整上下文在附录 6：
 
 ```cpp
 void ULyraPawnExtensionComponent::CheckDefaultInitialization()
@@ -925,7 +993,30 @@ void ULyraPawnExtensionComponent::CheckDefaultInitialization()
 }
 ```
 
-这是项目 `LyraPawnExtensionComponent.cpp` 的真实实现：它先推进依赖的实现者，再用四个 Native GameplayTag 调 `ContinueInitStateChain`；新组件不能照抄不存在的 `UMyPawnFeature` 或自造 Tag。
+这是所存历史引文，不是本次编译的实现。原创类和自定义 Tag 可以用于教学或项目，但必须明确自身身份、实际声明/注册及生命周期，不能伪称 Lyra 原名。
+
+### 34.1 一次性参与的最小合同（教学流程，未运行）
+
+设同一游戏 Actor 上有唯一 `ExampleEquipment` 与 `ExampleFeature`，同一 GameInstance 已登记四段 Tag。Equipment 的 DataInitialized 不依赖 ExampleFeature.GameplayReady；ExampleFeature 只在最后一步等待 Equipment 至少 DataInitialized。所有操作限定游戏线程，本文不证明线程安全。
+
+本例选择**一个组件对象只参与一次**：正常终态为 GameplayReady，EndPlay 或 OnUnregister 都结束本次参与；同对象运行中反注册再注册、流送复入不恢复业务，只保持停止并要求调用方创建新参与对象。不能等待不保证再次发生的 BeginPlay，也不能复用旧句柄冒充新一轮。
+
+**必须先满足的窄前提**：游戏线程并不自动保证对象活期。整个相关 Manager 注册、通知、状态推进的调用栈（包括包住本组件调用的更外层栈）尚未退出时，项目的所有相关调用方都不得同步 Destroy、反注册或物理移除其中仍会访问的 Actor、组件、Manager。业务回调只能记录 Stopping/停止请求，由生命周期责任方保证这些对象和原参与记录保持合法可用，直到整个相关栈退出并完成约定收尾。若外部代码不服从这个前提，本例不支持该执行路径；弱引用或一个稳定的参与记录只能帮助辨认对象/参与期，不能保证 UObject 仍可合法访问。
+
+本文把“合法接收点”定义为项目明确提供的生命周期协调入口：它能确认所有相关完整 Manager 栈已退出，并且本次解除仍需使用的对象仍合法。它不是“自己的 Register/Check 返回”，也不是默认“下一帧”。世界退出可能没有下一帧，负责退出的 Actor/组件生命周期责任方仍须在对象失效前，于这样的合法接收点完成待收尾工作；若目标工程无法提供该保证，应判本模板不适用，不能宣称已经安全停止。
+
+流程使用概念操作名，不是可复制编译的 UE 类；实际 Module 依赖、Tag 声明、反射、上述合法接收点及所有权由项目提供，不在这里另造通用排程宿主。Handle 的工作收窄为确定的本地缓存准备，不绑定外部订阅、不广播或授予可回调资源；更复杂或可失败的副作用需要单独的生命周期/重入合同：
+
+1. OnRegister：检查 GameWorld/Actor/唯一 FeatureName，且从未停止；先建空账和回调上下文，再登记 Feature。登记不设 Spawned；重复 OnRegister 不重复登记
+2. BeginPlay：Registered 且未停止时置 Playing；先绑定 Equipment 的到达/更晚状态监听，再主动尝试 Spawned 并 Check。即时回调只能请求 Check 或记停止请求，不能依赖尚未返回的监听句柄。返回的句柄始终交回发起注册的原参与记录；若该记录已 Stopping，句柄进入它的待解除账，不再开始本轮推进，也不转给新参与者。解除必须等上述合法接收点，不能以这次注册刚返回为由立即释放
+3. 自身数据到达/OnRep：更新本端可用性后调用同一 RequestCheck。依赖回调按 Actor、FeatureName 和当前参与身份过滤，将通知当重新查询机会，不能只订 DataAvailable 却等 DataInitialized
+4. Can 只接受：无状态→Spawned（Playing/Actor 有效）；Spawned→DataAvailable（自身数据有效）；DataAvailable→DataInitialized（本地有限准备条件）；DataInitialized→GameplayReady（Equipment 至少 DataInitialized）。Stopped/Stopping、重复边、跳跃、回退、未知边均拒绝
+5. Handle 只为获准边做上述确定的本地缓存准备，并记本组件所有权；在向 Manager 报告前完成。它不调用外部业务、建立可能回调的订阅或递归初始化别的 Feature。依赖监听在独立注册边界建立，回调只请求重查或记停止；不能因订阅工作量有限就假定它不会回调
+6. RequestCheck 已在执行时只置 Pending；外层检查沿有限四段链到阻塞或终态后再处理 Pending。只有前提真的改变或状态前进才再遍历，无进展即返回等待下一真实事件，不能空转直到成功
+7. 请求 Stop：先置 Stopping 且 Playing=false，禁止新的本组件业务推进；在相关完整 Manager 栈内只记请求/待收尾账。Stopping 不能取消已经通过 Can 的原生迁移，也不能保证当前 void Handle/后续报告不再发生；此时仍可能收到状态通知，但不再把它当作恢复业务推进或成功完成。只有生命周期责任方进入上述合法接收点后，才解绑本 Feature 监听、撤销自己账内资源、收回包含迟返句柄的原参与账，并在本对象确已登记时注销自身 Feature，最后置 Stopped。清理通知也只记录停止、不创建资源；重复请求/收尾不重复释放
+8. EndPlay、OnUnregister、配置取消由上述生命周期责任方接入同一请求/收尾协议。即使只 OnRegister、从未 BeginPlay，合法退出时也必须收回登记；如果外部直接在相关 Manager 栈中触发同步反注册/物理移除，这是违反前提的反例，不能靠 OnUnregister 里记 Stopping 补救。没有下一帧时也由该责任方在对象失效前完成合法收尾。Actor Receiver 与外部 Action request 由各自所有者清理，不调用全 Actor 的 RemoveActorFeatureData 误删别人
+
+该合同是附带上述严格前提的纸面设计，不是已证明任意引擎生命周期安全的实现。目标工程必须落实完整外层栈退出判定、对象合法活期、迟返句柄的原参与归属和无下一帧的收尾责任；本篇不替这些工作假造实现，也不声称历史 Lyra 源码已经具备这些防护。需要支持同对象复入或栈内同步物理移除时，须另立合同并真实验证，不能把 Manager 通知队列当通用重入/活期保护。
 
 ## 三十五、反模式
 
@@ -938,7 +1029,7 @@ void ULyraPawnExtensionComponent::CheckDefaultInitialization()
 7. 覆盖 PawnData 而不重建角色；
 8. ASC 放 PlayerState，却忘记更新 Avatar；
 9. 新 Pawn 接管 ASC 时不清理旧 Avatar；
-10. 动态输入只添加不移除；
+10. 看到 Remove 函数被调用或 Pawn 追踪表为空，就认定实际输入绑定已移除；
 11. 临时 AbilitySet 不保存撤销句柄；
 12. EndPlay 先销毁依赖，再解绑回调。
 
@@ -953,9 +1044,32 @@ void ULyraPawnExtensionComponent::CheckDefaultInitialization()
 - [ ] 能解释旧 Avatar 重叠处理；
 - [ ] 能列出 ASC 反初始化动作；
 - [ ] 能解释 `NAME_BindInputsNow` 的早到/晚到兼容；
-- [ ] 能设计一个不使用 Tick/Delay 的新 Feature。
+- [ ] 能设计一个有首次尝试、真实唤醒、幂等副作用和明确退出/复入边界的新 Feature；
+- [ ] 能分别指出历史源码观察、公开 API 合同、工程建议与未执行实验；
+- [ ] 能按 MappingContext、action binding、request handle、AbilitySpec、Effect、AttributeSet 分别说明所有权与终态。
+
+### 36.1 十二项纸面正反例
+
+以下全部标为 `PAPER_EXPECTED`，是表达式/合同追踪，没有运行 C++、模型或 UE，也不写成测试 PASS。每项同时给出使推论不成立的反例或失败信号。
+
+| 项 | 输入与操作 | PAPER_EXPECTED 与判定边界 |
+| --- | --- | --- |
+| 1 首次启动/唤醒 | 先只 OnRegister；后 BeginPlay；再让 PawnData 到达并调用 OnRep | 登记不等于状态；首次尝试到可行前缀，OnRep 后继续。删掉首次尝试且无通知，或数据变了却不 Check，不能推断自行推进 |
+| 2 合法边与真环 | Ext 等全员 DataAvailable，Hero 等 Ext.DataInitialized；再改 Hero.DataAvailable 也等 Ext.DataInitialized | 原错层依赖可有前缀，改后同环会阻塞；回退/未知边按所存两个 Can 返回 false，不用 Delay 修环 |
+| 3 角色门槛 | 分别给 Simulated、本地非 Bot、服务器 Bot 有效 PS，控制 LP/Input 是否存在 | Simulated 跳过 Controller 配对，本地非 Bot 才额外需输入/LyraPC/LP；把客户端状态全禁掉或给 Bot 强加 LP 均读错分支 |
+| 4 当前会合集合 | Extra 在 Ext 过屏障前/后登记为 Spawned；再完全不登记 Extra | 屏障前可阻塞，屏障后不回退；缺席必要 Feature 不被自动等待。记录集合与时点才可判定 |
+| 5 副作用与重入 | 合法迁移进入 Handle 后通知；开启注册即时回调；内层注册已返回但包住它的外层 Manager 通知仍活跃，此时请求停止并收到迟返 h | PAPER_EXPECTED：Handle 在通知前，Stopping 不撤销已通过 Can 的原生迁移；h 仍记入原参与待解除账，不在内层返回点释放。等完整相关栈退出且对象合法的接收点才清理；外部同步 Destroy/反注册违反模板前提，不能预测安全。历史 Handle 内 ensure 的 void return 也不证明回滚 |
+| 6 基础输入部分成功 | 有 PC/LP/Subsystem，但 InputConfig 为空或 LyraIC cast 失败；另一组 IMC 有效且 flag=false | 前者末尾仍可 ready=true/发事件但无目标绑定；后者此路径不 AddMappingContext。ready 或事件本身不是绑定成功判据 |
+| 7 重复追加与 TODO | 同 context/Pawn/已加载配置、Hero ready，依次 ExtensionAdded、BindInputsNow，再 Remove | 两次可到追加入口而 Pawn 账一项；Remove 调 TODO 后账可为空，bindings 是否清零无此链证据。不虚构具体绑定数量 |
+| 8 Avatar 接管 | A 缓存 ASC，ASC.Avatar 已是 B，A 再退出；另一组仍是 A 且 Owner 为空，并区分独立添加 Cue 与 GE 关联 Cue | A 只清自己缓存，不清 B；仍是 A 且 Owner 空才 ClearActorInfo。历史路径调用 RemoveAllGameplayCues，当前公开范围为独立添加 Cue，不推出 GE 关联表现清零；取消能力不等于撤销全部 spec/effect |
+| 9 授予/撤销账 | AbilitySet 在权威/非权威 Give/Take，OutGrantedHandles 有/无；Action 直接能力仍运行 | 非权威提前返回；nullptr 仍可授予但无来源返回账；Action 直接能力用 SetRemoveAbilityOnEnd，AbilitySet 另走 ClearAbility/GE/Attribute，不推“全部同步结束” |
+| 10 非法条目/Actor去重 | 允许绕过编辑器的纸面输入 [空 ActorClass A, 有效 B]；另一组两个合法匹配条目同 Actor | EntryIndex 只在非空类递增，B handler 可捕获0而回查A；编辑器可判非法，不宣称当前 UE 复现。ActiveExtensions 键为 Actor，不能预期两条均独立授予 |
+| 11 动画/Character | 动画早于 ASC、无兼容 AnimInstance、无映射；再观察死亡下一tick、相同/变化的移动字段 | 不满足前提不自动得到 Tag 属性；死亡并非立即释放；相同比较字段不生成新 FastShared 调用，不外推每连接保证 |
+| 12 退出/资源寿命 | OnRegister 后未 BeginPlay 即请求退出；外层 Manager 仍活跃；世界退出不保证下一帧；另有一个 request 两份 shared owner | PAPER_EXPECTED：先 Stopping，禁止新工作并保留原参与/迟返句柄账；责任方等待完整栈退出，在对象仍合法的接收点收尾后才 Stopped，即使没有下一帧也须完成。只记 Stopping 后任外部同步移除对象不受支持；弱引用/稳定记录不能保 UObject 活期。释放一份 sharedptr 不代表 handle 析构；删 IMC/Feature 不等于解绑 callbacks；同对象复入仍不支持 |
 
 ## 三十七、动画实例基类与 Tag 属性映射（LYRA 批次 2 补深挖）
+
+**以下三行是原批次 2 来源/版本声明，原字节保留；“本机静态核对/A级”未由本轮重新认证。** 本轮以附录 19/20 的所存代码及公开映射 API 为分析边界，历史行数不能替代当前引擎版本证明。
 
 > 本篇批次 2 补深挖两件小事，但它们解释了 Lyra 的一条复用范式：GAS 的 Gameplay Tag 应该如何驱动动画蓝图层。
 > 覆盖 `Source\LyraGame\Animation\` 下仅有的两个文件 `LyraAnimInstance.h`（46 行）与 `LyraAnimInstance.cpp`（65 行），全文见附录文件 19/20。
@@ -971,14 +1085,14 @@ void ULyraPawnExtensionComponent::CheckDefaultInitialization()
 
 Lyra 的做法不是让每个动画蓝图层手动去 `GetAbilitySystemComponent` 再查 Tag，而是用 `ULyraAnimInstance` 作统一基类，把“GAS Tag → 动画属性”的桥放在一个可复用的位置。
 
-它只做两件确定的事：
+它提供两类有条件的桥接职责：
 
-1. 用一个 `FGameplayTagBlueprintPropertyMap` 把 Gameplay Tag 映射到动画蓝图层属性；
-2. 每帧从 `ULyraCharacterMovementComponent` 拉取 `GroundDistance`。
+1. 在有效 ASC 与配置下用 `FGameplayTagBlueprintPropertyMap` 把 Tag 状态映射到指定属性；
+2. 动画更新时，仅在 Owner 是 ALyraCharacter 且使用所需移动组件的前提下读取 GroundDistance。
 
 ### 37.2 桥：FGameplayTagBlueprintPropertyMap
 
-`ULyraAnimInstance.h` 声明（节选）：
+`ULyraAnimInstance.h` 历史声明节选（附录 19，保留原注释）：
 
 ```cpp
 // Gameplay tags that can be mapped to blueprint variables. The variables will automatically update as the tags are added or removed.
@@ -990,18 +1104,15 @@ UPROPERTY(BlueprintReadOnly, Category = "Character State Data")
 float GroundDistance = -1.0f;
 ```
 
-`FGameplayTagBlueprintPropertyMap` 是引擎（UE 5.8，`GameplayEffectTypes.h` 约 1480 行）提供的映射容器：
+[FGameplayTagBlueprintPropertyMap 公开 API](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/GameplayAbilities/FGameplayTagBlueprintPropertyMap)说明它把属性注册到 ASC 委托，提供 Initialize、ApplyCurrentTags、IsDataValid 与 Unregister 等入口。配置项表达要映射的 Tag 和目标属性；在有效配置下用 Tag 变化驱动属性更新，避免每个动画图都手写相同查询。
 
-- 每一项 `FGameplayTagBlueprintPropertyMapping` 记录一个 `TagToMap` 与要写入的蓝图层属性；
-- 仅支持 **bool / int / float** 三种属性类型；
-- `Initialize(Owner, ASC)` 后会在 ASC 上绑定委托，Tag 计数变化时自动把新计数写入对应属性，无需动画蓝图层每帧查询；
-- 它内含裸委托句柄指针，不能放进 `TArray` 等会搬移地址的容器。
+映射结构绑定涉及自身地址，不能任意置于会搬移它的容器；附录 19 采用 AnimInstance 成员。这个地址稳定性合同不等于所有委托或所有容器使用都被禁止。
 
-这套机制把“Tag 存在/计数”变成动画蓝图层可直接读的布尔或数值属性，正是“GAS 状态 → 动画表现”的标准桥。
+旧文给过 `GameplayEffectTypes.h` 约 1480 行及 bool/int/float 完备清单；本轮没取得对应完整实现，不能认证精确行号、全部属性类型/规则和每条初始化分支。应在实际目标版本核对，不能用一个公开总页证明这些细节。
 
 ### 37.3 InitializeWithAbilitySystem 调用链
 
-`NativeInitializeAnimation` 首次初始化动画时自动探测 ASC（`LyraAnimInstance.cpp`）：
+`NativeInitializeAnimation` 在该初始化回调中尝试探测 ASC（附录 20 的历史函数）；动画实例可能重建，不能把“初始化”视作 Pawn 一生只一次：
 
 ```cpp
 void ULyraAnimInstance::NativeInitializeAnimation()
@@ -1018,7 +1129,9 @@ void ULyraAnimInstance::NativeInitializeAnimation()
 }
 ```
 
-`UAbilitySystemGlobals::GetAbilitySystemComponentFromActor` 通过 `IAbilitySystemInterface`（并回退到 FindComponent）自动找 Ownership Actor 上的 ASC，因此动画实例基类**无需手动接线**，只要 Owner Pawn 有 ASC 即可触发。随后送入：
+这里只在 OwningActor 与 helper 返回的 ASC 都非空时继续。ALyraCharacter 的 IAbilitySystemInterface 转交 PawnExtension 缓存，因而“Pawn 能找到某个组件”不等于其接口此时返回有效 ASC。[公开 helper API](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/GameplayAbilities/UAbilitySystemGlobals/GetAbilitySystem-)有 LookForComponent 参数，但本次页面未显示默认实参/完整实现，不能猜该单参调用必定回退 FindComponent。
+
+有效 ASC 才进入下面历史函数；ASC 晚到时此探测回调是否会重新发生，不可由这段单独保证：
 
 ```cpp
 void ULyraAnimInstance::InitializeWithAbilitySystem(UAbilitySystemComponent* ASC)
@@ -1029,9 +1142,9 @@ void ULyraAnimInstance::InitializeWithAbilitySystem(UAbilitySystemComponent* ASC
 }
 ```
 
-这里 `Initialize` 完成属性映射与 ASC 委托的绑定。
+这里向映射结构发起初始化/ASC 委托接线；实际可用属性仍取决于有效映射，不能以函数已调用替每条配置作成功证明。
 
-**与 41 篇 ASC 初始化屏障的关系**：`NativeInitializeAnimation` 是被动探测路径。另一条主动路径在 `ULyraAbilitySystemComponent::InitAbilityActorInfo` 内——当 Pawn avatar 变化（`bHasNewPawnAvatar`）时，代码对 `ActorInfo->GetAnimInstance()` 做 `Cast<ULyraAnimInstance>` 后直接调用 `InitializeWithAbilitySystem`（本机 `LyraAbilitySystemComponent.cpp` 第 76–79 行）：
+**与 ASC 初始化屏障的关系**：NativeInitializeAnimation 是上述被动探测入口。旧文另声称 `LyraAbilitySystemComponent.cpp` 第 76–79 行在 InitAbilityActorInfo 的新 Avatar 分支主动桥接动画。下面是该历史短引文，原样保留；这份 ASC 文件没有完整收录，也未在本轮取得 checkout，因此只分析所见 Cast/调用条件，不认证行号、外层完整生命周期或遗漏的重绑/解绑逻辑：
 
 ```cpp
 if (ULyraAnimInstance* LyraAnimInst = Cast<ULyraAnimInstance>(ActorInfo->GetAnimInstance()))
@@ -1040,7 +1153,7 @@ if (ULyraAnimInstance* LyraAnimInst = Cast<ULyraAnimInstance>(ActorInfo->GetAnim
 }
 ```
 
-这条路径由 41 篇主角事件串联：Hero 在 `DataAvailable → DataInitialized` 调 `PawnExtComp->InitializeAbilitySystem(ASC, PlayerState)`（见第十七、十九、二十部分），其中 PawnExtension 对 ASC 调 `InitAbilityActorInfo(OwnerActor, Pawn)`，进入上面的 AnimInstance 桥接。即动画蓝图层之所以“一 Possess 就有 Tag 属性”，实质建在四段 InitState 的会合点上。
+可见的项目链是 Hero 过渡 → PawnExtension.InitializeAbilitySystem → ASC.InitAbilityActorInfo(Owner, Pawn)；历史 ASC 节选表达在兼容 AnimInstance 上主动 InitializeWithAbilitySystem 的意图。动画此时是否存在、是否真为 ULyraAnimInstance、映射配置是否有效、ASC Tag 数据何时到达，都是额外前提。不能承诺“一 Possess 就有全部 Tag/Attribute”，也不能把 Tag 映射接口当作任意数值 Attribute 自动同步器。
 
 ### 37.4 NativeUpdateAnimation：GroundDistance
 
@@ -1064,8 +1177,8 @@ void ULyraAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 ```
 
 - Owner 不是 `ALyraCharacter`（如载具）则直接返回，不假设任何角色；
-- `GetGroundInfo` 来自 `ULyraCharacterMovementComponent`，返回带 `LastUpdateFrame` 缓存的 `FLyraCharacterGroundInfo`（内含 `GroundDistance` 与一次 `GroundHitResult`），只在需要时刷新，避免每帧重复物理查询；
-- `GroundDistance` 初值 `-1.0f`，未更新前即可作为“未知/无效距离”的哨兵值。
+- 当前可见的是 CastChecked 所需移动组件、调用 GetGroundInfo 并复制 GroundDistance。旧文关于 FLyraCharacterGroundInfo 的 LastUpdateFrame/GroundHitResult 缓存属于未附完整移动组件文件的历史线索；本轮不认证其刷新算法或每帧查询次数；
+- GroundDistance 的确初值 -1.0f；资产可约定其为未取到距离的哨兵，但 Owner 后来无效时该函数只是 return，不会自动重置已有值。动画端不能把字段非默认值当作本帧数据必然新鲜。
 
 ### 37.5 WITH_EDITOR 下的资产校验
 
@@ -1082,9 +1195,9 @@ EDataValidationResult ULyraAnimInstance::IsDataValid(FDataValidationContext& Con
 }
 ```
 
-`GameplayTagPropertyMap.IsDataValid(this, Context)` 会校验每个映射的 Tag 是否有效、目标属性是否存在且类型合法。错误被写入 `FDataValidationContext`，最终反馈为 `Invalid`。
+所存代码调用 Super 与映射结构的 IsDataValid，再以 Context.GetNumErrors 是否大于 0 返回 Invalid/Valid。公开 API 支持映射校验入口；具体 Tag、属性类型等全部校验规则没有完整实现支持，不写成已穷尽。资产校验通过也不证明运行时 ASC、动画实例寿命和接线时序正确。
 
-这正是 **UObject::IsDataValid 资产校验链**上的一环，与 47 篇的 LyraEditor 校验器互补：47 篇的 `UEditorValidator`（`LyraEditor` 模块）面向项目级/批处理（P4 变更集、`EDataValidationUsecase::Commandlet`）的资产集合；这里的 `IsDataValid` 是单资产在编辑器内保存/校验时由 `DataValidation` 子系统调用的资产内建校验。两者归入同一引擎校验生态。
+这正是 **UObject::IsDataValid 资产校验链**上的一环，与 47 篇的 LyraEditor 校验器互补：47 篇的 `UEditorValidator`（`LyraEditor` 模块）面向项目级/批处理（P4 变更集、`EDataValidationUsecase::Commandlet`）的资产集合；这里的 `IsDataValid` 是单资产的内建校验入口。是否在保存时自动触发取决于项目校验配置，不能仅凭覆写此函数推导每次保存都检查；两者提供互补的校验层。
 
 ### 37.6 分工边界声明
 
@@ -1095,107 +1208,62 @@ EDataValidationResult ULyraAnimInstance::IsDataValid(FDataValidationContext& Con
 | `ULyraAnimInstance`（C++ 基类） | 探测 ASC、绑 Tag→属性桥、维护数据来源 | 具体姿态逻辑、混合权重、状态机节点 |
 | 动画蓝图层（资产） | 用映射出来的 bool/float 属性挑选/混合姿态 | 查询 Tag、拉取 ASC、每帧地面查询 |
 
-基类只保证“数据以可读属性形式存在”，动画蓝图层只消费属性，不碰 GAS 查询细节。
+基类提供探测、映射及数据更新入口，资产配置决定映射哪些 Tag。只有入口实际走到且配置有效，才能讨论对应属性值；动画实例重建、ASC 替换及真实资产表现仍需验证。表中是责任划分，不是禁止资产使用其他合法数据源。
 
 ### 源码补全：GameFeatureAction_AddAbilities 的注册、授予与回收
 
-`GameFeatureAction_AddAbilities` 也不再只以附录形式存在。它的核心不是“配置表里有 GrantedAbilities”，而是把 Actor 扩展事件接到授予和回收两个对称路径：
+这部分保留原文对 AddAbilities 的独立教学用途；完整历史代码见附录 15/16。它把 Actor 扩展通知接到按上下文授予/回收入口，但“两个入口都存在”不等于任意配置下资源已原子闭环。
 
-```cpp
-void UGameFeatureAction_AddAbilities::AddToWorld(
-	const FWorldContext& WorldContext,
-	const FGameFeatureStateChangeContext& ChangeContext)
-{
-	UWorld* World = WorldContext.World();
-	UGameInstance* GameInstance = WorldContext.OwningGameInstance;
-	FPerContextData& ActiveData = ContextData.FindOrAdd(ChangeContext);
+下列是由所存 AddToWorld 改写的**流程摘要**，不是逐字源码或可编译实现；特别保留 EntryIndex 的实际递增位置：
 
-	if (GameInstance && World && World->IsGameWorld())
-	{
-		if (UGameFrameworkComponentManager* ComponentMan =
-			UGameInstance::GetSubsystem<UGameFrameworkComponentManager>(GameInstance))
-		{
-			int32 EntryIndex = 0;
-			for (const FGameFeatureAbilitiesEntry& Entry : AbilitiesList)
-			{
-				if (!Entry.ActorClass.IsNull())
-				{
-					UGameFrameworkComponentManager::FExtensionHandlerDelegate Delegate =
-						UGameFrameworkComponentManager::FExtensionHandlerDelegate::CreateUObject(
-							this, &UGameFeatureAction_AddAbilities::HandleActorExtension,
-							EntryIndex, ChangeContext);
-					ActiveData.ComponentRequests.Add(
-						ComponentMan->AddExtensionHandler(Entry.ActorClass, Delegate));
-					++EntryIndex;
-				}
-			}
-		}
-	}
-}
+```text
+AddToWorld(WorldContext, ChangeContext):
+  ActiveData = ContextData.FindOrAdd(ChangeContext)
+  若 GameInstance / World 无效或不是 GameWorld，停止
+  取得 ComponentManager；仅 Manager 有效才执行后续步骤
+  EntryIndex = 0
+  对 AbilitiesList 中每个 Entry：
+    若 ActorClass 非空：
+      建 handler，捕获当前 EntryIndex 和 ChangeContext
+      注册 AddExtensionHandler(Entry.ActorClass, handler)
+      将返回 shared handle 保存到 ActiveData.ComponentRequests
+      EntryIndex++  // 所存代码只在非空 ActorClass 分支递增
 ```
 
-收到 `ExtensionAdded` 或 `LyraAbilityReady` 后，真正的授予只在 Authority 执行，并且用 `ActiveExtensions` 防止同一 Actor 重复授予：
+HandleActorExtension 先验证 Context 与 EntryIndex，在 ExtensionAdded 或 `NAME_LyraAbilityReady` 通知时进入 AddActorAbilities；移除两类事件走 RemoveActorAbilities。下列是附录 16 的**分支/资源摘要**，保留原授予用途并展开失败边界，不是原创生产实现：
 
-```cpp
-void UGameFeatureAction_AddAbilities::AddActorAbilities(
-	AActor* Actor,
-	const FGameFeatureAbilitiesEntry& AbilitiesEntry,
-	FPerContextData& ActiveData)
-{
-	check(Actor);
-	if (!Actor->HasAuthority() || ActiveData.ActiveExtensions.Find(Actor))
-	{
-		return;
-	}
-
-	if (UAbilitySystemComponent* ASC =
-		FindOrAddComponentForActor<UAbilitySystemComponent>(Actor, AbilitiesEntry, ActiveData))
-	{
-		FActorExtensions AddedExtensions;
-		for (const FLyraAbilityGrant& Ability : AbilitiesEntry.GrantedAbilities)
-		{
-			if (!Ability.AbilityType.IsNull())
-			{
-				AddedExtensions.Abilities.Add(
-					ASC->GiveAbility(FGameplayAbilitySpec(Ability.AbilityType.LoadSynchronous())));
-			}
-		}
-
-		for (const FLyraAttributeSetGrant& Grant : AbilitiesEntry.GrantedAttributes)
-		{
-			if (TSubclassOf<UAttributeSet> SetType = Grant.AttributeSetType.LoadSynchronous())
-			{
-				UAttributeSet* NewSet = NewObject<UAttributeSet>(ASC->GetOwner(), SetType);
-				if (UDataTable* InitData = Grant.InitializationData.LoadSynchronous())
-				{
-					NewSet->InitFromMetaDataTable(InitData);
-				}
-				AddedExtensions.Attributes.Add(NewSet);
-				ASC->AddAttributeSetSubobject(NewSet);
-			}
-		}
-
-		ULyraAbilitySystemComponent* LyraASC = CastChecked<ULyraAbilitySystemComponent>(ASC);
-		for (const TSoftObjectPtr<const ULyraAbilitySet>& SetPtr : AbilitiesEntry.GrantedAbilitySets)
-		{
-			if (const ULyraAbilitySet* Set = SetPtr.Get())
-			{
-				Set->GiveToAbilitySystem(LyraASC,
-					&AddedExtensions.AbilitySetHandles.AddDefaulted_GetRef());
-			}
-		}
-		ActiveData.ActiveExtensions.Add(Actor, AddedExtensions);
-	}
-}
+```text
+AddActorAbilities(Actor, Entry, ActiveData):
+  check Actor；若非 Authority 或 ActiveExtensions 已有此 Actor，return
+  ASC = FindOrAddComponentForActor<UAbilitySystemComponent>(...)
+  若无 ASC：记录错误，return
+  建局部 AddedExtensions，按配置数量 Reserve 三类账
+  对非空 AbilityType：LoadSynchronous -> GiveAbility -> 记 AbilitySpecHandle
+  对非空 AttributeSetType：加载成功才 NewObject
+    可选加载 InitializationData，成功才 InitFromMetaDataTable
+    记 AttributeSet 并 AddAttributeSetSubobject
+  CastChecked ASC 为 ULyraAbilitySystemComponent
+  对 GrantedAbilitySets：SetPtr.Get() 已加载才 GiveToAbilitySystem，保存 GrantedHandles
+  最后 ActiveExtensions.Add(Actor, AddedExtensions)
 ```
 
-停用时 `RemoveActorAbilities` 按同一批句柄清理 Ability、AttributeSet 和 AbilitySet。这样 GameFeature 的生命周期才真正闭合：扩展注册不是永久副作用，配置错误也不会在重复激活时叠加。
+FindOrAddComponentForActor 先查 Actor 组件；无组件则尝试取得 Manager 并提出组件请求。已有组件为 Native 创建方式时，它还检查 archetype 是否为 CDO，用来判断是否需为另一管理器请求补持有引用。原先无 Component 时再查找一次；没有实际得到 ASC 就不能授予。这里的启发式与请求引用计数不能被写成“任意 Actor 必有正确 ASC”。
+
+授予也有前提：AbilityType 路径非空不等于同步加载必成功；AttributeSet 仅在 SetType 有效时创建；AbilitySet 使用 Get 而非此处同步加载；`CastChecked<ULyraAbilitySystemComponent>` 要求实际 ASC 类型兼容，连空 AbilitySet 列表也不能用来推断这个 cast 不发生。局部资源账最后才写回 ActiveExtensions，因而 Actor 级检查只防已经记录的重复调用，不是跨任意副作用重入的事务锁。
+
+**幂等键是 Actor，不是 Actor+Entry。** 同一 Action/Context 下两条规则匹配同 Actor 时，已经记录的第一批会挡住后续条目；不能依赖 handler 注册顺序选“获胜条目”，也不能声称两条必定都授予。
+
+**非法配置的纸面条件**：如果运行输入允许 `[空 ActorClass 的 A, 有效 B]`，A 跳过整个分支不递增，B handler 捕获的仍是 0，随后合法索引 0 指回 A。WITH_EDITOR 的 IsDataValid 会报告空类和空授予等错误，但不证明所有运行输入都经过该检查。这是所存语句的推导，不是当前 Lyra/UE 的已运行故障复现。
+
+**撤销分资源**：RemoveActorAbilities 在现存 Actor 账下重新 FindComponent；找到 ASC 才先 RemoveSpawnedAttribute，再对直接 GrantedAbilities 调 `SetRemoveAbilityOnEnd`，再将 AbilitySetHandles 交给 `TakeFromAbilitySystem`（ClearAbility/RemoveActiveGameplayEffect/RemoveSpawnedAttribute）。直接能力正在运行时可能到结束才移除，不能统称全部立即 ClearAbility。最后 Actor 账被删，若 ASC 已丢失也会删账，因此空账不是所有外部资源同步终止的证据。
+
+AddAbilities.Reset 的所存顺序是先逐个 RemoveActorAbilities，再清 ComponentRequests；它与输入 Action 先清请求的顺序不同。预激活会检查旧账并在异常时 Reset，停用也 Reset，但这不证明非法配置、来源替换、任意同步重入及重激活都已完整验证。本篇保留全部 TODO 和源代码，不用解释替源码补实现。
 
 ### 37.7 复用范式小结：为什么桥放在 AnimInstance 基类
 
 - **一处接线，多处复用**：所有继承 `ULyraAnimInstance` 的动画蓝图层自动获得 Tag 属性映射能力，不需要各自写探测代码；
 - **资产编辑器可见**：`EditDefaultsOnly` + 编辑器校验让美术/动画在蓝图层里直接配置 Tag 映射并得到反馈；
-- **与 GAS 生命周期对齐**：桥的绑定与 ASC 初始化/新 Pawn avatar 绑定同源，避免动画蓝图层在 ASC 尚未就绪时拿到空指针或漏读 Tag；
+- **围绕 GAS 生命周期接线**：被动探测与历史主动桥提供入口，但有效 ASC/AnimInstance/映射及重建时机仍需项目保证；不能消除所有晚到或漏绑风险；
 - **表现与逻辑解耦**：GAS 负责状态语义，动画消费标量/布尔，两者只通过 Tag 映射（配置）和 `GroundDistance`（C++ 属性）衔接。
 
 ## 三十八、术语速查
@@ -1203,14 +1271,14 @@ void UGameFeatureAction_AddAbilities::AddActorAbilities(
 | 术语 | 含义 |
 | --- | --- |
 | AnimInstance | 动画蓝图层实例，驱动骨骼网格的动画状态机 |
-| GameplayTagBlueprintPropertyMap | GAS 把 Gameplay Tag 映射到蓝图动画属性（bool/int/float）的引擎容器 |
+| GameplayTagBlueprintPropertyMap | 将配置的 Tag 状态连接到对象属性的 GAS 映射结构；完整属性类型范围须核目标实现 |
 | GameplayTagBlueprintPropertyMapping | 上述容器中的单条 Tag→属性映射条目 |
 | InitializeWithAbilitySystem | ULyraAnimInstance 把 GameplayTagPropertyMap 绑定到 ASC 的入口 |
-| NativeInitializeAnimation | AnimInstance 首次初始化回调，本文用它经 UAbilitySystemGlobals 探测 ASC |
+| NativeInitializeAnimation | 动画初始化回调；本文所存实现经 UAbilitySystemGlobals 尝试探测 ASC，不保证晚到自动重试 |
 | NativeUpdateAnimation | AnimInstance 每帧更新回调，本文用它拉取 GroundDistance |
 | GroundDistance | 角色到地面的距离，供动画蓝图层做落地/悬空姿态 |
-| FLyraCharacterGroundInfo | LyraCharacterMovementComponent 的带缓存地面信息结构（LastUpdateFrame + GroundHitResult + GroundDistance） |
-| IsDataValid | UObject 编辑器资产校验钩子，编辑器校验子系统在保存/校验时调用 |
+| FLyraCharacterGroundInfo | GetGroundInfo 返回的地面信息；GroundDistance 读取可见，旧文其余缓存字段/策略待完整移动组件实现核对 |
+| IsDataValid | UObject 编辑器资产校验钩子；调用时机取决于项目校验流程，函数存在不等于已执行 |
 
 ## 三十九、关联阅读
 
@@ -1227,10 +1295,42 @@ void UGameFeatureAction_AddAbilities::AddActorAbilities(
 
 ## 四十、权威来源
 
+### 本次可支持的来源与位置
+
+公开页面在 2026-10-05 的准备核验中实际读取；下表按“能证明什么”使用。多数当前页面显示 UE5.8，不是旧 CL 的版本锁定。历史项目细节以同篇附录/引文为证，两类来源不相互替代。
+
+| 来源 | 对应位置与支持上限 |
+| --- | --- |
+| [InitState 接口](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/ModularGameplay/IGameFrameworkInitStateInterface) | 第六节 Can/Handle/通知偏序、Continue、登记/注销；未提供完整 cpp 事务与调用全序 |
+| [Manager API](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/ModularGameplay/UGameFrameworkComponentManager) | 请求、事件、状态查询和队列；不能推出业务幂等或所有回调无重入 |
+| [RegisterAndCallForActorInitState](https://dev.epicgames.com/documentation/unreal-engine/API/Plugins/ModularGameplay/UGameFrameworkComponentManager/RegisterAndCallF-) | RequiredState 目标/更晚筛选及 bCallImmediately；不是 AddExtensionHandler 精确同步栈证明 |
+| [FComponentRequestHandle](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/ModularGameplay/FComponentRequestHandle) | 析构撤销关联请求；其 IsValid 只说明 Manager 存在，不是业务 ready |
+| [UPawnComponent](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/ModularGameplay/UPawnComponent) | 框架便利基类，不是所有派生对象自动实现 InitState |
+| [TMap](https://dev.epicgames.com/documentation/en-us/unreal-engine/map-containers-in-unreal-engine) | 插入序不保证迭代序；未取得 Manager 完整实现就不另造其遍历顺序 |
+| [RemoveBindingByHandle](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/EnhancedInput/UEnhancedInputComponent/RemoveBindingByHandle) | action binding 按句柄移除 API；不证明历史 Hero 的 TODO 已实现 |
+| [映射结构 API](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/GameplayAbilities/FGameplayTagBlueprintPropertyMap) | ASC 属性委托、地址稳定性与初始化/校验入口；不覆盖全部资产结果 |
+| [ASC 查找 helper](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/GameplayAbilities/UAbilitySystemGlobals/GetAbilitySystem-) | 接口/组件查询及 LookForComponent 参数；未读到默认值和完整分支 |
+
+### 跨版本与访问失败边界
+
+- 通用组件 flags 的细节参考 [官方 Python 5.7](https://dev.epicgames.com/documentation/en-us/unreal-engine/python-api/class/GameFrameworkAddComponentFlags?application_version=5.7)，不能用来认证 5.8 的完整 C++ 条件；5.8 C++ 枚举页细节空缺，5.8 Python 页读取失败。本文不补出所有组合 truth table
+- 官方 [5.5 FActorInitStateChangedParams](https://dev.epicgames.com/documentation/unreal-engine/API/Plugins/ModularGameplay/Components/FActorInitStateChangedParams?application_version=5.5)已列 Public/Components/GameFrameworkComponentDelegates.h；不能声称整个路径到 5.8 才出现，也不据此猜所有头文件的迁移日期
+- HandleChangeInitState 独立页访问失败，顺序由成功的接口总页对应方法条目支持；RemoveMappingContext 独立页仅空标题，语义用成功的子系统接口总页。显式带 5.8 参数的部分核心页失败，默认当前页成功，两者不合并成完整版本认证
+- helper 首次猜测路径失败后从官方结果恢复到表中可读路径；未用失败页证明不存在 API，也未用第三方镜像补出默认实参
+- [Lyra Input Settings](https://dev.epicgames.com/documentation/en-us/unreal-engine/lyra-input-settings-in-unreal-engine)当前页面仍讲另一组 InputConfig/PlayerMappableInputConfig 接口；它不替附录 8 的 DefaultInputMappings/UserSettings 分支或输入 TODO 作证
+
+### 概念背景
+
 - [Game Framework Component Manager](https://dev.epicgames.com/documentation/en-us/unreal-engine/game-framework-component-manager-in-unreal-engine)
 - [Abilities in Lyra](https://dev.epicgames.com/documentation/en-us/unreal-engine/abilities-in-lyra-in-unreal-engine)
 - [Gameplay Ability System](https://dev.epicgames.com/documentation/en-us/unreal-engine/gameplay-ability-system-for-unreal-engine)
 
+
+### 2026-10-05 修订说明
+
+此次实质修订涵盖全部 1–40 节的初始化、资源与来源边界：纠正 Handle/通知顺序、会合范围、角色嵌套条件、输入部分成功和 TODO 卸载、Avatar 守卫、能力分账及动画前提；加入十二项 PAPER_EXPECTED 和明确一次性参与模板。成熟度按主要承诺保持 L2，无新 verified 事件，无 UE 运行结论。
+
+**以下整个附录及其后原更新日志均为历史材料，完整原字节、原次序保留。** 附录中的日期、版本、“本机/逐字/未删改”及版权措辞是原收录声明，不构成本轮对外部 checkout 或许可的重新认证。正文历史引用与附录同函数的重复属于各自教学位置，未用整篇旧文再次包入而制造第二套附录。
 
 ## 附录：核心文件完整源码
 

@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-05 (Native GameplayTasks framework and visible source contracts; historical identity and excerpts preserved).
+# Generated: 2026-10-05 (ModularGameplay initialization and Lyra source lifecycle contracts; historical identities and appendix bytes preserved).
 version: 4
 
 okf:
@@ -884,8 +884,8 @@ documents:
   "知识/03-引擎架构与资源系统/模块化框架与对象通信/41-Lyra-Pawn初始化与模块化组件源码.md":
     kind: doc
     maturity: L2
-    bytes: 178703
-    lines: 5368
+    bytes: 222227
+    lines: 5468
   "知识/03-引擎架构与资源系统/模块化框架与对象通信/48-Lyra扩展插件源码.md":
     kind: doc
     maturity: L2
@@ -1349,8 +1349,8 @@ documents:
   "知识/05-Gameplay与交互系统/玩法架构与任务协作/08-ModularGameplay模块化玩法.md":
     kind: doc
     maturity: L2
-    bytes: 24575
-    lines: 413
+    bytes: 55448
+    lines: 574
   "知识/05-Gameplay与交互系统/玩法架构与任务协作/09-GameplayTask任务框架.md":
     kind: doc
     maturity: L2
