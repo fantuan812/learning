@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-06 (Storage object lifetimes, replacement publication and measurement boundaries; historical identities preserved).
+# Generated: 2026-10-06 (io_uring submission, completion and resource lifetime; historical identities preserved).
 version: 4
 
 okf:
@@ -539,8 +539,8 @@ documents:
   "知识/01-编程与计算机基础/操作系统与系统I-O/03-io_uring与异步I-O.md":
     kind: doc
     maturity: L2
-    bytes: 16535
-    lines: 341
+    bytes: 50094
+    lines: 543
   "知识/01-编程与计算机基础/操作系统与系统I-O/03-文件系统与存储栈.md":
     kind: doc
     maturity: L2
