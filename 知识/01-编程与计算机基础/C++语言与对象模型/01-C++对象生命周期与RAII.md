@@ -4,7 +4,7 @@ title: "01-C++对象生命周期与RAII"
 status: stable
 verified: []
 maturity: L2
-updated: 2026-10-01
+updated: 2026-10-06
 sources:
   - resource: https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
     title: C++ Core Guidelines C.35 and resource management
@@ -36,7 +36,7 @@ sources:
 3. 异常安全的三档保证是什么，和 RAII 什么关系？
 4. UE 的 `UObject` 生命周期为什么和普通 C++ 对象不一样，边界在哪里？
 
-读完本文应能：说出任意对象从构造到析构的完整顺序；解释为什么析构函数不能抛异常；说明 `unique_ptr` 与 `shared_ptr` 的适用边界；以及为什么 UE 里 `UObject` 不能 `delete`。
+读完本文应能：说出任意对象从构造到析构的完整顺序；解释析构函数异常规格的推导规则、资源守卫避免异常逃逸的设计理由及触发 `std::terminate` 的相关条件；说明 `unique_ptr` 与 `shared_ptr` 的适用边界；以及为什么 UE 里 `UObject` 不能 `delete`。
 
 ## 2. 核心概念
 
@@ -480,7 +480,7 @@ C++11 起"magic statics"保证局部静态的首次初始化是线程安全的�
 - 标准语义以[C++工作草案析构规则](https://eel.is/c%2B%2Bdraft/class.dtor)与[异常规格](https://eel.is/c%2B%2Bdraft/except.spec)核对；4.1测试正常退出、dismiss、异常展开三条清理路径。现代草案会继续演进，本例只使用C++11已有机制。
 - 异常安全保证的工程定义见 [cppreference - Exceptions](https://en.cppreference.com/w/cpp/language/exceptions)。
 - UE 部分以本机 UE 5.8 源码与 [UE 5.8 官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine)（UObject/GC 页面）为准；本层仅建立 C++ 侧边界，深度分析见 12-引擎源码分析。
-- 后续升级 L3/L4 计划：为 ScopeGuard 增加异常注入测试（强保证验证），为锁 RAII 增加锁竞争 Benchmark（关联 W1-06）。
+- 后续升级 L3/L4 计划：为使用 ScopeGuard 的具体状态变更操作另行设计异常注入与回滚测试，检验失败后约定状态是否保持不变（现有示例只覆盖正常退出、dismiss 和异常展开的清理行为），为锁 RAII 增加锁竞争 Benchmark（关联 W1-06）。
 
 验证命令（Windows / MSVC）：
 
