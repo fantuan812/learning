@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-06 (Compiler and linker pipeline, ELF and ABI boundaries; finite legal O0 and independent O2 examples; historical preface retained).
+# Generated: 2026-10-07 (ISA and three calling conventions; version-scoped paper rules and frozen-source O0/O2 observations; historical text retained).
 version: 4
 
 okf:
@@ -584,8 +584,8 @@ documents:
   "知识/01-编程与计算机基础/编译链接与ABI/03-ISA汇编与调用约定.md":
     kind: doc
     maturity: L2
-    bytes: 13862
-    lines: 327
+    bytes: 44587
+    lines: 511
   "知识/01-编程与计算机基础/编译链接与ABI/README.md":
     kind: README
     maturity: L0
