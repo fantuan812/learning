@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-07 (CPU memory hierarchy; fixed-source causal chains and explicitly hypothetical paper traces; historical text retained).
+# Generated: 2026-10-07 (Compiler optimization and CUDA resource completion; fixed-source causal chains and bounded paper traces; historical text retained).
 version: 4
 
 okf:
@@ -564,8 +564,8 @@ documents:
   "知识/01-编程与计算机基础/硬件体系结构与性能/04-编译器优化与GPU异构.md":
     kind: doc
     maturity: L2
-    bytes: 13980
-    lines: 344
+    bytes: 53450
+    lines: 474
   "知识/01-编程与计算机基础/硬件体系结构与性能/05-虚拟化与硬件辅助隔离.md":
     kind: doc
     maturity: L2
