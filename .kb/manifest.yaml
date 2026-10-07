@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-07 (Network request layering, message framing and business confirmation; fixed-source paper traces; historical text retained).
+# Generated: 2026-10-07 (QUIC transport, HTTP range recovery and patch publication; fixed-source paper traces; historical text retained).
 version: 4
 
 okf:
@@ -599,8 +599,8 @@ documents:
   "知识/01-编程与计算机基础/网络协议基础/02-QUIC与HTTP演进.md":
     kind: doc
     maturity: L2
-    bytes: 13680
-    lines: 337
+    bytes: 83897
+    lines: 740
   "知识/01-编程与计算机基础/网络协议基础/03-IPv6NAT服务发现与负载均衡.md":
     kind: doc
     maturity: L2
