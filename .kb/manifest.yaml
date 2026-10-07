@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-07 (Distributed foundations; commit, crash recovery, deduplication and strong-read paper histories; original contributions retained).
+# Generated: 2026-10-07 (Cache and message obligations, completion and lifecycle; fixed-source paper traces; original article retained).
 version: 4
 
 okf:
@@ -1874,8 +1874,8 @@ documents:
   "知识/07-网络与游戏服务端/持久化与分布式一致性/03-缓存与消息队列.md":
     kind: doc
     maturity: L2
-    bytes: 17252
-    lines: 327
+    bytes: 69290
+    lines: 692
   "知识/07-网络与游戏服务端/持久化与分布式一致性/04-分布式事务与最终一致性.md":
     kind: doc
     maturity: L2
