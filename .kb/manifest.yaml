@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-07 (ISA and three calling conventions; version-scoped paper rules and frozen-source O0/O2 observations; historical text retained).
+# Generated: 2026-10-07 (CPU memory hierarchy; fixed-source causal chains and explicitly hypothetical paper traces; historical text retained).
 version: 4
 
 okf:
@@ -559,8 +559,8 @@ documents:
   "知识/01-编程与计算机基础/硬件体系结构与性能/01-处理器存储层次与性能工程.md":
     kind: doc
     maturity: L2
-    bytes: 20155
-    lines: 315
+    bytes: 43758
+    lines: 391
   "知识/01-编程与计算机基础/硬件体系结构与性能/04-编译器优化与GPU异构.md":
     kind: doc
     maturity: L2
