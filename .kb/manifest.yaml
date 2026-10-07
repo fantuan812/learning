@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-07 (Compiler optimization and CUDA resource completion; fixed-source causal chains and bounded paper traces; historical text retained).
+# Generated: 2026-10-07 (Virtualization address translation, KVM return validity and device lifetimes; fixed-source paper traces; historical text retained).
 version: 4
 
 okf:
@@ -569,8 +569,8 @@ documents:
   "知识/01-编程与计算机基础/硬件体系结构与性能/05-虚拟化与硬件辅助隔离.md":
     kind: doc
     maturity: L2
-    bytes: 17079
-    lines: 323
+    bytes: 51245
+    lines: 431
   "知识/01-编程与计算机基础/硬件体系结构与性能/README.md":
     kind: README
     maturity: L0
