@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-07 (IPv6, NAT, discovery and load balancing; fixed-source paper traces and business outcomes; historical text retained).
+# Generated: 2026-10-07 (Distributed foundations; commit, crash recovery, deduplication and strong-read paper histories; original contributions retained).
 version: 4
 
 okf:
@@ -1854,8 +1854,8 @@ documents:
   "知识/07-网络与游戏服务端/持久化与分布式一致性/02-分布式系统基础.md":
     kind: doc
     maturity: L2
-    bytes: 13553
-    lines: 334
+    bytes: 63155
+    lines: 391
   "知识/07-网络与游戏服务端/持久化与分布式一致性/02-缓存与排行榜系统.md":
     kind: doc
     maturity: L2
