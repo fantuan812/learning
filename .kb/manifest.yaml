@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-07 (Storage engines and transactions; ARIES, PostgreSQL and RocksDB fixed-source paper traces; original article retained).
+# Generated: 2026-10-07 (Transactions and Outbox obligations, authoritative fulfillment and lifecycle; fixed-source paper traces; original article retained).
 version: 4
 
 okf:
@@ -1879,8 +1879,8 @@ documents:
   "知识/07-网络与游戏服务端/持久化与分布式一致性/04-分布式事务与最终一致性.md":
     kind: doc
     maturity: L2
-    bytes: 27640
-    lines: 421
+    bytes: 79623
+    lines: 719
   "知识/07-网络与游戏服务端/持久化与分布式一致性/README.md":
     kind: README
     maturity: L0
