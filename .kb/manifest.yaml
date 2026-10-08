@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-08 (Service discovery, configuration and recovery boundaries; fixed-source static contracts; original article retained).
+# Generated: 2026-10-08 (Server concurrency, ownership and measurement boundaries; fixed-source static contracts; original article retained).
 version: 4
 
 okf:
@@ -1999,8 +1999,8 @@ documents:
   "知识/07-网络与游戏服务端/运行调度与过载保护/05-并发与高性能.md":
     kind: doc
     maturity: L2
-    bytes: 26328
-    lines: 558
+    bytes: 84475
+    lines: 985
   "知识/07-网络与游戏服务端/运行调度与过载保护/11-AI与寻路时间预算.md":
     kind: doc
     maturity: L2
