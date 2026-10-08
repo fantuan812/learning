@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-07 (Database selection, durable save confirmation and recovery; fixed-source static contracts; original article retained).
+# Generated: 2026-10-07 (Distributed service discovery, fenced ownership transfer and recovery; fixed-source static contracts; original article retained).
 version: 4
 
 okf:
@@ -1864,8 +1864,8 @@ documents:
   "知识/07-网络与游戏服务端/持久化与分布式一致性/03-分布式与高可用.md":
     kind: doc
     maturity: L2
-    bytes: 23577
-    lines: 454
+    bytes: 112808
+    lines: 1310
   "知识/07-网络与游戏服务端/持久化与分布式一致性/03-幂等重试与消息语义.md":
     kind: doc
     maturity: L2
