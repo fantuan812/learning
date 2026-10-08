@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-07 (Distributed service discovery, fenced ownership transfer and recovery; fixed-source static contracts; original article retained).
+# Generated: 2026-10-08 (Authentication, authorization, replay state and original business outcomes; fixed-source static contracts; original article retained).
 version: 4
 
 okf:
@@ -1794,8 +1794,8 @@ documents:
   "知识/07-网络与游戏服务端/会话身份与在线服务/04-安全与反作弊.md":
     kind: doc
     maturity: L2
-    bytes: 22381
-    lines: 381
+    bytes: 92493
+    lines: 878
   "知识/07-网络与游戏服务端/会话身份与在线服务/05-聊天与社交系统.md":
     kind: doc
     maturity: L2
