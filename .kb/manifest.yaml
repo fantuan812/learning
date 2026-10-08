@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-08 (Deployment selection, bounded drain and observability evidence; fixed-source static contracts; original article retained).
+# Generated: 2026-10-08 (Server architecture, actor interleaving and durable original-request recovery; fixed-source static contracts; original article retained).
 version: 4
 
 okf:
@@ -1894,8 +1894,8 @@ documents:
   "知识/07-网络与游戏服务端/服务架构与消息通信/01-服务器架构模式.md":
     kind: doc
     maturity: L2
-    bytes: 26438
-    lines: 498
+    bytes: 90207
+    lines: 1116
   "知识/07-网络与游戏服务端/服务架构与消息通信/02-网络通信与协议设计.md":
     kind: doc
     maturity: L2
