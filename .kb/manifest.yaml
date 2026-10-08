@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-08 (Authentication, authorization, replay state and original business outcomes; fixed-source static contracts; original article retained).
+# Generated: 2026-10-08 (Deployment selection, bounded drain and observability evidence; fixed-source static contracts; original article retained).
 version: 4
 
 okf:
@@ -2269,8 +2269,8 @@ documents:
   "知识/08-工程实践与质量/部署运维与可观测性/05-部署运维与监控.md":
     kind: doc
     maturity: L2
-    bytes: 24872
-    lines: 489
+    bytes: 84100
+    lines: 1097
   "知识/08-工程实践与质量/部署运维与可观测性/06-SLI-SLO与可观测性.md":
     kind: doc
     maturity: L2
