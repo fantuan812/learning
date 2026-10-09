@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-09 (Serialization presence, bounded wire formats and compressed frame acceptance; original history retained).
+# Generated: 2026-10-09 (Collision filtering, query and event ownership and physical material contracts; original history retained).
 version: 4
 
 okf:
@@ -1129,8 +1129,8 @@ documents:
   "知识/04-图形动画与物理仿真/物理求解与动力学/02-碰撞检测与物理材质.md":
     kind: doc
     maturity: L2
-    bytes: 21760
-    lines: 377
+    bytes: 56880
+    lines: 509
   "知识/04-图形动画与物理仿真/物理求解与动力学/03-物理约束与关节.md":
     kind: doc
     maturity: L2
