@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-09 (Level streaming targets, observable state and bounded request lifecycle; original history retained).
+# Generated: 2026-10-09 (Gameplay Tag query semantics, shared data and scoped asset ownership; original history retained).
 version: 4
 
 okf:
@@ -1339,8 +1339,8 @@ documents:
   "知识/05-Gameplay与交互系统/玩法架构与任务协作/03-GameplayTag与数据资产.md":
     kind: doc
     maturity: L2
-    bytes: 15155
-    lines: 382
+    bytes: 66762
+    lines: 1162
   "知识/05-Gameplay与交互系统/玩法架构与任务协作/05-蓝图与C++协作.md":
     kind: doc
     maturity: L2
