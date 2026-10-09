@@ -2129,8 +2129,8 @@ documents:
   "知识/08-工程实践与质量/测试策略与自动化/01-测试金字塔与测试策略.md":
     kind: doc
     maturity: L2
-    bytes: 29268
-    lines: 386
+    bytes: 93244
+    lines: 1254
   "知识/08-工程实践与质量/测试策略与自动化/02-客户端自动化测试.md":
     kind: doc
     maturity: L2
