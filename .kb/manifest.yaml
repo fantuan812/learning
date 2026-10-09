@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-09 (Container operation contracts, game workload choices and measurement boundaries; original history retained).
+# Generated: 2026-10-09 (Camera update ownership, viewport domains and scoped view effects; original history retained).
 version: 4
 
 okf:
@@ -1474,8 +1474,8 @@ documents:
   "知识/05-Gameplay与交互系统/输入移动与交互/07-相机系统与视口.md":
     kind: doc
     maturity: L2
-    bytes: 36844
-    lines: 633
+    bytes: 80004
+    lines: 838
   "知识/05-Gameplay与交互系统/输入移动与交互/10-输入设备抽象与手柄触控.md":
     kind: doc
     maturity: L2
