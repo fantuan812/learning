@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-09 (Runtime backpressure, time debt and recovery; fixed-source static contracts and preserved original observations).
+# Generated: 2026-10-09 (Vector geometry, matrix conventions and bounded camera transforms; original history retained).
 version: 4
 
 okf:
@@ -619,8 +619,8 @@ documents:
   "知识/02-数学与游戏算法/数学与数值计算/01-向量与矩阵基础.md":
     kind: doc
     maturity: L2
-    bytes: 21929
-    lines: 464
+    bytes: 72794
+    lines: 1297
   "知识/02-数学与游戏算法/数学与数值计算/02-四元数与旋转.md":
     kind: doc
     maturity: L2
