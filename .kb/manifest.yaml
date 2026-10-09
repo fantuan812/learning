@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-09 (Rendering paths, frame ownership and measurement boundaries; original history retained).
+# Generated: 2026-10-09 (Geometric query contracts, collision status and conservative advancement; original history retained).
 version: 4
 
 okf:
@@ -694,8 +694,8 @@ documents:
   "知识/02-数学与游戏算法/空间查询与碰撞/04-碰撞检测.md":
     kind: doc
     maturity: L2
-    bytes: 26907
-    lines: 499
+    bytes: 93102
+    lines: 1303
   "知识/02-数学与游戏算法/空间查询与碰撞/04-空间分区与索引.md":
     kind: doc
     maturity: L2
