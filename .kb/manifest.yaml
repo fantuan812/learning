@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-09 (Runtime backpressure, time debt and recovery; fixed-source static contracts and preserved original observations).
+# Generated: 2026-10-09 (Consistent world snapshot cuts, durable replay prefixes and scoped recovery; original history retained).
 version: 4
 
 okf:
@@ -1753,9 +1753,9 @@ documents:
     lines: 322
   "知识/07-网络与游戏服务端/世界权威与故障恢复/13-世界Snapshot与故障恢复.md":
     kind: doc
-    maturity: L3
-    bytes: 17757
-    lines: 322
+    maturity: L2
+    bytes: 77615
+    lines: 846
   "知识/07-网络与游戏服务端/世界权威与故障恢复/README.md":
     kind: README
     maturity: L0
