@@ -2134,8 +2134,8 @@ documents:
   "知识/08-工程实践与质量/测试策略与自动化/02-客户端自动化测试.md":
     kind: doc
     maturity: L2
-    bytes: 24828
-    lines: 403
+    bytes: 115194
+    lines: 1491
   "知识/08-工程实践与质量/测试策略与自动化/03-服务端测试与机器人压测.md":
     kind: doc
     maturity: L2
