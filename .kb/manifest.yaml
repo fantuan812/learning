@@ -964,8 +964,8 @@ documents:
   "知识/04-图形动画与物理仿真/动画求值与角色表现/02-动画蒙太奇与混合空间.md":
     kind: doc
     maturity: L2
-    bytes: 25437
-    lines: 469
+    bytes: 47498
+    lines: 387
   "知识/04-图形动画与物理仿真/动画求值与角色表现/03-IK与程序化动画.md":
     kind: doc
     maturity: L2
