@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-09 (Runtime backpressure, time debt and recovery; fixed-source static contracts and preserved original observations).
+# Generated: 2026-10-09 (Game clock domains, rate and pause, committed progress and scoped lifecycle; original history retained).
 version: 4
 
 okf:
@@ -2009,8 +2009,8 @@ documents:
   "知识/07-网络与游戏服务端/运行调度与过载保护/12-世界时间确定性与GameClock.md":
     kind: doc
     maturity: L2
-    bytes: 19449
-    lines: 329
+    bytes: 112536
+    lines: 1130
   "知识/07-网络与游戏服务端/运行调度与过载保护/14-运行时背压与过载保护.md":
     kind: doc
     maturity: L2
