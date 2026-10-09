@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-09 (Camera update ownership, viewport domains and scoped view effects; original history retained).
+# Generated: 2026-10-09 (Serialization presence, bounded wire formats and compressed frame acceptance; original history retained).
 version: 4
 
 okf:
@@ -664,8 +664,8 @@ documents:
   "知识/02-数学与游戏算法/数据结构与编码/06-数据压缩与序列化.md":
     kind: doc
     maturity: L2
-    bytes: 16975
-    lines: 316
+    bytes: 43344
+    lines: 472
   "知识/02-数学与游戏算法/数据结构与编码/README.md":
     kind: README
     maturity: L0
