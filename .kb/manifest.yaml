@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-09 (Probability distributions, bounded sampling and statistical inference; original history retained).
+# Generated: 2026-10-09 (Rendering paths, frame ownership and measurement boundaries; original history retained).
 version: 4
 
 okf:
@@ -1069,8 +1069,8 @@ documents:
   "知识/04-图形动画与物理仿真/渲染管线与光照/01-渲染管线概览.md":
     kind: doc
     maturity: L2
-    bytes: 25205
-    lines: 431
+    bytes: 122878
+    lines: 1679
   "知识/04-图形动画与物理仿真/渲染管线与光照/03-光照与阴影系统.md":
     kind: doc
     maturity: L2
