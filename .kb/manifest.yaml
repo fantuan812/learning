@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-09 (Client automation lifecycle, screenshots and test-result evidence; original history retained).
+# Generated: 2026-10-09 (Numerical integration state, stability and bounded frame-time responsibility; original history retained).
 version: 4
 
 okf:
@@ -639,8 +639,8 @@ documents:
   "知识/02-数学与游戏算法/数学与数值计算/05-数值积分与运动学模拟.md":
     kind: doc
     maturity: L2
-    bytes: 16139
-    lines: 317
+    bytes: 79234
+    lines: 1047
   "知识/02-数学与游戏算法/数学与数值计算/README.md":
     kind: README
     maturity: L0
