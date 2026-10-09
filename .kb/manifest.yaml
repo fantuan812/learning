@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-09 (Lighting units, baked and dynamic paths and shadow cost boundaries; original history retained).
+# Generated: 2026-10-09 (Audio asset units, playback ownership and scoped mix lifecycle; original history retained).
 version: 4
 
 okf:
@@ -1229,8 +1229,8 @@ documents:
   "知识/04-图形动画与物理仿真/音频播放与程序化声音/01-音频基础与播放.md":
     kind: doc
     maturity: L2
-    bytes: 23386
-    lines: 451
+    bytes: 95284
+    lines: 1359
   "知识/04-图形动画与物理仿真/音频播放与程序化声音/02-衰减与3D空间音效.md":
     kind: doc
     maturity: L2
