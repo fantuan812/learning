@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-09 (Numerical integration state, stability and bounded frame-time responsibility; original history retained).
+# Generated: 2026-10-09 (UMG widget ownership, lifecycle and scoped list reuse; original history retained).
 version: 4
 
 okf:
@@ -1374,8 +1374,8 @@ documents:
   "知识/05-Gameplay与交互系统/界面设置与无障碍/01-UMG框架与控件系统.md":
     kind: doc
     maturity: L2
-    bytes: 23019
-    lines: 502
+    bytes: 146944
+    lines: 1982
   "知识/05-Gameplay与交互系统/界面设置与无障碍/02-UI数据绑定与MVVM.md":
     kind: doc
     maturity: L2
