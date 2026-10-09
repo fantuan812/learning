@@ -1824,8 +1824,8 @@ documents:
   "知识/07-网络与游戏服务端/同步预测与回放/03-客户端预测与延迟补偿.md":
     kind: doc
     maturity: L2
-    bytes: 30563
-    lines: 406
+    bytes: 70014
+    lines: 662
   "知识/07-网络与游戏服务端/同步预测与回放/03-帧同步与状态同步.md":
     kind: doc
     maturity: L2
