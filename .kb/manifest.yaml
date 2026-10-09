@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-09 (Random generators, bounded mappings and conditional sampling; original history retained).
+# Generated: 2026-10-09 (Enhanced Input values, context ownership and bounded lifecycle; original history retained).
 version: 4
 
 okf:
@@ -1464,8 +1464,8 @@ documents:
   "知识/05-Gameplay与交互系统/输入移动与交互/02-EnhancedInput增强输入.md":
     kind: doc
     maturity: L2
-    bytes: 19287
-    lines: 393
+    bytes: 101657
+    lines: 1299
   "知识/05-Gameplay与交互系统/输入移动与交互/06-角色移动系统UCharacterMovement.md":
     kind: doc
     maturity: L2
