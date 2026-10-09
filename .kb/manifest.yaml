@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-09 (Timer clock domains, callback ownership and bounded Ticker lifecycle; original history retained).
+# Generated: 2026-10-09 (Interpolation time domains, curve inversion and bounded spring dynamics; original history retained).
 version: 4
 
 okf:
@@ -634,8 +634,8 @@ documents:
   "知识/02-数学与游戏算法/数学与数值计算/03-插值与曲线.md":
     kind: doc
     maturity: L2
-    bytes: 22173
-    lines: 445
+    bytes: 89117
+    lines: 1358
   "知识/02-数学与游戏算法/数学与数值计算/05-数值积分与运动学模拟.md":
     kind: doc
     maturity: L2
