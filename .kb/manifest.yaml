@@ -2099,8 +2099,8 @@ documents:
   "知识/08-工程实践与质量/构建编译与制品/01-UBT构建系统与编译配置.md":
     kind: doc
     maturity: L2
-    bytes: 21028
-    lines: 456
+    bytes: 91892
+    lines: 1321
   "知识/08-工程实践与质量/构建编译与制品/02-UAT与自动化打包.md":
     kind: doc
     maturity: L2
