@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-09 (SaveGame result semantics, version migration and bounded request retirement; original history retained).
+# Generated: 2026-10-09 (Animation evaluation phases, state transitions and instance lifecycle; original history retained).
 version: 4
 
 okf:
@@ -959,8 +959,8 @@ documents:
   "知识/04-图形动画与物理仿真/动画求值与角色表现/01-动画蓝图与状态机.md":
     kind: doc
     maturity: L2
-    bytes: 23649
-    lines: 406
+    bytes: 103441
+    lines: 1146
   "知识/04-图形动画与物理仿真/动画求值与角色表现/02-动画蒙太奇与混合空间.md":
     kind: doc
     maturity: L2
