@@ -864,8 +864,8 @@ documents:
   "知识/03-引擎架构与资源系统/模块化框架与对象通信/03-Gameplay框架与游戏模式.md":
     kind: doc
     maturity: L2
-    bytes: 21574
-    lines: 521
+    bytes: 58273
+    lines: 908
   "知识/03-引擎架构与资源系统/模块化框架与对象通信/04-委托事件与对象通信.md":
     kind: doc
     maturity: L2
@@ -1589,8 +1589,8 @@ documents:
   "知识/06-游戏AI/感知决策与行为规划/02-感知系统与EQS.md":
     kind: doc
     maturity: L2
-    bytes: 25811
-    lines: 519
+    bytes: 60490
+    lines: 648
   "知识/06-游戏AI/感知决策与行为规划/02-状态机与层次状态机.md":
     kind: doc
     maturity: L2
