@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-09 (Profiling populations, clocks, critical paths and measurement limits; original history retained).
+# Generated: 2026-10-09 (Rendering cost assumptions and bounded asset presentation lifecycle; original history retained).
 version: 4
 
 okf:
@@ -2209,8 +2209,8 @@ documents:
   "知识/08-工程实践与质量/调试与性能分析/04-渲染与加载性能优化.md":
     kind: doc
     maturity: L2
-    bytes: 22575
-    lines: 557
+    bytes: 72343
+    lines: 817
   "知识/08-工程实践与质量/调试与性能分析/05-GameplayDebugger与运行时调试.md":
     kind: doc
     maturity: L2
