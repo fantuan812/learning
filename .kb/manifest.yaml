@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-09 (Gameplay Tag query semantics, shared data and scoped asset ownership; original history retained).
+# Generated: 2026-10-09 (Lighting units, baked and dynamic paths and shadow cost boundaries; original history retained).
 version: 4
 
 okf:
@@ -1074,8 +1074,8 @@ documents:
   "知识/04-图形动画与物理仿真/渲染管线与光照/03-光照与阴影系统.md":
     kind: doc
     maturity: L2
-    bytes: 24711
-    lines: 454
+    bytes: 108253
+    lines: 1307
   "知识/04-图形动画与物理仿真/渲染管线与光照/04-Nanite与Lumen.md":
     kind: doc
     maturity: L2
