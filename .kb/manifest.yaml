@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-09 (Vector geometry, matrix conventions and bounded camera transforms; original history retained).
+# Generated: 2026-10-09 (Probability distributions, bounded sampling and statistical inference; original history retained).
 version: 4
 
 okf:
@@ -769,8 +769,8 @@ documents:
   "知识/02-数学与游戏算法/随机采样与程序化生成/07-概率分布与采样工程.md":
     kind: doc
     maturity: L2
-    bytes: 31824
-    lines: 602
+    bytes: 113678
+    lines: 1660
   "知识/02-数学与游戏算法/随机采样与程序化生成/README.md":
     kind: README
     maturity: L0
