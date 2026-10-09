@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-09 (Quaternion conventions, bounded rotation trajectories and transform domains; original history retained).
+# Generated: 2026-10-09 (Timer clock domains, callback ownership and bounded Ticker lifecycle; original history retained).
 version: 4
 
 okf:
@@ -934,8 +934,8 @@ documents:
   "知识/03-引擎架构与资源系统/运行架构与任务调度/06-定时器与引擎Ticker.md":
     kind: doc
     maturity: L2
-    bytes: 19488
-    lines: 320
+    bytes: 89112
+    lines: 1069
   "知识/03-引擎架构与资源系统/运行架构与任务调度/08-Tick与模块系统源码.md":
     kind: doc
     maturity: L2
