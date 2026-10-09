@@ -664,8 +664,8 @@ documents:
   "知识/02-数学与游戏算法/数据结构与编码/06-数据压缩与序列化.md":
     kind: doc
     maturity: L2
-    bytes: 16975
-    lines: 316
+    bytes: 43344
+    lines: 472
   "知识/02-数学与游戏算法/数据结构与编码/README.md":
     kind: README
     maturity: L0
@@ -1129,8 +1129,8 @@ documents:
   "知识/04-图形动画与物理仿真/物理求解与动力学/02-碰撞检测与物理材质.md":
     kind: doc
     maturity: L2
-    bytes: 21760
-    lines: 377
+    bytes: 56880
+    lines: 509
   "知识/04-图形动画与物理仿真/物理求解与动力学/03-物理约束与关节.md":
     kind: doc
     maturity: L2
