@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-08 (Gateway admission, overload and recovery boundaries; fixed-source static contracts; original article retained).
+# Generated: 2026-10-09 (Runtime backpressure, time debt and recovery; fixed-source static contracts and preserved original observations).
 version: 4
 
 okf:
@@ -2013,9 +2013,9 @@ documents:
     lines: 329
   "知识/07-网络与游戏服务端/运行调度与过载保护/14-运行时背压与过载保护.md":
     kind: doc
-    maturity: L4
-    bytes: 19021
-    lines: 322
+    maturity: L2
+    bytes: 85048
+    lines: 934
   "知识/07-网络与游戏服务端/运行调度与过载保护/README.md":
     kind: README
     maturity: L0
