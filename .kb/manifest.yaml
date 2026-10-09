@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-09 (Geometric query contracts, collision status and conservative advancement; original history retained).
+# Generated: 2026-10-09 (Quaternion conventions, bounded rotation trajectories and transform domains; original history retained).
 version: 4
 
 okf:
@@ -624,8 +624,8 @@ documents:
   "知识/02-数学与游戏算法/数学与数值计算/02-四元数与旋转.md":
     kind: doc
     maturity: L2
-    bytes: 22337
-    lines: 440
+    bytes: 85571
+    lines: 1315
   "知识/02-数学与游戏算法/数学与数值计算/02-概率线性代数与数值计算.md":
     kind: doc
     maturity: L2
