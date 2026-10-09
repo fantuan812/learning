@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-09 (SaveGame result semantics, version migration and bounded request retirement; original history retained).
+# Generated: 2026-10-09 (UAT delivery phases, Cook reuse and platform packaging boundaries; original history retained).
 version: 4
 
 okf:
@@ -2104,8 +2104,8 @@ documents:
   "知识/08-工程实践与质量/构建编译与制品/02-UAT与自动化打包.md":
     kind: doc
     maturity: L2
-    bytes: 16059
-    lines: 337
+    bytes: 85820
+    lines: 1021
   "知识/08-工程实践与质量/构建编译与制品/07-Shader编译管线与PSO.md":
     kind: doc
     maturity: L2
