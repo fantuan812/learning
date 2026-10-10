@@ -4,599 +4,398 @@ title: "05 GameplayDebugger 与运行时调试"
 status: stable
 verified: []
 maturity: L2
+updated: 2026-10-10
 ---
 # 05 GameplayDebugger 与运行时调试
-> 知识成熟度：L2（本轮审计修订时补标）。
-> 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
-> 兼容性边界：适用于 UE5.8 编辑器/运行时，UE4.27 与早期 UE5 仅作迁移背景，具体模块以正文为准。
-> 最后更新：2026-08-06（本轮元数据维护）。
 
-> 适用版本：UE 5.x（关键 API 已对照本机 UE 5.8 源码验证：`Engine/Source/Runtime/GameplayDebugger/Public/` 与 `Engine/Source/Runtime/Engine/Public/VisualLogger/`；涉及 5.8 行为变化会单独标注）
+> 知识成熟度：L2。本文核对公开官方文档/API，并据此设计有限诊断示例；未编译或运行示例，未观察 UE、PIE、联机复制、可视日志或性能结果。
+> 版本基准：UE 5.5 固定版本的 DataPack、可配置输入、模块加载 API 与 Visual Logger 文档；补充选读本次返回标题为 UE 5.8 的 GameplayDebugger API，以及 5.8 固定版本 Rewind Debugger 文档。DataPack 枚举页本次返回 5.7，单独标注。不同来源不合并成一个已验证引擎构建。
+> 知识基线：2026-10-10 实际返回的页面正文；来源范围见第 11 节。本次没有读取本机引擎源码或 Build.version，旧文的 UE 5.8.0、CL 55116800 和“关键 API 已对照本机源码验证”不作为现行证据。
+> 适用范围：开发期玩法状态观测、Category 接入与退场、诊断数据复制、Visual Logger 记录与回看。目标构建的编译开关、默认配置、内部调用顺序、RPC 校验实现和插件兼容性须另核。
+> 最后更新：2026-10-10。全篇重建采集、传输、绘制和记录的责任边界，修订模块注册、快照寿命和蓝图入口。
 
-## 1. 概述
+## 1. 先定义要看见什么
 
-玩法逻辑越复杂，"看不见的状态"越多：AI 当前在跑哪棵行为树、EQS 查询算出了什么、移动组件为什么往这个方向飘、某个属性何时被谁改掉。**GameplayDebugger（引擎内简称 GDT，Gameplay Debugger Tool）** 与 **VisualLogger（可视日志）** 是 UE 运行时调试的两大主力：前者把数据实时画到屏幕上，后者把数据按时间轴记录下来供事后回放。
+“AI 为什么没攻击”至少有三种不同问题：它现在选择了哪个目标；上次从追逐变为等待之前发生了什么；这一帧的决策为什么消耗太久。先选择证据，再开工具：
 
-```mermaid
-flowchart TD
-    A[运行时问题] --> B{需要哪种证据?}
-    B -->|"实时看状态"| C[GameplayDebugger<br/>Category 画到屏幕]
-    B -->|"事后还原现场"| D[VisualLogger<br/>记录 + 回放]
-    B -->|"逐帧性能分析"| E[Unreal Insights<br/>另文介绍]
-    C --> F[内置分类<br/>AI / BehaviorTree / EQS / Navmesh]
-    C --> G[自定义分类<br/>FGameplayDebuggerCategory]
-    D --> H[UE_VLOG 宏埋点]
-    D --> I[编辑器 Visual Logger 窗口回放]
-    F --> J[定位并修复]
-    G --> J
-    H --> J
-    I --> J
-```
-
-两条工具链的分工可以概括为：**GDT 回答"现在是什么"**（单帧快照、可交互、可复制到客户端），**VisualLogger 回答"刚才发生了什么"**（持续记录、按时间轴回放、适合复现 AI/移动类疑难杂症）。两者都服务于同一个目标——把"看不见的运行时状态"变成"看得见的证据"。
-
----
-
-## 2. 核心概念（表格）
-
-| 概念 | 英文 | 说明 | 关键点 |
-| --- | --- | --- | --- |
-| 游戏调试器 | GameplayDebugger / GDT | 引擎内置的运行时调试工具，按分类（Category）把数据绘制到屏幕 | 默认 ` 键（Apostrophe）激活 |
-| 分类 | Category | 一个数据展示单元（如 AI、BehaviorTree、EQS） | 服务端收集、客户端绘制 |
-| 扩展 | Extension | 无状态、不绘制的附加功能（如选中 DebugActor、观察者视角） | 不复制数据 |
-| 插件管理器 | AddonManager | 管理所有已注册分类与扩展的注册表 | 模块启动/关闭时注册/注销 |
-| 分类复制器 | CategoryReplicator | 负责把服务端分类数据复制到客户端的一类 Actor | 每玩家一个 |
-| 数据包 | DataPack | 大数据块（数组/结构体）的分块复制机制 | CRC 检测变化 |
-| 调试目标 | DebugActor | 当前被调试选中的 Actor | 全局唯一 |
-| 槽位 | Slot | 屏幕上的分类显示列，最多 10 个（0~9） | 快捷键直接切换 |
-| 收集数据 | CollectData | 服务端（有权限端）每帧/间隔调用的取数函数 | 源码 `[AUTH]` 标记 |
-| 绘制数据 | DrawData | 客户端每帧把数据画到 Canvas | 源码 `[LOCAL]` 标记 |
-| 可视日志 | VisualLogger | 按时间轴记录文本、形状、事件到条目（Entry）的系统 | 事后回放 |
-| 日志条目 | FVisualLogEntry | 某个对象某个时刻的全部记录（文本行 + 形状 + 事件） | 按时间戳组织 |
-| 记录设备 | FVisualLogDevice | 条目的输出目标（二进制文件、Trace 等） | 可自定义设备 |
-| 重定向 | Redirect | 把 A 对象的日志合并记到 B 对象名下 | 如 AI 控制器 → 角色 |
-| 事件 | VLog Event | 可计数、可在回放界面查看的事件（如"切换状态"） | DECLARE_VLOG_EVENT |
-| 回放 | Replay | 在编辑器 Visual Logger 窗口中按时间轴回看记录 | 支持过滤与跳转 |
-| Rewind Debugger | Rewind Debugger | 基于 Trace 的记录/回放调试器（UE5.2+） | 与 VLog Trace 设备打通 |
-
----
-
-## 3. 原理详解
-
-### 3.1 GameplayDebugger 整体架构
-
-GameplayDebugger 由四个核心部分协作（源码见 `Runtime/GameplayDebugger/`）：
-
-```mermaid
-flowchart TB
-    subgraph 引擎模块层
-        M[IGameplayDebugger 模块接口<br/>RegisterCategory / RegisterExtension]
-        A[FGameplayDebuggerAddonManager<br/>CategoryMap + SlotMap]
-    end
-    subgraph 运行实例层
-        PM[AGameplayDebuggerPlayerManager<br/>每世界一个]
-        R[AGameplayDebuggerCategoryReplicator<br/>每玩家一个]
-        LC[UGameplayDebuggerLocalController<br/>输入 + HUD 绘制]
-    end
-    subgraph 数据层
-        C1[服务端 Category 实例<br/>CollectData 收集]
-        C2[客户端 Category 实例<br/>DrawData 绘制]
-    end
-    M --> A
-    A -->|CreateCategories| R
-    R --> PM
-    PM --> LC
-    R --> C1
-    R -.NetDeltaSerialize 复制.-> C2
-```
-
-关键流程：
-
-1. 各模块（AIModule、GameplayDebugger 自身等）在 `StartupModule` 中通过 `IGameplayDebugger::Get().RegisterCategory(...)` 注册分类，注册信息进入 `FGameplayDebuggerAddonManager`（源码 `GameplayDebuggerAddonManager.h`）；
-2. 世界初始化后，`AGameplayDebuggerPlayerManager`（一个 `AActor` + `FTickableGameObject`）为每个本地玩家创建 `AGameplayDebuggerCategoryReplicator`；
-3. 复制器按注册表为每个分类创建一对实例：**服务端实例负责 CollectData，客户端实例负责 DrawData**（单机时两个角色由同一实例承担）；
-4. 玩家按 ` 键激活调试器后，`UGameplayDebuggerLocalController` 负责输入分发与 HUD 绘制。
-
-分类类必须放在 `#if WITH_GAMEPLAY_DEBUGGER` 保护块内编译（仅使用核心部分时用 `WITH_GAMEPLAY_DEBUGGER_CORE`）。Target.cs 中可用 `bUseGameplayDebugger` / `bUseGameplayDebuggerCore` 控制编译开关，`SetupGameplayDebuggerSupport(Target)` 是给项目 Build.cs 使用的辅助函数——这些都是 `GameplayDebugger.h` 头部注释明确给出的约定。
-
-### 3.2 分类的注册与状态
-
-注册接口（`GameplayDebugger.h`）：
-
-```cpp
-virtual void RegisterCategory(
-    FName CategoryName,
-    FOnGetCategory MakeInstanceDelegate,                    // 工厂委托，返回 TSharedRef<FGameplayDebuggerCategory>
-    EGameplayDebuggerCategoryState CategoryState = EGameplayDebuggerCategoryState::Disabled,
-    int32 SlotIdx = INDEX_NONE) = 0;
-```
-
-`EGameplayDebuggerCategoryState` 有五个取值：`EnabledInGameAndSimulate`、`EnabledInGame`、`EnabledInSimulate`、`Disabled`、`Hidden`（隐藏 = 注册但不显示，如 NavGrid 默认 Hidden）。`SlotIdx` 决定显示在第几个槽位（0~9）。注册状态可被 `UGameplayDebuggerConfig`（项目设置 → Engine → GameplayDebugger）覆盖，配置存于 `DefaultEngine.ini` 的 `[/Script/GameplayDebugger.GameplayDebuggerConfig]` 段。
-
-### 3.3 FGameplayDebuggerCategory：服务端收集、客户端绘制
-
-`FGameplayDebuggerCategory`（源码 `GameplayDebuggerCategory.h`）是自定义分类的基类，其头部注释直接定义了双端职责分工：
-
-```mermaid
-sequenceDiagram
-    participant S as 服务端 Category（有权限）
-    participant R as CategoryReplicator
-    participant C as 客户端 Category（本地）
-    loop 每帧 / CollectDataInterval
-        S->>S: 清空 ReplicatedLines / ReplicatedShapes
-        S->>S: CollectData() 取数
-        S->>S: AddTextLine / AddShape / SetDataPackReplication
-        S->>R: 数据进入 NetPack
-        R->>C: NetDeltaSerialize / OnRep_ReplicatedData
-        C->>C: DrawData() 画到 Canvas
-    end
-```
-
-服务端侧 API（源码中标注 `[AUTH]`）：
-
-| API | 作用 |
-| --- | --- |
-| `CollectData(OwnerPC, DebugActor)` | 收集数据的主函数，默认空实现 |
-| `AddTextLine(const FString&)` | 追加一行文本，支持 `{color}` 颜色标签 |
-| `AddShape(const FGameplayDebuggerShape&)` | 追加一个 3D 形状（线段/盒体/球等） |
-| `SetDataPackReplication(T* DataPackAddr, EGameplayDebuggerDataPack Flags)` | 把结构体成员注册为数据包，模板要求 T 实现 `Serialize(FArchive&)` |
-| `MarkDataPackDirty(DataPackId)` | 强制数据包重新复制（CRC 检测可能漏报变化） |
-| `ForceImmediateCollect()` | 下一帧立即重新取数 |
-| `CollectDataInterval` | 取数间隔，0 = 每帧（默认） |
-
-客户端侧 API（`[LOCAL]`）：`DrawData(OwnerPC, CanvasContext)`、`CreateDebugSceneProxy`（自定义场景代理）、`OnDataPackReplicated(DataPackId)`（收到新数据包回调）、`MarkRenderStateDirty()`（请求重建场景代理）。
-
-公共控制位：`bShowCategoryName`（显示标题）、`bShowOnlyWithDebugActor`（仅在有 DebugActor 时显示）、`bShowDataPackReplication`（显示数据包复制进度）、`bShowUpdateTimer`（显示下次取数倒计时）、`bAllowLocalDataCollection`（客户端也执行收集，5.x 新增，默认 false）。
-
-**数据包（DataPack）复制机制**：当分类要传递大块数据（如 EQS 的全部查询结果、行为树节点状态数组）时，用 `SetDataPackReplication` 注册结构体成员。复制器按 `FGameplayDebuggerDataPackHeader`（DataVersion / SyncCounter / DataSize / DataOffset / bIsCompressed）做**分块传输 + CRC 比对**：数据没变就不重发，变了按块推进直到传完；`EGameplayDebuggerDataPack` 枚举控制数据包生命周期：`Persistent`（常驻）、`ResetOnActorChange`（切换 DebugActor 时重置）、`ResetOnTick`（每帧重置，默认）。
-
-### 3.4 CategoryReplicator：网络调试的骨架
-
-`AGameplayDebuggerCategoryReplicator`（源码 `GameplayDebuggerCategoryReplicator.h`）是一个 `AActor`，核心复制结构是 `FGameplayDebuggerNetPack`：
-
-```cpp
-USTRUCT()
-struct FGameplayDebuggerNetPack
-{
-    TArray<FGameplayDebuggerCategoryData> SavedData;   // 每分类: TextLines + Shapes + DataPacks + bIsEnabled
-    bool NetDeltaSerialize(FNetDeltaSerializeInfo& DeltaParms);
-    void PopulateFromOwner();   // Iris 兼容：序列化前从 Owner 取状态
-    void ApplyToOwner();        // Iris 兼容：序列化后写回 Owner
-};
-// 通过 TStructOpsTypeTraits<FGameplayDebuggerNetPack>::WithNetDeltaSerializer = true 启用 NetDeltaSerialize
-```
-
-复制器通过 `UPROPERTY(Replicated)` 复制 `OwnerPC`、`bIsEnabled`、`DebugActor`（弱引用 + ActorName + SyncCounter）、`VisLogSync`，以及 `ReplicatedUsing=OnRep_ReplicatedData` 的 `ReplicatedData`。所有修改都由**带校验的 Server RPC** 完成：`ServerSetEnabled`、`ServerSetDebugActor`、`ServerSetCategoryNameEnabled`、`ServerSendCategoryNameInputEvent` 等。
-
-> **UE 5.8 变化**：按 CategoryId 的 `ServerSetCategoryEnabled` / `ServerSendCategoryInputEvent` 已标记弃用（`UE_DEPRECATED(5.8, ...)`），原因见弃用注释："server/client mismatch indices"——服务器与客户端注册的分类顺序可能不一致，因此 5.8 起改用**按名字**的 `ServerSetCategoryNameEnabled` / `ServerSendCategoryNameInputEvent`。同时新增 `FGameplayDebuggerDataPackRPCParams` 与 `bSendDataPacksUsingRPC`：数据包既可用 NetDeltaSerialize 传输，也可改为普通 RPC（`ClientDataPackPacket`）发送，后者对 Iris 复制更友好。
-
-网络调试的读取侧还有 5.x 新增的 `SetViewPoint/GetViewPoint/ResetViewPoint`（可脱离玩家控制器视角做剔除与拾取）以及 `IsLocationInViewCone`（视锥剔除，参数来自 `UGameplayDebuggerUserSettings` 的 `MaxViewDistance=25000`、`MaxViewAngle=45°`）。
-
-### 3.5 本地控制器、按键与 gdt.* 控制台命令
-
-`UGameplayDebuggerConfig` 定义了全部默认按键（`config = Engine`，可在项目设置中改）：
-
-| 配置项 | 默认值 | 作用 |
+| 问题 | 入口 | 必须保留的上下文 |
 | --- | --- | --- |
-| `ActivationKey` | `（Apostrophe）` | 激活/关闭调试器 |
-| `CategoryRowNextKey` / `CategoryRowPrevKey` | 无（自行绑定） | 切换分类行 |
-| `CategorySlot0` ~ `CategorySlot9` | 数字键 0~9 | 直接切换到对应槽位分类 |
-| `DebugCanvasPadding*` / `bDebugCanvasEnableTextShadow` | 0 / true | HUD 排版 |
+| 当前目标、状态、路径是否符合预期 | GameplayDebugger Category | 采集端、World、玩家/连接、被选目标、采样时刻或序号 |
+| 某次短暂状态切换的前因后果 | Visual Logger | LogOwner、时间、分类、旧/新状态、触发原因、相关空间位置 |
+| CPU/GPU/任务等待为何超预算 | Unreal Insights / Profiling | 对应进程、时间窗、通道、构建与负载条件 |
+| 动画状态和姿势如何随时间变化 | Rewind Debugger | 已记录对象、组件轨道、采集前启用的数据与插件 |
+| 一次局部空间关系是否正确 | DrawDebug 辅助绘制 | 绘制发生在哪个 World/端；是否另有记录机制 |
 
-内置控制台命令（源码 `GameplayDebuggerLocalController.cpp`）：
+GDT 提供带分类和交互的实时观察窗口，Visual Logger 保留已经埋点并录到的历史。两者都不能恢复从未采集的数据；网络快照到屏幕存在延迟，也不能把旧快照称为“此刻服务器完整状态”。基础玩法、RPC 与对象寿命知识是接入前提，性能测量方法由[性能分析工具与 Profiling](03-性能分析工具与Profiling.md)负责。〔S01、S13、S16〕
 
-| 命令 | 作用 |
-| --- | --- |
-| `gdt.Enable` | 启用调试器（旧命令 `EnableGDT` 仍可用） |
-| `gdt.Toggle` | 切换调试器开关 |
-| `gdt.SelectLocalPlayer` | 选择本地玩家 |
-| `gdt.SelectPreviousRow` / `gdt.SelectNextRow` | 切换分类行 |
-| `gdt.ToggleCategory <索引>` | 切换指定分类 |
-| `gdt.EnableCategoryName <名字片段> [1/0]` | 按名字模糊匹配启用/禁用分类 |
-| `gdt.fontsize <字号>` | 调整 HUD 字号（默认 10） |
+## 2. 从模块注册到屏幕的责任链
 
-另有 CVar `GameplayDebugger.AutoCreateGameplayDebuggerManager`（默认 1）控制是否自动生成调试管理器。
+### 2.1 注册表、实例和目标不在同一层
 
-### 3.6 GDT 远程调试（客户端看服务器状态）
+`IGameplayDebugger` 是模块接口；CategoryName 和工厂委托登记在分类集合中。`FGameplayDebuggerAddonManager` 按名字维护已知分类，并为具体 Replicator 创建 Category 对象。注册一个工厂不等于已经为某玩家创建可用实例，也不等于类别已启用、目标已选中或数据已到达。〔S02、S05〕
 
-这是 GameplayDebugger 区别于"本地 DrawDebug"的核心能力：**在客户端按下 ` 键，看到的是服务器的状态**。
+`AGameplayDebuggerCategoryReplicator` 暴露所属 PlayerController、当前 DebugActor、目标变化计数以及本地/启用状态。诊断时应按“World + Replicator/Owner + 目标”识别上下文，不能把 DebugActor 记为跨玩家、跨 World 的全局唯一目标。多 PIE 世界、分屏和服务器无本地视口都是这个区分的实际用途。〔S06〕
 
-```mermaid
-sequenceDiagram
-    participant G as 服务器
-    participant C as 客户端(玩家)
-    C->>G: ServerSetEnabled(true)
-    G->>G: 每玩家创建 Replicator + 服务端 Category 实例
-    G->>G: CollectData() 收集 AI/EQS/移动数据
-    G-->>C: FGameplayDebuggerNetPack 增量复制
-    C->>C: 本地 Category 实例 DrawData() 绘制
-    C->>G: ServerSetDebugActor(目标Actor)
-    G-->>C: DebugActor 同步（SyncCounter 递增）
-```
-
-使用要点：
-
-- 联机（PIE 多客户端 / 真机 + 服务器）时，客户端按下 ` 键即可打开；分类数据、DebugActor、按键事件全部走复制链路；
-- **DebugActor 用于把调试聚焦到单个 Actor**：按 Alt+鼠标左键（默认）拾取，复制器把目标同步给服务器，分类针对该 Actor 输出详情（行为树、EQS、移动）——源码中 `FGameplayDebuggerDebugActor` 用弱引用 + `ActorName` + `SyncCounter` 保证跨端一致；
-- `FGameplayDebuggerVisLogSync`（`VisLogSync` 复制字段）携带 `DeviceIDs`，用于把 GDT 与 VisualLogger 绑定到同一台记录设备上做"画中画"联调；
-- 编辑器模式：`UGameplayDebuggerUserSettings`（EditorPerProjectUserSettings）中 `bEnableGameplayDebuggerInEditor` 允许在纯编辑器视口使用（需要重载地图生效），`EnabledCategories` 把启用状态按名字持久化到编辑器会话之间。
-
-### 3.7 常用内置调试类别
-
-引擎已注册的分类（源码 `AIModule/Private/AIModule.cpp`、`GameplayDebuggerModule.cpp`）：
-
-| 分类名 | 注册模块 | 默认状态 / 槽位 | 展示内容 |
-| --- | --- | --- | --- |
-| `AI` | AIModule | EnabledInGameAndSimulate / 槽 1 | AI 控制器状态、黑板键值、感知摘要 |
-| `BehaviorTree` | AIModule | EnabledInGame / 槽 2 | 行为树节点执行状态、Active 节点路径 |
-| `EQS` | AIModule | Disabled | EQS 查询结果、得分、Item 分布 |
-| `Navmesh` | AIModule | Disabled / 槽 0 | NavMesh 多边形、寻路路径 |
-| `Perception` | AIModule | Disabled | 感知组件看到的目标与刺激 |
-| `PerceptionSystem` | AIModule | Disabled | AI 感知系统全局状态 |
-| `NavGrid` | AIModule | Hidden | 局部导航网格（默认隐藏） |
-| `GameHUD` | GameplayDebugger | 扩展 | HUD 显隐切换扩展 |
-| `Spectator` | GameplayDebugger | 扩展 | 观察者视角扩展 |
-
-运行中可用 `gdt.EnableCategoryName AI 1` 之类的命令按需开关，或在项目设置中调整默认状态。
-
-### 3.8 VisualLogger 架构
-
-`FVisualLogger`（源码 `Runtime/Engine/Public/VisualLogger/VisualLogger.h`）是一个全局单例 `FOutputDevice`，核心模型是**"对象 × 时间戳 → FVisualLogEntry"**：
+下面是职责图，不是本次阅读到的完整引擎调用栈：
 
 ```mermaid
 flowchart LR
-    subgraph 埋点
-        M1[UE_VLOG 文本]
-        M2[UE_VLOG_SEGMENT 形状]
-        M3[UE_VLOG_EVENTS 事件]
-    end
-    M1 --> E[按 LogOwner + 时间戳查/建 FVisualLogEntry]
-    M2 --> E
-    M3 --> E
-    E --> D1[VisualLoggerBinaryFileDevice<br/>Saved/Logs/*.bvlog]
-    E --> D2[VisualLoggerTraceDevice<br/>Trace 通道]
-    E --> D3[自定义设备 AddDevice]
-    D1 --> V[编辑器 Visual Logger 窗口<br/>时间轴回放]
-    D2 --> R[Rewind Debugger 回放]
+    M[拥有分类代码的模块] --> R[名字与工厂注册表]
+    R --> I[特定 Replicator 的 Category 实例]
+    K[本地输入与配置] --> I
+    A[有采集权限的实例] --> S[采样快照]
+    S --> T[调试数据传输]
+    T --> D[本地实例读取快照并绘制]
+    I --> A
+    I --> D
 ```
 
-关键机制：
+实例上 `IsCategoryAuth()` 表达采集角色，`IsCategoryLocal()` 表达展示角色；`CollectData`、`AddTextLine`、`AddShape` 标为 AUTH，`DrawData`、`OnDataPackReplicated` 和 Scene Proxy 相关接口标为 LOCAL。单机、编辑器世界、客户端允许本地采集等情形不能用“进程叫 Client，所以所有数据必来自服务器”推断。API 另有 `ShouldCollectDataOnClient()`；具体判断实现本次未读。〔S07〕
 
-- **条目按时间戳聚合**：同一帧内同一个 LogOwner 的多次调用写入同一条 Entry（`LogLines` + `ElementsToDraw` + 事件），由 `GetTimeStampForObject` 决定时间戳（可用 `SetGetTimeStampFunc` 换成网络同步时钟）；
-- **记录开关**：`SetIsRecording()` 全局开关，`SetIsRecordingToFile()` 落盘开关，`SetIsRecordingToTrace()` 输出 Trace（供 Rewind Debugger 回放）；`IsRecording()` 是宏内部判断，关闭时所有 `UE_VLOG` 宏**零开销**（`#if UE_DEBUG_RECORDING_ENABLED` 为假时宏展开为空）；
-- **过滤**：`bUseVerbosityFilterWhenRecording` + `IsFilteredOut`（超出 LogCategory 编译期 Verbosity 或运行时被 Suppress 的条目不记录），对应控制台命令 `vislog.ActivateVerbosityFilterWhenRecording` / `vislog.DeactivateVerbosityFilterWhenRecording`；另有 `BlockAllCategories` + `CategoryAllowList`、`AddClassToAllowList` / `AddObjectToAllowList` 白名单；
-- **重定向**：`REDIRECT_TO_VLOG(Dest)` / `REDIRECT_OBJECT_TO_VLOG(Src, Dest)` 把对象日志合并到目标对象（5.8 中 `CONNECT_WITH_VLOG` 系列已弃用）；
-- **设备**：`AddDevice(FVisualLogDevice*)` 注册输出端，引擎自带二进制文件设备（文件扩展名 `bvlog`，保存到 `Saved/Logs/`）与 Trace 设备；
-- **文件名自定义**：`SetLogFileNameGetter(FVisualLogFilenameGetterDelegate)` 可定制落盘文件名。
+### 2.2 分类、扩展和配置的选择
 
-### 3.9 UE_VLOG 宏族
+Category 用于采集和展示业务诊断数据；Extension 适合工具交互，例如观察视角或目标选择。官方类别说明将 Extension 描述为不复制、不绘制的轻量扩展；不要由“stateless”文字推导它不需要解绑回调、清理临时资源或恢复改变过的工具状态。扩展仍由拥有模块注册和反注册。〔S03〕
 
-所有宏都要求第一个参数是 **LogOwner（UObject\*，通常传 this）**，第二个是 LogCategory（如 `LogTemp` 或自定义 `DECLARE_LOG_CATEGORY_EXTERN(LogMyGame, ...)`），第三个是 Verbosity：
+类别状态包括 `EnabledInGameAndSimulate`、`EnabledInGame`、`EnabledInSimulate`、`Disabled`、`Hidden`。它们描述启用/可见策略，不能代替访问授权。`UGameplayDebuggerConfig` 可以修改类别创建参数、输入与槽位；有 0～9 的槽位按键，也有前后行切换键，因而“十个槽位键”不能解释为“系统最多十个分类”。显示排版、阴影、行键和 ActivationKey 以实际配置为准。〔S03、S12〕
 
-| 宏 | 记录内容 |
-| --- | --- |
-| `UE_VLOG` | 普通文本行 |
-| `UE_CVLOG(Cond, ...)` | 带条件文本 |
-| `UE_VLOG_UELOG` / `UE_CVLOG_UELOG` | 同时写 VLog 与 UE_LOG |
-| `UE_VLOG_SEGMENT` / `_THICK` | 线段（可带粗细） |
-| `UE_VLOG_LOCATION` | 位置点 |
-| `UE_VLOG_SPHERE` / `UE_VLOG_WIRESPHERE` | 球体 / 线框球 |
-| `UE_VLOG_BOX` / `UE_VLOG_WIREBOX` / `UE_VLOG_OBOX` / `UE_VLOG_WIREOBOX` | AABB / 线框 / 有向盒 |
-| `UE_VLOG_CONE` / `UE_VLOG_WIRECONE` | 锥体 |
-| `UE_VLOG_CYLINDER` / `UE_VLOG_WIRECYLINDER` | 圆柱 |
-| `UE_VLOG_CAPSULE` / `UE_VLOG_WIRECAPSULE` | 胶囊体（半高 + 半径 + 旋转） |
-| `UE_VLOG_ARROW` / `UE_VLOG_ARROW_MAG` | 带箭头线段 |
-| `UE_VLOG_CIRCLE` / `UE_VLOG_CIRCLE_THICK` / `UE_VLOG_WIRECIRCLE(_THICK)` | 圆盘 |
-| `UE_VLOG_HISTOGRAM` | 二维折线图数据点（GraphName + DataName） |
-| `UE_VLOG_PULLEDCONVEX` | 纵向拉伸凸多边形（导航面） |
-| `UE_VLOG_MESH` | 三角网格（顶点 + 索引） |
-| `UE_VLOG_CONVEXPOLY` | 平面凸多边形 |
-| `UE_VLOG_COORDINATESYSTEM` | 坐标系（位置 + 旋转 + 缩放） |
-| `DECLARE_VLOG_EVENT` / `DEFINE_VLOG_EVENT` + `UE_VLOG_EVENTS` | 事件记录（带计数与友好描述） |
-| `UE_IFVLOG(代码块)` | 仅在记录时执行代码块 |
+## 3. Category 必须与拥有模块一起进入和退出
 
-每个形状宏都带 `UE_CVLOG_*` 条件版本；形状宏末尾的 `Format, ...` 参数是该形状的**描述文本**（回放时显示在形状旁）。所有宏在 `UE_DEBUG_RECORDING_ENABLED` 关闭时展开为空（`UE_VLOG_UELOG` 例外，仍执行 UE_LOG，保证关掉可视日志后关键日志不丢）。
+### 3.1 先处理构建能力，再处理加载状态
 
-### 3.10 可视日志的记录与回放
+官方接口说明给出了 `SetupGameplayDebuggerSupport(Target)`、`WITH_GAMEPLAY_DEBUGGER` / `WITH_GAMEPLAY_DEBUGGER_CORE` 与 Target 选择项。完整支持和 Core 支持不同：Core 路径要求项目自行安排分类注册及需要的 Replicator。本例仅展示完整调试器接入，使用 `WITH_GAMEPLAY_DEBUGGER` 同时包住 include、类和调用；不能只保护 Startup，而让不包含调试器的构建仍引用其类型。这里不建议为线上包强制打开调试工具。〔S03〕
 
-记录方式：编辑器菜单 Tools → Visual Logger 打开面板，点 Record 开始（内部调用 `SetIsRecording(true)` + `SetIsRecordingToFile(true)`）；运行期也可用 C++ 或控制台触发。结束后生成 `Saved/Logs/<会话ID>_<时间>_*.bvlog` 二进制文件。
+Build.cs 的职责是提供当前目标需要的模块依赖与编译定义；模块是否已经加载是另一件事。`IsAvailable()` 检查已加载且可用的状态，不会为“一次 Startup 时为 false”自动安排稍后重试。原来的 `if (IsAvailable()) RegisterCategory(...)` 若没有额外加载约定，会静默错过注册。项目应选定一种可审查策略：依赖必须存在时显式加载；确实可选时记录不可用并在明确的生命周期入口重试，同时在退场时撤销相应监听。不要每帧重试注册。〔S04〕
 
-回放：Visual Logger 窗口按对象（Row）组织时间轴，可拖动时间滑块逐帧查看文本、形状与事件；支持按分类过滤、按对象过滤、导出截图。配合 `UE_VLOG_EVENTS` 的事件，可以在时间轴上快速定位"状态切换/攻击判定"等关键时刻。若要跨机器复现，把 `.bvlog` 文件与对应版本的程序一起交付即可。
+### 3.2 最小模块接线
 
----
-
-## 4. C++ / 蓝图示例
-
-### 4.1 自定义 GameplayDebugger 分类（头文件）
+以下是教学用 C++ 接线节选，`NOT_RUN`。要求项目已经在适用 Target 的 Build.cs 中配置 GameplayDebugger 支持，分类工厂定义见第 6 节；应合入现有模块，不能额外定义第二个主游戏模块。这里选择“开发目标中该依赖必须存在”，`LoadModuleChecked` 缺模块会触发断言，不是容错加载器。〔S04、S17〕
 
 ```cpp
-// MyGameDebuggerCategory.h
-#pragma once
-
+#include "Modules/ModuleManager.h"
 #if WITH_GAMEPLAY_DEBUGGER
+#include "GameplayDebugger.h"
+#include "MovementAuditCategory.h"
+#endif
 
-#include "GameplayDebuggerCategory.h"
-
-// 演示用大块数据：必须实现 Serialize(FArchive&) 才能作为 DataPack
-struct FMyDebugSnapshot
-{
-    TArray<FVector> PathPoints;
-    int32 ActionId = 0;
-    float Health = 0.f;
-
-    void Serialize(FArchive& Ar)
-    {
-        Ar << PathPoints;
-        Ar << ActionId;
-        Ar << Health;
-    }
-};
-
-class FGameplayDebuggerCategory_MyGame : public FGameplayDebuggerCategory
+class FMovementDiagnosticsModule : public IModuleInterface
 {
 public:
-    FGameplayDebuggerCategory_MyGame();
-    virtual void CollectData(APlayerController* OwnerPC, AActor* DebugActor) override;
-    virtual void DrawData(APlayerController* OwnerPC, FGameplayDebuggerCanvasContext& CanvasContext) override;
-    virtual void OnDataPackReplicated(int32 DataPackId) override;
-
-    static TSharedRef<FGameplayDebuggerCategory> MakeInstance()
+    void StartupModule() override
     {
-        return MakeShareable(new FGameplayDebuggerCategory_MyGame());
+#if WITH_GAMEPLAY_DEBUGGER
+        if (bRegistered)
+        {
+            return;
+        }
+        IGameplayDebugger& Debugger =
+            FModuleManager::LoadModuleChecked<IGameplayDebugger>(
+                TEXT("GameplayDebugger"));
+        Debugger.RegisterCategory(
+            TEXT("Project.MovementAudit"),
+            IGameplayDebugger::FOnGetCategory::CreateStatic(
+                &FMovementAuditCategory::MakeInstance),
+            EGameplayDebuggerCategoryState::Disabled,
+            INDEX_NONE);
+        bRegistered = true;
+        Debugger.NotifyCategoriesChanged();
+#endif
+    }
+
+    void ShutdownModule() override
+    {
+#if WITH_GAMEPLAY_DEBUGGER
+        if (bRegistered && IGameplayDebugger::IsAvailable())
+        {
+            IGameplayDebugger& Debugger = IGameplayDebugger::Get();
+            Debugger.UnregisterCategory(TEXT("Project.MovementAudit"));
+            Debugger.NotifyCategoriesChanged();
+        }
+        bRegistered = false;
+#endif
     }
 
 private:
-    void OnToggleDetail();               // 分类内按键回调
-    FMyDebugSnapshot Snapshot;           // 待复制数据
-    int32 SnapshotPackId;                // SetDataPackReplication 返回的包 ID
-    bool bShowDetail = false;
+    bool bRegistered = false;
+};
+```
+
+名字、工厂和卸载责任要属于同一模块。注册使用有项目前缀的稳定名字，退场用完全相同的名字；布尔值只防该模块实例重复接线，不证明跨插件没有同名冲突。`NotifyCategoriesChanged` 是通知分类集合变化的接口；这里在改变集合后显式通知，但不宣称所有引擎版本缺少这一行都会立即失效，也不推定其内部销毁顺序。〔S02、S05〕
+
+Shutdown 阶段先检查调试器是否仍可用；不要为了反注册再加载已经退出的模块。`Get()` 文档明确提醒关闭阶段的模块卸载风险。若工厂、输入委托、已有 Category 或自定义 Scene Proxy 仍引用即将卸载模块的代码，单有 `bRegistered=false` 无法证明安全；动态卸载/热重载还必须核对目标引擎对活动实例的回收路径、项目外部委托与异步任务。普通 Startup/Shutdown 节选没有证明任意卸载顺序、Live Coding 或热重载已正确。〔S04〕
+
+## 4. 输入路由和业务权限要分别审查
+
+`BindKeyPress` 既有简单键名形式，也有 `FGameplayDebuggerInputHandlerConfig` 形式；后者用于可配置并保存的输入。输入配置在 Addon 构造阶段建立，配置名应稳定，便于追查当前按键。不要把按键数字、菜单槽位索引和业务含义混成同一个标识。〔S08〕
+
+`EGameplayDebuggerInputMode::Local` 在本地 Category 调用处理函数；`Replicated` 把输入路由到 authority Category 处理。切换本地“显示细节”适合 Local；请求改变采集端的诊断筛选条件才可能需要 Replicated。它们描述执行位置，不是“该用户获准读取所有目标或修改玩法”的权限机制。〔S09〕
+
+本篇的权限建议是项目设计约束，而非对未读引擎实现的认证：
+
+- 可观测字段先做允许列表，优先输出状态摘要；服务器专有目标、隐藏单位、其他用户数据不能因有调试器 Owner 就任意传出
+- 客户端输入改变服务器状态时，检查允许的操作、目标归属、会话/World、执行频率和参数；只读观察与修改玩法的作弊命令分开设计
+- `Disabled` 或 `Hidden` 是界面/分类状态，不是数据保密或发布版安全边界
+- Replicator API 上的 `Server`、`Reliable`、`WithValidation` 说明 RPC 声明属性；本次没有读取 `_Validate`，不能声称它已经实现项目级授权
+
+5.8 返回页同时列出按 CategoryId 和按 CategoryName 的服务器辅助函数，且它们位于 Protected 区。不能据此把这些函数当项目应直接调用的公共 API，也不能仅凭列表断言旧函数于 5.8 被弃用或已删除。接入时使用该版本公开的 Category/Replicator 接口；跨端保持分类名字、输入处理器及数据协议一致。〔S06〕
+
+## 5. 采集的是快照，接收完成才形成新的可读数据
+
+### 5.1 采集端每次建立一个自洽结果
+
+`CollectData(OwnerPC, DebugActor)` 是读业务状态、形成诊断快照的入口。`OwnerPC` 和 `DebugActor` 都需要按可空上下文处理：未选中、销毁、切 World、玩法组件暂未初始化都可能没有可读业务状态。推荐先写无效默认值，再填合法字段；不要在目标失效时直接返回，让上个目标的 Health/PathPoints 留在新目标标题下。
+
+文本行和形状列表在 AUTH 采集前由框架清空，这不等于自定义成员、应用缓存和 DataPack 的所有字段都自动满足项目的清理规则。`ForceImmediateCollect()` 的文档语义是促使下一次更新采集，不是同步执行取数，也不是等待网络复制完成。采样周期与界面刷新周期不同，降低采样频率之前先确定问题是否会短到在两次采样之间消失。〔S07〕
+
+采集端不要借诊断读取触发新的寻路、加载、全世界遍历或业务状态修改。需要昂贵结果时，先考虑业务系统已有快照、摘要和明确预算；这是一项减少观测干扰的设计建议，并无本文测量出的通用间隔。旧文的 0.2～0.5 秒只能是试验参数，不能写成所有类别的推荐阈值。
+
+### 5.2 文本、形状与 DataPack 的用途
+
+少量文字与几何标记可用 `AddTextLine`、`AddShape`。结构化快照通过 `SetDataPackReplication(&Member, Flags)` 注册成员地址，成员类型实现 `Serialize(FArchive&)`，函数返回该包的 `int32` ID。原文把返回值保存为 ID 的做法成立；注册一般安排在实例构造期间，不能每次采样重复添加同一包，也不能注册采样函数栈上临时对象的地址。〔S07、S10〕
+
+DataPack API 暴露 `DataCRC`、dirty、进度和完整接收标记。`MarkDataPackDirty` 用于请求复制，不能补齐遗漏的序列化字段，也不解决双方布局不一致；每次无条件置脏会抵消变化检测的作用。`OnDataPackReplicated(DataPackId)` 明确是客户端收到整个包后的通知，因此 UI 不应把“开始传输”当作“新快照可用”。这里不推导压缩阈值、包大小、重发算法或精确节省的带宽。〔S07、S11〕
+
+`Persistent`、`ResetOnActorChange`、`ResetOnTick` 是 5.7 枚举页列出的策略名称；该页没有解释 ResetDelegate 的执行顺序与范围。本例显式选择 Persistent 并在每次采样中重置自己的数据，避免把框架重置行为当项目状态正确性的证明。需要另一种策略时，应针对目标引擎读取注册模板、重置委托及目标切换分支，再验证是否会清除需要保留的字段。〔S18〕
+
+### 5.3 版本、目标变化和迟到数据
+
+框架传输头里的版本/同步字段不是项目应用 schema。字段类型或序列化顺序变动时，必须明确双方版本协议；单纯自增框架 DataVersion 或强制置脏不能把旧反序列化器变成新反序列化器。本文示例要求相同构建和相同布局，没有实现异版本协商。
+
+为排查“显示的是谁、什么时候的值”，项目可加入自己的有效位、来源标签、目标标识和采样序号。跨对象复用、迟到结果、长时间未更新需要再有目标 generation、会话标识和失效策略；目标名字只是标签，不是稳定全局 ID，计数也存在回绕。API 提供 DebugActorCounter 不足以证明任意项目缓存天然防串台。〔S06、S11〕
+
+如果用 `CreateDebugSceneProxy` 把快照转为渲染资源，完整数据到达后按需 `MarkRenderStateDirty`。Canvas 文字绘制本身没有必要每包都重建 Scene Proxy。也不能让渲染侧随意追读正在销毁的玩法 UObject；数据复制、代理拥有权和渲染资源退场应在目标实现中另核。〔S07〕
+
+## 6. 一个有限的 Category 示例
+
+下面的单头文件形式只表达“采集 Actor 的标签/位置/速度 → 已登记的快照 → 本地按键切换细节”。它不依赖未知项目 Health、ActionId、Start/End 变量。接口按已读页面接线，`NOT_RUN`，没有声称通过 UHT、C++ 编译或实际网络传输；项目应把实现移入 cpp，并核对目标引擎 include 和模板声明。CanvasContext 的官方头文件定位为 `GameplayDebuggerTypes.h`。〔S19〕
+
+```cpp
+// MovementAuditCategory.h — 教学接线，NOT_RUN
+#pragma once
+#include "CoreMinimal.h"
+#if WITH_GAMEPLAY_DEBUGGER
+#include "GameplayDebuggerCategory.h"
+#include "GameplayDebuggerTypes.h"
+#include "GameFramework/Actor.h"
+#include "Serialization/Archive.h"
+
+struct FMovementAuditSnapshot
+{
+    uint8 bHasTarget = 0;
+    FString TargetLabel;
+    FVector Location = FVector::ZeroVector;
+    float Speed = 0.0f;
+
+    void Serialize(FArchive& Ar)
+    {
+        Ar << bHasTarget;
+        Ar << TargetLabel;
+        Ar << Location;
+        Ar << Speed;
+    }
 };
 
-#endif // WITH_GAMEPLAY_DEBUGGER
-```
-
-### 4.2 分类实现与模块注册
-
-```cpp
-// MyGameDebuggerCategory.cpp
-#if WITH_GAMEPLAY_DEBUGGER
-
-#include "MyGameDebuggerCategory.h"
-
-FGameplayDebuggerCategory_MyGame::FGameplayDebuggerCategory_MyGame()
+class FMovementAuditCategory : public FGameplayDebuggerCategory
 {
-    // 显示标题、每 0.5 秒收集一次数据
-    bShowCategoryName = true;
-    CollectDataInterval = 0.5f;
-
-    // 注册大块数据包：每帧重置（默认 ResetOnTick）
-    SnapshotPackId = SetDataPackReplication(&Snapshot);
-
-    // 自定义按键：本地模式，按下 2 键切换细节显示
-    BindKeyPress(TEXT("Two"), this, &FGameplayDebuggerCategory_MyGame::OnToggleDetail);
-}
-
-void FGameplayDebuggerCategory_MyGame::CollectData(APlayerController* OwnerPC, AActor* DebugActor)
-{
-    // 只在有 DebugActor 时输出详情
-    if (DebugActor)
+public:
+    FMovementAuditCategory()
     {
-        AddTextLine(FString::Printf(TEXT("Target: {yellow}%s"), *DebugActor->GetName()));
+        SnapshotPackId = SetDataPackReplication(
+            &Snapshot, EGameplayDebuggerDataPack::Persistent);
+        BindKeyPress(FName(TEXT("F8")), this,
+            &FMovementAuditCategory::ToggleDetail,
+            EGameplayDebuggerInputMode::Local);
     }
-    AddTextLine(FString::Printf(TEXT("Health: {green}%.1f"), Snapshot.Health));
 
-    // 收集路径点并标记数据包需要复制
-    Snapshot.PathPoints.Reset();
-    // ... 从玩法系统填充 Snapshot ...
-    MarkDataPackDirty(SnapshotPackId);
-
-    // 画一个调试线段（服务端收集，客户端显示）
-    AddShape(FGameplayDebuggerShape::MakeSegment(Start, End, FColor::Cyan));
-}
-
-void FGameplayDebuggerCategory_MyGame::DrawData(APlayerController* OwnerPC,
-    FGameplayDebuggerCanvasContext& CanvasContext)
-{
-    // CollectData 里 AddTextLine 的内容会自动先绘制，
-    // 这里补充仅客户端可见的本地信息。
-    if (bShowDetail)
+    static TSharedRef<FGameplayDebuggerCategory> MakeInstance()
     {
-        CanvasContext.Printf(TEXT("Detail mode ON, PathPoints=%d"), Snapshot.PathPoints.Num());
+        return MakeShareable(new FMovementAuditCategory());
     }
-}
 
-void FGameplayDebuggerCategory_MyGame::OnDataPackReplicated(int32 DataPackId)
-{
-    if (DataPackId == SnapshotPackId)
+    void CollectData(APlayerController* OwnerPC, AActor* DebugActor) override
     {
-        // 大块数据到达，刷新本地缓存
-        MarkRenderStateDirty();   // 若用场景代理绘制则请求重建
+        Snapshot = FMovementAuditSnapshot{};
+        if (!IsValid(DebugActor))
+        {
+            return;
+        }
+        Snapshot.bHasTarget = 1;
+        Snapshot.TargetLabel = DebugActor->GetName().Left(64);
+        Snapshot.Location = DebugActor->GetActorLocation();
+        Snapshot.Speed = DebugActor->GetVelocity().Size();
     }
-}
 
-void FGameplayDebuggerCategory_MyGame::OnToggleDetail()
-{
-    bShowDetail = !bShowDetail;
-}
-
-#endif // WITH_GAMEPLAY_DEBUGGER
-```
-
-注册（放在拥有该分类的模块中，仿照 `AIModule.cpp`）：
-
-```cpp
-void FMyGameModule::StartupModule()
-{
-#if WITH_GAMEPLAY_DEBUGGER
-    if (IGameplayDebugger::IsAvailable())
+    void DrawData(APlayerController* OwnerPC,
+        FGameplayDebuggerCanvasContext& CanvasContext) override
     {
-        IGameplayDebugger& GDT = IGameplayDebugger::Get();
-        GDT.RegisterCategory("MyGame",
-            IGameplayDebugger::FOnGetCategory::CreateStatic(
-                &FGameplayDebuggerCategory_MyGame::MakeInstance),
-            EGameplayDebuggerCategoryState::Disabled,
-            3 /* SlotIdx */);
+        if (!Snapshot.bHasTarget)
+        {
+            CanvasContext.Printf(TEXT("No target snapshot"));
+            return;
+        }
+        CanvasContext.Printf(TEXT("Target=%s Speed=%.1f"),
+            *Snapshot.TargetLabel, Snapshot.Speed);
+        if (bShowDetail)
+        {
+            CanvasContext.Printf(TEXT("Position=%s"),
+                *Snapshot.Location.ToCompactString());
+        }
     }
+
+private:
+    void ToggleDetail() { bShowDetail = !bShowDetail; }
+    FMovementAuditSnapshot Snapshot;
+    int32 SnapshotPackId = INDEX_NONE;
+    bool bShowDetail = false;
+};
 #endif
-}
-
-void FMyGameModule::ShutdownModule()
-{
-#if WITH_GAMEPLAY_DEBUGGER
-    if (IGameplayDebugger::IsAvailable())
-    {
-        IGameplayDebugger::Get().UnregisterCategory("MyGame");
-    }
-#endif
-}
 ```
 
-### 4.3 VisualLogger 埋点（AI / 移动调试场景）
+快照成员寿命与 Category 相同，地址不会指向已退出的采样栈。空目标写回无效位和空标签；DrawData 只消费快照，不重新向客户端 Actor 查询“服务端速度”。F8 是人为选择的教学键，项目需检查冲突或换成配置形式。字符串截断 64 个字符只是示例上界，会丢失标签信息，不是身份校验或通用预算。
 
-```cpp
-// 声明日志类别（头文件）
-DECLARE_LOG_CATEGORY_EXTERN(LogMyAI, Log, All);
+本例故意只做基本同版本诊断。它没有目标 generation、时间戳、异版本解析、权限核验、断线刷新或过期快照 UI；客户端仍可能在更新到达前看到上一份有效快照，不能用它证明严格的实时目标一致性。需要 Health/ActionId/PathPoints 时应从项目已授权的只读接口取数，规定无组件、无数据、数组上限和目标切换时的行为，再逐字段定义序列化。第 10 节提供纸面检查，不把该设计冒充完整网络可靠性实现。
 
-// 定义 + 声明可视日志事件（头文件）
-DECLARE_VLOG_EVENT(Event_StateChange);
-DECLARE_VLOG_EVENT(Event_Attack);
+## 7. 把“没显示”拆成有证据的阶段
 
-// 实现文件
-DEFINE_LOG_CATEGORY(LogMyAI);
-DEFINE_VLOG_EVENT(Event_StateChange, Log, "AI 状态切换");
-DEFINE_VLOG_EVENT(Event_Attack, Log, "发起攻击");
+### 7.1 激活与选择
 
-void AMyAIController::Tick(float DeltaSeconds)
-{
-    Super::Tick(DeltaSeconds);
+文档所说 Apostrophe 是单引号 `'`，不是反引号；但实际 `ActivationKey`、键盘布局、窗口焦点和输入冲突应在当前配置中确认。类别开关、行键、槽位键、目标选择是不同动作。不要把旧文的 Alt+左键、固定 0～9 数字键行为、固定编辑器菜单位置或命令拼写当所有版本的保证。〔S01、S12〕
 
-    // 文本：记录黑板关键值（带颜色标签）
-    UE_VLOG(this, LogMyAI, Log, TEXT("State=%s Speed=%.1f Target=%s"),
-        *GetStateName(), MoveSpeed, *GetTargetName());
+`EnableGDT` 是已读概览列出的入口，但概览仍夹有旧式 `UGameplayDebuggingComponent` 扩展示例。本文只用它支持工具用途和默认激活键，不照搬其旧类接入代码。`gdt.*` 命令、编辑器用户设置、自动创建管理器 CVar 及默认数值，本次没有读取实现或目标控制台帮助；实际使用须在相同构建确认是否存在、作用于哪个玩家/World，不能凭没有 HUD 就任意改网络或发布配置。〔S01〕
 
-    // 线段：画出当前移动方向
-    UE_VLOG_SEGMENT_THICK(this, LogMyAI, Log,
-        GetPawn()->GetActorLocation(),
-        GetPawn()->GetActorLocation() + Fwd * 200.f,
-        FColor::Green, 3.f, TEXT("move dir"));
+### 7.2 内置类别给出问题方向，不给出未经核实的默认表
 
-    // 条件形状：警戒范围
-    UE_CVLOG_SPHERE(bAlerted, this, LogMyAI, Log,
-        GetPawn()->GetActorLocation(), AlertRadius, FColor::Red,
-        TEXT("alert range"));
-
-    // 事件：状态切换（时间轴上的里程碑）
-    if (State != OldState)
-    {
-        UE_VLOG_EVENTS(this, TEXT("AI"), Event_StateChange);
-        OldState = State;
-    }
-}
-
-void AMyAIController::BeginPlay()
-{
-    Super::BeginPlay();
-    // 把控制器的日志重定向到 Pawn，回放时统一按角色查看
-    REDIRECT_OBJECT_TO_VLOG(this, GetPawn());
-}
-```
-
-### 4.4 蓝图侧用法
-
-GameplayDebugger 与 VisualLogger **没有蓝图节点**（设计上就是 C++ 调试工具），但蓝图可以通过两条路参与：
-
-1. **控制台命令节点**：蓝图里调用 `Execute Console Command`（节点名 `Execute Console Command`，目标为玩家控制器），执行 `gdt.Enable`、`gdt.EnableCategoryName AI 1` 等；
-2. **DrawDebug 兜底**：蓝图侧临时验证逻辑时可先用 `Draw Debug Line` / `Draw Debug Sphere` 家族（仅本地可见），确认问题后再用 C++ 埋点转正为可回放的可视日志。
-
----
-
-## 5. 最佳实践
-
-### 5.1 工具选型
-
-| 需求 | 首选 | 说明 |
+| 观察主题 | 可寻找的类别/工具方向 | 要追问 |
 | --- | --- | --- |
-| 实时查看状态/交互式调试 | GameplayDebugger | 可点选 Actor、切分类、按键交互 |
-| 事后复现"刚才发生了什么" | VisualLogger | 时间轴回放，适合 AI/移动 Bug |
-| 网络问题（客户端/服务器状态不一致） | GDT 远程调试 | 客户端按 ` 键看服务器数据 |
-| 逐帧时序/性能 | Unreal Insights | 与 VLog Trace 设备可配合 |
-| 一次性本地验证 | DrawDebugHelpers | 无记录能力，仅开发期 |
+| Pawn 与 AIController | 基础 AI 状态 | 当前选的是哪个 Pawn，哪一端持有控制器 |
+| 行为树与黑板 | BehaviorTree | 记录的树、活跃节点与黑板值属于同一次采样吗 |
+| 环境查询 | EQS | 这是哪个查询实例、哪次结果，是否仍适用于当前目标 |
+| 感知 | Perception | 刺激时间和目标有效性是否明确 |
+| 导航 | Navmesh | 观察区域、位置和导航数据集是否匹配 |
+| HUD / 观察视角 | 工具 Extension | 是否改变了本地输入或观察状态，退出是否恢复 |
 
-### 5.2 自定义分类设计规范
+这些是寻找证据的入口，不承诺固定注册模块、默认槽号、默认启用状态、NavGrid 可见性或客户端一定具有全部 AI 数据。缺项先核对当前目标的模块/类别注册，再找相关业务系统。〔S01、S03〕
 
-- **收集最小集**：`CollectData` 只收集要展示的数据，大块数据一律走 DataPack，避免每帧复制整个数组；
-- **控制收集频率**：非关键分类设置 `CollectDataInterval`（如 0.2~0.5s），纯文本展示不需要每帧刷新；
-- **善用 DebugActor**：面向单个 Actor 的详情放在"有 DebugActor 才显示"（`bShowOnlyWithDebugActor`），避免多角色场景刷屏；
-- **颜色约定**：`{green}` 正常、`{yellow}` 警告、`{red}` 异常，与 UE 日志习惯保持一致；
-- **按键绑定**：`BindKeyPress` 的输入配置名要稳定（`FGameplayDebuggerInputHandlerConfig`），这样玩家可在项目设置里改键，配置会持久化；
-- **模块化注册**：分类注册/注销放在所属模块的 Startup/Shutdown，与模块生命周期绑定，避免重复注册；
-- **5.8 起用名字不用索引**：所有跨端 API 优先使用 `*NameEnabled` / `*NameInputEvent` 版本，规避服务端/客户端索引不一致。
+### 7.3 联机排查链
 
-### 5.3 VisualLogger 埋点规范
+依次记录：该目标是否编译包含调试器 → 拥有模块是否加载并登记类别 → 注册变化是否通知 → 所在 World 是否有对应 Replicator/Owner → 类别是否启用、是否有合法目标 → 采集端有没有形成快照 → 传输是否进行/完成 → 本地绘制是否被配置或视图条件排除。在哪一级停止有证据，就先修那一级。
 
-- **每个对象一个 Category**：用项目自定义 LogCategory（如 `LogMyAI`），不要全用 `LogTemp`，否则回放无法过滤；
-- **Verbosity 分级**：高频数据用 `Verbose`，里程碑事件用 `Log`，仅异常用 `Warning/Error`——配合 `vislog.ActivateVerbosityFilterWhenRecording` 可以只录需要的级别；
-- **形状永远带描述**：形状宏最后一个参数写清含义，回放时才看得懂；
-- **合理重定向**：AI 控制器与 Pawn 之间的日志用 `REDIRECT_OBJECT_TO_VLOG` 合并，回放时按"角色"聚合而非按"组件"散落；
-- **事件优于文本**：状态切换、判定命中用 `UE_VLOG_EVENTS`，时间轴上可快速跳转；
-- **控制录量**：只在需要时开记录（`SetIsRecording`），大世界全量录制会显著掉帧并产生巨大 `.bvlog` 文件；
-- **发布版裁剪**：`UE_DEBUG_RECORDING_ENABLED` 在 Shipping 默认关闭，宏零开销；若需保留关键日志，用 `UE_VLOG_UELOG` 保证 UE_LOG 通道仍输出。
+API 中存在 `GetNetConnection`、`IsNetRelevantFor`、NetPack 接口及可选 DataPack RPC 路径，不足以证明当前项目使用哪套网络后端或已经适配 Iris。名字路由、输入 HandlerId 与相同序列化布局都要检查；“客户端有 HUD”“Reliable RPC 已声明”“调用了 ForceImmediateCollect”分别只说明一部分条件。不要用无条件置脏或强制启用全部类别掩盖 Owner、授权、注册顺序或 schema 问题。〔S06、S07、S11〕
 
-### 5.4 联机调试 Checklist
+## 8. Visual Logger：把对象和时间保留下来
 
-1. 确认双方版本一致（分类注册表、源码版本），5.8+ 用按名字 API 规避索引漂移；
-2. 客户端按 ` 打开 GDT，检查左下角是否出现"连接服务器"状态；
-3. `gdt.EnableCategoryName BehaviorTree 1` 逐个打开分类验证复制链路；
-4. Alt+点击目标 Actor 设置 DebugActor，确认服务端 CollectData 有输出；
-5. 涉及可视日志的跨端问题，检查 `VisLogSync.DeviceIDs` 是否指向同一台记录设备；
-6. 服务器无输出时优先查 `GameplayDebugger.AutoCreateGameplayDebuggerManager` 是否为 1、复制权限（`bHasAuthority`）是否正常。
+### 8.1 文本、快照和形状各司其职
 
----
+Visual Logger 面板按对象和时间查看采集结果。`GrabDebugSnapshot` 为状态快照提供入口；文本按分类呈现，同帧多条文本可组成列表；几何记录帮助还原位置、路径与方向。不要把“同帧快照可能覆盖”扩大成“同帧每条文本都会覆盖”，也不要以为记录了文字就自动保存对象的全部状态。〔S13〕
 
-## 6. 常见问题 FAQ
+LogOwner 回答“这条证据挂在哪个对象”，LogCategory 回答“它属于哪类诊断”，Verbosity 用于分级/过滤。同一个对象可有多个日志类别，同一类别也可以用于很多对象，所以无需“每个对象创建一个 Category”。业务关键转换可记录旧状态、新状态与原因，循环快照记录现值；文本、形状和事件的取舍由问题决定，不把“事件总比文本好”当规则。
 
-### Q1：按 ` 键没反应？
+### 8.2 最小埋点与蓝图入口
 
-**检查**：① 确认 `UGameplayDebuggerConfig::ActivationKey` 未被改绑；② 确认目标平台编译包含 GDT（Shipping 默认不含，Target.cs 需 `bUseGameplayDebugger=1`）；③ 编辑器模式需 `UGameplayDebuggerUserSettings.bEnableGameplayDebuggerInEditor` 且重载地图；④ 确认没有其他输入系统拦截按键。
+下面是 C++ 诊断函数节选，`NOT_RUN`。调用方提供当前移动请求两端点与状态编号；此处只记录，不提交移动或发起新的寻路。函数按项目线程和对象寿命约定调用，不证明任意线程读 Actor 安全。
 
-### Q2：客户端打开 GDT 看不到服务器数据？
+```cpp
+#include "GameFramework/Actor.h"
+#include "VisualLogger/VisualLogger.h"
+DEFINE_LOG_CATEGORY_STATIC(LogMovementAudit, Log, All);
 
-**原因**：复制器未创建或权限不对。**排查**：`GameplayDebugger.AutoCreateGameplayDebuggerManager` 是否为 1；`AGameplayDebuggerCategoryReplicator` 的 `GetNetConnection` / `IsNetRelevantFor` 是否因自定义 PlayerController 实现而失效；确认分类注册发生在服务器与客户端两侧（模块依赖一致）。
+static void RecordMovementAudit(AActor* Owner,
+    const FVector& Start, const FVector& End, int32 StateId)
+{
+    if (!IsValid(Owner))
+    {
+        return;
+    }
+    UE_VLOG(Owner, LogMovementAudit, Log,
+        TEXT("StateId=%d RequestedDistance=%.1f"),
+        StateId, FVector::Dist(Start, End));
+    UE_VLOG_SEGMENT(Owner, LogMovementAudit, Log,
+        Start, End, FColor::Cyan, TEXT("Requested movement"));
+}
+```
 
-### Q3：自定义分类在客户端崩溃/数据错乱？
+这里用已读 5.5 文档支持的 `UE_VLOG` 与 `UE_VLOG_SEGMENT` 参数形状。需要同写普通日志可查看 `UE_VLOG_UELOG`；条件宏的条件在前、形状宏另有几何参数、事件宏有自己的签名，不能把所有宏一律概括为“前三个参数相同”。球、盒、圆锥、圆柱、胶囊、网格等各有适用几何；高阶事件、直方图、坐标系及条件变体本次未逐个核对，不提供猜测出的完整宏签名表。〔S13〕
 
-**原因**：DataPack 的 `Serialize` 与结构体成员不同步（版本漂移）。**解决**：DataPack 结构体增加版本字段（`FGameplayDebuggerDataPackHeader.DataVersion` 由框架维护，自增即可）；两端代码保持同版本；必要时用 `MarkDataPackDirty` 强制刷新而不是依赖 CRC。
+Visual Logger 确实提供蓝图节点。`UVisualLoggerKismetLibrary` 是 `UBlueprintFunctionLibrary`，页面列出 `EnableRecording`、`LogText`、`LogLocation`、`LogSegment`、多种形状与 `RedirectVislog`，标有 `BlueprintCallable` 和 `DevelopmentOnly`。蓝图可先开启记录，再用 VisLog 文本/形状节点写入，并到面板选择相应对象/时刻；有节点不代表目标构建会保留它或已经开启记录。不要把“自定义 GDT Category 用 C++”扩大为“VisualLogger 没有蓝图节点”。〔S14〕
 
-### Q4：EQS / BehaviorTree 分类数据量太大，网络开销高？
+### 8.3 记录、过滤、落盘与重定向
 
-**解决**：这些分类默认用 DataPack 分块复制，且只在启用时复制；调大 `CollectDataInterval` 或只在需要时 `gdt.EnableCategoryName` 打开；正式环境保持默认 Disabled。
+`FVisualLogger` 提供采集开关、文件/Trace 输出、对象/类别允许列表和输出设备接口。为一次问题记录明确的开始、停止、目标对象、类别与时间窗；开启 Record 不等于文件已成功保存。结束后核对实际输出路径、文件、大小和消费工具版本，并尝试读回需要的区间，不能仅凭常见的 `.bvlog` 扩展名或旧示例路径宣称结果存在。〔S15〕
 
-### Q5：UE_VLOG 什么都没记录？
+重定向可把组件/控制器的诊断归到另一个对象，便于按角色查看，但归属选择会影响查找。Pawn 不保证永久存在；Possess/UnPossess、重生和销毁后需重新审查关系，不能只在 BeginPlay 无条件 `GetPawn()` 一次就当全会话有效。蓝图 `RedirectVislog` 的 SourceOwner/DestinationOwner 语义有官方入口；具体 C++ 宏及旧 CONNECT 宏的弃用版本，本次未读取源码，不作为版本断言。〔S14、S15〕
 
-**检查**：① Visual Logger 面板是否点了 Record（`SetIsRecording`）；② LogCategory 的 Verbosity 是否低于宏里的级别（启用 `vislog.ActivateVerbosityFilterWhenRecording` 时会被过滤）；③ 是否被 `BlockAllCategories` 或白名单排除；④ 编译开关 `UE_DEBUG_RECORDING_ENABLED` 是否被关闭（宏会空转）。
+记录失败应区分：编译能力缺失、记录未打开、日志类别或对象被过滤、代码路径没执行、输出设备/文件问题、回看时选择了错误对象或时间。关闭运行时记录与编译裁剪不同；宏之外为了凑日志而做的遍历、字符串拼接与数组准备仍可能发生。也不能保证 Shipping 普通日志必输出，关键业务观测的可用性应单独设计和验证。〔S13、S15〕
 
-### Q6：.bvlog 文件在哪？怎么给别人复现？
+## 9. 回看、关联与常见误判
 
-**路径**：`Saved/Logs/`（`FPaths::ProjectLogDir()`），文件名含会话 ID 与时间戳。交付时连同相同引擎/插件版本的包一起提供；在 Visual Logger 窗口中可指定加载外部 `.bvlog` 文件。
+Rewind Debugger 在已记录的数据轨道中观察动画和关联对象，支持项目扩展轨道；它不是所有对象完整状态的任意倒带。Pose Watch 等观察需在采集前安排；没有记录某字段，事后不能靠拖时间线补出来。VisualLogger 的 Trace 输出可以供 Rewind Debugger 使用，但 `.bvlog`、Trace、对象身份和跨进程时钟并非自动互换或同步。〔S15、S16〕
 
-### Q7：回放时形状不显示？
+| 症状 | 先取得什么证据 | 下一步及停止条件 |
+| --- | --- | --- |
+| 激活键无反应 | 实际 ActivationKey、焦点、构建能力、模块状态 | 修输入/依赖；未确认构建边界时停止盲改 Target |
+| 类别不存在 | 注册名字、工厂入口、加载时点与通知 | 看是否一次 IsAvailable=false 后再未注册；无注册记录时先不查带宽 |
+| 有类别但无数据 | Owner/World、目标、采集角色、启用与采样结果 | 找到断点阶段；不把“空”直接诊断为复制器故障 |
+| 切目标后仍显示旧 Health/路径 | 自定义快照重置、目标身份、采样和接收时刻 | 先排除旧成员残留，再核迟到数据与 UI 有效性 |
+| 包到达却字段错位 | 两端构建、Serialize 字段类型/顺序 | schema 不同时停止解析；不要用 DataVersion++ 或 dirty 重发替代协议 |
+| 大量 EQS/路径数据影响体验 | 字段数、数组上限、采样频率、活跃类别和实际采集成本 | 缩小信息与时间窗，再测；没有测量就不声称优化比例 |
+| Visual Logger 为空 | 执行路径、记录/过滤/输出状态 | 用已知会触发的单条埋点定位；不要先推定日志系统损坏 |
+| 文件或回看形状找不到 | 实际保存结果、对象/时间/类别/形状条件 | 核选择与记录内容；对象销毁本身不足以证明记录必丢失 |
+| 两端时间线对不上 | 会话、进程、时钟来源、共享事件标识 | 没有对齐证据则分别解释，不按相似数值强行拼因果 |
 
-**原因**：形状按"类别 + 时间戳"存储，若 LogOwner 在回放世界不存在（Actor 已销毁/改名），条目会挂在未知对象下。**解决**：用 `REDIRECT_OBJECT_TO_VLOG` 重定向到稳定对象（如 Pawn）；回放时勾选"显示所有对象"。
+分享诊断结果时携带版本、地图、输入步骤、记录范围和已知缺口，筛掉与问题无关或无权传出的字段。文件存在、能打开与足以解释问题是三层验收。`VisLogSync` API 的存在不是自动跨机统一时钟、同一物理设备或“画中画”的证明；需要这些能力时另读实现并验证。
 
-### Q8：VisualLogger 与 Rewind Debugger 什么关系？
+## 10. 有限、可复现的纸面检查
 
-Rewind Debugger（UE5.2+）基于 Trace 系统回放整个游戏状态；`FVisualLogger::SetIsRecordingToTrace()` 把可视日志写入 Trace 通道，两者可在同一时间轴上叠加查看——"状态回放 + 日志注释"组合排查疑难帧。
+以下均为 `PAPER_EXPECTED`，状态均为 `NOT_RUN`。它们验证本篇设计的因果关系和应观察内容，不是引擎、弱网、热重载或性能测试。
 
----
+| 编号 | 给定输入与操作 | 纸面预期 | 能暴露的错误 / 未覆盖 |
+| --- | --- | --- | --- |
+| P01 | Startup 时调试器尚未加载，但依赖可加载；只执行一次 Startup | 第 3 节显式加载后登记并通知；旧的条件注册路径可能直接跳过 | 无构建支持时的断言不是成功；未实测模块加载 |
+| P02 | 已登记分类，Shutdown 时调试器仍加载 / 已卸载两分支 | 前者同名注销并通知，后者不尝试重新加载；本地登记标记清除 | 不能由此证明活动实例与异步资源已经安全回收 |
+| P03 | 两个 Replicator 的目标分别是 A、B | 数据标识应保留各自 Owner/World/目标上下文 | “全局唯一 DebugActor”会混淆两份观察 |
+| P04 | 第 6 节先采到 A，再以空目标采样 | 后次序列化内容的有效位为 0、标签空、位置/速度归零 | 客户端收到前仍可能保留旧包；不等于立即清屏 |
+| P05 | 同一快照先画一次，随后按 Local F8 | 只改变本地细节行是否显示，采集业务状态不因此变化 | 若要改变服务端采集需另设计路由与授权 |
+| P06 | 把 Snapshot 放到 CollectData 的局部变量，登记其地址后返回 | 地址寿命不足，违反成员存储前提；恢复为 Category 成员 | 不需要执行悬空指针才能判定设计错误 |
+| P07 | 发送端按“有效位、名称、位置、速度”写，接收端按别的顺序读 | 协议不匹配；dirty 与框架 DataVersion 不能修复 | 本篇没有提供可迁移 schema 解析器 |
+| P08 | 有包传输进度但尚未完整接收 | 不把进度起点当完整快照到达；完整包通知才是相应边界 | 未验证分块、重发、Iris 或断线行为 |
+| P09 | 同帧记录两个文本消息，同时更新对象状态快照 | 文本列表与状态快照分别检查，不能由快照覆盖断言只剩一条文本 | 具体状态字段覆盖顺序需目标实现确认 |
+| P10 | 蓝图有 VisLog Text 节点，但未开启记录或该对象被过滤 | 节点存在仍不保证产物；依次检查记录、过滤与实际输出 | DevelopmentOnly 不能证明某发布目标会保留节点 |
+| P11 | 采集前没有启用需要的动画轨道/观测 | 回看缺少的数据不能事后恢复 | 不将 Rewind 当全部游戏状态恢复器 |
 
-## 7. 关联阅读与前后置专题
+要把本文推进到运行证据，需要在确定版本的开发项目中分别记录：模块进入/退出与类别列表、无目标/切目标/销毁、两个独立观察者、Local/Replicated 输入、有限包的序列化与完整接收、输出关闭/过滤/保存失败，以及回看能找到目标事件。运行前先落实业务读取权限和构建边界；每种拓扑与版本单列结果，不把某次单机演示推广到联机、专用服务器或发布构建。
 
-- [03-性能分析工具与Profiling](03-性能分析工具与Profiling.md)：Unreal Insights、stat 命令与运行时调试互补；
-- [05-AI系统/01-行为树详解](../../06-游戏AI/感知决策与行为规划/01-行为树详解.md) 与 [05-AI系统/02-感知系统与EQS](../../06-游戏AI/感知决策与行为规划/02-感知系统与EQS.md)：GDT 的 AI 分类背后的底层运行系统；
-- [06-网络同步/02-RPC与属性同步](../../07-网络与游戏服务端/状态复制与兴趣管理/02-RPC与属性同步.md)：CategoryReplicator 跨端数据包复制链路原理；
-- [12-28 UnrealInsights与Trace源码](28-UnrealInsights与Trace源码.md)：VisualLogger 接入 Trace 通道与 Rewind Debugger 源码；
-- [12-47 Lyra-调试工具与扩展源码](47-Lyra-调试工具与扩展源码.md)：Lyra 商业级调试作弊工具链与编辑器验证扩展；
-- [00-11 调试与性能分析方法论](01-调试与性能分析方法论.md)：从日志记录、断点排查到运行时可观测性的工程方法论闭环；
-- [UE 官方文档：Gameplay Debugger](https://dev.epicgames.com/documentation/zh-cn/unreal-engine/gameplay-debugger-in-unreal-engine)
-- [UE 官方文档：Visual Logger](https://dev.epicgames.com/documentation/zh-cn/unreal-engine/visual-logger-in-unreal-engine)
-- [UE 官方文档：Rewind Debugger](https://dev.epicgames.com/documentation/en-us/unreal-engine/rewind-debugger-in-unreal-engine)
+## 11. 来源定位、已读范围与版本限制
+
+核对日期均为 2026-10-10。下表中的“返回标题版本”来自当次网页响应，版本无查询参数的页面不是不可变源码；固定版本 URL 也只证明所返回文档，不证明本地引擎。正文是接口合同与项目设计建议，未读的 cpp、模板函数体、RPC 验证、构造默认值及平台实现均不作已验证事实。
+
+| 标识 | 官方来源与版本 | 本次实际使用的范围 |
+| --- | --- | --- |
+| S01 | [Using the Gameplay Debugger](https://dev.epicgames.com/documentation/en-us/unreal-engine/using-the-gameplay-debugger-in-unreal-engine)，返回标题 5.8 | 工具用途、类别方向、Apostrophe；页面含旧扩展类，未把它当现行接线 |
+| S02 | [IGameplayDebugger](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/GameplayDebugger/IGameplayDebugger)，返回标题 5.8 | 工厂、注册、反注册和通知接口 |
+| S03 | [EGameplayDebuggerCategoryState](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/GameplayDebugger/EGameplayDebuggerCategoryState)，返回标题 5.8 | 构建说明、模块拥有责任、Category/Extension 分工与状态枚举 |
+| S04 | [Get](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/GameplayDebugger/IGameplayDebugger/Get) 与 [IsAvailable](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/GameplayDebugger/IGameplayDebugger/IsAvailable)，返回标题 5.8 | 模块访问、可用性与关闭期提醒；两页措辞有加载/检查差异，示例采用明确加载接口 |
+| S05 | [FGameplayDebuggerAddonManager](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/GameplayDebugger/FGameplayDebuggerAddonManager)，返回标题 5.8 | 注册表、创建实例和集合通知职责 |
+| S06 | [AGameplayDebuggerCategoryReplicator](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/GameplayDebugger/AGameplayDebuggerCategoryReplica-)，返回标题 5.8 | Owner、目标、计数、本地状态、公开/受保护边界；未读 RPC 校验与网络实现 |
+| S07 | [FGameplayDebuggerCategory](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/GameplayDebugger/FGameplayDebuggerCategory)，返回标题 5.8 | AUTH/LOCAL、文本/形状重置、采集/绘制、完整包通知、Scene Proxy 接口 |
+| S08 | [BindKeyPress 配置重载](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/GameplayDebugger/FGameplayDebuggerAddonBase/BindKeyPress/2?application_version=5.5)，固定 5.5；[AddonBase](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/GameplayDebugger/FGameplayDebuggerAddonBase?lang=en-US)、[GameplayDebugger 模块](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/GameplayDebugger)，返回标题 5.8 | 输入签名、配置保存，以及输入配置构造期约束 |
+| S09 | [EGameplayDebuggerInputMode](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/GameplayDebugger/EGameplayDebuggerInputMode)，返回标题 5.8 | Local 与 Replicated 的处理位置 |
+| S10 | [SetDataPackReplication](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/GameplayDebugger/FGameplayDebuggerCategory/SetDataPackReplication?application_version=5.5)，固定 5.5 | 成员地址、Serialize 要求、返回 int32 包 ID |
+| S11 | [FGameplayDebuggerDataPack](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/GameplayDebugger/FGameplayDebuggerDataPack)，返回标题 5.8 | dirty、CRC、进度、完整接收与传输状态字段；无内部算法认证 |
+| S12 | [UGameplayDebuggerConfig](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/GameplayDebugger/UGameplayDebuggerConfig)，返回标题 5.8 | 激活/行/槽位输入、显示项及配置更新接口；未核对默认值 |
+| S13 | [Visual Logger](https://dev.epicgames.com/documentation/en-us/unreal-engine/visual-logger-in-unreal-engine?application_version=5.5)，固定 5.5 | 对象/时间视图、文本与快照区别、快照接口、文本/线段等示例 |
+| S14 | [UVisualLoggerKismetLibrary](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/UVisualLoggerKismetLibrary)，返回标题 5.8 | BlueprintCallable/DevelopmentOnly、记录、文本/形状、重定向 |
+| S15 | [FVisualLogger](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/FVisualLogger)，返回标题 5.8 | 选读记录/过滤/设备/文件/Trace、对象名保存和时间戳接口，未通读全部形状重载 |
+| S16 | [Animation Rewind Debugger](https://dev.epicgames.com/documentation/unreal-engine/animation-rewind-debugger-in-unreal-engine?application_version=5.8)，固定 5.8 | 轨道与录制、Pose Watch 前置、Trace 和可扩展性；未执行插件设置 |
+| S17 | [LoadModuleChecked](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Core/Modules/FModuleManager/LoadModuleChecked/2?application_version=5.5)，固定 5.5 | 显式加载、复用已加载实例、缺模块断言 |
+| S18 | [EGameplayDebuggerDataPack](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/GameplayDebugger/EGameplayDebuggerDataPack)，返回 5.7 | 仅三种枚举名；无默认值和 reset 实现结论 |
+| S19 | [FGameplayDebuggerCanvasContext](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/GameplayDebugger/FGameplayDebuggerCanvasContext)，返回标题 5.8 | 头文件定位与 Printf 接口 |
+
+固定 5.6/5.8 的部分 Category/模块 API 请求、旧 Gameplay Debugger/旧 Rewind URL、DataPackHeader 入口在本次返回错误或空正文，均未当作成功阅读；改用上表实际返回的页面并按版本单列。没有以搜索结果标题替代未返回的函数实现，也未据版本号推断“首次新增/废弃”的时间。
+
+## 12. 关联阅读与职责边界
+
+- [性能分析工具与 Profiling](03-性能分析工具与Profiling.md)：测量合同、Trace 采集和瓶颈证据，本篇不代替性能实测
+- [行为树详解](../../06-游戏AI/感知决策与行为规划/01-行为树详解.md)、[感知系统与 EQS](../../06-游戏AI/感知决策与行为规划/02-感知系统与EQS.md)：GDT 所观察的业务系统，界面现象须回到对应状态解释
+- [RPC 与属性同步](../../07-网络与游戏服务端/状态复制与兴趣管理/02-RPC与属性同步.md)：连接、所有权与复制的一般前提，不把调试传输当游戏业务协议
+- [UnrealInsights 与 Trace 源码](28-UnrealInsights与Trace源码.md)：Trace 消费链的进一步入口，其历史源码/运行声明不自动成为本篇证据
+- [Lyra 调试工具与扩展源码](47-Lyra-调试工具与扩展源码.md)：项目作弊与编辑器扩展案例，不能从已有项目命令推断通用服务器授权
+- [调试与性能分析方法论](01-调试与性能分析方法论.md)：先列假设、找最小观察，再区分事实与推断
