@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-10 (Incremental pathfinding state directions and queue contracts; original contributions retained).
+# Generated: 2026-10-10 (Game projectile acceptance and virtual texture production contracts; independent article evidence retained).
 version: 4
 
 okf:
@@ -704,8 +704,8 @@ documents:
   "知识/02-数学与游戏算法/空间查询与碰撞/06-弹道与射击算法.md":
     kind: doc
     maturity: L2
-    bytes: 16570
-    lines: 311
+    bytes: 40135
+    lines: 458
   "知识/02-数学与游戏算法/空间查询与碰撞/README.md":
     kind: README
     maturity: L0
@@ -1044,8 +1044,8 @@ documents:
   "知识/04-图形动画与物理仿真/材质地形与世界表现/07-虚拟纹理与材质混合.md":
     kind: doc
     maturity: L2
-    bytes: 22249
-    lines: 332
+    bytes: 45590
+    lines: 478
   "知识/04-图形动画与物理仿真/材质地形与世界表现/08-体积渲染与云.md":
     kind: doc
     maturity: L2
