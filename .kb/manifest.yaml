@@ -969,8 +969,8 @@ documents:
   "知识/04-图形动画与物理仿真/动画求值与角色表现/03-IK与程序化动画.md":
     kind: doc
     maturity: L2
-    bytes: 49463
-    lines: 446
+    bytes: 59600
+    lines: 580
   "知识/04-图形动画与物理仿真/动画求值与角色表现/04-动画性能与预算分配.md":
     kind: doc
     maturity: L2
