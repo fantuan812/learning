@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-10 (Two primary articles; bounded Newton and bisection example, Unicode length walkthrough; parent ledger deduplication pending).
+# Generated: 2026-10-10 (Slate widget and Chaos vehicle; independent static contracts and source boundaries retained).
 version: 4
 
 okf:
@@ -1149,8 +1149,8 @@ documents:
   "知识/04-图形动画与物理仿真/物理求解与动力学/06-Chaos车辆系统.md":
     kind: doc
     maturity: L2
-    bytes: 17099
-    lines: 307
+    bytes: 35610
+    lines: 316
   "知识/04-图形动画与物理仿真/物理求解与动力学/15-物理系统源码.md":
     kind: doc
     maturity: L2
@@ -1394,8 +1394,8 @@ documents:
   "知识/05-Gameplay与交互系统/界面设置与无障碍/08-Slate自定义控件与样式系统.md":
     kind: doc
     maturity: L2
-    bytes: 24946
-    lines: 360
+    bytes: 40139
+    lines: 420
   "知识/05-Gameplay与交互系统/界面设置与无障碍/10-本地化无障碍与多端体验验收.md":
     kind: doc
     maturity: L2
