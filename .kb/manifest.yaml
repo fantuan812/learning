@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-10 (Network and AI debugging; observation, diagnosis and target-runtime limits retained).
+# Generated: 2026-10-10 (Final reviewed BFS and Dijkstra paths and DFS maze teaching examples on CLOSED PR141; existing-primary repair; count increment 0).
 version: 4
 
 okf:
@@ -714,8 +714,8 @@ documents:
   "知识/02-数学与游戏算法/路径搜索与导航/01-图论基础与搜索算法.md":
     kind: doc
     maturity: L2
-    bytes: 56370
-    lines: 858
+    bytes: 66812
+    lines: 996
   "知识/02-数学与游戏算法/路径搜索与导航/02-A星算法与优化.md":
     kind: doc
     maturity: L2
@@ -764,8 +764,8 @@ documents:
   "知识/02-数学与游戏算法/随机采样与程序化生成/02-程序化生成.md":
     kind: doc
     maturity: L2
-    bytes: 52874
-    lines: 685
+    bytes: 62203
+    lines: 838
   "知识/02-数学与游戏算法/随机采样与程序化生成/07-概率分布与采样工程.md":
     kind: doc
     maturity: L2
