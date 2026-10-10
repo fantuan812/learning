@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-10 (Game projectile acceptance and virtual texture production contracts; independent article evidence retained).
+# Generated: 2026-10-10 (Engine module lifecycle and flow field navigation contracts; independent article evidence retained).
 version: 4
 
 okf:
@@ -734,8 +734,8 @@ documents:
   "知识/02-数学与游戏算法/路径搜索与导航/03-流场与群体寻路.md":
     kind: doc
     maturity: L2
-    bytes: 23494
-    lines: 447
+    bytes: 37291
+    lines: 519
   "知识/02-数学与游戏算法/路径搜索与导航/04-RVO与数值鲁棒.md":
     kind: doc
     maturity: L2
@@ -929,8 +929,8 @@ documents:
   "知识/03-引擎架构与资源系统/运行架构与任务调度/04-引擎启动流程与模块架构.md":
     kind: doc
     maturity: L2
-    bytes: 19944
-    lines: 432
+    bytes: 47960
+    lines: 583
   "知识/03-引擎架构与资源系统/运行架构与任务调度/06-定时器与引擎Ticker.md":
     kind: doc
     maturity: L2
