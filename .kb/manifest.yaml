@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-10 (Startup scope correction and concrete IK static tutorial; count increment 0).
+# Generated: 2026-10-10 (Complete RVO numerics and audio gain teaching; initial checkpoint; completed count increment 0; RVO candidate 1).
 version: 4
 
 okf:
@@ -739,8 +739,8 @@ documents:
   "知识/02-数学与游戏算法/路径搜索与导航/04-RVO与数值鲁棒.md":
     kind: doc
     maturity: L2
-    bytes: 13362
-    lines: 414
+    bytes: 30697
+    lines: 336
   "知识/02-数学与游戏算法/路径搜索与导航/04-路径平滑与转向行为.md":
     kind: doc
     maturity: L2
@@ -1234,8 +1234,8 @@ documents:
   "知识/04-图形动画与物理仿真/音频播放与程序化声音/02-衰减与3D空间音效.md":
     kind: doc
     maturity: L2
-    bytes: 54815
-    lines: 603
+    bytes: 58737
+    lines: 619
   "知识/04-图形动画与物理仿真/音频播放与程序化声音/03-MetaSound与程序化音频.md":
     kind: doc
     maturity: L2
