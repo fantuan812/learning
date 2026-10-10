@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-10 (Inverse kinematics geometry, pose space and sample lifetime contracts; original contributions retained).
+# Generated: 2026-10-10 (Network and AI debugging; observation, diagnosis and target-runtime limits retained).
 version: 4
 
 okf:
@@ -1684,8 +1684,8 @@ documents:
   "知识/06-游戏AI/评测安全与运行预算/08-AI调试与性能分析.md":
     kind: doc
     maturity: L2
-    bytes: 22005
-    lines: 326
+    bytes: 38758
+    lines: 338
   "知识/06-游戏AI/评测安全与运行预算/README.md":
     kind: README
     maturity: L0
@@ -1949,8 +1949,8 @@ documents:
   "知识/07-网络与游戏服务端/状态复制与兴趣管理/08-网络调试与性能分析.md":
     kind: doc
     maturity: L2
-    bytes: 28465
-    lines: 350
+    bytes: 51073
+    lines: 419
   "知识/07-网络与游戏服务端/状态复制与兴趣管理/09-网络复制与RPC源码.md":
     kind: doc
     maturity: L2
