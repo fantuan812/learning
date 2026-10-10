@@ -1139,8 +1139,8 @@ documents:
   "知识/04-图形动画与物理仿真/物理求解与动力学/04-布娃娃与物理动画.md":
     kind: doc
     maturity: L2
-    bytes: 20741
-    lines: 395
+    bytes: 38587
+    lines: 350
   "知识/04-图形动画与物理仿真/物理求解与动力学/05-Chaos破坏系统与Field.md":
     kind: doc
     maturity: L2
