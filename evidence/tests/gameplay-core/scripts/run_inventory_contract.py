@@ -156,6 +156,10 @@ def _process_running(pid: int) -> bool:
     except (FileNotFoundError, ProcessLookupError):
         # The task may disappear after the signal probe or while procfs is read.
         return False
+    # A missing proc entry may mean no procfs, or exit after the first probe.
+    # Confirm disappearance without treating unavailable procfs as proof of exit.
+    try: os.kill(pid, 0)
+    except ProcessLookupError: return False
     return True
 
 
@@ -200,15 +204,53 @@ def _check_process_probe(require) -> None:
             check('probe '+stage+' '+error_type.__name__, None, stage=stage,
                   error=error_type(number, 'unexpected'), propagate=True)
     check('probe malformed stat', None, text='malformed', parse_error=True)
-    with patch.object(os, 'kill', side_effect=[None, ProcessLookupError(errno.ESRCH, 'gone')]) as kill, \
-         patch.object(Path, 'exists', return_value=False) as stat_exists, \
-         patch.object(Path, 'read_text') as read:
-        results = (_process_running(pid), _process_running(pid))
-    require(all(current is original for current, original in
-                zip((os.kill, Path.exists, Path.read_text), originals)), 'probe fallback mocks restored')
-    require(results == (True, False), 'probe conservative fallback then disappearance')
-    require(kill.call_count == 2 and all(call.args == (pid, 0) for call in kill.call_args_list) and
-            stat_exists.call_count == 1 and read.call_count == 0, 'probe fallback proc access sequence')
+    proc_originals = (os.kill, Path.exists, Path.stat, Path.read_text)
+    stat_path = Path('/proc') / str(pid) / 'stat'
+
+    def real_exists_case(label, stat_error, signals, expected=None, propagate=None):
+        observed = caught = None
+        trace = []; effects = iter(signals)
+        def signal_probe(target, number):
+            trace.append(('kill', target, number))
+            effect = next(effects)
+            if isinstance(effect, BaseException): raise effect
+            return effect
+        def proc_stat(path, *, follow_symlinks=True):
+            trace.append(('stat', str(path), follow_symlinks))
+            raise stat_error
+        # Keep the real Path.exists conversion; no signal or procfs access is real.
+        with patch.object(os, 'kill', side_effect=signal_probe) as kill, \
+             patch.object(Path, 'stat', autospec=True, side_effect=proc_stat) as stat_call, \
+             patch.object(Path, 'read_text', side_effect=RuntimeError('unexpected proc read')) as read:
+            try: observed = _process_running(pid)
+            except Exception as exception: caught = exception
+        require(all(current is original for current, original in
+                    zip((os.kill, Path.exists, Path.stat, Path.read_text), proc_originals)), label+' mocks restored')
+        require(caught is propagate if propagate is not None else caught is None and observed is expected,
+                label+' result or original exception')
+        require(kill.call_count == len(signals) and
+                all(call.args == (pid, 0) and not call.kwargs for call in kill.call_args_list), label+' signal probes')
+        require(stat_call.call_count == 1 and stat_call.call_args.args == (stat_path,) and
+                stat_call.call_args.kwargs == {'follow_symlinks': True}, label+' actual exists stat access')
+        require(read.call_count == 0, label+' no proc text read')
+        expected_trace = [('kill', pid, 0), ('stat', str(stat_path), True)]
+        if len(signals) == 2: expected_trace.append(('kill', pid, 0))
+        require(trace == expected_trace, label+' ordered access')
+
+    real_exists_case('probe fallback still possible', FileNotFoundError(errno.ENOENT, 'gone'),
+                     [None, None], expected=True)
+    real_exists_case('probe fallback confirmed gone', FileNotFoundError(errno.ENOENT, 'gone'),
+                     [None, ProcessLookupError(errno.ESRCH, 'gone')], expected=False)
+    for error_type, number in ((PermissionError, errno.EACCES), (PermissionError, errno.EPERM),
+                              (OSError, errno.EIO), (FileNotFoundError, errno.ENOENT)):
+        error = error_type(number, 'unexpected')
+        real_exists_case('probe fallback signal errno '+str(number), FileNotFoundError(errno.ENOENT, 'gone'),
+                         [None, error], propagate=error)
+    real_exists_case('probe actual exists ESRCH', ProcessLookupError(errno.ESRCH, 'gone'),
+                     [None], expected=False)
+    for error_type, number in ((PermissionError, errno.EACCES), (PermissionError, errno.EPERM), (OSError, errno.EIO)):
+        error = error_type(number, 'unexpected')
+        real_exists_case('probe actual exists errno '+str(number), error, [None], propagate=error)
 
 
 def okay(record: dict) -> bool:

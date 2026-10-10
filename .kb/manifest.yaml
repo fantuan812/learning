@@ -479,7 +479,7 @@ documents:
   "知识/01-编程与计算机基础/C++语言与对象模型/02-异常、类型系统与标准库实现.md":
     kind: doc
     maturity: L2
-    bytes: 13372
+    bytes: 14192
     lines: 164
   "知识/01-编程与计算机基础/C++语言与对象模型/README.md":
     kind: README
@@ -2264,8 +2264,8 @@ documents:
   "知识/08-工程实践与质量/部署运维与可观测性/04-DS日志崩溃与可观测性实战.md":
     kind: doc
     maturity: L2
-    bytes: 10413
-    lines: 322
+    bytes: 36878
+    lines: 336
   "知识/08-工程实践与质量/部署运维与可观测性/05-部署运维与监控.md":
     kind: doc
     maturity: L2
