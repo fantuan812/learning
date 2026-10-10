@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-10 (Engine module lifecycle and flow field navigation contracts; independent article evidence retained).
+# Generated: 2026-10-10 (Inverse kinematics geometry, pose space and sample lifetime contracts; original contributions retained).
 version: 4
 
 okf:
@@ -969,8 +969,8 @@ documents:
   "知识/04-图形动画与物理仿真/动画求值与角色表现/03-IK与程序化动画.md":
     kind: doc
     maturity: L2
-    bytes: 27162
-    lines: 423
+    bytes: 43694
+    lines: 406
   "知识/04-图形动画与物理仿真/动画求值与角色表现/04-动画性能与预算分配.md":
     kind: doc
     maturity: L2
