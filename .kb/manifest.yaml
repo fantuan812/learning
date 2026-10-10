@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-10 (Incremental pathfinding state directions and queue contracts; original contributions retained).
+# Generated: 2026-10-10 (Hierarchical state machine and GameFeatures lifecycle contracts; independent article evidence retained).
 version: 4
 
 okf:
@@ -854,8 +854,8 @@ documents:
   "知识/03-引擎架构与资源系统/插件装配与初始化/05-GameFeatures特性插件.md":
     kind: doc
     maturity: L2
-    bytes: 24106
-    lines: 445
+    bytes: 46409
+    lines: 424
   "知识/03-引擎架构与资源系统/插件装配与初始化/README.md":
     kind: README
     maturity: L0
@@ -1594,8 +1594,8 @@ documents:
   "知识/06-游戏AI/感知决策与行为规划/02-状态机与层次状态机.md":
     kind: doc
     maturity: L2
-    bytes: 27610
-    lines: 542
+    bytes: 47056
+    lines: 381
   "知识/06-游戏AI/感知决策与行为规划/03-行为树通用原理.md":
     kind: doc
     maturity: L2
