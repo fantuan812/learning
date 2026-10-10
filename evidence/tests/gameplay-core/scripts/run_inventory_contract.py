@@ -146,6 +146,71 @@ def run(argv: list[str], cwd: Path, env: dict[str, str], timeout: float, capture
     return record
 
 
+def _process_running(pid: int) -> bool:
+    try: os.kill(pid, 0)
+    except ProcessLookupError: return False
+    stat = Path('/proc') / str(pid) / 'stat'
+    try:
+        if stat.exists():
+            return stat.read_text().split(') ')[1].split()[0] != 'Z'
+    except (FileNotFoundError, ProcessLookupError):
+        # The task may disappear after the signal probe or while procfs is read.
+        return False
+    return True
+
+
+def _check_process_probe(require) -> None:
+    import errno
+    from unittest.mock import patch
+
+    pid = 123456789  # Every signal and procfs operation below is mocked.
+    originals = (os.kill, Path.exists, Path.read_text)
+
+    def check(label, expected, *, stage=None, error=None, exists=True,
+              text='123456789 (fixture) S 0', propagate=False, parse_error=False):
+        observed = caught = None
+        with patch.object(os, 'kill', return_value=None) as kill, \
+             patch.object(Path, 'exists', return_value=exists) as stat_exists, \
+             patch.object(Path, 'read_text', return_value=text) as read:
+            if error is not None:
+                {'kill': kill, 'exists': stat_exists, 'read': read}[stage].side_effect = error
+            try: observed = _process_running(pid)
+            except Exception as exception: caught = exception
+        require(all(current is original for current, original in
+                    zip((os.kill, Path.exists, Path.read_text), originals)), label+' mocks restored')
+        if propagate:
+            require(caught is error, label+' propagates original error')
+        elif parse_error:
+            require(isinstance(caught, IndexError), label+' malformed stat remains an error')
+        else:
+            require(caught is None and observed is expected, label+' result')
+        require(kill.call_count == 1 and kill.call_args.args == (pid, 0), label+' signal probe')
+        require(stat_exists.call_count == (0 if stage == 'kill' else 1) and
+                read.call_count == (0 if stage in ('kill', 'exists') or not exists else 1),
+                label+' proc access sequence')
+
+    check('probe missing pid', False, stage='kill', error=ProcessLookupError(errno.ESRCH, 'gone'))
+    for stage in ('exists', 'read'):
+        for error_type, number in ((FileNotFoundError, errno.ENOENT), (ProcessLookupError, errno.ESRCH)):
+            check('probe '+stage+' '+error_type.__name__, False, stage=stage, error=error_type(number, 'gone'))
+    check('probe sleeping task', True)
+    check('probe zombie task', False, text='123456789 (fixture) Z 0')
+    for stage in ('kill', 'exists', 'read'):
+        for error_type, number in ((PermissionError, errno.EACCES), (OSError, errno.EIO)):
+            check('probe '+stage+' '+error_type.__name__, None, stage=stage,
+                  error=error_type(number, 'unexpected'), propagate=True)
+    check('probe malformed stat', None, text='malformed', parse_error=True)
+    with patch.object(os, 'kill', side_effect=[None, ProcessLookupError(errno.ESRCH, 'gone')]) as kill, \
+         patch.object(Path, 'exists', return_value=False) as stat_exists, \
+         patch.object(Path, 'read_text') as read:
+        results = (_process_running(pid), _process_running(pid))
+    require(all(current is original for current, original in
+                zip((os.kill, Path.exists, Path.read_text), originals)), 'probe fallback mocks restored')
+    require(results == (True, False), 'probe conservative fallback then disappearance')
+    require(kill.call_count == 2 and all(call.args == (pid, 0) for call in kill.call_args_list) and
+            stat_exists.call_count == 1 and read.call_count == 0, 'probe fallback proc access sequence')
+
+
 def okay(record: dict) -> bool:
     return record['exit_code'] == 0 and not record['timed_out'] and record['capture_complete']
 
@@ -369,6 +434,7 @@ def self_test(args: argparse.Namespace, output: Path) -> int:
         nonlocal assertions
         assertions+=1
         if not condition: failures.append(label); print('SELFTEST_FAIL '+label,flush=True)
+    _check_process_probe(require)
     def invoke(label: str, command: list[str], destination: Path, mode='ok', target='skill_pipeline', limit=False) -> tuple[dict,list]:
         events=output/(label+'.events.txt'); children=output/(label+' children'); children.mkdir(); env=dict(os.environ,CXX=str(compiler),PYTHON=sys.executable,FIXTURE_EVENTS=str(events),
               FIXTURE_MODE=mode,FIXTURE_TARGET=target,FIXTURE_SENTINEL=str(sentinel),FIXTURE_CHILD_DIR=str(children))
@@ -470,19 +536,11 @@ def self_test(args: argparse.Namespace, output: Path) -> int:
             children=output/(label+' children')
             pids=[int(path.read_text()) for path in children.glob('*.pid')]
             require(len(pids)==5,label+' five controlled child fixtures launched')
-            def running(pid: int) -> bool:
-                try: os.kill(pid,0)
-                except ProcessLookupError: return False
-                stat=Path('/proc')/str(pid)/'stat'
-                if stat.exists():
-                    try: return stat.read_text().split(') ')[1].split()[0] != 'Z'
-                    except FileNotFoundError: return False
-                return True
             # Short-lived escaped children are intentionally outside the group.
             # Wait for their bounded fixture lifetime, then verify none remain running.
             deadline=time.monotonic()+4
-            while any(running(pid) for pid in pids) and time.monotonic()<deadline: time.sleep(0.02)
-            live=[pid for pid in pids if running(pid)]
+            while any(_process_running(pid) for pid in pids) and time.monotonic()<deadline: time.sleep(0.02)
+            live=[pid for pid in pids if _process_running(pid)]
             if live:
                 for pid in live:
                     try: os.kill(pid,signal.SIGKILL)
