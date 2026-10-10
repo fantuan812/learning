@@ -744,8 +744,8 @@ documents:
   "知识/02-数学与游戏算法/路径搜索与导航/04-路径平滑与转向行为.md":
     kind: doc
     maturity: L2
-    bytes: 19600
-    lines: 384
+    bytes: 36026
+    lines: 498
   "知识/02-数学与游戏算法/路径搜索与导航/A星算法优化.md":
     kind: doc
     maturity: L0
