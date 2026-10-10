@@ -989,8 +989,8 @@ documents:
   "知识/04-图形动画与物理仿真/动画求值与角色表现/07-动画资产与骨骼基础.md":
     kind: doc
     maturity: L2
-    bytes: 31875
-    lines: 386
+    bytes: 47738
+    lines: 468
   "知识/04-图形动画与物理仿真/动画求值与角色表现/08-动作战斗系统与打击手感.md":
     kind: doc
     maturity: L2
@@ -1579,8 +1579,8 @@ documents:
   "知识/06-游戏AI/感知决策与行为规划/01-AI总体架构与感知.md":
     kind: doc
     maturity: L2
-    bytes: 30065
-    lines: 624
+    bytes: 49439
+    lines: 519
   "知识/06-游戏AI/感知决策与行为规划/01-行为树详解.md":
     kind: doc
     maturity: L2
