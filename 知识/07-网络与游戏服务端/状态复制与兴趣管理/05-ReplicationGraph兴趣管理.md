@@ -8,11 +8,11 @@ updated: 2026-10-10
 ---
 # 05 ReplicationGraph 兴趣管理
 
-> 知识成熟度：L2。本文提供职责划分、接入合同与有限静态示例；没有把 API 阅读或集合推演记作 UE 编译、联机或性能验证。
+> 知识成熟度：L2。本文提供职责划分、单 World 两连接的有限静态接线例与独立可运行的集合模型；UE 接线未编译，模型运行不认证联机或性能。
 > 知识基线：UE 的 Generic 复制与 Replication Graph 使用层；原文记录的 UE 5.8.0 / CL 55116800 / `++UE5+Release-5.8` 是历史机器身份，见 §1.3。本轮依据 2026-10-10 取得的 Epic UE 5.6 版本化指南和页面标题标为 UE 5.8 的公开 API 选段；动态 API 页不是该历史 CL 的源码快照。
 > 版本基准：指南按显式 UE 5.6 版本页；公开 API 按此次返回的 UE 5.8 标题；历史 5.8.0 / CL 55116800 身份仅按 §1.3 归档语义理解。
 > 适用范围：服务器侧 Actor 路由、节点生命周期、每连接候选与调度；Iris 另按 §3.7 的明确版本文档理解。
-> 最后更新：2026-10-10（修正 owner-only 路由、候选/交付边界、网格与生命周期合同）。
+> 最后更新：2026-10-10（补齐两连接正常路由、独立集合小例，并将迟返/复用细节分层）。
 
 本篇回答三个问题：Generic 复制的工作量从哪里来，RepGraph 如何共享兴趣结构，项目如何把正确的对象交给正确的连接。前置见 [网络架构与复制基础](01-网络架构与复制基础.md) 与 [RPC 与属性同步](02-RPC与属性同步.md)。
 
@@ -250,7 +250,7 @@ UE 5.6 版本化《Migrate to Iris》的 “Differences Specific to Replication 
 
 ## 四、有限接入示例与失败退场
 
-以下示例只展示配置形状、对象归属和单步路由合同；不是可直接编译的完整 UCLASS、宿主或生产实现。本轮未执行 UHT、编译、配置加载、联机或模型。项目需要真实模块、类声明、反射产物、持有节点的成员、连接映射与生命周期回调。
+建议先读 §4.3.1—4.3.2 的两名单接线，再跟 §4.4 完成“登记 → 每连接候选 → 换 owner → 移除”。§4.3.3 把网格作为扩展；§4.8 再处理迟返、代次与复用。原生代码给出有限图子类及调用入口，但本轮没有 UE 环境，UHT、UE 编译、配置加载和联机均未运行；实际运行范围仅为 §4.4 的独立纯 C++ 集合模型。
 
 ### 4.1 选择驱动的配置形状
 
@@ -279,7 +279,186 @@ GlobalActorReplicationInfoMap.SetClassInfo(APawn::StaticClass(), PawnInfo);
 
 ### 4.3 一个网格、公开列表和每连接私有列表
 
-有限输入：只有 C1、C2 两个已 ready 的远程连接；S 是公开 GameState；P 是可移动 Pawn；I 是只向 C1 公开的私有物品 Actor；这些对象均在 persistent level，坐标有限、生命周期有效。图拥有 Grid 和 PublicList，每个连接拥有独立 PrivateList(C)。私有列表不会注册成全局节点。
+#### 4.3.1 先只用两个名单跑通正常路线
+
+先暂时不放空间网格，避免把“谁允许进入候选”和“空间上该查谁”同时混在第一个例子里。准备单个服务器 World W、两个已完成连接初始化的远程连接 C1/C2，以及它们的 PlayerController PC1/PC2。下面两种测试 Actor 都由服务器创建在 persistent level，设置 `Replicates=true`、`Net Dormancy=Awake`，并关闭 `Net Use Owner Relevancy`；它们没有 FastShared、依赖对象或 tear-off 行为。
+
+| 输入对象 | Always Relevant | Only Relevant to Owner | 服务器上的 Owner | 本例唯一分类 |
+| --- | --- | --- | --- | --- |
+| S（PublicActor） | true | false | 无 | PublicList |
+| I（OwnerOnlyActor） | false | true | PC1；`GetNetConnection()` 得 C1 | PrivateList(C1) |
+| PC1 / PC2 | 分别按自己的类配置 | 通常为 true | 各自远程玩家 | 只说明 I 的归属链；下表候选只投影到 S/I |
+
+S/I 可以是两个普通 Actor 蓝图子类，不需要不存在的 `APickup` 类型；在 Class Defaults 配置上表标记。蓝图中可加一个普通可复制整型 `Value` 方便将来观察接收，但本例的第一目标是验证名单，不是属性协议。Owner 必须由服务器设为具体 PC，不能把客户端传来的连接下标直接当授权结果。[S6][S20]
+
+把数据流先画出来：
+
+```text
+InitGlobalGraphNodes → PublicList ───────────────────┐
+                                                   ├→ C1 本次候选 {S,I}
+InitConnectionGraphNodes(C1) → PrivateList(C1) {I} ──┘
+
+                     PublicList {S} ────────────────┐
+                                                   ├→ C2 本次候选 {S}
+InitConnectionGraphNodes(C2) → PrivateList(C2) {} ───┘
+```
+
+只有 PublicList 挂在全局根上。每个 PrivateList 通过 `AddConnectionGraphNode` 只关联自己的 ConnectionManager；`UReplicationGraphNode_ActorList` 的既有 Gather 实现输出其名单，不需要再写一个“按名字过滤 Owner”的 Gather。[S7][S14][S21] 因此先创建节点、再将 Actor 加到正确节点，才能在图收集该连接时得到上图。这个集合只是候选；发送预算、通道、接收与业务授权仍是后续独立问题。
+
+#### 4.3.2 有限图子类：把创建、登记、刷新和移除接起来
+
+以下给出一个图子类的头文件及实现，**是依据公开 API 编写的静态接线例，未执行 UHT 或 UE 编译**。将 `ExampleGame` 换为真实模块，启用 Replication Graph 插件，并在该模块 Build.cs 的依赖中加入 `Core`、`CoreUObject`、`Engine`、`ReplicationGraph`，再使用 §4.1 的类路径。`EXAMPLEGAME_API` 同样替换为模块导出宏。实际工程仍须核对所用 UE 版本的声明与启动接线，不能把下文纯 C++ 模型的成功当作这段 UE 代码已编译。
+
+这个例子刻意限定为一次有限实验：一个 World/NetDriver；所有名单修改在服务器同一串行上下文、两次 Gather 之间同步完成，调用中不重入；对象在 persistent level，S/I 的分类标记不热改；连接在实验结束前不退出，不发生换 World、休眠或流送。Actor 的停止复制/销毁必须经正常 NetDriver 移除路径。先移除测试 Actor，再结束这次 World；不可把此类直接用于旅行、重连或共享组件系统。迟到事件、断线复用与失败交接见 §4.8。
+
+```cpp
+// ExampleReplicationGraph.h
+#pragma once
+#include "CoreMinimal.h"
+#include "ReplicationGraph.h"
+#include "ExampleReplicationGraph.generated.h"
+
+UCLASS(Transient, Config=Engine)
+class EXAMPLEGAME_API UExampleReplicationGraph : public UReplicationGraph
+{
+    GENERATED_BODY()
+public:
+    virtual void InitGlobalActorClassSettings() override;
+    virtual void InitGlobalGraphNodes() override;
+    virtual void InitConnectionGraphNodes(
+        UNetReplicationGraphConnection* Manager) override;
+    virtual void RouteAddNetworkActorToNodes(
+        const FNewReplicatedActorInfo& Info,
+        FGlobalActorReplicationInfo& GlobalInfo) override;
+    virtual void RouteRemoveNetworkActorToNodes(
+        const FNewReplicatedActorInfo& Info) override;
+
+    // 项目函数：服务器 SetOwner 后显式调用，不假装引擎会自动调用它。
+    bool RefreshRouting(AActor& Actor);
+
+private:
+    using FActorKey = TWeakObjectPtr<AActor>;
+    using FConnectionKey = TWeakObjectPtr<UNetConnection>;
+    using FNodeRef = TWeakObjectPtr<UReplicationGraphNode_ActorList>;
+
+    UPROPERTY() TObjectPtr<UReplicationGraphNode_ActorList> PublicList;
+    UPROPERTY() TArray<TObjectPtr<UReplicationGraphNode_ActorList>> PrivateLists;
+    TMap<FConnectionKey, FNodeRef> ByConnection;
+    TSet<FActorKey> Registered;       // 包含尚无可用 owner 的 Actor。
+    TMap<FActorKey, FNodeRef> Installed; // 记录实际插入的节点；移除不重算 owner。
+
+    bool RemoveInstalled(const FNewReplicatedActorInfo& Info);
+};
+```
+
+```cpp
+// ExampleReplicationGraph.cpp
+#include "ExampleReplicationGraph.h"
+#include "ReplicationGraphTypes.h"
+#include "Engine/NetConnection.h"
+#include "GameFramework/Actor.h"
+
+void UExampleReplicationGraph::InitGlobalActorClassSettings()
+{
+    Super::InitGlobalActorClassSettings();
+    FClassReplicationInfo Info;
+    Info.SetCullDistanceSquared(0.f); // 两名单实验不做空间距离剔除。
+    Info.ReplicationPeriodFrame = 1;
+    GlobalActorReplicationInfoMap.SetClassInfo(AActor::StaticClass(), Info);
+}
+
+void UExampleReplicationGraph::InitGlobalGraphNodes()
+{
+    PublicList = CreateNewNode<UReplicationGraphNode_ActorList>();
+    AddGlobalGraphNode(PublicList.Get());
+}
+
+void UExampleReplicationGraph::InitConnectionGraphNodes(
+    UNetReplicationGraphConnection* Manager)
+{
+    Super::InitConnectionGraphNodes(Manager);
+    check(Manager && Manager->NetConnection);
+    const FConnectionKey Key(Manager->NetConnection.Get());
+    check(!ByConnection.Contains(Key)); // 本例每条连接只初始化一次。
+    auto* Node = CreateNewNode<UReplicationGraphNode_ActorList>();
+    PrivateLists.Add(Node); // 显式 UObject 强引用；映射本身只存弱引用。
+    ByConnection.Add(Key, FNodeRef(Node));
+    AddConnectionGraphNode(Node, Manager); // 绝不 AddGlobalGraphNode(Node)。
+
+    // Actor 比连接早登记时，在连接节点建立后重查当前归属。
+    for (const FActorKey& ActorKey : Registered)
+        if (AActor* Actor = ActorKey.Get())
+            if (!Installed.Contains(ActorKey)) RefreshRouting(*Actor);
+}
+
+bool UExampleReplicationGraph::RemoveInstalled(
+    const FNewReplicatedActorInfo& Info)
+{
+    const FActorKey Key(Info.Actor);
+    const FNodeRef* Found = Installed.Find(Key);
+    if (!Found) return true; // 未曾安装，例如当前无 owner。
+    auto* OldNode = Found->Get();
+    if (!OldNode || !OldNode->NotifyRemoveNetworkActor(Info, true))
+    {
+        UE_LOG(LogTemp, Error, TEXT("Lesson route removal failed; stop the scenario"));
+        return false; // 保留记录，不向新节点再加；本次实验应停止并检查残留。
+    }
+    Installed.Remove(Key);
+    return true;
+}
+
+bool UExampleReplicationGraph::RefreshRouting(AActor& Actor)
+{
+    const FActorKey Key(&Actor);
+    if (!Registered.Contains(Key)) return false; // 移除后不能靠刷新复活。
+    const FNewReplicatedActorInfo Info(&Actor);
+    if (!RemoveInstalled(Info)) return false;
+
+    UReplicationGraphNode_ActorList* Target = nullptr;
+    if (Actor.bAlwaysRelevant && !Actor.bOnlyRelevantToOwner)
+        Target = PublicList.Get();
+    else if (Actor.bOnlyRelevantToOwner && !Actor.bAlwaysRelevant)
+    {
+        const FConnectionKey OwnerConnection(Actor.GetNetConnection());
+        if (const FNodeRef* Node = ByConnection.Find(OwnerConnection))
+            Target = Node->Get();
+        // 无 owner/未建连接节点：留在 Registered，不进入任何候选名单。
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("Lesson requires one explicit routing policy"));
+        return false; // 两标记冲突或无策略时，不给公开兜底。
+    }
+    if (Target)
+    {
+        Target->NotifyAddNetworkActor(Info);
+        Installed.Add(Key, FNodeRef(Target));
+    }
+    return true; // 仅表示路由更新完成；Target 为空时是待归属，不是已发送。
+}
+
+void UExampleReplicationGraph::RouteAddNetworkActorToNodes(
+    const FNewReplicatedActorInfo& Info,
+    FGlobalActorReplicationInfo& /*GlobalInfo*/)
+{
+    Registered.Add(FActorKey(Info.Actor));
+    RefreshRouting(*Info.Actor);
+}
+
+void UExampleReplicationGraph::RouteRemoveNetworkActorToNodes(
+    const FNewReplicatedActorInfo& Info)
+{
+    if (RemoveInstalled(Info)) Registered.Remove(FActorKey(Info.Actor));
+}
+```
+
+这里 `Registered` 的待归属数量不超过已登记且未移除的 Actor 数，没有循环定时重试：新增连接节点会重查未安装对象，服务器设置/更换 Owner 后显式 `RefreshRouting`，Actor 移除则清登记。对于例外的移除失败，上面只报告并停止迁移，**不证明旧名单已停止输出**；真实项目要先停候选/解决残留，再恢复，见 §4.8。其他游戏 Actor 若既非公开常驻也非 owner-only，会报告缺策略，因此此图是两种策略的教学起点，不是完整游戏的默认路由器。
+
+关键 API 来源：`InitConnectionGraphNodes` 的入口、`NetConnection` 字段和图注册接口见 [S14][S21]；`FNewReplicatedActorInfo` 构造、`Actor` 类型及 ActorList 成对增删见 [S7][S22]。代码不读取或改写受保护的 `ConnectionGraphNodes`，也没有空实现的回调接口藏住连接映射。
+
+#### 4.3.3 再扩展到空间网格
+
+扩展示例增加可移动 Pawn P，并可用公开 GameState 承担 S 的用途。仍采用 C1/C2 与私有 Actor I；这些对象均在 persistent level，坐标有限、生命周期有效。图增加 Grid；PublicList 与每连接 PrivateList 的职责不变，私有列表仍不注册成全局节点。以下是另一项空间扩展的局部片段，不直接粘入上面的两名单类重复创建 PublicList。
 
 以下是已实现图子类初始化函数中的局部语句；`Grid` 与 `PublicList` 应由图以符合 UObject 生命周期的成员引用保存：
 
@@ -298,6 +477,168 @@ AddGlobalGraphNode(PublicList);
 S 明确路由到 PublicList，P 通过 `AddActor_Dynamic(ActorInfo, GlobalInfo)` 进入 Grid，I 明确加入 PrivateList(C1)。不能使用无分类信息的 `Grid->NotifyAddNetworkActor` 替代所有 Static/Dynamic/Dormancy 决策。GameMode 是服务端规则对象，不因“全局”就应放入客户端常驻列表。
 
 ### 4.4 成对路由与 owner 迁移
+
+先按正常次序做一遍，暂时不引入迟到事件。服务器创建 S/I 并让 NetDriver 正常登记后，图的 `RouteAddNetworkActorToNodes` 将其加入 `Registered`，随后 `RefreshRouting` 分类、安装并登记实际节点。不要同时从游戏代码手动调用 `RouteAddNetworkActorToNodes`，以免把引擎登记与项目路由混为两次独立 Add。
+
+服务器改变 I 的 Owner 时，必须在同一串行更新中紧接着刷新路由。以下函数就是该教学例的同步调用入口；`NewOwner` 是服务器已经核准的 PC1、PC2 或空值。它不接受客户端自报的连接编号，返回 true 也不表示客户端已收到。
+
+```cpp
+// 与上述图类同模块；仅在本例的服务器安全更新界点调用。
+#include "Engine/NetDriver.h"
+#include "GameFramework/PlayerController.h"
+
+bool ChangeLessonOwner(AActor& Item, APlayerController* NewOwner)
+{
+    if (!Item.HasAuthority()) return false;
+    UNetDriver* Driver = Item.GetNetDriver();
+    auto* Graph = Driver
+        ? Cast<UExampleReplicationGraph>(Driver->GetReplicationDriver()) : nullptr;
+    if (!Graph || !Item.bOnlyRelevantToOwner || Item.bAlwaysRelevant) return false;
+    if (NewOwner && NewOwner->GetWorld() != Item.GetWorld()) return false;
+    Item.SetOwner(NewOwner);
+    return Graph->RefreshRouting(Item);
+}
+```
+
+`AActor::GetNetDriver` 与 `UNetDriver::GetReplicationDriver` 是公开查询入口。[S20][S23] 若未选中预期图，函数返回 false；不能偷偷创建第二份图或在进行中替换驱动。初始 Owner 可在服务器生成 I 时通过生成参数 Owner 指定 PC1；若生成后才设 Owner，则同样走 `ChangeLessonOwner`，无归属期间 I 不进入公开名单。
+
+| 步骤与服务器输入 | 节点成员变化、实际登记 | 下一次 Gather 的 S/I 投影 C1 / C2 |
+| --- | --- | --- |
+| ① 已建 C1/C2 节点；生成 S，生成 I 且 Owner=PC1 | S→PublicList，I→PrivateList(C1) | `{S,I}` / `{S}` |
+| ② `ChangeLessonOwner(I, PC2)` | 从登记的 C1 节点移除 I，再加 C2，登记改为 C2 | `{S}` / `{S,I}` |
+| ③ `ChangeLessonOwner(I, nullptr)` | 从 C2 移除；I 留在 Registered，无 Installed 记录 | `{S}` / `{S}` |
+| ④ `ChangeLessonOwner(I, PC1)` | 重新查询 C1 映射；安装 I 并登记 C1 | `{S,I}` / `{S}` |
+| ⑤ 服务器正常 `I.Destroy()`，NetDriver 通知移除 | RouteRemove 按实际节点移除 I，并清 Registered | `{S}` / `{S}` |
+| ⑥ 正常销毁 S，确认移除完成后结束实验 | PublicList 清 S，清登记；这两个测试对象无残留成员 | `{}` / `{}` |
+
+表中 I/S 表示有效 Actor 引用；C1/C2 是具体连接对象，不是可以复用的数组槽。每一行完成后再观察下一次 Gather，不能在同一函数里一口气做完六行，然后期待网络曾发出每个中间状态。PC、GameState 等其他对象不在表的投影内，不据 `{}` 宣称整个图没有对象。销毁请求到路由移除的具体调用时机、通道关闭与客户端销毁交付仍需 UE 实验确认，不能把节点移除成功当作对端已删除。
+
+#### 纯 C++ 集合模型：独立核验上表的名单变化
+
+下面是完整 C++17 程序，只建模上述同步的公开名单、两份私有名单及实际安装记录。连接 0/1 在整个程序中固定存在且不复用；不模拟 NetDriver、UObject、GC、ActorChannel、休眠或异步事件。它可以回答“这几次输入会得到什么候选集合”，不能证明 UE 接线已编译或私有数据不会经其他路径泄露。
+
+```cpp
+#include <array>
+#include <cassert>
+#include <iostream>
+#include <map>
+#include <set>
+#include <stdexcept>
+#include <string>
+
+enum class Policy { Public, OwnerOnly };
+struct Actor { Policy policy; int owner; }; // owner: -1 无归属，0=C1，1=C2。
+class Routes {
+    std::map<char, Actor> actors;
+    std::map<char, int> installed; // -1=Public，0/1=私有；无记录=待归属。
+    std::set<char> publicList;
+    std::array<std::set<char>, 2> privateLists;
+    static void validOwner(int owner) {
+        if (owner < -1 || owner > 1) throw std::invalid_argument("owner");
+    }
+    void uninstall(char id) {
+        auto it = installed.find(id);
+        if (it == installed.end()) return;
+        const int node = it->second;
+        if (node == -1) publicList.erase(id);
+        else privateLists.at(static_cast<std::size_t>(node)).erase(id);
+        installed.erase(it);
+    }
+    void install(char id) {
+        const Actor& a = actors.at(id);
+        if (a.policy == Policy::Public) {
+            publicList.insert(id); installed.emplace(id, -1);
+        } else if (a.owner != -1) {
+            privateLists.at(static_cast<std::size_t>(a.owner)).insert(id);
+            installed.emplace(id, a.owner);
+        }
+    }
+public:
+    void add(char id, Actor a) {
+        validOwner(a.owner);
+        if (!actors.emplace(id, a).second) throw std::invalid_argument("duplicate");
+        install(id);
+    }
+    void setOwner(char id, int owner) {
+        validOwner(owner);
+        Actor& a = actors.at(id);
+        if (a.policy != Policy::OwnerOnly) throw std::invalid_argument("policy");
+        uninstall(id); // 按实际旧记录移除；此时 owner 还没有变化。
+        a.owner = owner;
+        install(id);
+    }
+    void remove(char id) { uninstall(id); actors.erase(id); }
+    std::set<char> gather(int connection) const {
+        if (connection < 0 || connection > 1) throw std::invalid_argument("connection");
+        auto result = publicList;
+        const auto& local = privateLists.at(static_cast<std::size_t>(connection));
+        result.insert(local.begin(), local.end());
+        return result;
+    }
+};
+int main() {
+    Routes r;
+    auto expect = [&](const char* phase, std::set<char> c1, std::set<char> c2) {
+        assert(r.gather(0) == c1 && r.gather(1) == c2);
+        std::cout << phase << " C1=" << std::string(c1.begin(), c1.end())
+                  << " C2=" << std::string(c2.begin(), c2.end()) << '\n';
+    };
+    r.add('S', {Policy::Public, -1});
+    r.add('I', {Policy::OwnerOnly, 0});
+    expect("initial", {'I','S'}, {'S'});
+    r.setOwner('I', 1);
+    expect("transfer", {'S'}, {'I','S'});
+    r.setOwner('I', -1);
+    expect("ownerless", {'S'}, {'S'});
+    r.setOwner('I', 0);
+    expect("owner_restored", {'I','S'}, {'S'});
+    bool rejected = false;
+    try { r.setOwner('I', 2); } catch (const std::invalid_argument&) { rejected = true; }
+    assert(rejected);
+    expect("invalid_owner_unchanged", {'I','S'}, {'S'});
+    r.remove('I');
+    expect("remove_private", {'S'}, {'S'});
+    r.remove('S');
+    expect("remove_public", {}, {});
+}
+```
+
+将代码保存为 `route_model.cpp`，可以用 `g++ -std=c++17 -O0 -Wall -Wextra -Werror -pedantic route_model.cpp -o route_model` 编译后执行；不要加 `-DNDEBUG` 关闭本例断言。2026-10-10 在本轮 Linux 宿主以 GCC 14.2.0 编译运行了 O0、O2 及 O1+UBSan 三种配置，输出均为下列七行；UBSan 未报告诊断。这里只记录纯集合模型的实际结果，UE/UHT、网络及性能实验仍未运行。
+
+```text
+initial C1=IS C2=S
+transfer C1=S C2=IS
+ownerless C1=S C2=S
+owner_restored C1=IS C2=S
+invalid_owner_unchanged C1=IS C2=S
+remove_private C1=S C2=S
+remove_public C1= C2=
+```
+
+集合按字符排序，因此 `IS` 与表里的 `{S,I}` 是同一集合。非法 owner=2 在任何变更前被拒绝，旧路由保持；这只是本模型的输入验证，并非引擎连接复用或迟返事件测试。需要接入实际异步生命周期时，再读 §4.8。
+
+
+### 4.5 自定义节点与按类分组
+
+按投射物类分组可以集中调频，但“一个全局 ProjectileList 对每连接原样输出”不是空间过滤。设计前写清：输入对象是否移动、是否依赖携带者、哪些连接能收、流送关卡何时可见；输出只承诺候选。
+
+若只需名单容器，复用 `UReplicationGraphNode_ActorList` 的增删与 level 分类；若必须覆盖 Gather，使用 `Params` 的连接/可见关卡语义，并维护所继承的对象退出合同。[S7][S15] 按类的路由表需要确定继承匹配、重复路由与实例策略覆盖规则；`TMap<UClass*, Node*>` 本身不完成这些工作。依赖 Actor 也需检验接收连接的 level 可见性与周期，不能用“跟随父 Actor”替代所有权政策。[S12]
+
+### 4.6 周期和距离热改的静态推演
+
+假设 C1 对 P 的上次处理图帧为 100，配置最小周期 2，无强制更新、休眠/重建或特殊路径。本例只可提出“周期门限允许的下一候选处理时点为 102”这一推演；102 若未收集到 P 或预算不足仍可能不处理，更无法推导某时刻客户端必收到。C2 有独立上次/下次帧，不能复用 C1 的时点。[S11]
+
+若把距离从 150 m 改成 200 m，仅修改 `FClassReplicationInfo` 不足以证明既有 P、C1/C2 及网格覆盖都更新。目标实现需要明确调用哪些全局/连接设置入口及 Grid 距离通知，并在失败时保持一致旧配置或停止这次变更；不能只完成一半缓存修改就报告热改成功。[S13][S14]
+
+### 4.7 边界与重建
+
+设本例允许区域为 XY `[0, 100000] cm`，格边长 10000 cm；P 传送到区域外时，项目先决定它是否仍应复制，再核对 GridBounds、越界钳制和重建政策。`AddToClassRebuildDenyList` 可以改变某类触发重建的资格，但不是“高速投射物总是更快”的结论。[S13]
+
+静态 Actor 一旦允许移动，就要显式维护旧格/新格或切换到合适策略。修改 CellSize、SpatialBias 或多个 Grid 的边界时，应有重建旧成员、重接连接与失败回退方案。没有这些条件，本篇不提供“传送后直接 ForceRebuild 就好”的生产调用模板。
+
+### 4.8 进阶：迟到事件、安装记录与连接复用
+
+正常同步例只需记住“按实际旧节点移除，再按当前 owner 加入”。一旦允许延迟 ready、disconnect、异步清理或状态重入，还必须回答“这次事件是否有权操作当前安装”。以下完整保留这层设计责任；它是扩展 §4.3 原生例前的条件，不是声称该有限类已经实现。
 
 下面是**项目政策伪代码**，不是 UE API 实现。`RouteRecord[A]` 保存实际插入时的节点/策略/稳定连接身份及本次安装记录标识 R；A 的稳定身份还需区分 World 和 Actor 的这次生命期，不能只用可能复用的数组位置或裸指针。`ExpectedRecord` 是该事件预期操作的旧安装记录；首次安装则预期“尚无记录”，不能把空值当通配符。`ValidatedEvent` 表示宿主完成下述复核的请求，不是引擎类型。
 
@@ -350,24 +691,6 @@ AddOrReroute(A, ExpectedRecord, ValidatedEvent):
 
 真实宿主还需处理旧连接上的既有通道、休眠副本、已排队数据与策略变化。已到达客户端的信息无法靠改 Owner 收回；若旧接收者必须立刻停止使用本地对象，需要明确的生命周期和业务撤销规则。若新 owner 无法解析或连接销毁，保持 fail-closed 待处理/退场，不能为了“看得见”退回全局广播。
 
-### 4.5 自定义节点与按类分组
-
-按投射物类分组可以集中调频，但“一个全局 ProjectileList 对每连接原样输出”不是空间过滤。设计前写清：输入对象是否移动、是否依赖携带者、哪些连接能收、流送关卡何时可见；输出只承诺候选。
-
-若只需名单容器，复用 `UReplicationGraphNode_ActorList` 的增删与 level 分类；若必须覆盖 Gather，使用 `Params` 的连接/可见关卡语义，并维护所继承的对象退出合同。[S7][S15] 按类的路由表需要确定继承匹配、重复路由与实例策略覆盖规则；`TMap<UClass*, Node*>` 本身不完成这些工作。依赖 Actor 也需检验接收连接的 level 可见性与周期，不能用“跟随父 Actor”替代所有权政策。[S12]
-
-### 4.6 周期和距离热改的静态推演
-
-假设 C1 对 P 的上次处理图帧为 100，配置最小周期 2，无强制更新、休眠/重建或特殊路径。本例只可提出“周期门限允许的下一候选处理时点为 102”这一推演；102 若未收集到 P 或预算不足仍可能不处理，更无法推导某时刻客户端必收到。C2 有独立上次/下次帧，不能复用 C1 的时点。[S11]
-
-若把距离从 150 m 改成 200 m，仅修改 `FClassReplicationInfo` 不足以证明既有 P、C1/C2 及网格覆盖都更新。目标实现需要明确调用哪些全局/连接设置入口及 Grid 距离通知，并在失败时保持一致旧配置或停止这次变更；不能只完成一半缓存修改就报告热改成功。[S13][S14]
-
-### 4.7 边界与重建
-
-设本例允许区域为 XY `[0, 100000] cm`，格边长 10000 cm；P 传送到区域外时，项目先决定它是否仍应复制，再核对 GridBounds、越界钳制和重建政策。`AddToClassRebuildDenyList` 可以改变某类触发重建的资格，但不是“高速投射物总是更快”的结论。[S13]
-
-静态 Actor 一旦允许移动，就要显式维护旧格/新格或切换到合适策略。修改 CellSize、SpatialBias 或多个 Grid 的边界时，应有重建旧成员、重接连接与失败回退方案。没有这些条件，本篇不提供“传送后直接 ForceRebuild 就好”的生产调用模板。
-
 ## 五、最佳实践与验证建议
 
 ### 5.1 先保证数据边界和生命周期
@@ -379,6 +702,8 @@ AddOrReroute(A, ExpectedRecord, ValidatedEvent):
 5. 先区分普通复制与 FastShared，再评估共享名单/数据；连接差异和私有状态不能被共享路径绕过。
 
 ### 5.2 验证矩阵（本轮均未运行）
+
+下表全部是 UE 场景；§4.4 已运行的纯集合模型不覆盖这些验收。
 
 | 场景 | 需观察的中间证据 | 验收目标 |
 | --- | --- | --- |
@@ -470,5 +795,12 @@ AddOrReroute(A, ExpectedRecord, ValidatedEvent):
 - S17：[AActor::TearOff，UE 5.5](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/AActor/TearOff?application_version=5.5)、[AActor 当前 API](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/AActor)，停止复制与 GetTearOff/TornOff 备注；不认证最后发送顺序
 - S18：[ActorListFrequencyBuckets](https://dev.epicgames.com/documentation/unreal-engine/API/Plugins/ReplicationGraph/UReplicationGraphNode_ActorListF-)、[DynamicSpatialFrequency](https://dev.epicgames.com/documentation/unreal-engine/API/Plugins/ReplicationGraph/UReplicationGraphNode_DynamicSpa-)，分桶及动态距离频率节点
 - S19：[Migrate to Iris，UE 5.6](https://dev.epicgames.com/documentation/en-us/unreal-engine/migrate-to-iris-in-unreal-engine?application_version=5.6)，Differences Specific to Replication Graph
+
+- S20：[Actor Owner and Owning Connection 当前页](https://dev.epicgames.com/documentation/en-us/unreal-engine/actor-owner-and-owning-connection-in-unreal-engine)、[AActor API](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/AActor)，本次读取的 GetNetConnection/GetNetDriver、Owner 链与公开类接口；不等于私有路由自动迁移
+- S21：[InitConnectionGraphNodes](https://dev.epicgames.com/documentation/unreal-engine/API/Plugins/ReplicationGraph/UReplicationGraph/InitConnectionGraphNodes)、[UNetReplicationGraphConnection](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/ReplicationGraph/UNetReplicationGraphConnection)，连接初始化签名、公开 NetConnection 字段；未读取受保护列表或私有实现
+- S22：[FNewReplicatedActorInfo](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/ReplicationGraph/FNewReplicatedActorInfo)、[ReplicationGraph 类型目录](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/ReplicationGraph)，构造、Actor/level 字段及 FActorRepListType=AActor* 的公开声明
+- S23：[UNetDriver API](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/UNetDriver)，GetReplicationDriver 的查询签名；不证明配置已加载
+
+S20—S23 是本次教学返修新增核对，返回标题为 UE 5.8；独立 GetNetConnection 短路径请求失败后，采用上述成功返回的指南与 AActor 类页，未把失败页面记为证据。这些 API 选段支持静态接线选择，不认证 UHT、链接或完整运行时行为。
 
 继续做目标版本源码研究时，原文的定位用途仍保留：插件 `ReplicationGraph.h` / `ReplicationGraphTypes.h` 查声明，`BasicReplicationGraph.cpp` 查示例策略，`ReplicationGraph.cpp` 查图更新与调度，`ReplicationGraphDebugging.cpp` 查命令绑定，Generic 的 `NetDriver.cpp` 查对照流程；Iris 的源码位置按目标 checkout 单独定位。本篇不新增这些引擎源码正文，也不以旧行号认证当前安装。
