@@ -4,423 +4,381 @@ title: "02 UI 数据绑定与 MVVM"
 status: stable
 verified: []
 maturity: L2
+updated: 2026-10-10
 ---
 # 02 UI 数据绑定与 MVVM
-> 知识成熟度：L2（本轮审计修订时补标）。
-> 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
-> 兼容性边界：适用于 UE5.8 编辑器/运行时，UE4.27 与早期 UE5 仅作迁移背景，具体模块以正文为准。
-> 官方参考：[UE 5.8 官方文档](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
-> 最后更新：2026-08-06（本轮元数据维护）。
+
+> 知识成熟度：L2。主要机制已按 Epic 公开文档和 API 选段静态核对；下文操作是待在项目中复现的教学示例，不是已运行结果。
+> 版本基准：2026-10-10 实际访问的 Epic 页面标题标示 Unreal Engine 5.8；UMG Viewmodel 页面仍标为 Beta。显式 `application_version=5.8` 链接读取失败，本文采用无版本参数页面，不把它当作不可变版本快照。
+> 适用范围：UMG 客户端界面的属性读取、事件刷新和 ViewModel 绑定；前置是会创建 Widget Blueprint、变量和按钮事件。旧 UE4 / 早期 UE5 项目仅作为选型背景，先确认其实际插件与 API。
+> 证据边界：本次没有读取 UE checkout、运行 UHT/编译或启动编辑器/PIE；不沿用旧稿的本机安装路径、CL 或运行结论。源码内部实现见关联专题，需另行核对。
+> 最后更新：2026-10-10（修正通知、初始化与列表误区，补全金币显示的正常教学路径）。
 
 ## 1. 概述
 
-UI 开发中最大的复杂度来源不是"画界面"，而是"让界面跟上数据"。本章系统讲解 UE 中 UI 与数据同步的三种主流方案，从最基础的**属性绑定（Binding）**，到**事件驱动刷新（Event-driven Refresh）**，再到 UE5.1+ 引入的**原生 MVVM（Model-View-ViewModel）框架**，并给出各自的适用场景与工程实践。
+假设玩家金币从 100 变成 110：数据已经正确，屏幕仍可能显示 100。UI 数据同步要解决三个不同的问题：**读谁的值、何时重新读、读完怎样写到控件**。创建一个叫 ViewModel 的对象只解决第一步的一部分。
 
-三种方案的本质区别：
+本文先解释三种方案，再完成一个金币面板：初次打开显示 100，按按钮后显示 110，再次写入 110 不需要重复通知。最后再处理多界面共享、双向输入、列表和退场。它负责使用层；绑定编译器、执行队列和 Trace 全链路分别留给 [UMGMVVM 源码](27-UMGMVVM源码.md) 与 [UI 状态与可观测性闭环](06-UI状态与可观测性闭环.md)。
 
-| 方案 | 刷新机制 | 粒度 | 解耦程度 | 适用场景 |
-| --- | --- | --- | --- | --- |
-| 属性绑定 | 每帧轮询（Poll） | 粗（整控件） | 低 | 少量低频数据 |
-| 事件驱动 | 数据变更时广播（Push） | 中（可精确到控件） | 中 | 大多数游戏 UI |
-| MVVM（UE5.1+） | 属性变更通知 + 自动绑定 | 细（精确到属性） | 高 | 大型项目、列表、复杂表单 |
+| 方案 | 谁决定重新读取 | 控件如何得到值 | 适合的起点 |
+| --- | --- | --- | --- |
+| 传统属性绑定 | UMG 对绑定属性求值 | 绑定函数或属性提供结果 | 认识旧项目和快速原型，需评估轮询成本 |
+| 事件驱动 | 业务变化事件 | 处理器调用 `SetText` / `SetPercent` 等 | 少量控件，或已有可靠事件源 |
+| MVVM | 字段通知与绑定配置 | 绑定从指定源实例取值、转换、写入目标 | 同一数据驱动多个显示、复杂表单、可复用 UI |
 
 ```mermaid
 flowchart LR
-    subgraph 传统方案
-        A1[GameState 数据] -->|每帧 Get 或事件广播| B1[Widget Blueprint]
-        B1 --> C1[手动 SetText / SetVisibility]
+    subgraph 事件驱动
+        A[Model 数据改变] --> B[变化事件]
+        B --> C[Widget 更新函数]
+        C --> D[SetText]
     end
-    subgraph MVVM 方案
-        A2[Model 数据] -->|变更通知| B2[ViewModel 属性]
-        B2 -->|绑定| C2[控件自动刷新]
+    subgraph MVVM
+        E[Model 数据改变] --> F[更新 ViewModel]
+        F --> G[字段通知]
+        G --> H[执行绑定与转换]
+        H --> I[控件显示]
     end
 ```
 
-选择建议：
+两条路线都需要把业务变化接入 UI。MVVM 减少手工连接每个显示属性的代码，不会替你发现任意 Model 赋值，更不会自动复制服务器数据。
 
-- **原型 / 小功能**：属性绑定或事件驱动即可，不要过度设计；
-- **核心 UI（背包、商城、角色面板）**：优先 MVVM（UE5.1+）或规范的事件驱动；
-- **已有 UE4 项目**：事件驱动 + 手动刷新是主流，MVVM 需要升级到 UE5.1+ 并引入插件。
-
----
+静态版本号直接初始化一次即可；低频变化并不是选择轮询的理由。Epic 的 [UMG 优化指南](https://dev.epicgames.com/documentation/unreal-engine/optimization-guidelines-for-umg-in-unreal-engine?lang=en-US) 建议使用事件更新，避免 raw attribute binding 和无必要的 Tick。对于已有 UE4 项目，可以先把初始化、事件刷新和解绑做好，不必仅为显示金币引入新架构。
 
 ## 2. 核心概念（表格）
 
-| 概念 | 英文 | 说明 | 所属方案 |
-| --- | --- | --- | --- |
-| 属性绑定 | Widget Binding | 在 Widget Blueprint 中把控件属性绑定到函数返回值 | 属性绑定 |
-| 绑定函数 | Binding Function | 每帧被调用的返回函数，如 `GetHealthText` | 属性绑定 |
-| 轮询 | Polling | 每帧查询数据源判断是否变化 | 属性绑定 |
-| 委托 | Delegate | C++/蓝图的事件回调机制 | 事件驱动 |
-| 动态多播委托 | Dynamic Multicast Delegate | 可序列化、可在蓝图中绑定的委托 | 事件驱动 |
-| 事件分发器 | Event Dispatcher | 蓝图侧的事件广播机制 | 事件驱动 |
-| 脏标记 | Dirty Flag | 记录"数据已变化待刷新"的标志 | 事件驱动 |
-| Model | Model | 数据与业务规则（游戏状态、背包数据） | MVVM |
-| View | View | 界面（Widget Blueprint） | MVVM |
-| ViewModel | ViewModel | 暴露给 View 的属性与命令，UI 与 Model 的中介 | MVVM |
-| 属性通知 | Property Notification | 属性变化时触发 `FieldNotify` 回调 | MVVM |
-| 字段通知 | FieldNotify | UE5.1+ 中标记可被 UI 绑定的属性 | MVVM |
-| 绑定属性 | Bindable Property | 可被 View 绑定的属性（`UE::FieldNotify`） | MVVM |
-| 绑定源 | Binding Source | 绑定的数据来源（ViewModel 或自身属性） | MVVM |
-| 命令 | Command | ViewModel 暴露的可执行操作（如 `OnClick`） | MVVM |
-| 列表虚拟化 | List Virtualization | ListView 只实例化可见条目 | 事件驱动 / MVVM |
-
----
+| 概念 | 在本文里的职责 | 常见混淆 |
+| --- | --- | --- |
+| Model | 金币、背包等业务事实与规则 | Widget 中的显示副本不是新的业务权威 |
+| View | Widget Blueprint 与其子控件 | 显示层仍要处理输入和局部交互 |
+| ViewModel | 把业务状态投影成 UI 所需字段与操作入口 | 可以持有显示快照和编辑草稿，不等于复制整套业务系统 |
+| Binding Source | 某个运行时对象实例 | 类、类默认值、同类型的另一个实例都不是当前源 |
+| Getter / Setter | 读写字段的访问入口 | C++ 直接赋值不会自动经过访问器 |
+| FieldNotify | 字段可参与通知的约定 | 标记本身不拦截所有内存写入 |
+| Conversion Function | 把源类型转换为目标类型 | `int32` 到 `FText` 不能假定自动且可逆 |
+| Delegate / Event Dispatcher | C++ / 蓝图的事件通知手段 | 订阅变化不等于获取当前快照 |
+| Dirty Flag | 合并多次变化后再刷新 | 若每帧检查，检查本身仍有成本 |
+| List Item / Entry Widget | 数据对象 / 可复用的显示行 | 一百条数据不要求一百个常驻 Widget |
 
 ## 3. 原理详解
 
 ### 3.1 属性绑定（Widget Binding）
 
-#### 工作机制
-
-在 Widget Blueprint 的 Details 面板中，某些属性（如 `Text`、`Visibility`、`Color`）右侧有"绑定"下拉菜单，选择"Bind"后会生成一个绑定函数（如 `Get_Text_0`）。**该函数在控件需要该属性时被调用**：
-
-- 静态绑定：控件重绘/重建时调用；
-- 动态绑定：对 `Text` 等属性，实际上每次 `Tick`（或失效时）都会重新求值，以确保文本更新。
+传统的 Details → Bind → Create Binding 会生成返回值函数。例如读取 PlayerState 的 Health，再返回格式化文本。它易于搭建，但数据没变也可能反复求值。不要在 Getter 里扣款、发请求或修改状态，也不要把每次求值等同于整棵 Widget 树都重绘；属性求值、布局失效和绘制是不同阶段。
 
 ```mermaid
 flowchart TD
-    A[控件需要属性值] --> B[调用绑定函数]
-    B --> C{绑定函数逻辑}
-    C --> D[从 GameState / PlayerState 读取]
-    C --> E[计算派生值（百分比、格式）]
-    D --> F[返回新值]
-    E --> F
-    F --> G[控件显示更新]
+    A[控件属性被求值] --> B[绑定函数]
+    B --> C[读取有效数据源]
+    C --> D[计算百分比或显示文本]
+    D --> E[返回与目标兼容的值]
 ```
 
-#### 优缺点
-
-优点：
-
-- 零样板代码，蓝图里点几下即可；
-- 无需手动管理刷新时机，简单场景非常省事。
-
-缺点：
-
-- **每帧轮询**：绑定函数每帧被调用（或频繁求值），对象多时开销大；
-- **解耦差**：绑定函数直接依赖数据源类型，无法复用；
-- **粒度粗**：一个绑定变化会触发整个控件（甚至子树）失效重绘；
-- **难调试**：调用时机隐式，排查"为什么没刷新"很痛苦。
-
-> 结论：属性绑定适合"静态显示 + 低频变化"（如角色名字、版本号）。高频变化的数值（血量、金币）不建议用绑定函数。
+传统绑定与 MVVM 在某些编辑器位置都出现 Bind。Epic 也支持从 Details 选择 ViewModel 字段；因此判断依据应是实际绑定源和绑定类型。本文统一在 View Bindings 窗口配置，避免交替编辑同一目标。传统属性绑定步骤与限制可对照 [Property Binding](https://dev.epicgames.com/documentation/en-us/unreal-engine/property-binding-for-umg-in-unreal-engine)。
 
 ### 3.2 事件驱动刷新（Event-driven Refresh）
 
-#### 工作机制
-
-数据源在变化时**主动广播事件**，UI 监听事件并更新自己。UE 提供两层机制：
-
-- **C++ 动态多播委托**（`DECLARE_DYNAMIC_MULTICAST_DELEGATE`）：可被蓝图绑定；
-- **蓝图 Event Dispatcher**：蓝图侧的事件广播器。
+事件通知“刚才改变了什么”，快照回答“现在是什么”。只订阅 `OnGoldChanged`，不会补发打开界面以前发生的变化，所以需要**订阅后读取一次当前值**，再靠后续事件更新。
 
 ```mermaid
 sequenceDiagram
-    participant SRC as 数据源（角色/背包）
-    participant UI as Widget Blueprint
-    SRC->>SRC: 数据变化（扣血、加金币）
-    SRC->>UI: 广播 OnHealthChanged(NewHealth)
-    UI->>UI: 更新 HealthBar / HealthText
-    UI-->>SRC: 无需轮询，其余帧零开销
+    participant SRC as 数据源
+    participant UI as Widget
+    UI->>SRC: 订阅 OnGoldChanged
+    UI->>SRC: 读取当前金币
+    SRC-->>UI: 100
+    UI->>UI: 显示 100
+    SRC->>SRC: 金币改成 110
+    SRC->>UI: OnGoldChanged(110)
+    UI->>UI: 显示 110
 ```
 
-#### 关键实践：脏标记 + 批量刷新
+这个顺序假设操作在游戏线程中顺序完成；异步快照与推送的版本竞争属于后续状态闭环专题。事件驱动可省去持续查询，仍有广播、格式化、目标写入和绘制成本，不能称“界面零空闲开销”。
 
-高频事件（如每帧更新位置）需要"合并刷新"：
-
-1. 事件处理器只设置脏标记（Dirty Flag），不立即刷新；
-2. 在 Widget 的 `Tick`（或 MVVM 的刷新时机）检查脏标记，统一刷新一次。
-
-```cpp
-// 示例：脏标记合并刷新
-void UHUDWidget::OnHealthChanged(float NewHealth)
-{
-    bHealthDirty = true; // 只标记，不立刻刷新
-}
-
-void UHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
-{
-    Super::NativeTick(MyGeometry, InDeltaTime);
-    if (bHealthDirty)
-    {
-        bHealthDirty = false;
-        UpdateHealthDisplay();
-    }
-}
-```
-
-#### 优缺点
-
-优点：
-
-- **零空闲开销**：不变化就不消耗；
-- **解耦好**：数据源不知道 UI 的存在，只广播事件；
-- **刷新可控**：可以精确到控件、精确到属性。
-
-缺点：
-
-- **样板代码多**：每个数据都要"声明委托 + 绑定 + 解绑 + 更新函数"；
-- **生命周期管理麻烦**：Widget 销毁时必须解绑，否则悬空委托；
-- **列表/复杂表单**：增删改事件组合容易出错。
-
-### 3.3 MVVM 框架（UE5.1+）
-
-#### 设计目标
-
-MVVM（Model-View-ViewModel）把 UI 拆成三层：
-
-- **Model**：数据与业务逻辑（不依赖 UI）；
-- **View**：界面（Widget Blueprint），只声明"我显示什么数据"，不写刷新逻辑；
-- **ViewModel**：暴露可绑定属性与命令，监听 Model 变化并转发给 View。
+### 3.3 MVVM：值、通知和绑定必须连起来
 
 ```mermaid
 flowchart LR
-    M[Model<br/>背包数据/角色状态] <-->|读取与通知| VM[ViewModel<br/>可绑定属性 + 命令]
-    VM <-->|属性绑定 + 命令调用| V[View<br/>Widget Blueprint]
-    V -->|用户操作| VM --> M
-    M -->|数据变化| VM --> V
+    M[Model 当前金币] -->|业务事件或显式投影| VM[ViewModel.GoldCount]
+    VM -->|FieldNotify| B[绑定读取同一个源实例]
+    B --> T[整数转 FText]
+    T --> V[TextBlock.Text]
+    V -->|用户意图| C[命令或输入事件]
+    C --> M
 ```
 
-#### UE5.1+ 原生 MVVM 的核心机制
+以 100 → 110 为例：写入口先得到新值，更新 ViewModel，发出 GoldCount 通知；订阅该字段的绑定重新读取值，转换后写入 Text。通知不是把所有业务对象重新扫描一遍，也不保证所有绑定都在 Setter 返回前完成显示。
 
-1. **FieldNotify 字段**：`UPROPERTY(BlueprintReadWrite, FieldNotify)` 标记的属性，变化时自动通知绑定方；
-2. **绑定源（Binding Source）**：Widget Blueprint 中为控件属性选择绑定源（ViewModel 实例或自身），并在 Details 中选择要绑定的属性；
-3. **自动刷新**：绑定属性变化时，框架自动标记对应控件失效并刷新，无需手写更新函数；
-4. **列表支持**：`ListView` 可直接绑定 ViewModel 集合，支持增删改自动同步；
-5. **编辑器工具**：Widget Designer 中提供"绑定"下拉框，可直接选择 ViewModel 属性。
+蓝图的 FieldNotify 变量提供带广播的 Set 节点；C++ 应在 Setter 中显式调用通知宏。`UE_MVVM_SET_PROPERTY_VALUE` 先比较旧值和新值，只有变化才赋值、通知；`UE_MVVM_BROADCAST_FIELD_VALUE_CHANGED` 则表达“这个字段需要重新读取”。因此，把一个已修改的数组与它自身传入比较式 Setter，不是强制刷新办法。宏语义已对照 [UMG Viewmodel：Triggering FieldNotifies with Macros](https://dev.epicgames.com/documentation/en-us/unreal-engine/umg-viewmodel-for-unreal-engine#triggeringfieldnotifieswithmacros) 和 [UMVVMViewModelBase API](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/ModelViewViewModel/UMVVMViewModelBase)。
+
+初次显示也需要执行绑定。没有发生一次“变化”并不意味着初值应为空；默认建立正常绑定时要能把已有源值送到目标。反过来，如果选了 One Time，它能解释初次显示，不能解释后续持续刷新。
+
+## 4. 代码 / 蓝图示例
+
+### 4.1 完整正常路径：金币 ViewModel → Widget
+
+这是只需蓝图的教学实验。金币由测试按钮改变，用来隔离并观察 UI 同步链；实际项目应由已有的业务事件更新同一 ViewModel。以下步骤与预期尚未在本轮编辑器中执行。
+
+**准备源数据。** 在测试项目启用 UMG Viewmodel 插件，按编辑器提示完成所需重启。创建父类为 `MVVMViewModelBase` 的蓝图 `VM_Wallet`，添加 Integer 变量 `GoldCount`，默认值设为 100，并启用它的 FieldNotify 铃铛。编译该蓝图；拖出变量的 Set 节点时，应能识别为带广播的设置节点。缺少父类或 View Bindings 窗口时先查插件，不能跳过这一步。
+
+**建立唯一源。** 创建 `WBP_Wallet`，加入一个显示数字的 `TextBlock_Gold` 与一个标为“设为 110”的按钮。打开 Designer 的 Window → Viewmodels，添加 `VM_Wallet`，把源名称明确设为 `Wallet`，Creation Type 选 `Create Instance`。这条路线让每个 Widget 实例使用自己的 ViewModel；后面所有 Get/Set 都从 Widget 的 Variables → Viewmodel 分类取得 `Wallet`，不要额外 Construct 一个同类型对象。
+
+**接通显示。** 打开 Window → View Binding，添加 `TextBlock_Gold` 的 Text 绑定。方向选 `One Way to Widget`，确认该绑定处于启用状态。源需要读取 `Wallet.GoldCount`，目标需要 `FText`：显式选择 `To Text (Integer)` 转换，把转换参数 Value 链接到 `Wallet.GoldCount`，保留其余数字格式默认值。不是把 Value 固定填写成 100。然后编译 Widget，处理所有源路径、目标类型或转换参数错误。
+
+若当前版本的转换候选里找不到该函数，可在 `WBP_Wallet` 新建一个 Pure、Const 函数 `GoldToText`：仅一个 Integer 输入、一个 Text 输出，内部连接 `To Text (Integer)`。在该绑定的 Conversion Functions 中选择它，并把输入链接到同一 GoldCount。这个小包装只做格式转换，不修改 VM、不产生业务事件。整数转换入口可核对 [UKismetTextLibrary API](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/UKismetTextLibrary)。
+
+**触发一次变化。** 在按钮 OnClicked 中，Get `Wallet` → Is Valid → `Set GoldCount` 为 110。使用 VM 的带通知设置节点，不调用 TextBlock 的 SetText。这样按钮只改源数据，显示更新必须经过绑定，才能证明这条教学链接通。
+
+**把面板显示出来。** 在测试地图的本地 PlayerController Blueprint 的 BeginPlay 中，Create Widget，类选 `WBP_Wallet`，Owning Player 接 Self；保存返回值到 `WalletWidget` 变量，再 Add to Viewport。为鼠标测试设置合适的 Game and UI 输入模式、将焦点给该 Widget 并显示鼠标。这里仅描述测试准备，不表示本轮已替项目修改输入或设置。
+
+按下列顺序复现，并在有误的最早一步停止排查：
+
+| 操作 | 预期 | 说明 |
+| --- | --- | --- |
+| 打开面板，尚未点击 | 显示 100 | 初始绑定读取默认值，不依赖一次额外业务变化 |
+| 点击“设为 110” | 显示 110 | 同一源实例发生变化，通知驱动显示 |
+| 再点击一次 | 仍显示 110 | 相同状态不要求再次广播；画面相同本身不能证明回调次数 |
+| 给该按钮设置节点加断点 | 运行时 Target 是当前 Wallet | 排除“修改了另一个 VM” |
+| 临时改成 One Time to Widget，再重新创建面板 | 初值 100；点击后 VM 为 110，文本仍为 100 | 这是方向/模式负向对照，之后恢复 One Way |
+| 创建第二个独立 WBP_Wallet，仅修改第一个的 Wallet | 第二个仍显示自己的 100 | Create Instance 没有自动共享数据 |
+
+这组步骤覆盖了完整路径：**创建源 → 建立绑定 → 首次读取 → 改同一源 → 通知 → 转换 → 显示**；是否跑通应以上表的实际复现结果判定。运行时想显示真实金币时，把测试按钮的赋值替换为“Model 事件处理器调用 Wallet 的写入口”，并在接入时读取当前业务快照。
+
+### 4.2 C++ 对照：Getter、Setter 与派生字段
+
+下例是用于同一金币展示的完整类定义示意，文件名为 `WalletViewModel.h`；不是已通过 UHT 的工程交付。模块需已有 Core/CoreUObject/Engine，并按头文件公开使用情况声明 `ModelViewViewModel` 依赖。跨模块使用时还要补本项目导出宏。头文件入口来自 [UMVVMViewModelBase](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/ModelViewViewModel/UMVVMViewModelBase)，本轮未读取其实现。
 
 ```cpp
-// C++ 中声明一个可绑定属性
-UCLASS()
-class UInventoryViewModel : public UMVVMViewModelBase
+#pragma once
+
+#include "CoreMinimal.h"
+#include "MVVMViewModelBase.h"
+#include "WalletViewModel.generated.h"
+
+UCLASS(BlueprintType, Blueprintable)
+class UWalletViewModel : public UMVVMViewModelBase
 {
     GENERATED_BODY()
 
 public:
-    UPROPERTY(BlueprintReadWrite, FieldNotify, Setter, Getter)
-    int32 GoldCount;
+    int32 GetGoldCount() const { return GoldCount; }
 
     void SetGoldCount(int32 NewValue)
     {
-        UE_MVVM_SET_PROPERTY_VALUE(GoldCount, NewValue);
+        // 本教学钱包只演示非负余额；真实交易校验仍由 Model 负责。
+        const int32 AcceptedValue = FMath::Max(0, NewValue);
+        if (UE_MVVM_SET_PROPERTY_VALUE(GoldCount, AcceptedValue))
+        {
+            // 派生函数不是普通变量访问器，需要单独通知其依赖变化。
+            UE_MVVM_BROADCAST_FIELD_VALUE_CHANGED(GetGoldText);
+        }
     }
+
+    UFUNCTION(BlueprintPure, FieldNotify)
+    FText GetGoldText() const
+    {
+        return FText::AsNumber(GoldCount);
+    }
+
+private:
+    UPROPERTY(BlueprintReadWrite, FieldNotify, Getter, Setter,
+              meta=(AllowPrivateAccess="true"))
+    int32 GoldCount = 100;
 };
 ```
 
-> 注意：`UE_MVVM_SET_PROPERTY_VALUE` 宏会自动调用 `UE_MVVM_BROADCAST_FIELD_VALUE_CHANGED`，把"属性已变化"广播给所有绑定的控件。
+这里有两种有意区分的 Getter。`GetGoldCount` 是 GoldCount 属性的 C++ 访问器，名字与 `Getter` 约定对应；`GetGoldText` 是独立可绑定的派生 FieldNotify 函数。前者不额外标 `UFUNCTION`，避免与属性节点重复；后者必须可反射、Pure、Const、无输入且只返回一个值。使用这份类时可以沿用 §4.1 的 GoldCount 转换，也可以将 Text 直接绑定到 GetGoldText，二选一即可。
 
-#### MVVM 的代价与前提
+`SetGoldCount(110)` 会通知数值及派生文本；再设 110 不进入变更分支。若增加第二个影响显示的字段，它的写入口也必须通知相应派生函数，框架不会从函数体推导 C++ 依赖关系。私有成员使外部代码不能写 `VM->GoldCount = 110` 来绕过 Setter；Getter/Setter specifier 只规定反射访问入口，不改变 C++ 的赋值规则。
 
-- 需要 UE5.1+（5.0 及以下需要第三方插件，如 MVVM 社区插件）；
-- ViewModel 生命周期需要管理（谁创建、谁销毁、何时绑定/解绑）；
-- 绑定是"隐式"的，出问题时排查链路比事件驱动长；
-- 对简单 UI 属于过度设计。
+### 4.3 手动创建与共享：什么时候不用 Create Instance
 
----
+两个面板希望读同一个 Wallet 时，分别 Create Instance 会得到两个源。可把源设为 Manual，由本地玩家相关的拥有者创建并持有 VM，再把同一实例提供给两个 Widget。不要为了共享本地玩家数据直接上全局集合，否则分屏或多账号页面可能混用状态。
 
-## 4. 代码 / 蓝图示例
+在 Widget 的 Viewmodels 中把源设为可手动设置；Blueprint 先取得 MVVM Engine Subsystem（`UMVVMSubsystem`），把目标 Widget 接到 `Get View From User Widget` 的 UserWidget 输入。检查返回的 MVVM View 有效后，将它接到 `Set View Model` 的 Target；Name 必须匹配源名 `Wallet`，对象类型必须匹配，并检查返回值。API 位于 [UMVVMSubsystem](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/ModelViewViewModel/UMVVMSubsystem) 和 [UMVVMView::SetViewModel](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/ModelViewViewModel/UMVVMView/SetViewModel)，不是通用的 `Widget->InitializeViewModel(VM)`。
 
-### 4.1 属性绑定：蓝图绑定函数
+Manual 源在赋值前为空，UI 应有明确的不可用状态；获得有效源后再允许操作。如果 View 已初始化，SetViewModel 成功会重新执行引用该源的绑定，适合接入已存在的当前值。Name 错误、类型不符或源不可设置时，应修正配置，不要靠每帧重复注入掩盖失败。
 
-1. 选中 `TextBlock_Health`；
-2. Details → `Text` → 绑定（Bind）→ 创建绑定函数 `Get_HealthText`；
-3. 在函数中：
+拥有者需要通过 GC 可见的强引用保留共享 VM，例如 `UPROPERTY()` 的 `TObjectPtr<UWalletViewModel>`；临时局部裸指针不是长期持有方案，Outer 也不应被当作唯一保活证据。`TWeakObjectPtr` 适合观察而不拥有，不会替你保持 VM 存活。[Object Pointers](https://dev.epicgames.com/documentation/en-us/unreal-engine/object-pointers-in-unreal-engine) 说明了这些差别。释放长期引用后交由 UObject GC 处理，不能对 ViewModel 手工 `delete`。
 
-```mermaid
-flowchart LR
-    A[Get Player State] --> B[Cast to AMyPlayerState]
-    B --> C[Get Health]
-    C --> D[To Text Format<br/>血量：{0}]
-    D --> E[Return Value]
-```
+### 4.4 事件驱动与传统绑定的对照用途
 
-### 4.2 事件驱动：C++ 委托 + 蓝图绑定
+保留事件驱动路线，是为了能在已有项目中完成同一显示目标。下面是数据源的**类内片段**，不是完整 PlayerState 文件；Health 的声明、初值、写入口和广播值都列出，避免示例引用未定义成员。
 
 ```cpp
-// MyPlayerState.h
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnHealthChanged, float, NewHealth);
+// 类外：动态多播委托声明。
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
+    FOnHealthChanged, float, NewHealth);
 
-UCLASS()
-class AMyPlayerState : public APlayerState
-{
-    GENERATED_BODY()
+// 以下成员放入已有 AMyPlayerState 的类定义中。
 public:
     UPROPERTY(BlueprintAssignable)
     FOnHealthChanged OnHealthChanged;
 
-    void SetHealth(float NewHealth);
-};
+    UFUNCTION(BlueprintPure)
+    float GetHealth() const { return Health; }
 
-// MyPlayerState.cpp
-void AMyPlayerState::SetHealth(float NewHealth)
-{
-    Health = NewHealth;
-    OnHealthChanged.Broadcast(NewHealth);
-}
+    void SetHealth(float NewHealth)
+    {
+        const float Accepted = FMath::Clamp(NewHealth, 0.0f, 100.0f);
+        if (Health == Accepted) { return; }
+        Health = Accepted;
+        OnHealthChanged.Broadcast(Health);
+    }
+
+private:
+    UPROPERTY()
+    float Health = 100.0f;
 ```
 
-蓝图中：`Event Construct` → `Get Player State` → `Cast` → `Bind Event to OnHealthChanged` → 在事件中 `Set Percent`。
+对应 Blueprint：获得并保存正确玩家的数据源 → Bind Event to OnHealthChanged → 立即 GetHealth 调用同一显示函数。事件参数是 0–100 的血量，本例给 ProgressBar 的 Percent 应用 `Clamp(Health / 100.0, 0, 1)`，不能把 75 直接当 75% 的输入。若最大血量可变，改成除以 MaxHealth 并先处理零分母。蓝图 Event Dispatcher 同样遵守“绑定、初始快照、更新、解绑”的顺序；C++ 采用匹配的 `AddDynamic` / `RemoveDynamic`，动态回调须满足反射要求。[动态委托参考](https://dev.epicgames.com/documentation/en-us/unreal-engine/dynamic-delegates-in-unreal-engine)
 
-### 4.3 事件驱动：蓝图 Event Dispatcher
-
-1. 在数据组件（如 `UInventoryComponent`）中创建 Event Dispatcher `OnGoldChanged`；
-2. 数据变化处调用 `OnGoldChanged.Broadcast(NewGold)`；
-3. Widget 的 `Construct` 中 `Bind Event to OnGoldChanged`；
-4. Widget 的 `Destruct` 中 `Unbind Event`（重要！）。
-
-### 4.4 MVVM：创建 ViewModel 并绑定
-
-**步骤 1**：创建 ViewModel 蓝图（或 C++ 类）：
-
-- 右键 → Blueprint Class → 父类选择 `MVVMViewModelBase`；
-- 添加 `UPROPERTY(BlueprintReadWrite, FieldNotify)` 的变量 `GoldCount`；
-- 变量名右键 → 属性通知设置，勾选"属性变化时通知"。
-
-**步骤 2**：在 Widget Blueprint 中初始化：
-
-- Details → `Initialize View Model`（或 C++ `InitializeViewModel`）；
-- 选择 ViewModel 类，设置初始化数据。
-
-**步骤 3**：绑定控件属性：
-
-- 选中 `TextBlock_Gold` → `Text` → 绑定 → 选择绑定源为 ViewModel → 选择 `GoldCount`（自动生成 `To Text` 转换）；
-- 运行后修改 `GoldCount`，文本自动更新。
-
-```cpp
-// C++ 侧初始化与修改
-UInventoryViewModel* VM = NewObject<UInventoryViewModel>(this);
-Widget->InitializeViewModel(VM);
-VM->SetGoldCount(100);   // 界面自动刷新
+```mermaid
+flowchart LR
+    A[旧绑定函数 Get_HealthText] --> B[取得正确玩家的数据源]
+    B --> C{源有效?}
+    C -->|是| D[读取 Health 并格式化 FText]
+    C -->|否| E[返回明确的不可用文本]
+    D --> F[返回给 Text 属性]
+    E --> F
 ```
 
-### 4.5 MVVM 列表绑定
+上图保留旧项目读码用途：传统函数也要处理空源和类型转换。若迁移为事件刷新，应移除该目标的旧绑定，让一个更新入口负责它，避免 Getter 与手动写入互相干扰。
 
-1. ViewModel 添加 `UPROPERTY(BlueprintReadOnly, FieldNotify)` 的 `TArray<FItemData> Items`；
-2. Widget 中添加 `ListView`，在 Details 中把 `ListItems` 绑定到 ViewModel 的 `Items`；
-3. 设置 `Entry Widget Class` 为列表项 Widget；
-4. 数据增删时调用 `UE_MVVM_SET_PROPERTY_VALUE`，列表自动同步。
+### 4.5 列表：先分清集合与条目
 
-### 4.6 stat / 调试命令清单表
+UListView 使用 UObject 项，Entry Widget 实现 `IUserObjectListEntry`。所以 `TArray<FItemData>` 不能未经适配就当作 UListView 的对象列表。把业务结构投影为稳定的条目对象或条目 ViewModel，再通过 `SetListItems` 或合适的增删接口更新列表；这些是 [UListView](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/UMG/UListView) 的公开接口，不需要虚构通用“自动同步容器”。
 
-| 命令 | 作用 | 关注指标 | 使用场景 |
-| --- | --- | --- | --- |
-| `stat unit` | 帧时间总览 | `Game` 线程耗时 | 确认 UI 刷新是否拖慢帧 |
-| `stat slate` | Slate 统计 | `Invalidate` 次数 | 绑定导致的重绘风暴 |
-| `stat UMG` | UMG 统计 | Widget 数量 | 绑定创建的控件泄漏 |
-| `stat memory` | 内存统计 | `UObject` 数量 | ViewModel / Widget 泄漏 |
-| `obj list class=UserWidget` | 列出所有 UserWidget 实例 | 数量与引用 | 排查控件未销毁 |
-| `obj list class=MVVMViewModelBase` | 列出 ViewModel 实例 | 数量 | 排查 ViewModel 泄漏 |
-| `log LogMVVM Verbose` | MVVM 日志 | 绑定/通知记录 | MVVM 绑定链路调试 |
-| `Slate.EnableInvalidationPanels 0` | 关闭失效面板 | 对比开销 | 判断重绘是否来自绑定 |
+要分别处理两类变化：
 
----
+- **集合改变**：新增、删除、换序需要让列表收到新的项集合或对应操作。若用通知字段暴露集合，应在真正变更后通知该字段；C++ 原地修改后可显式广播，或先构造独立的新值再调用比较式 Setter，不能用 `UE_MVVM_SET_PROPERTY_VALUE(Items, Items)`。
+- **已有项改变**：对象仍是同一个，数量或名字改变时，由该项字段的通知刷新行。仅通知外层数组不能代替项字段的通知。
+
+Entry 可被回收和分配给另一项；在 `OnListItemObjectSet` 接收当前对象、解除旧项订阅并连接新项。[IUserObjectListEntry API](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/UMG/IUserObjectListEntry) 明确该事件对应“被分配新项”。 Entry 收到 `On Entry Released` 时，解除自己登记的当前项订阅并清理该项引用；再次分配新项时重新接入。[IUserListEntry API](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/UMG/IUserListEntry) 将该事件定义为 Entry 不再代表任何列表项；这不删除 Item，也不应执行全量 Unbind All。不要把 Entry 的创建/销毁当作业务条目的创建/删除，也不要要求每个显示行自行创建并拥有一份唯一业务 VM。MVVM 编辑器内具体集合字段、转换与列表适配，应在目标项目确认能编译后使用；本节不声称一条数组绑定就包办全部增量同步。
+
+### 4.6 调试入口：沿一次值传播找断点
+
+先观察当前 Wallet 的身份和 GoldCount，再看设置节点、源通知、绑定启用状态、转换输入和 Text 目标。源码断点定位留给 [UMGMVVM 源码](27-UMGMVVM源码.md)，不要把公开 API 路径当作本轮已读实现。
+
+| 问题 | 先收集什么 | 工具的证据限度 |
+| --- | --- | --- |
+| 点按钮没变化 | OnClicked 是否执行；目标 VM 是否为当前源 | Blueprint 断点与变量值最直接 |
+| VM 已变、显示没变 | One Way/One Time、FieldNotify、类型转换、编译错误 | 逐级排除，不能只看最终画面 |
+| 更新时卡顿 | 空闲与相同变更负载下的 CPU/UI 时间 | `stat unit`、`stat slate` 等是定位入口，细分成本用项目可用的 Insights/Slate 工具 |
+| 重开页面后次数增加 | 每次操作的应用回调数、源/页面实例数 | `obj list class=UserWidget` 等对象清单只是线索，存在对象不等于泄漏 |
+| 列表旧内容串行 | 当前 Item 对象与 Entry 的分配记录 | 检查旧项解绑和新项绑定，不以 Entry 数代替数据项数 |
+
+`stat unit` 与 `stat slate` 的用途已核对 [Stat Commands](https://dev.epicgames.com/documentation/en-us/unreal-engine/stat-commands-in-unreal-engine)，上表命令未在本轮执行；构建配置、统计组、日志类别和 CVar 的实际可用性须在项目中确认。旧稿的 `stat UMG`、`log LogMVVM Verbose` 与 `Slate.EnableInvalidationPanels 0` 不再作为普遍有效的必做步骤；尤其不应靠关闭失效机制来证明某一条绑定正确。工具主责见 [Profiling](../../08-工程实践与质量/调试与性能分析/03-性能分析工具与Profiling.md)。
 
 ## 5. 最佳实践
 
-### 5.1 方案选型决策流程
+### 5.1 选型与更新预算
 
 ```mermaid
 flowchart TD
-    A[开始选型] --> B{数据变化频率?}
-    B -->|低频/静态| C[属性绑定]
-    B -->|高频变化| D{UI 复杂度?}
-    D -->|简单 1-2 个控件| E[事件驱动]
-    D -->|复杂 列表/表单/多界面| F{引擎版本?}
-    F -->|UE5.1+| G[MVVM 推荐]
-    F -->|UE4 / UE5.0| H[事件驱动 + 脏标记<br/>或第三方 MVVM]
-    C --> I[完成]
-    E --> I
-    G --> I
-    H --> I
+    A[这个属性需要何时改变?] --> B{只初始化一次?}
+    B -->|是| C[初始化写入或 One Time]
+    B -->|否| D{已有可靠的变化事件?}
+    D -->|是| E[事件处理器更新少量目标]
+    D -->|否或多个可复用显示| F[设计明确的通知入口]
+    F --> G{当前项目支持并采用 MVVM?}
+    G -->|是| H[ViewModel 加绑定]
+    G -->|否| E
 ```
 
-### 5.2 数据层设计规范
+数据权威只保留一处，但允许 VM 持有只读投影、格式化结果与尚未提交的编辑状态。让业务层决定一笔购买是否成功；VM 暴露“正在请求/失败原因/当前金币”，View 决定如何显示。不要把任何业务写入都塞进格式化函数。
 
-- **数据只存一处**：血量为 PlayerState 属性，UI 不缓存副本；
-- **派生值由数据层计算**：百分比、格式化文本在数据层/ViewModel 完成，UI 只显示；
-- **广播时机统一**：所有数据修改走同一个 Setter，确保一定会广播；
-- **批量变更合并**：一次逻辑产生多次数据变化时，用脏标记合并刷新，避免重复重绘。
+对连续变化可以合并刷新。旧脏标记思路仍有用，但处理器必须保留最新数据，刷新一次后清除脏位；下面是依赖已有 UHUDWidget 声明的局部片段，本轮未编译：
 
-### 5.3 事件生命周期管理
+```cpp
+void UHUDWidget::OnHealthChanged(float NewHealth)
+{
+    PendingHealth = NewHealth;
+    bHealthDirty = true;
+}
 
-- Widget `Construct` 中绑定，`Destruct` 中必须解绑；
-- 优先使用 `TWeakObjectPtr` 持有数据源引用，避免强引用导致数据源无法销毁；
-- C++ 绑定建议使用 `AddDynamic` + `RemoveDynamic` 对称调用；
-- 跨模块事件用 `GameInstanceSubsystem` 或事件总线（Event Bus）转发，避免网状引用。
+void UHUDWidget::NativeTick(const FGeometry& Geometry, float DeltaSeconds)
+{
+    Super::NativeTick(Geometry, DeltaSeconds);
+    if (bHealthDirty)
+    {
+        bHealthDirty = false;
+        UpdateHealthDisplay(PendingHealth);
+    }
+}
+```
 
-### 5.4 MVVM 工程规范（UE5.1+）
+该片段假设已声明 PendingHealth、bHealthDirty 和 UpdateHealthDisplay，并在首次连接数据源时初始化它们。它省的是一帧内重复的昂贵显示处理，不会消除 Tick 检查，也会推迟显示。先测格式化/绑定/布局成本，再决定是否合并。旧稿的“20 个绑定、50 个控件、1000 次广播”等无项目依据的数字不能作为通用红线；预算应来自目标设备、页面负载和可接受的响应延迟。
 
-- ViewModel 只包含"界面所需数据"，不包含游戏逻辑；
-- 每个 Widget 绑定 1~2 个 ViewModel，避免"上帝 ViewModel"；
-- ViewModel 由谁创建就由谁销毁（推荐与 Widget 同生命周期）；
-- 使用 `FieldNotify` 时注意：频繁变化属性（如位置）不要绑定到 UI，仍用脏标记；
-- 列表条目 ViewModel 由列表项 Widget 自行创建，条目销毁时一并销毁。
+### 5.2 单向、双向与重入
 
-### 5.5 性能红线（经验值）
+金币只读显示使用 One Way to Widget；只需要初次拷贝选 One Time。输入控件向 VM 写入时，源控件必须支持相应通知，VM 字段必须允许写入，类型和转换必须满足该方向。仅把方向切为 Two Way 并不能让所有 TextBlock 属性变成用户输入源。
 
-| 指标 | 预算建议 | 说明 |
-| --- | --- | --- |
-| 属性绑定函数数 | < 20 个/界面 | 绑定函数每帧求值，过多拖慢 Game 线程 |
-| 每帧刷新控件数 | < 50 | 超过考虑脏标记合并 |
-| 事件广播频率 | < 1000 次/秒 | 高频事件必须合并 |
-| 列表可见条目 | < 50（移动端） | 超出必须虚拟化 |
-| ViewModel 绑定数 | < 200/Widget | 绑定过多影响初始化与失效管理 |
+双向编辑有三个问题要独立回答：初始值由谁给、输入什么时候提交、无效输入怎样展示。比如“1,000 金币”是显示文本，不应直接反向解析成业务余额。可用独立编辑草稿承接输入，提交时校验，成功后从 Model 重新投影；失败保留错误信息而不修改权威数据。
 
----
+Setter 先规范化再比较，只有接受后的状态改变才通知。转换函数保持无副作用；不要在 A 的显示转换里设置 B，再由 B 回写 A。如果来回舍入造成两个值震荡，修正单位、精度和规范值规则。若具体控件会在程序更新时触发输入事件，应区分程序刷新与用户提交，在必要的短作用域内防止应用处理器重入；不要把“引擎可能检测递归”当作业务不会循环的保证。
+
+### 5.3 退场与重新进入
+
+连接的有效期应与数据需求一致。页面暂时不可见但仍存活时，也可能需要停止业务订阅；数据源替换时应先解除旧源、接入新源，再读取新快照。一个页面的订阅不应替其他页面执行全量 Unbind All。
+
+`Construct` 和 `Destruct` 可以重复发生，不能分别等同于 UObject 只创建一次、永久销毁一次；这是 [Construct](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/UMG/UUserWidget/Construct) 与 [Destruct](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/UMG/UUserWidget/Destruct) 的公开说明。若在这对事件中管理自己的绑定，就让重复进入保持幂等；重新加入时也要刷新快照。
+
+框架管理的 MVVM 源订阅与业务自行绑定的 Model 委托要分别负责。保留对称解绑，是为了停止无用工作、避免重复回调和旧源污染；不能声称每个未解绑的 UObject 委托都会调用已销毁对象。`AddUObject`、弱 Lambda 与 `AddRaw` 的有效性语义不同，详见 [Multicast Delegates](https://dev.epicgames.com/documentation/unreal-engine/multicast-delegates-in-unreal-engine?lang=en-US) 与 [委托事件与对象通信](../../03-引擎架构与资源系统/模块化框架与对象通信/04-委托事件与对象通信.md)。网络回调、页面代次和本地玩家切换的完整合同交由 [UI 状态闭环](06-UI状态与可观测性闭环.md)，不在初学例上另造框架。
 
 ## 6. 常见问题 FAQ
 
-### Q1：绑定函数每帧执行，性能太差怎么办？
+### Q1：绑定函数反复执行，性能差怎么办？
 
-**原因**：`Text` 等属性的绑定函数在控件失效时频繁求值。
-**解决**：改用事件驱动或 MVVM；或把绑定函数逻辑改为"仅在数据变化时被调用"的更新函数。
+确认是传统属性轮询还是主动通知过密。把静态值改为初始化写入；有变化事件时按事件更新。已经是 MVVM 时，检查更新模式和冗余广播，再测转换与布局成本。仅把函数改名为 Refresh 并不会改变它的触发频率。
 
-### Q2：事件绑定后 Widget 销毁了还报错（悬空引用）？
+### Q2：关闭 Widget 后仍有回调怎么办？
 
-**原因**：`Destruct` 中未解绑，数据源广播时调用了已销毁控件的方法。
-**解决**：`Construct`/`Destruct` 对称绑定/解绑；绑定目标用 `TWeakObjectPtr`；或在数据源侧用 `IsValid()` 防护。
+先区分对象已销毁、Slate 资源退场、页面仍存活但隐藏。检查应用绑定是否对称解除、是否重复登记、是否连接了旧数据源，并确认没有不安全的裸指针捕获。Weak Pointer 只解决引用有效性的一部分，不表达“该页面仍应该接收这个结果”。
 
-### Q3：MVVM 绑定后界面不刷新？
+### Q3：MVVM 能显示初值，但之后不刷新？
 
-**原因**：属性未标 `FieldNotify`；修改属性时未走 Setter（直接改内部变量）；或绑定源未初始化。
-**解决**：确认 `UPROPERTY(FieldNotify)`；修改必须走 `UE_MVVM_SET_PROPERTY_VALUE`；检查 Widget 的 `InitializeViewModel` 是否调用。
+按顺序核对：修改的是当前 Wallet 吗？是 One Way 而非 One Time 吗？设置经过通知入口了吗？绑定是否启用且编译通过？转换参数链接到了字段还是写死的常量？不要通过另建 VM 或调用不存在的 InitializeViewModel 来试错。
 
-### Q4：列表数据变化但 UI 不更新？
+### Q4：数组已经改了，列表为什么没变？
 
-**原因**：`TArray` 是值类型，直接 `Add` 不会触发 FieldNotify。
-**解决**：修改后调用 `UE_MVVM_SET_PROPERTY_VALUE(Items, Items)`（整体赋值触发通知），或使用支持增量通知的容器（如 `FMVVMFieldNotification` 结合 `UListView` 的 `SetListItems`）。
+原地 Add 不等于发出集合通知；自身赋值也不能使比较式 Setter 发现旧状态。还要确认送给 UListView 的是 UObject 项，以及改的是集合还是某个 Item 字段。行被复用时重新连接当前 Item，不能只在行的 Construct 读取一次。
 
 ### Q5：MVVM 与 CommonUI 能一起用吗？
 
-**可以**。CommonUI 管输入与焦点，MVVM 管数据绑定，两者职责互补。常见组合：`CommonActivatableWidget`（View）+ `MVVMViewModelBase`（ViewModel）。
+职责可以互补：CommonUI 管页面激活、输入与焦点，MVVM 管字段同步。集成时确认页面激活/退场和数据接入时机；仅加入两个插件不等于这条链已验证。继续阅读 [CommonUI 输入路由与焦点管理](07-CommonUI输入路由与焦点管理.md)。
 
-### Q6：要不要给 UE4 项目引入 MVVM？
+### Q6：UE4 项目是否需要迁移 MVVM？
 
-**建议**：除非项目有明确的重构预算，否则 UE4 项目继续用"事件驱动 + 手动刷新"，并在升级 UE5.1+ 时再迁移 MVVM。第三方 MVVM 插件需要评估维护风险。
+以成本和问题为依据。事件驱动可先解决当前刷新需求；迁移前确认引擎版本、可用插件、资产改造和回归范围。本文只核对所列 5.8 公开页面，不把“UE5.1+”当所有小版本行为一致的承诺。
 
-### Q7：绑定函数的返回值类型可以自定义吗？
+### Q7：返回自定义类型能绑定吗？
 
-**可以**。绑定函数可以返回任意蓝图可访问类型；对于 `Text` 绑定建议返回 `FText`（本地化友好），不要返回 `FString`。
+首先必须对反射系统可见，并满足读取、目标写入和转换兼容性。不是任意 Blueprint 类型都能直接填入任意控件属性。显示文字优先使用 FText；格式化函数无副作用，且输入变化需要能触发重新求值。
 
-### Q8：多个界面需要同一份数据，怎么共享？
+### Q8：多个界面怎么共享数据？
 
-**推荐**：数据放在共享的 Subsystem / 组件中，每个界面持有自己的 ViewModel 或事件绑定；不要让多个 Widget 直接修改同一份 UI 状态。
-
----
+共享 Model，按需要共享同一个 VM，或各自持有显示投影。前者要显式注入同一实例，后者要给每个投影接入通知与初始快照。Global Collection、Property Path 和 Manual 是不同的取源策略，不是“绑定类相同就自动共享”。
 
 ## 7. 关联阅读与前后置专题
 
-- [01-UMG框架与控件系统](01-UMG框架与控件系统.md)：控件层级、布局系统与失效面板基础；
-- [03-性能分析工具与Profiling](../../08-工程实践与质量/调试与性能分析/03-性能分析工具与Profiling.md)：属性绑定轮询开销排查与 Profiling 判读；
-- [04-渲染与加载性能优化](../../08-工程实践与质量/调试与性能分析/04-渲染与加载性能优化.md)：UI 渲染合批与虚拟化列表性能调优；
-- [06-UI状态与可观测性闭环](06-UI状态与可观测性闭环.md)：MVVM 与 CommonUI、Unreal Insights 串联的可观测性闭环；
-- [12-27 UMGMVVM源码](27-UMGMVVM源码.md)：FMVVMFieldNotification 与绑定执行引擎底层源码剖析；
-- [12-49 Lyra-UI控件与表现源码](49-Lyra-UI控件与表现源码.md)：Lyra 商业级项目中 ViewModel 扩展与表现层解耦落地；
-- [03-游戏玩法编程/04-委托事件与对象通信](../../03-引擎架构与资源系统/模块化框架与对象通信/04-委托事件与对象通信.md)：委托广播机制与弱引用绑定的生命周期安全；
-- [UE 5.8 官方文档：UMG Viewmodel](https://dev.epicgames.com/documentation/en-us/unreal-engine/umg-viewmodel-for-unreal-engine)（FieldNotify、Viewmodel、绑定源）
-- [UE 5.8 官方 API：ModelViewViewModel 模块](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/ModelViewViewModel)（运行时类与源码位置）
-- [UE 5.8 官方 API：UListView](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/UMG/UListView?lang=en-US)（虚拟化列表）
+- [01-UMG框架与控件系统](01-UMG框架与控件系统.md)：控件层级、布局系统与失效面板基础。
+- [03-性能分析工具与Profiling](../../08-工程实践与质量/调试与性能分析/03-性能分析工具与Profiling.md)：属性求值、绑定与渲染开销的 Profiling 判读。
+- [04-渲染与加载性能优化](../../08-工程实践与质量/调试与性能分析/04-渲染与加载性能优化.md)：UI 渲染合批与虚拟化列表性能调优。
+- [06-UI状态与可观测性闭环](06-UI状态与可观测性闭环.md)：页面、输入、异步数据与证据的跨系统闭环。
+- [12-27 UMGMVVM源码](27-UMGMVVM源码.md)：源码层的 source、字段通知、绑定执行与生命周期；本文不复述其实现结论。
+- [12-49 Lyra-UI控件与表现源码](49-Lyra-UI控件与表现源码.md)：项目 UI 表现层的后续阅读入口，本文未重新核对 Lyra。
+- [03-游戏玩法编程/04-委托事件与对象通信](../../03-引擎架构与资源系统/模块化框架与对象通信/04-委托事件与对象通信.md)：委托和不同引用方式的有效性边界。
+- [Epic：UMG Viewmodel](https://dev.epicgames.com/documentation/en-us/unreal-engine/umg-viewmodel-for-unreal-engine)：本轮核对 Required Setup、Blueprint/C++ FieldNotify、Creation Type、View Bindings、Direction、Conversion 与 Arrays 选段。
+- [Epic API：ModelViewViewModel 模块](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/ModelViewViewModel)：模块导航；本文实际逐项核对的是上文链接的 ViewModelBase、Subsystem 与 SetViewModel API。
+- [Epic API：UListView](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/UMG/UListView)：对象项和虚拟化 Entry。
 
----
+## 8. 验证建议与证据范围
 
-*下一篇：03-性能分析工具与Profiling —— 用数据说话，定位 UI 与渲染瓶颈。*
+本轮完成的是公开资料核对、例子设计与静态阅读；没有观察到上述 UI 运行结果，不填运行成功或独立审核的 verified 事件。公开 API 页面给出了声明及源码位置，不能代替实现文件阅读。
+
+复现时先执行 §4.1 的初值、单次更新、同值更新和 One Time 负向对照，再补：Manual 空源/错误名注入应可诊断；正确替换源应显示新快照；双向输入的无效文本不得提交；关闭重开不应累积应用订阅；列表换项后旧 Item 的变化不得污染新行。用断点或计数判断通知和处理次数，不能由同一幅画面推断只有一次调用。
+
+网页读取限制也属于证据边界：显式 5.8 参数页、`Conv_IntToText` 单函数页读取失败；前者改用标题标示 5.8 的正文，后者通过 UKismetTextLibrary 类页核到签名。`GetViewFromUserWidget` 单函数页未给出有效正文，使用 Subsystem 类页核对。执行模式搜索返回过 5.7/5.5 页面，因此未把其枚举细节写成 5.8 已核对结论；目标项目需要时应另查本版本。未读取任何 UE 私有源码，也未更改项目插件、输入、编译或运行设置。
+
+*下一篇：[03-性能分析工具与Profiling](../../08-工程实践与质量/调试与性能分析/03-性能分析工具与Profiling.md) —— 定位 UI 与渲染瓶颈。*
