@@ -699,8 +699,8 @@ documents:
   "知识/02-数学与游戏算法/空间查询与碰撞/04-空间分区与索引.md":
     kind: doc
     maturity: L2
-    bytes: 25010
-    lines: 489
+    bytes: 48162
+    lines: 545
   "知识/02-数学与游戏算法/空间查询与碰撞/06-弹道与射击算法.md":
     kind: doc
     maturity: L2
@@ -724,8 +724,8 @@ documents:
   "知识/02-数学与游戏算法/路径搜索与导航/02-动态寻路LPA与DStarLite.md":
     kind: doc
     maturity: L2
-    bytes: 14379
-    lines: 346
+    bytes: 32455
+    lines: 354
   "知识/02-数学与游戏算法/路径搜索与导航/03-NavMesh工程Recast与Detour.md":
     kind: doc
     maturity: L2
@@ -1104,8 +1104,8 @@ documents:
   "知识/04-图形动画与物理仿真/渲染管线与光照/11-RenderTarget与SceneCapture实战.md":
     kind: doc
     maturity: L2
-    bytes: 13885
-    lines: 342
+    bytes: 45388
+    lines: 510
   "知识/04-图形动画与物理仿真/渲染管线与光照/30-Lumen与MegaLights源码.md":
     kind: doc
     maturity: L2
