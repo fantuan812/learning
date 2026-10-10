@@ -689,8 +689,8 @@ documents:
   "知识/02-数学与游戏算法/空间查询与碰撞/03-AOI与视野计算.md":
     kind: doc
     maturity: L2
-    bytes: 20875
-    lines: 341
+    bytes: 23049
+    lines: 248
   "知识/02-数学与游戏算法/空间查询与碰撞/04-碰撞检测.md":
     kind: doc
     maturity: L2
