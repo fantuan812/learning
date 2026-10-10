@@ -1134,8 +1134,8 @@ documents:
   "知识/04-图形动画与物理仿真/物理求解与动力学/03-物理约束与关节.md":
     kind: doc
     maturity: L2
-    bytes: 19407
-    lines: 345
+    bytes: 50022
+    lines: 539
   "知识/04-图形动画与物理仿真/物理求解与动力学/04-布娃娃与物理动画.md":
     kind: doc
     maturity: L2
@@ -1234,8 +1234,8 @@ documents:
   "知识/04-图形动画与物理仿真/音频播放与程序化声音/02-衰减与3D空间音效.md":
     kind: doc
     maturity: L2
-    bytes: 21478
-    lines: 433
+    bytes: 54815
+    lines: 603
   "知识/04-图形动画与物理仿真/音频播放与程序化声音/03-MetaSound与程序化音频.md":
     kind: doc
     maturity: L2
