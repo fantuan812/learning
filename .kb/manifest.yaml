@@ -1239,8 +1239,8 @@ documents:
   "知识/04-图形动画与物理仿真/音频播放与程序化声音/03-MetaSound与程序化音频.md":
     kind: doc
     maturity: L2
-    bytes: 21016
-    lines: 431
+    bytes: 48235
+    lines: 586
   "知识/04-图形动画与物理仿真/音频播放与程序化声音/04-Quartz音频时钟与节奏同步.md":
     kind: doc
     maturity: L2
@@ -2069,8 +2069,8 @@ documents:
   "知识/08-工程实践与质量/持续交付与发布治理/04-资源管理与热更新.md":
     kind: doc
     maturity: L2
-    bytes: 18531
-    lines: 424
+    bytes: 41129
+    lines: 505
   "知识/08-工程实践与质量/持续交付与发布治理/05-CI质量门禁与缺陷管理.md":
     kind: doc
     maturity: L2
