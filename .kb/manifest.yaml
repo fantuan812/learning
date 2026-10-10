@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-10 (Slate widget and Chaos vehicle; independent static contracts and source boundaries retained).
+# Generated: 2026-10-10 (Complete PointGrid and Flow Field teaching examples; finite observed runs; initial checkpoint; count increment 0).
 version: 4
 
 okf:
@@ -699,8 +699,8 @@ documents:
   "知识/02-数学与游戏算法/空间查询与碰撞/04-空间分区与索引.md":
     kind: doc
     maturity: L2
-    bytes: 48162
-    lines: 545
+    bytes: 51920
+    lines: 590
   "知识/02-数学与游戏算法/空间查询与碰撞/06-弹道与射击算法.md":
     kind: doc
     maturity: L2
@@ -734,8 +734,8 @@ documents:
   "知识/02-数学与游戏算法/路径搜索与导航/03-流场与群体寻路.md":
     kind: doc
     maturity: L2
-    bytes: 37291
-    lines: 519
+    bytes: 48685
+    lines: 679
   "知识/02-数学与游戏算法/路径搜索与导航/04-RVO与数值鲁棒.md":
     kind: doc
     maturity: L2
