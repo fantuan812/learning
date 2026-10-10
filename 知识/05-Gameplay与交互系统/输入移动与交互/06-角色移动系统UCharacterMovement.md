@@ -4,666 +4,429 @@ title: "06 角色移动系统（UCharacterMovementComponent）"
 status: stable
 verified: []
 maturity: L2
+updated: 2026-10-10
+description: "从移动意图到胶囊位移，解释模式、地面约束、自定义移动和网络重演的责任边界。"
+sources:
+  - resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/understanding-networked-movement-in-the-character-movement-component-for-unreal-engine?application_version=5.6
+    title: "Epic Networked Movement — UE 5.6"
+  - resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent?application_version=5.5
+    title: "Epic UCharacterMovementComponent — UE 5.5"
+  - resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/root-motion-in-unreal-engine?application_version=5.6
+    title: "Epic Root Motion — UE 5.6"
+  - resource: https://dev.epicgames.com/documentation/en-us/unreal-engine/walkable-slope-in-unreal-engine?application_version=5.6
+    title: "Epic Walkable Slope — UE 5.6"
 ---
+
 # 06 角色移动系统（UCharacterMovementComponent）
-> 知识成熟度：L2（本轮审计修订时补标）。
-> 版本基准：UE 5.8.0（本机 `Engine/Build/Build.version`：CL 55116800，分支 `++UE5+Release-5.8`）。
-> 兼容性边界：适用于 UE5.8 编辑器/运行时，UE4.27 与早期 UE5 仅作迁移背景，具体模块以正文为准。
-> 官方参考：[Unreal Engine UE5.8 官方文档总页](https://dev.epicgames.com/documentation/en-us/unreal-engine)。
-> 最后更新：2026-08-06（本轮元数据维护）。
 
-> 面向 UE 5.x 客户端开发（API 已对照 UE 5.8 引擎源码核对，涉及版本差异处单独标注）。本文详解角色移动的核心组件 `UCharacterMovementComponent`（下文简称 CMC）：移动模式（Walking / Falling / Flying / Swimming / Custom）、速度与加速度/减速度/摩擦模型、跳跃与重力、Custom 移动模式的扩展方式、CMC 子类化与蓝图覆写，以及移动在多人网络下的视角（客户端预测 / 服务器校正），并交叉指向「06-网络同步 · 03-客户端预测与延迟补偿」。
+> 知识成熟度：L2。实际核对固定版本的 Epic 公开文档及 API 选段；正文中的教学推导、项目策略和接线片段不等于引擎实现或运行结果。
+> 版本基准：网络移动、Root Motion 与坡度说明采用 UE 5.6 文档；C++ API 采用实际返回正文的 UE 5.5 页面；属性补充采用 UE 5.6 Python API。两组资料分别定位，不声称覆盖所有 UE5 版本。
+> 知识基线：经典 `ACharacter` / `UCharacterMovementComponent`（CMC）的同步移动责任模型；地面和跳跃的纸面例采用世界 -Z 恒定重力。Mover、异步移动、任意重力实现及整套 Chaos 刚体求解不在本文覆盖内。
+> 最后更新：2026-10-10（重建输入、模式、碰撞和扩展教学链，纠正事件、网络与版本断言）。
+> 证据边界：本轮未读取目标机器的 `Engine/Build/Build.version`、UE 5.8 CL 55116800 或对应引擎实现；旧稿的“本机源码已核对”不能作为本轮事实。未运行 UE、UHT、编译、PIE、联机、弱网或性能实验；验证标签见第九节。
 
-## 一、概述
+## 一、为什么角色移动不能只改坐标
 
-在 UE 中，"角色（Character）"并不是一个会自己动起来的 Actor：真正负责移动的是挂载在它身上的 **移动组件（Movement Component）**。`ACharacter` 在构造函数中默认创建了一个 `UCharacterMovementComponent`（属性名 `CharacterMovement`），并配套创建了碰撞用的 `UCapsuleComponent`（`CapsuleComponent`）与表现用的 `USkeletalMeshComponent`（`Mesh`）。三者协同：
+角色向前走，需要同时回答四个问题：玩家想往哪里走，当前运动规则允许怎么走，碰撞后实际走到了哪里，以及其他机器如何复现这次移动。只把 Actor 位置每帧加一个向量，能表达目标，却没有定义落地、台阶、刹车和校正后的行为。
 
-- **CapsuleComponent**：提供胶囊体碰撞，是移动组件"推着走"的那个碰撞体（CMC 中的 `UpdatedComponent`）；
-- **CharacterMovementComponent**：每帧计算速度、处理碰撞、响应输入加速度、切换移动模式、处理网络移动复制的核心；
-- **Mesh**：只负责渲染与动画表现，移动组件不会直接驱动骨骼，动画蓝图通过速度/加速度状态驱动动画。
+CMC 的作用是把这些问题接起来：输入形成移动意图，模式选择运动规则，运动规则提出位移，碰撞和地面约束决定可接受的结果，结果又改变下一步的模式和速度。`ACharacter` 则提供与这套机制配合的宿主、跳跃/蹲伏接口以及网络接线。给任意 `APawn` 加一个 CMC，不会自动得到相同合同。[网络移动基础](https://dev.epicgames.com/documentation/en-us/unreal-engine/understanding-networked-movement-in-the-character-movement-component-for-unreal-engine?application_version=5.6)
 
-CMC 把"移动"抽象成一套**速度（Velocity）+ 移动模式（MovementMode）**的状态机：输入产生加速度 → 加速度按当前模式与摩擦/制动模型修正为速度 → 速度驱动 `UpdatedComponent` 做带碰撞的移动（swept move）→ 撞击/落地/离开地面等事件改变移动模式，进入下一轮循环。
-
-之所以需要这么一套复杂体系，而不是像 `UFloatingPawnMovement` 那样"直接给速度"：
-
-1. **角色移动要"感觉对"**：加速、减速、空气控制、坡度、台阶、摩擦这些手感参数必须可调、可分模式；
-2. **要处理大量物理交互**：地面判定、斜坡滑动、墙体阻挡、落水判定、与移动平台（base）的相对运动；
-3. **要能扩展**：冲刺、滑铲、爬墙、游泳、飞行等玩法都是基于移动模式或 `Custom` 模式扩展出来的；
-4. **要在网络下保持一致**：同一套移动逻辑需要在服务器与客户端上运行并互相校验（客户端预测 + 服务器校正）。
-
-因此，学习 CMC 的关键不是记住每个参数，而是理解：**输入 → 加速度 → 速度 → 位移 → 碰撞 → 模式切换**这条主链，以及每个环节上"哪些参数生效、哪些虚函数可覆写、哪些事件可监听"。
-
-> 提示：`UFloatingPawnMovement`（`FloatingPawnMovement.h`）是 `UPawnMovementComponent` 的极简实现，只有 `MaxSpeed / Acceleration / Deceleration / TurningBoost` 四个核心参数，不做重力、摩擦与碰撞解析，适合非角色类 Pawn（如无人机、幽灵相机载体）的简单飞行移动；它也是理解 CMC "多做了什么"的最佳对照物。
-
-## 二、核心概念速览
-
-| 概念 | 类 / 类型 | 作用 | 关键点 |
-| --- | --- | --- | --- |
-| 移动模式 | `EMovementMode`（EngineTypes.h） | 定义角色当前处于哪种运动状态 | `MOVE_None / Walking / NavWalking / Falling / Swimming / Flying / Custom` |
-| 自定义子模式 | `uint8 CustomMovementMode` | 在 `MOVE_Custom` 下细分玩法状态 | 0~255，由 `SetMovementMode(MOVE_Custom, N)` 指定 |
-| 移动组件 | `UCharacterMovementComponent` | 每帧计算速度、执行带碰撞位移、维护模式 | 继承自 `UPawnMovementComponent`，同时实现 `IRVOAvoidanceInterface` 与 `INetworkPredictionInterface` |
-| 角色 | `ACharacter` | 移动组件的宿主 | `GetCharacterMovement<T>()` 获取；`CapsuleComponent / Mesh` 为默认子对象 |
-| 速度 | `FVector Velocity`（基类 `UMovementComponent`） | 当前线速度，位移的直接来源 | 每帧由 `CalcVelocity` 修正，网络校正也作用于它 |
-| 加速度 | `FVector Acceleration` | 本帧输入产生的加速度向量 | 由 Pawn 的输入逻辑（`AddMovementInput`）产生，按 `MaxAcceleration` 截断 |
-| 最大速度 | `MaxWalkSpeed / MaxWalkSpeedCrouched / MaxFlySpeed / MaxSwimSpeed` | 各模式下的速度上限 | 统一由虚函数 `GetMaxSpeed()` 查询，子类可覆写做动态限速 |
-| 加速度上限 | `MaxAcceleration` | 加速度向量长度上限 | 默认 2048，决定"起步/变向"手感 |
-| 地面摩擦 | `GroundFriction` | 行走时速度与地面的摩擦系数 | 与 `MaxAcceleration` 共同决定巡航手感 |
-| 制动减速度 | `BrakingDecelerationWalking / Falling / Swimming / Flying` | 无输入时速度衰减速率 | 行走默认 2048；下落默认 0（空中几乎没有制动） |
-| 分离制动 | `bUseSeparateBrakingFriction / BrakingFriction / BrakingFrictionFactor` | 是否用独立的制动摩擦 | 关闭时制动使用 `GroundFriction × BrakingFrictionFactor` |
-| 重力 | `GravityScale` | 重力缩放系数（1 = 正常） | 实际重力还受 PhysicsVolume 影响，CMC 不做真实物理积分 |
-| 跳跃初速 | `JumpZVelocity` | 跳跃时赋予的 Z 轴初速度 | 与重力共同决定跳跃高度 |
-| 空气控制 | `AirControl / AirControlBoostMultiplier / AirControlBoostVelocityThreshold` | 空中转向/加速的控制力 | 默认 0.05，低空低速时有 boost |
-| 转身 | `RotationRate / bOrientRotationToMovement / bUseControllerDesiredRotation` | 角色朝向的旋转策略 | 与 Pawn 的 `bUseControllerRotationYaw` 配合使用 |
-| 状态查询 | `IsWalking / IsFalling / IsSwimming / IsFlying / IsMovingOnGround / IsCrouching / IsCustomMovementMode` | 蓝图/C++ 查询当前模式 | 注意 `IsWalking() == IsMovingOnGround()` |
-| 模式切换 | `SetMovementMode / OnMovementModeChanged` | 切换模式并触发回调 | C++ 覆写点；蓝图用 `K2_OnMovementModeChanged` 事件 |
-| 落地事件 | `Landed / OnLanded / LandedDelegate`（`FLandedSignature`） | 落地通知 | 蓝图 `OnLanded` 事件节点 |
-| 移动更新事件 | `OnCharacterMovementUpdated`（`FCharacterMovementUpdatedSignature`） | 每次移动更新后广播 | 参数：DeltaSeconds / OldLocation / OldVelocity |
-| 网络移动 | `ReplicateMoveToServer / ServerMove / ClientAdjustPosition / ClientUpdatePositionAfterServerUpdate` | 客户端预测与服务器校正 | 详见「06-网络同步 · 03-客户端预测与延迟补偿」 |
-| 简易移动 | `UFloatingPawnMovement` | 无重力/无碰撞解析的简单飞行 | 只有 MaxSpeed / Acceleration / Deceleration / TurningBoost |
-
-## 三、原理详解
-
-### 3.1 类层次与职责划分
-
-```mermaid
-classDiagram
-    class UActorComponent
-    class UMovementComponent {
-        +FVector Velocity
-        +USceneComponent* UpdatedComponent
-        +TickComponent()
-        +GetMaxSpeed() virtual
-        +StopMovementImmediately()
-        +HandleImpact()
-        +UpdateComponentVelocity()
-    }
-    class UNavMovementComponent
-    class UPawnMovementComponent {
-        +APawn* PawnOwner
-        +AddInputVector()
-        +GetPendingInputVector()
-    }
-    class UCharacterMovementComponent {
-        +EMovementMode MovementMode
-        +uint8 CustomMovementMode
-        +float MaxWalkSpeed / MaxAcceleration
-        +float GroundFriction / GravityScale / JumpZVelocity
-        +PerformMovement()
-        +StartNewPhysics()
-        +CalcVelocity()
-        +PhysWalking() / PhysFalling() / PhysCustom()
-        +SetMovementMode()
-        +ReplicateMoveToServer()
-    }
-    class UFloatingPawnMovement {
-        +float MaxSpeed / Acceleration / Deceleration / TurningBoost
-    }
-    UActorComponent <|-- UMovementComponent
-    UMovementComponent <|-- UNavMovementComponent
-    UNavMovementComponent <|-- UPawnMovementComponent
-    UPawnMovementComponent <|-- UCharacterMovementComponent
-    UPawnMovementComponent <|-- UFloatingPawnMovement
-```
-
-职责要点：
-
-- `UMovementComponent`（MovementComponent.h）定义了移动组件的抽象：持有 `Velocity` 与 `UpdatedComponent`（被移动的 SceneComponent），提供 `TickComponent`、`GetMaxSpeed()`、`StopMovementImmediately()`、`HandleImpact()`、`UpdateComponentVelocity()` 等基础接口。`UpdatedComponent` 默认取拥有者 Actor 的根组件，可通过 `SetUpdatedComponent()` 指定其他组件。
-- `UPawnMovementComponent` 增加了 `PawnOwner` 与输入向量（`AddInputVector` / `ConsumeInputVector`）机制，把"玩家输入 → 移动意图"引入移动组件。
-- `UCharacterMovementComponent` 是完整的角色移动实现：模式状态机、分物理函数、摩擦/制动模型、跳跃、Crouch、RootMotion 支持、网络移动复制（实现 `INetworkPredictionInterface`）与避障（`IRVOAvoidanceInterface`）。
-- `UFloatingPawnMovement` 是"够用即可"的轻量实现，直接 `Velocity += InputVector * Acceleration`，不处理地面与碰撞解析。
-
-> 源码位置（UE 5.8）：`Runtime/Engine/Classes/GameFramework/CharacterMovementComponent.h`、`Character.h`、`MovementComponent.h`、`FloatingPawnMovement.h`；`EMovementMode` 定义于 `Runtime/Engine/Classes/Engine/EngineTypes.h`。
-
-### 3.2 一帧移动的完整流程
-
-```mermaid
-flowchart TD
-    TICK["TickComponent(DeltaTime)"] --> ROLE{"本地控制<br/>LocallyControlled ?"}
-    ROLE -- 是 --> PERF["PerformMovement(DeltaTime)"]
-    ROLE -- 否,模拟代理 --> SIM["SimulatedTick(DeltaSeconds)<br/>位置平滑插值"]
-    ROLE -- 服务器上的客户端角色 --> PERF
-    PERF --> SUB["子步拆分<br/>MaxSimulationTimeStep / MaxSimulationIterations"]
-    SUB --> SNEW["StartNewPhysics(DeltaTime, Iterations)"]
-    SNEW --> SW{"按 MovementMode 分发"}
-    SW -- Walking --> PW["PhysWalking"]
-    SW -- Falling --> PF["PhysFalling"]
-    SW -- Flying --> PFL["PhysFlying"]
-    SW -- Swimming --> PS["PhysSwimming"]
-    SW -- Custom --> PC["PhysCustom<br/>(按 CustomMovementMode 分发)"]
-    PW --> CV["CalcVelocity(DeltaTime, Friction, bFluid, BrakingDeceleration)"]
-    PF --> CV
-    PFL --> CV
-    PS --> CV
-    PC --> CV
-    CV --> MOVE["SafeMoveUpdatedComponent / MoveUpdatedComponent<br/>带碰撞位移"]
-    MOVE --> HIT{"发生撞击?"}
-    HIT -- 是 --> IMP["HandleImpact(Hit)<br/>触发事件、可能切换模式"]
-    HIT -- 否 --> UPD["UpdateComponentVelocity()"]
-    IMP --> UPD
-    UPD --> EVT["OnCharacterMovementUpdated 广播"]
-    EVT --> NET{"网络客户端?"}
-    NET -- 是 --> RPC["ReplicateMoveToServer<br/>保存 SavedMoves 并发送 ServerMove"]
-    NET -- 否 --> DONE["结束本帧移动"]
-```
-
-关键理解：
-
-1. **子步（Sub-step）**：CMC 会把一帧的 `DeltaTime` 拆成不超过 `MaxSimulationTimeStep`（常见默认 0.05s）的小步、最多 `MaxSimulationIterations`（常见默认 8）次迭代执行物理，避免高速运动穿模、保证低帧率下的稳定性。
-2. **物理函数（Phys\*）**：每种移动模式对应一个 `PhysXxx(deltaTime, Iterations)` 虚函数（`PhysWalking / PhysFalling / PhysFlying / PhysSwimming / PhysCustom`），它们是"该模式下怎么算速度、怎么移动"的实现体。
-3. **CalcVelocity**：所有模式的公共速度求解器——输入加速度、摩擦、制动减速度在这里被整合成最终 `Velocity`，子类覆写它即可"从根上"改变手感。
-4. **位移与事件**：`SafeMoveUpdatedComponent` 完成带扫掠的碰撞移动；撞击走 `HandleImpact`；移动完成后广播 `OnCharacterMovementUpdated`，本地网络客户端还会把本次移动打包发给服务器。
-
-> 蓝图侧：这些流程不需要自己实现。需要感知时优先监听 `OnCharacterMovementUpdated`（C++ 绑定或蓝图 `On Character Movement Updated` 事件）、`OnMovementModeChanged`（`K2_OnMovementModeChanged`）与 `OnLanded`，而不是在 Tick 里反复查询。
-
-### 3.3 移动模式状态机
-
-```mermaid
-stateDiagram-v2
-    [*] --> None
-    None --> Walking : SetMovementMode(Walking)
-    Walking --> Falling : 脚下失去支撑
-    Walking --> Swimming : 进入水体
-    Walking --> Flying : SetMovementMode(Flying)
-    Falling --> Walking : 落地(Landed)
-    Falling --> Swimming : 进入水体(浅水判定)
-    Falling --> Flying : SetMovementMode(Flying)
-    Swimming --> Walking : 离开水体/触底
-    Swimming --> Falling : 浮出水面失去支撑
-    Flying --> Walking : 落地
-    Flying --> Falling : 关闭飞行
-    Walking --> Custom : SetMovementMode(Custom, N)
-    Custom --> Walking : 恢复地面模式
-    Swimming --> Flying : SetMovementMode(Flying)
-    NavWalking --> Walking : 离开 NavMesh
-    Walking --> NavWalking : SetGroundMovementMode(NavWalking)
-```
-
-移动模式由 `EMovementMode` 表示，UE 5.8 的取值（`EngineTypes.h`）：
-
-| 模式 | 说明 | 典型触发 |
+| 对象 | 持有/处理的内容 | 读者应追踪什么 |
 | --- | --- | --- |
-| `MOVE_None` | 不做任何移动 | 被禁用、死亡冻结 |
-| `MOVE_Walking` | 地面行走（含斜坡、台阶、下坡） | 默认地面模式 |
-| `MOVE_NavWalking` | NavMesh 行走（AI 寻路专用） | `SetGroundMovementMode(MOVE_NavWalking)` |
-| `MOVE_Falling` | 自由落体 | 走出平台、跳跃后 |
-| `MOVE_Swimming` | 游泳（浮力模型） | 进入 PhysicsVolume 水体 |
-| `MOVE_Flying` | 飞行（无视重力，按输入直驱） | 飞行坐骑、幽灵相机 |
-| `MOVE_Custom` | 自定义模式 | 配合 `CustomMovementMode` 扩展 |
+| Character 的 Capsule | 人形角色的主要移动碰撞形状 | 胶囊位置、尺寸、碰撞响应和支撑面 |
+| CMC | `Velocity`、加速度、模式、地面/基座及网络移动状态 | 谁提出位移、谁修改结果、下次从什么状态继续 |
+| Character 的 Mesh / AnimInstance | 姿态、蒙太奇、视觉偏移；启用时提供动画根运动 | 动画表现位置与胶囊逻辑位置的区别 |
+| Controller / 输入接入 | 朝向与动作意图 | 输入坐标系、拥有者、按下/释放和取消 |
 
-与模式相关的关键状态：
+`UMovementComponent → UNavMovementComponent → UPawnMovementComponent → UCharacterMovementComponent` 是阅读继承链的顺序：基础层提供移动对象和碰撞工具，Pawn 层连接输入，CMC 增加角色模式与预测。`UpdatedComponent` 是被实际移动的组件；通用 MovementComponent 可以选择它，在标准 Character 中应保持角色胶囊这一约束，不把任意 Mesh 当成可随手替换的移动根。[MovementComponent API](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/GameFramework/UMovementComponent?application_version=5.5)
 
-- `DefaultLandMovementMode`：离开水体/落下后恢复的地面模式（Walking 或 NavWalking）；
-- `DefaultWaterMovementMode`：进入水体后的模式（默认 Swimming）；
-- `GroundMovementMode`：当前"地面模式"，由 `SetGroundMovementMode()` 修改，`GetGroundMovementMode()` 查询；
-- `SetMovementMode(EMovementMode NewMovementMode, uint8 NewCustomMode = 0)`：切换模式，内部调用 `OnMovementModeChanged(PrevMode, PrevCustomMode)` 虚函数；
-- 模式切换时 `ACharacter::OnMovementModeChanged` 也会触发（虚函数），同时广播 `MovementModeChangedDelegate`（蓝图事件 `On Movement Mode Changed`，参数 `PrevMovementMode / NewMovementMode / PrevCustomMode / NewCustomMode`）。
+有扫掠移动不意味着所有附件都有各自的扫掠轨迹：上述 API 明确只考虑 `UpdatedComponent` 的碰撞，附属组件随到终点。因此长武器、翅膀等视觉附件可能穿墙；应按玩法另设查询或交互体积，不能以“角色有胶囊”推出每个附件都被保护。
 
-### 3.4 速度、加速度、摩擦与制动
+## 二、从输入到速度，再到实际位移
 
-CMC 的速度模型可以用一句话概括：**加速度来自输入，速度由加速度积分而来，摩擦与制动决定速度如何衰减，最大速度限制速度上限**。
+### 2.1 输入是意图，不是厘米数
 
-#### 输入如何变成加速度
+`AddMovementInput(WorldDirection, ScaleValue)` 接收世界方向和输入强度。向后走可以使用负强度；摇杆半推可以提供中间值。它不保证调用当下发生位移，基础 Pawn 也不会仅凭该调用自动移动。Character 的移动路径会消费这类意图。[AddMovementInput API](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/APawn/AddMovementInput?application_version=5.5)
 
-1. 玩家输入（Enhanced Input 的 `Move` 动作）调用 `AddMovementInput(WorldDirection, ScaleValue)`，把"移动意图"叠加到 Pawn 的输入向量上；
-2. CMC 在 `PerformMovement` 前把输入向量转换为 `Acceleration`（`GetAcceleration()`，Z 分量按模式剔除），长度超过 `MaxAcceleration` 则截断；
-3. `CalcVelocity(DeltaTime, Friction, bFluid, BrakingDeceleration)` 用这个加速度更新 `Velocity`。
+这一区分决定了接线顺序：
 
-```mermaid
-flowchart LR
-    IN["AddMovementInput<br/>输入意图(方向×大小)"] --> ACC["Acceleration<br/>按 MaxAcceleration 截断"]
-    ACC --> CV2["CalcVelocity<br/>加速度×DeltaTime 积分<br/>摩擦/制动衰减"]
-    CV2 --> V["Velocity"]
-    V --> MV["SafeMoveUpdatedComponent<br/>位移 = Velocity × DeltaTime"]
-    MV --> COL["碰撞修正<br/>贴墙滑动/停止"]
-```
+1. 输入层把键盘/摇杆动作变成方向和大小，先明确采用角色朝向还是控制器水平朝向。
+2. Pawn/CMC 接收输入；当前模式会约束可用方向，输入大小参与加速度与模拟输入强度的处理。
+3. 运动规则结合当前 `Velocity`、限速、摩擦/制动、外力等得到本次运动状态。
+4. 用时间片计算尝试位移，再通过碰撞和支撑约束取得实际终点。
 
-#### 摩擦（Friction）与制动（Braking）的区别
+按普通连续移动意图接入时，不要先把输入乘成 `Speed × DeltaSeconds` 再塞给 `AddMovementInput`；那会混淆输入强度和位移。相机俯仰也不应无意混进地面前进方向。具体 Enhanced Input 的映射生命周期见[增强输入](02-EnhancedInput增强输入.md)。
 
-| 参数 | 生效时机 | 作用 | 默认值（行走） |
-| --- | --- | --- | --- |
-| `MaxAcceleration` | 有输入时 | 加速度上限，决定起步响应 | 2048 |
-| `GroundFriction` | 有输入且在地面 | 与 `MaxAcceleration` 一起决定巡航速度下的"抓地感" | 8 |
-| `BrakingDecelerationWalking` | 无输入时 | 速度按该减速度线性衰减 | 2048 |
-| `BrakingDecelerationFalling` | 空中无输入 | 空中几乎无制动 | 0 |
-| `BrakingDecelerationFlying / Swimming` | 对应模式无输入 | 飞行/游泳的制动 | 0 |
-| `BrakingFrictionFactor` | 使用分离制动时 | 制动摩擦 = `GroundFriction × Factor` | 2 |
+### 2.2 限速、转向和制动分别解决什么
 
-要点：
+| 入口/参数 | 主要问题 | 常见误用 |
+| --- | --- | --- |
+| `GetMaxSpeed()` / `MaxWalkSpeed` 等模式参数 | 当前规则希望限制的速度 | 当成一项万能瞬移防护或所有来源速度的硬保证 |
+| `MaxAcceleration` | 输入怎样改变速度 | 当成每次输入要自己相乘的位移量 |
+| `GroundFriction` | 地面转向控制；未分离制动时也参与减速 | 认为只有“有输入”时生效 |
+| `BrakingDecelerationWalking` 等 | 相应模式制动中的恒定减速度项 | 与速度相关的摩擦阻力混为同一参数 |
+| `bUseSeparateBrakingFriction` | 制动使用独立摩擦还是当前模式摩擦 | 以为开启后 `GroundFriction` 仍是独立制动系数 |
+| `BrakingFrictionFactor` | 乘在实际选用的制动摩擦上 | 认为只对某一种分离设置生效 |
+| `AirControl` 与 Boost 参数 | Falling 时横向输入控制 | 把“横向低速”误读成“接近地面” |
 
-- **摩擦只在地面且正在加速时显著**。`GroundFriction` 参与"速度逼近最大速度"的过程：`Friction` 越大，越难超过最大速度，松手后越"抓地"；
-- **制动（Braking）在无输入时生效**。`CalcVelocity` 中若本帧没有输入或速度已超限，会调用 `ApplyVelocityBraking(DeltaTime, Friction, BrakingDeceleration)` 让速度衰减；
-- `bUseSeparateBrakingFriction = true` 时，制动摩擦使用独立值 `BrakingFriction`；否则使用 `GroundFriction × BrakingFrictionFactor`；
-- 手感调优的经典顺序：先定 `MaxWalkSpeed`，再调 `MaxAcceleration`（起步快慢），再调 `BrakingDecelerationWalking`（松手滑行距离），最后微调 `GroundFriction`（高速下转向稳定性）。
+`CalcVelocity` 是可复用的速度计算入口，其公开合同涉及加速度、摩擦、流体项和制动，明确不施加重力。不能画成“所有模式都无条件经过它，再完成全部物理”；Custom 自己选择如何计算，Root Motion 又有独立输入。[CalcVelocity](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent/CalcVelocity?application_version=5.5)
 
-#### 空中控制（AirControl）
+松手时，有两种不同的减速形态：恒定减速度在同样时间里减少同样速度；摩擦项的阻力随当前速度变化。实际 CMC 制动不能一般化为一个恒定的停止距离公式。行走未使用独立制动摩擦时，选用 `GroundFriction`；分离时选用 `BrakingFriction`，然后应用 `BrakingFrictionFactor`。[GroundFriction](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent/GroundFriction?application_version=5.5)、[分离制动](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent/bUseSeparateBrak-?application_version=5.5)、[倍率](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent/BrakingFrictionF-?application_version=5.5)
 
-`AirControl`（默认 0.05）是空中输入加速度的缩放系数——空中变向能力远弱于地面。配合：
+一个有用的调参过程是先定普通/疾跑/蹲伏的速度目标，再固定方向比较起步，再松手比较停止过程，最后换向比较转向。一次同时改限速、加速度和摩擦，就无法知道手感差异来自哪一项。地面材质可以成为项目选择摩擦的输入，但物理材质摩擦不会因为名字相同就自动替换 CMC 的 `GroundFriction`。
 
-- `AirControlBoostMultiplier`（默认 2）：当水平速度低于 `AirControlBoostVelocityThreshold`（默认 25）时，把 `AirControl` 乘以该倍率，让"刚起跳/快落地"时保留一点修正能力（如起跳瞬间的转向）；
-- `ShouldLimitAirControl()` / `GetAirControl()` 虚函数：子类可进一步定制空中控制策略。
+### 2.3 尝试位移与实际位移
 
-### 3.5 跳跃与重力
+在只考虑恒定速度、没有碰撞和其他修正的教学模型中，`Delta = Velocity × DeltaTime`。单位可取 cm/s 与秒，结果为 cm。真实 CMC 一次更新可能包含重力、坡面调整、子步、碰撞滑动、基座移动或校正，所以不能拿一次最终 `Velocity × 帧时间` 必然等同本帧胶囊位移。
 
-跳跃不是一个独立模式，而是"从地面切换到 Falling 并赋予向上的初速度"：
+例如沿 +X 以 300 cm/s 尝试移动 0.1 s，模型提出 30 cm。如果阻挡命中把允许行程截在 12 cm，30 cm 是请求，12 cm 才是该段碰撞运动的结果；后续是停住还是沿面滑动，由当前模式和项目规则决定。这个算例是纸面几何条件，不是 CMC 实测，也不包含去穿透调整。
 
-```mermaid
-sequenceDiagram
-    participant P as 玩家输入
-    participant C as ACharacter
-    participant M as CharacterMovementComponent
-    P->>C: Jump()（设置 bPressedJump = true）
-    C->>M: 每帧 CheckJumpInput → CanJump() 通过
-    M->>M: DoJump(bReplayingMoves)（5.8 新增带 DeltaTime 的重载）
-    M->>M: Velocity.Z = JumpZVelocity；SetMovementMode(Falling)
-    M->>C: OnJumped() / 蓝图 On Jumped
-    C->>M: StopJumping()（松开按键，清 bPressedJump）
-    M-->>M: 空中：PhysFalling，Velocity.Z -= GravityScale × 重力 × DeltaTime
-    M-->>C: 落地：Landed(Hit) → OnLanded → LandedDelegate（蓝图 OnLanded）
-```
+读 `OldLocation` 与当前位置差能观察更新后的位移，但该差也可能包含平台、去穿透或网络校正，不能无条件用它发放“走路里程”奖励。同样，拿 Mesh 平滑位移推断权威胶囊速度，也混淆了表现与逻辑。
 
-关键参数与接口：
+## 三、MovementMode 决定接下来使用哪种规则
 
-| 参数 / 接口 | 说明 |
-| --- | --- |
-| `JumpZVelocity` | 起跳瞬间 Z 轴初速度（默认 420），配合 `GravityScale` 决定跳高 |
-| `GravityScale` | 重力缩放（默认 1），叠加 PhysicsVolume 的重力系数 |
-| `bPressedJump` | Character 上的跳跃请求标志，`Jump()` 置位、`StopJumping()` 清除 |
-| `JumpMaxHoldTime` / `JumpMaxCount` | 5.x 起支持"按住跳得更高/二段跳"：按住期间持续供力、可多次跳跃 |
-| `DoJump(bool bReplayingMoves)` / `DoJump(bool, float DeltaTime)` | 实际施加跳跃速度的虚函数（**5.8 新增带 DeltaTime 的重载**），子类可覆写 |
-| `CanJump() / CanJumpInternal()` | 跳跃可行性检查，`CanJumpInternal` 为 `BlueprintNativeEvent`，蓝图可覆写 |
-| `Landed(Hit)` / `OnLanded(Hit)` | C++ 虚函数与蓝图事件，落地通知，参数为 `FHitResult` |
-| `LandedDelegate`（`FLandedSignature`） | C++ 可绑定的落地多播委托 |
-| `LaunchCharacter(Velocity, bXYOverride, bZOverride)` | 通用"弹射"接口（击飞、跳板），蓝图同名节点 |
+| 模式 | 主要含义 | 适用与边界 |
+| --- | --- | --- |
+| `MOVE_None` | 禁用常规角色移动 | 不等于禁止任何外部代码改 Transform |
+| `MOVE_Walking` | 在可行走支撑面上运动 | 需要地面、坡度与台阶判定 |
+| `MOVE_NavWalking` | 使用导航行走路径 | 不等于自动寻路，也不能保证物理几何与 NavMesh 完全重合 |
+| `MOVE_Falling` | 离开地面后的空中运动 | 重力、横向控制和落地判断分别参与 |
+| `MOVE_Swimming` | 流体体积中的移动 | 水体/PhysicsVolume 与浮力配置属于前提；视觉水面本身不是全部条件 |
+| `MOVE_Flying` | 飞行运动规则 | 不使用常规下落重力，不意味着忽略碰撞 |
+| `MOVE_Custom` | 项目自定义运动规则 | 以 `CustomMovementMode` 的字节值区分子模式；编号本身不包含算法 |
 
-细节：
+模式的用途和相应属性可在 [CMC API](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent?application_version=5.5) 与 [5.6 属性说明](https://dev.epicgames.com/documentation/en-us/unreal-engine/python-api/class/CharacterMovementComponent?application_version=5.6)中定位。枚举名不是切换条件的完整说明。
 
-- 跳跃高度估算：`h = JumpZVelocity² / (2 × GravityScale × 重力加速度)`，重力加速度按 PhysicsVolume 的 `GravityZ`（默认约 -980）计算；
-- 5.8 新增 `bDontFallBelowJumpZVelocityDuringJump`：跳跃按住期间速度不会低于 `JumpZVelocity` 的调优值，用来避免"按跳后立刻被压回"的负面手感；
-- `ShouldNotifyLanded()` 决定是否触发落地通知（网络回放移动时会被抑制，避免重复触发）；
-- 落地后模式由 `PhysFalling` 自动切回 `DefaultLandMovementMode`（Walking / NavWalking）。
+一个最常见的闭环是：Walking 接收输入并保持地面约束；成功跳跃或失去支撑后进入 Falling；空中前进受重力和横向控制；命中合格落点后通知落地，再建立新的地面状态。失去支撑而下落和主动跳跃都可能进入 Falling，所以仅看到 `NewMode == Falling` 不能断言“刚刚按了跳跃”。
 
-### 3.6 Custom 移动模式：扩展玩法状态的官方入口
+`SetMovementMode` 是切换入口；`SetGroundMovementMode` 配置 Walking/NavWalking 的地面选择，不能代替一次寻路请求。`DefaultLandMovementMode`、`DefaultWaterMovementMode` 是默认策略参数，不意味着退出任何 Custom 都应强行恢复 Walking。脚下没有可用地面时，退出滑铲的合理去向可能是 Falling；死亡/禁用则可能应保持 None。
 
-当内置五种模式不够用时，用 `MOVE_Custom` + `CustomMovementMode`（0~255 子模式编号）扩展，典型场景：滑铲、攀爬/壁走、悬挂、载具上的特殊姿态、QTE 强制移动等。
+需要精确区分 Walking 与 NavWalking 时，检查具体 `MovementMode`；判断地面能力时使用目标版本的地面查询语义。旧稿的 `IsWalking() == IsMovingOnGround()` 不能当作跨版本、跨派生类的不变量；公开页面的概括也不足以认证两个函数实现完全相同。[IsMovingOnGround API](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent/IsMovingOnGround?application_version=5.5)
 
-```cpp
-// 切换进入自定义模式
-CharacterMovement->SetMovementMode(MOVE_Custom, 1); // 1 = 滑铲
+状态与模式也应分层：疾跑通常只是地面模式下的速度策略；攀爬改变约束面和输入解释，才可能需要 Custom。一个 Buff 不必创建一种模式，但所有会影响重演的 Buff 状态仍需进入相应同步合同。
 
-// 退出自定义模式，回到地面行走
-CharacterMovement->SetMovementMode(MOVE_Walking);
-```
+## 四、Tick、碰撞、地面和基座怎样连成闭环
 
-需要在 CMC 子类中处理两件事：
-
-1. **`PhysCustom(deltaTime, Iterations)`**：`MOVE_Custom` 的物理入口。在子类里按 `CustomMovementMode` 分发到各自的实现函数（例如 `PhysSlide()` / `PhysClimb()`），在其中手动修改 `Velocity` 并调用 `SafeMoveUpdatedComponent` 完成位移；
-2. **`OnMovementModeChanged(PreviousMovementMode, PreviousCustomMode)`**：模式进出时做初始化/清理（如进入滑铲时压低胶囊体、退出时恢复）。
+### 4.1 一次更新的责任顺序
 
 ```mermaid
 flowchart TD
-    ENTER["SetMovementMode(Custom, 1)"] --> ONCH["OnMovementModeChanged<br/>子类:初始化状态(压低胶囊/记初速)"]
-    ONCH --> PHYS["PhysCustom(deltaTime, Iterations)"]
-    PHYS --> SW2{"CustomMovementMode"}
-    SW2 -- 0 --> P0["PhysCustom_0() 风格子函数"]
-    SW2 -- 1 --> P1["滑铲: 保持 Velocity, 摩擦衰减"]
-    SW2 -- 2 --> P2["攀爬: 沿墙面投影移动"]
-    P0 --> CHK{"退出条件?"}
-    P1 --> CHK
-    P2 --> CHK
-    CHK -- 是 --> EXIT["SetMovementMode(Walking)<br/>OnMovementModeChanged 清理"]
-    CHK -- 否 --> PHYS
+    E[按网络角色进入移动路径] --> P[输入、外力及根运动形成本步状态]
+    P --> S[StartNewPhysics 按当前模式分派]
+    S --> V[该模式计算速度与尝试位移]
+    V --> C[移动碰撞体并取得 Hit]
+    C --> F[处理阻挡、地面或其他模式约束]
+    F --> Q{本步中模式改变?}
+    Q -- 是 --> R[按剩余时间及迭代预算继续]
+    R --> S
+    Q -- 否 --> U[提交移动结果与更新通知]
 ```
 
-> 注意：`PhysCustom` 的默认实现是引擎内部按 `CustomMovementMode` 调度的；**自定义逻辑必须写在 CMC 子类里**（见 3.7），蓝图无法直接写 Phys\* 物理函数。
+这是责任图，不是目标 CL 的逐行调用栈。拥有者预测、服务器重演与模拟代理的入口不同，不能在图末尾一律再调用一遍 `ReplicateMoveToServer`。普通拥有者客户端的该函数包围移动记录和执行；若自己在 Tick 中额外调用 `PerformMovement`，可能重复推进。第七节解释角色差异。
 
-### 3.7 CMC 子类化与蓝图覆写
+`MaxSimulationTimeStep` 与 `MaxSimulationIterations` 是有限工作量和时间拆分的控制项。它们不等于固定频率物理模拟，也不保证“每一步永远不超过上限”：官方明确指出预算不足时最后一步可能超过时间步上限。调小步长可能改善某些运动情况，也增加工作量；不能承诺不穿模或任意低帧率稳定。[MaxSimulationTimeStep](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent/MaxSimulationTim-?application_version=5.5)
 
-#### C++ 子类化
+### 4.2 Sweep 取得接触，模式决定响应
+
+`SafeMoveUpdatedComponent` 会尝试移动，并在初始穿透情况下尝试解决穿透再移动；它的名字不表示所有几何输入都能安全走完。调用方要读 `FHitResult`：阻挡、初始穿透、命中时间和法线各自回答不同问题。[SafeMoveUpdatedComponent](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UMovementComponent/SafeMoveUpdatedComponent/1?application_version=5.5)
+
+墙体阻挡后，可以报告撞击，并依据剩余位移尝试沿表面滑动。`SlideAlongSurface` 的 `Time` 参数是尝试位移的比例，典型值是 `1 - Hit.Time`，不是再传一遍秒数。它还可能遇到第二面墙；“把向量投影到第一面墙上”不等于完成了整个角色碰撞解算。[SlideAlongSurface](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UMovementComponent/SlideAlongSurface?application_version=5.5)
+
+因此这几个命题不能互换：发生过移动、完成全部请求位移、未遇到阻挡、最终不存在穿透。只用 `if (!SafeMoveUpdatedComponent(...))` 判断“撞墙”，会漏掉先走一段再命中等情形；本篇第八节保留正确读取局部 Hit 的示例。
+
+### 4.3 有阻挡面，不代表有可站立地面
+
+Walking 需要可用支撑。`FindFloor` 对胶囊位置向下检测，并允许使用有效缓存或已有向下扫掠结果；它还涉及边缘站立判定。胶囊关闭碰撞时找不到地面。应将结果中的命中和“可行走”信息一起解释，不能用一根任意射线命中就替代角色地面合同。[FindFloor](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent/FindFloor?application_version=5.5)
+
+在世界 -Z 重力的几何教学图中，地面越陡，单位法线与向上向量的点积越小；用 `n·up >= cos(允许坡角)` 能解释坡角门槛的方向。但真实判定还包括有效接触、碰撞和表面覆盖规则。`Walkable Slope Override` 可以放宽或收紧某个物体的可行走坡度，因此同一个角色在两块同角度表面上出现不同结果未必是错误。[Walkable Slope](https://dev.epicgames.com/documentation/en-us/unreal-engine/walkable-slope-in-unreal-engine?application_version=5.6)
+
+台阶处理则回答另一问题：碰到侧面后，能否越过局部高度变化并在新位置获得合格支撑。`MaxStepHeight` 是高度限制，`CanStepUp` 还涉及是否允许踏上该对象；`StepUp` 的结果表示跨越是否成功。台阶顶面、头顶空间、碰撞形状和落脚位置同样重要，“台阶比参数矮”只是必要因素之一。[StepUp](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent/StepUp?application_version=5.5)
+
+纸面正反例：同样 20 cm 高台阶，宽阔平台上方无遮挡时可以构成候选落脚条件；把平台上方压到胶囊无法容纳时，即使 `MaxStepHeight` 大于 20 cm，也不能据此推出跨越成功。这里不是给引擎配置默认台阶高度，而是在区分高度条件与完整可达性。
+
+### 4.4 平台跟随和离开平台的速度不是一件事
+
+站在移动基座上时，基座变换改变角色的位置；离开基座时，某些基座速度分量又可以影响起跳/下落。前者不能简单替换为“每帧把平台速度再加到角色 Velocity”。否则已有基座跟随与手工位移可能叠加两次。[UpdateBasedMovement](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent/UpdateBasedMovement?application_version=5.5)、[CMC 的 bImpartBaseVelocityX/Y/Z 与 bImpartBaseAngularVelocity 条目](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent?application_version=5.5)
+
+排查平台抖动，应先记录 base 身份、平台与角色更新顺序、两端平台状态和角色是否遭到校正，再决定是否调整模拟预算。只调大迭代数，无法修复双重位移写者或两端使用了不同平台状态。
+
+## 五、跳跃、蹲伏、朝向与移动事件
+
+### 5.1 跳跃是请求与运动状态的配合
+
+常规输入按下调用 `ACharacter::Jump()`，释放或取消调用 `StopJumping()`；Character 与 CMC 在移动更新中判断能否跳跃并施加跳跃状态。`JumpMaxHoldTime` 提供按住时长相关行为，`JumpMaxCount` 则表达允许的跳跃次数；二者不是同一个开关。[Jump](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/ACharacter/Jump?application_version=5.5)、[Character API](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/GameFramework/ACharacter?application_version=5.5)
+
+默认重力方向下，可以把一次无持续输入、无碰撞、无根运动的理想上抛写成 `h = v0² / (2g)`，其中 g 是生效后的正重力大小。选择示例 `v0 = 400 cm/s`、`g = 1000 cm/s²`，纸面顶点时间为 0.4 s，高度为 80 cm；这不是 `JumpZVelocity` 或世界重力的引擎默认值。按住续跳、额外冲量、变重力、头顶碰撞或 Root Motion 都会改变条件。
+
+`LaunchCharacter` 可用于跳板和击飞：它提交待应用的 launch velocity，XY/Z override 选项用于决定相应分量替换还是叠加。它不是普通跳跃资格检查的同义接口，也不应拿来绕开技能权限。[Character 的 LaunchCharacter 条目](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/GameFramework/ACharacter?application_version=5.5)
+
+旧稿称 `DoJump(bool, float DeltaTime)` 为“5.8 新增”，但本轮取得的 [5.5 DoJump 页面](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent/DoJump?application_version=5.5)已列出该签名；5.5 CMC 页面也已有 `bDontFallBelowJumpZVelocityDuringJump`。本文撤回这两个首次版本断言，不反向推断它们最早在哪个版本加入。业务输入优先用 `Jump`，不要复制旧签名直接覆写底层函数。
+
+### 5.2 落地事件中还可能处于 Falling
+
+`Landed(Hit)` 用于读取有效落点和碰撞时状态；官方说明该回调中模式仍是 Falling，速度是着陆时速度。需要“已经进入新模式”的逻辑，应放在模式变化通知，而非要求 `Landed` 内立即满足 `IsWalking()`。[Landed](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/ACharacter/Landed?application_version=5.5)
+
+| 事件 | 适合做什么 | 不应推出什么 |
+| --- | --- | --- |
+| `OnJumped` | 跳跃已发生后的表现 | 每次进入 Falling 都是一次跳跃 |
+| `Landed` / `OnLanded` / `LandedDelegate` | 读取落点；音效、尘土等着陆表现 | 此刻地面模式已完全建立 |
+| `OnMovementModeChanged` / Character 的 `K2_OnMovementModeChanged` | 比较旧/新模式；进入/退出初始化 | 回调必定只来自玩家主动操作 |
+| `OnCharacterMovementUpdated` | 读取本次移动更新前后的状态 | 严格每渲染帧一次、每内部子步一次或天然只执行一次业务副作用 |
+
+网络纠正可能重演移动，表现或业务事件也需要明确是否可重复。项目可给落地效果做去重或合并；奖励、伤害、消耗等由各自权威结算路径决定，不应直接按移动回调次数结算。动态多播委托应按实际声明使用匹配绑定方式和 `UFUNCTION` 接收函数，不能笼统声称所有移动委托都能 `.AddUObject`；绑定者离开作用域时解除自己建立的订阅。
+
+### 5.3 蹲伏与朝向也有责任边界
+
+降低姿态优先使用 Character 的 `Crouch` / `UnCrouch` 请求。站起需要空间：CMC 的 `UnCrouch` 会检查恢复尺寸是否造成侵入，成功才触发结束蹲伏通知。离开滑铲时调用一次站起请求，不保证顶着低天花板也已站直；不要随后强制恢复胶囊半高。[UnCrouch](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent/UnCrouch?application_version=5.5)
+
+`bOrientRotationToMovement` 表达随加速度方向转向的策略，`bUseControllerDesiredRotation` 表达跟随控制器目标旋转；`RotationRate` 控制旋转变化速率。若 Pawn 的 `bUseControllerRotationYaw` 同时写角色朝向，就要明确谁负责最终旋转，避免两个意图争写。面向移动方向、面向瞄准方向和相机自由观察是可分别选择的玩法，不必混成一组开关。
+
+## 六、Custom 与 Root Motion：选择正确的扩展入口
+
+### 6.1 先判断究竟改变了什么
+
+| 需求 | 合适的起点 | 额外需要定义的内容 |
+| --- | --- | --- |
+| 普通疾跑、受伤减速 | 模式参数 / `GetMaxSpeed` 策略 | 意图、资格、优先级与同步 |
+| 跳板或瞬时击飞 | `LaunchCharacter` 等移动输入 | 触发端、分量规则、碰撞后状态 |
+| 动作资产决定位移 | 动画 Root Motion | 提取设置、移动模式、触发与中断 |
+| 程序化短时能力位移 | Root Motion Source | 参数、句柄所有者、结束/取消 |
+| 攀爬、壁走、自定义滑行规则 | `MOVE_Custom` | 约束、位移、碰撞、退出与可重演状态 |
+
+修改点越深，接管的责任越多。仅为了改最大行走速度而覆写整个 `TickComponent`，会同时碰到原本无需改动的预测与更新顺序。保留原文关于 `GetMaxAcceleration`、`GetMaxBrakingDeceleration`、`CalcVelocity`、`PhysCustom`、`OnMovementModeChanged` 的扩展用途，但具体签名和访问级别必须以目标版本为准，API 表不能替代编译。
+
+### 6.2 Custom 不是自动生成的一套滑铲物理
+
+进入 `MOVE_Custom` 后，常规 Walking/Falling 物理不会替你完成自定义运动。C++ 可覆写 `PhysCustom` 并由项目根据子模式分派。蓝图也有 Character 的 `UpdateCustomMovement`（C++ 名 `K2_UpdateCustomMovement`）入口，由 PhysCustom 路径调用；旧稿“蓝图只能调参数”和“CMC 默认替项目分发全部子模式”的说法都不成立。[网络移动文档的 Using Custom Movement Modes](https://dev.epicgames.com/documentation/en-us/unreal-engine/understanding-networked-movement-in-the-character-movement-component-for-unreal-engine?application_version=5.6)、[Character API 中 K2_UpdateCustomMovement](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/GameFramework/ACharacter?application_version=5.5)
+
+蓝图入口可表达逻辑，并不自动生成自定义状态的网络序列化和预测历史。在 C++ 与蓝图混合方案中要指定唯一位移写者：若 C++ 已完整处理某子模式，又调用带蓝图自定义更新的基类路径，必须避免蓝图再次移动。未知子模式怎样拒绝、回退或委托，也应是明确选择。
+
+以滑铲为例，一份完整的玩法合同至少有这些因果环节：
+
+1. 进入：检查当前是否允许滑铲，取得初始速度和规则版本；模式确认切换后才建立本次滑铲拥有的状态。
+2. 推进：每个有效时间片按滑行规则更新速度，得到尝试位移；处理碰撞，再检查支撑。速度低于门槛、到时、取消或阻挡都可以成为项目定义的退出原因。
+3. 退出：有合格地面才回到地面模式，失去支撑转 Falling，禁用/死亡服从高优先级状态；不能总是 `SetMovementMode(MOVE_Walking)`。
+4. 清理：释放本次创建的效果、订阅和运动句柄；请求站起并接受空间不足的结果；清除本次意图，避免下次进入继承旧状态。
+
+教学上可以先将滑铲限制为宽阔静态水平面上的单机直线动作，再加入坡面投影、台阶、边缘、平台和网络。这个限制让“初速如何衰减”与“地面如何约束”可以分别解释，并不意味着略去后者也能发布为完整角色移动系统。
+
+### 6.3 Root Motion 改变位移来源，仍需移动约束
+
+动画骨骼向前移动，不代表胶囊已经跟着走。需在动画资产启用根运动，并选择 AnimInstance 的提取/应用策略。比如 Ignore Root Motion 提取后不应用到角色，Montages Only 则只提取相关蒙太奇。正确应用后，动画根位移进入角色移动；碰撞、当前模式和重力约束仍参与，而非任意播放动画就忽略世界。[Root Motion 5.6 的 Enabling 与 Results](https://dev.epicgames.com/documentation/en-us/unreal-engine/root-motion-in-unreal-engine?application_version=5.6)
+
+这能解释一个常见反例：攻击动画的 Mesh 向前伸出，结束后退回原位置，胶囊从未离开起点。问题可能是提取/应用链没有接通，不能先用 Actor Tick 再补同样位移；否则启用根运动后又会走两份距离。Walking/Falling 与 Flying 对根运动竖直分量的处理也不同，动画中有上升曲线不保证角色实际完成同样上升。
+
+Root Motion Source 将程序参数交给移动系统处理，适合运动目标由玩法动态决定的短时能力。应用得到的句柄由该能力持有；结束、取消或被替换时按自己的句柄移除，避免清掉别人的源。它与动画根运动不是“同一个动画资产的另一名称”。网络环境仍需匹配能力触发、输入状态和源生命周期；仅有位置曲线不能保证两端执行一致。[网络移动文档的 Root Motion Sources](https://dev.epicgames.com/documentation/en-us/unreal-engine/understanding-networked-movement-in-the-character-movement-component-for-unreal-engine?application_version=5.6)
+
+## 七、网络角色、预测和清理各归谁负责
+
+本文只保留 CMC 扩展所需的网络责任链。发送合并、时间戳、ACK、packed 数据扩展和射击延迟补偿由[客户端预测与延迟补偿](../../07-网络与游戏服务端/同步预测与回放/03-客户端预测与延迟补偿.md)集中展开；本篇的静态核对不重新认证那些范围。
+
+| 角色/阶段 | 移动职责 | 扩展代码必须考虑的状态 |
+| --- | --- | --- |
+| 拥有者客户端 Autonomous Proxy | 本地预测，保存可重演的移动资料，按发送策略上报 | 本步输入及会影响速度/模式的自定义意图 |
+| 服务器 Authority | 按接收到的移动与权威规则重演，确认或修正 | 权威资格、状态与时间；不能把客户端末位置当命令 |
+| 拥有者接收修正 | 恢复对应状态，重演其后的未确认移动 | 必须使用那些移动当时的状态，不能只看当前全局布尔量 |
+| 其他客户端 Simulated Proxy | 使用复制状态进行模拟更新和视觉平滑 | 表现观察不等同于拥有者的输入预测队列 |
+
+官方网络说明还区分了服务器收到拥有者移动时的处理路径与普通本地 Tick。移动记录频率不等于 RPC 发送频率；模拟代理也不只是每帧把 Transform 做一次 Lerp。不要把概述中的 `ServerMove` 族名称当作某一固定版本的唯一实际 RPC 调用栈。[Networked Movement 5.6](https://dev.epicgames.com/documentation/en-us/unreal-engine/understanding-networked-movement-in-the-character-movement-component-for-unreal-engine?application_version=5.6)
+
+疾跑是最小的反例：客户端某步使用 720 的限速，服务器同一步仍按 480 处理；即使两端拥有完全相同的 C++，不同状态仍会导致不同结果。反过来，服务器稍后把疾跑布尔值复制过来，也不自动为客户端过去的每一步补齐正确状态。需要定义意图保存、合并边界、发送/恢复、权威资格与清理；具体 SavedMove 扩展见上述关联文。
+
+“服务器权威”意味着服务器负责裁决，不是自动拥有所有项目反作弊规则。技能资源、允许移动模式、异常参数、外部位移来源等仍需项目定义。预测误差也可能来自不同碰撞/平台状态，不能仅凭一次校正判定作弊。
+
+清理应遵循资源所有权：
+
+- 移动组件管理自身的预测记录、ACK 与复用生命周期；业务不要随手清空整条 SavedMoves 队列来消除抖动
+- 输入绑定者处理释放、取消、失去控制与界面切换后的意图复位，避免疾跑/跳跃一直粘住
+- 自定义模式管理自己的进出临时状态；死亡、取消、模式被抢占与 EndPlay 都不能留下持续写位移的回调
+- 能力持有并清理自己创建的 Root Motion Source、计时器与特效；若仅借用了共享对象，不在退出时清理他人的资源
+- 表现观察者解绑自己注册的委托；旧 Pawn 被替换后，不能继续把旧组件的移动事件当成新 Pawn 的事件
+
+这些是项目集成原则，不是已实现的网络滑铲框架或所有服务器模式的保证。
+
+## 八、保留可用的实践入口：有限 API 接线
+
+以下 C++ 是自行编写、未编译的片段，不是从引擎实现复制的源码。它们展示接入点与局部合同，省略项目模块导出宏、完整头文件、生成头与资产/输入配置；不能拼接后宣称已经能在服务器运行。示例常量全部是人为设置。
+
+### 8.1 参数配置与输入方向
 
 ```cpp
-// 头文件
-UCLASS()
-class UMyCharacterMovementComponent : public UCharacterMovementComponent
-{
-    GENERATED_BODY()
-public:
-    virtual float GetMaxSpeed() const override;
-    virtual void PhysCustom(float deltaTime, int32 Iterations) override;
-    virtual void OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode) override;
-    virtual bool DoJump(bool bReplayingMoves) override;
-};
+// ATrainingCharacter 构造函数中的配置片段。
+UCharacterMovementComponent* Move = GetCharacterMovement();
+Move->MaxWalkSpeed = 480.0f;             // 示例 cm/s
+Move->MaxWalkSpeedCrouched = 180.0f;
+Move->MaxAcceleration = 1600.0f;         // 示例 cm/s²
+Move->GroundFriction = 6.0f;
+Move->BrakingDecelerationWalking = 1200.0f;
+Move->JumpZVelocity = 400.0f;
+Move->AirControl = 0.2f;
+Move->bOrientRotationToMovement = true;
+Move->RotationRate = FRotator(0.0f, 540.0f, 0.0f);
+bUseControllerRotationYaw = false;
 ```
 
-常用覆写点（均已在 UE 5.8 头文件中核对）：
-
-| 虚函数 | 覆写用途 |
-| --- | --- |
-| `GetMaxSpeed()` | 动态限速：疾跑、受伤减速、水上/水下区分速度 |
-| `GetMaxAcceleration()` / `GetMaxBrakingDeceleration()` | 动态手感：不同状态下的加速度/制动 |
-| `CalcVelocity(DeltaTime, Friction, bFluid, BrakingDeceleration)` | 完全自定义速度求解（高级） |
-| `PhysCustom(deltaTime, Iterations)` | Custom 模式的物理实现 |
-| `OnMovementModeChanged(PrevMode, PrevCustomMode)` | 模式进出钩子（状态初始化/清理） |
-| `DoJump(bool bReplayingMoves)` | 自定义跳跃逻辑 |
-| `PerformMovement(DeltaTime)` | 整条移动管线的入口（极少用，谨慎） |
-| `TickComponent(...)` | 每帧最早介入点（注意网络同步与子步顺序） |
-
-#### 让 Character 使用自定义组件
+在已声明 `void MoveOnGround(FVector2D Axis);` 的 Character 中，可以这样接收地面动作值。前提是目标项目采用世界 Z 向上、控制器水平朝向作为前进方向；任意重力需重新定义基向量。
 
 ```cpp
-// AMyCharacter 构造函数中替换默认移动组件
-AMyCharacter::AMyCharacter(const FObjectInitializer& ObjectInitializer)
-    : Super(ObjectInitializer.SetDefaultSubobjectClass<UMyCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
+void ATrainingCharacter::MoveOnGround(FVector2D Axis)
 {
+    if (!Controller) return;
+    const FVector2D Bounded = Axis.GetClampedToMaxSize(1.0f);
+    const FRotator YawOnly(0.0f, Controller->GetControlRotation().Yaw, 0.0f);
+    const FRotationMatrix Basis(YawOnly);
+    AddMovementInput(Basis.GetUnitAxis(EAxis::X), Bounded.Y);
+    AddMovementInput(Basis.GetUnitAxis(EAxis::Y), Bounded.X);
 }
 ```
 
-#### 蓝图覆写
+正向用途是把相机俯仰从地面移动方向中排除，保留摇杆大小并控制合成输入范围。这里约定 Axis.Y 为前后、Axis.X 为左右；项目若采用另一轴约定，应在输入边界转换，而非到处交换 X/Y。完整 Enhanced Input 绑定以及 Completed/Canceled 处理沿用输入主题，跳跃分别接 `Jump` 与 `StopJumping`。
 
-- **纯参数调整**：选中角色蓝图中的 `CharacterMovement` 组件，直接修改 `Max Walk Speed / Max Acceleration / Ground Friction / Jump Z Velocity / Air Control` 等属性；也可用 `SetMovementMode`、`SetMaxWalkSpeed`、`AddImpulse`、`Launch Character` 等蓝图节点在运行时改；
-- **事件驱动**：`Character` 蓝图事件图表中有 `On Landed`、`On Movement Mode Changed`、`On Jumped`、`On Start Crouch / On End Crouch`、`On Character Movement Updated` 等事件节点，是纯蓝图项目感知移动状态的正确入口；
-- **蓝图子类化 CMC**：也可以创建 `CharacterMovementComponent` 的蓝图子类并覆写其 `BlueprintImplementableEvent`（如 `K2_OnMovementModeChanged`），但**复杂的 Phys\* 逻辑必须留在 C++**。
-
-> 与 `ACharacter` 相关的组件钩子：`GetCharacterMovement<T>()` 泛型访问、`GetMesh()`、`GetCapsuleComponent()`；`Character.h` 中还声明了 `FCharacterMovementUpdatedSignature`（DeltaSeconds / OldLocation / OldVelocity）、`FMovementModeChangedSignature`、`FLandedSignature` 三个多播委托，可在 C++ 中直接 `.AddDynamic` / `.AddUObject` 绑定。
-
-### 3.8 移动的网络视角（指向 06-网络同步）
-
-角色移动是 UE 网络同步中最复杂也最成熟的部分，**核心思想：服务器权威 + 客户端预测 + 差值校正**。
-
-```mermaid
-sequenceDiagram
-    participant C as 客户端(本地角色)
-    participant S as 服务器
-    participant O as 其他客户端(模拟代理)
-    C->>C: ReplicateMoveToServer: 保存 SavedMoves, 立即本地执行移动(预测)
-    C->>S: ServerMove(打包移动参数, 5.8 使用 CallServerMovePacked)
-    S->>S: 解包并执行同一移动(权威模拟)
-    alt 误差超阈值
-        S-->>C: ClientAdjustPosition(校正位置)
-        C->>C: ClientUpdatePositionAfterServerUpdate: 回退并重放 SavedMoves
-    end
-    S-->>O: 属性复制: 位置/旋转/速度/MovementMode
-    O->>O: SimulatedTick + NetworkSimulatedSmoothLocationTime 平滑
-```
-
-要点（详细原理见 [06-网络同步 · 03-客户端预测与延迟补偿](../../07-网络与游戏服务端/同步预测与回放/03-客户端预测与延迟补偿.md)）：
-
-- **`ReplicateMoveToServer(DeltaTime, NewAcceleration)`**：本地客户端每帧把移动请求发给服务器，同时本地立即执行（预测），从而消除网络往返延迟带来的"肉感"；
-- **`SavedMoves`**：客户端保存最近未确认的移动记录，收到校正后回退重放；
-- **`ServerMove` 系列**：5.8 中旧 `CallServerMove` 已标记弃用，改为打包位流 RPC `CallServerMovePacked` → `ServerMovePacked`，减少带宽与垃圾回收压力；
-- **`ClientAdjustPosition`**：服务器发现客户端位置偏差超过阈值时下发校正；`ClientUpdatePositionAfterServerUpdate()` 负责回退与重放；
-- **模拟代理（Simulated Proxy）**：其他客户端的角色不跑预测，由 `SimulatedTick` 按复制的 Transform 插值，`NetworkSimulatedSmoothLocationTime / NetworkSimulatedSmoothRotationTime` 控制平滑时间（监听服务器另有 `ListenServerNetworkSimulatedSmooth*` 版本）；
-- **模式与状态同步**：`MovementMode / CustomMovementMode` 随移动包/属性复制；自定义模式要保证服务器与客户端走同一套 `PhysCustom` 逻辑，否则会出现"服务器在跑、客户端在飘"的错位；
-- **5.8 注意**：基于 `UPrimitiveComponent` 的旧接口已弃用——`GetMovementBase()` 改用 `GetMovementBaseObject()` / `GetMovementBaseInterfaceData()`，`GetLastServerMovementBase()` 改用 `GetLastServerMovementBaseInterfaceData()`（见头文件中的 `UE_DEPRECATED(5.8, ...)` 标记）。
-
-## 四、代码示例
-
-### 4.1 在 Character 中配置 CMC 参数（C++）
+### 8.2 疾跑：用状态选择速度策略
 
 ```cpp
-// AMyCharacter.cpp
-#include "GameFramework/CharacterMovementComponent.h"
+// 在自定义 CMC 类中声明并初始化：
+bool bWantsToSprint = false;             // 本地意图，不是权威批准
+float SprintSpeed = 720.0f;              // 示例 cm/s
+virtual float GetMaxSpeed() const override;
 
-AMyCharacter::AMyCharacter()
+float UTrainingMovement::GetMaxSpeed() const
 {
-    // 构造阶段直接访问默认创建的 CMC（泛型版本可拿到子类指针）
-    UCharacterMovementComponent* MoveComp = GetCharacterMovement();
-    MoveComp->MaxWalkSpeed = 600.f;
-    MoveComp->MaxWalkSpeedCrouched = 200.f;
-    MoveComp->MaxAcceleration = 2048.f;
-    MoveComp->GroundFriction = 8.f;
-    MoveComp->BrakingDecelerationWalking = 2048.f;
-    MoveComp->JumpZVelocity = 420.f;
-    MoveComp->GravityScale = 1.f;
-    MoveComp->AirControl = 0.05f;
-    MoveComp->RotationRate = FRotator(0.f, 540.f, 0.f);
-    MoveComp->bOrientRotationToMovement = true; // 朝向跟随移动方向
+    if (MovementMode == MOVE_Walking && !IsCrouching() && bWantsToSprint)
+    {
+        return SprintSpeed;
+    }
+    return Super::GetMaxSpeed();
 }
 ```
 
-### 4.2 疾跑：覆写 GetMaxSpeed（C++）
+这个策略明确只扩展 Walking 且非蹲伏状态，不先把蹲伏基础速度乘上疾跑倍率。按下置意图，释放、取消或本地失去控制时清意图。`bWantsToSprint` 不是已实现的权限/耐力检查，片段也未实现网络保存和序列化；服务端资格及重演状态另接第七节的责任链。使用 `GetMaxSpeed` 的好处是集中表达策略，不是“自动消除复制抖动”。
+
+Character 需要在默认子对象构造阶段使用该派生组件；已声明匹配构造函数的项目可采用这类接线：
 
 ```cpp
-// UMyCharacterMovementComponent.cpp
-float UMyCharacterMovementComponent::GetMaxSpeed() const
+ATrainingCharacter::ATrainingCharacter(const FObjectInitializer& Initializer)
+    : Super(Initializer.SetDefaultSubobjectClass<UTrainingMovement>(
+          ACharacter::CharacterMovementComponentName))
 {
-    float BaseSpeed = Super::GetMaxSpeed(); // 内部按模式返回 MaxWalkSpeed / MaxFlySpeed ...
-
-    if (bSprinting && IsMovingOnGround())
-    {
-        return BaseSpeed * 1.6f; // 疾跑提速
-    }
-    if (bCrouchedSpeed && IsCrouching())
-    {
-        return MaxWalkSpeedCrouched;
-    }
-    return BaseSpeed;
 }
 ```
 
-在角色中通过输入切换 `bSprinting`：
+这段不等于运行时再创建第二个 CMC；两个组件同时写胶囊会破坏单一写者假设。参数配置、角色头文件与模块依赖仍由项目补齐。
+
+### 8.3 Custom 滑铲：先把一次尝试移动接对
+
+先采用有限训练合同：静态宽阔水平地面、无 Root Motion、无移动平台、无坡阶和网络。输入取消、低速和最大时长由外层状态逻辑处理。下面只展示一次尝试位移的接线，`AttemptedDelta` 必须由该时间片的滑行规则提供；它没有实现完整 `PhysCustom`，也没有伪装成引擎默认滑铲。
 
 ```cpp
-// 蓝图里直接改 CharacterMovement 组件的 Max Walk Speed 属性即可
-void AMyCharacter::OnSprint(const FInputActionValue& Value)
+// 在 UTrainingMovement 的自定义移动路径内。
+// AttemptedDelta 已是本时间片的尝试位移；不是输入强度。
+if (!UpdatedComponent) return;
+FHitResult Hit(1.0f);
+const bool bMoved = SafeMoveUpdatedComponent(
+    AttemptedDelta, UpdatedComponent->GetComponentQuat(), true, Hit,
+    ETeleportType::None);
+
+if (Hit.bStartPenetrating || Hit.IsValidBlockingHit())
 {
-    if (UMyCharacterMovementComponent* MC = GetCharacterMovement<UMyCharacterMovementComponent>())
-    {
-        MC->bSprinting = Value.Get<bool>();
-    }
+    // 训练策略：遇阻即停，由外层退出逻辑选择后续模式并清理。
+    StopMovementImmediately();
+    bSlideExitRequested = true;
+}
+else if (!bMoved && !AttemptedDelta.IsNearlyZero())
+{
+    // 未取得预期移动，同样交给统一退出路径，不能继续无限尝试。
+    StopMovementImmediately();
+    bSlideExitRequested = true;
 }
 ```
 
-> 说明：用 `GetMaxSpeed()` 动态限速比"每帧 SetMaxWalkSpeed"更干净——它在所有模式分支统一生效，且不产生属性复制抖动。
+`bSlideExitRequested` 是项目字段，应初始化为 false，进入和退出时按本次动作生命周期重置。Hit 是这里声明的局部输出，不能假定有一个可直接使用的 CMC 成员 `HitResult`。对于更一般的贴墙滑行可采用 `SlideAlongSurface`，但同时要定义剩余时间、第二次命中和模式变化；本片段选择停止，不能据此声称已处理所有碰撞。
 
-### 4.3 Custom 模式：滑铲示例（C++）
+有限滑行速度规则可用 `speed_next = max(speed - deceleration × dt, 0)` 理解，`deceleration` 单位为 cm/s²，不应命名为没有单位说明的“摩擦系数”。低于退出阈值后退出，而非永远钳在最小速度继续滑。接入完整角色时还要在移动前后处理地面有效性；离开平台立即退出训练合同，不能因把 `Velocity.Z` 写成零就悬空。
+
+### 8.4 落地表现与飞行 Pawn 对照
+
+落地表现可覆写已声明的 `Landed(const FHitResult&)`，保存所需的着陆速度，调用 `Super::Landed(Hit)`，再按项目规则生成音效或尘土。若改用 `LandedDelegate`，选择这一条订阅链并管理绑定寿命；不要同时在 override、蓝图事件和委托里各播放一次同一效果。Hit 不直接提供“角色着陆速度”，应从移动状态取值。
+
+轻量无人机可以采用 `UFloatingPawnMovement`：先给 Pawn 一个有合适碰撞形状/响应的根组件，将其设为移动对象，再配置 `MaxSpeed / Acceleration / Deceleration / TurningBoost`，最后由输入传入三维移动意图。原稿只创建移动组件而没有建立根碰撞与移动对象，不能当作完整可运行 Pawn。
 
 ```cpp
-// 头文件中声明
-enum ECustomMoveMode : uint8
-{
-    ECustom_None = 0,
-    ECustom_Slide = 1,
-};
-
-UCLASS()
-class UMyCharacterMovementComponent : public UCharacterMovementComponent
-{
-    GENERATED_BODY()
-public:
-    void StartSlide();   // 进入滑铲
-    void EndSlide();     // 退出滑铲
-protected:
-    virtual void PhysCustom(float deltaTime, int32 Iterations) override;
-    virtual void OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode) override;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Slide")
-    float SlideFriction = 1.5f;
-    UPROPERTY(EditDefaultsOnly, Category = "Slide")
-    float SlideMinSpeed = 150.f;
-};
-
-// 实现
-void UMyCharacterMovementComponent::StartSlide()
-{
-    SetMovementMode(MOVE_Custom, ECustom_Slide);
-}
-
-void UMyCharacterMovementComponent::EndSlide()
-{
-    if (MovementMode == MOVE_Custom && CustomMovementMode == ECustom_Slide)
-    {
-        SetMovementMode(DefaultLandMovementMode); // 回到 Walking / NavWalking
-    }
-}
-
-void UMyCharacterMovementComponent::PhysCustom(float deltaTime, int32 Iterations)
-{
-    Super::PhysCustom(deltaTime, Iterations);
-
-    if (CustomMovementMode != ECustom_Slide)
-    {
-        return; // 其余子模式走默认分发
-    }
-
-    // 保持水平速度并缓慢衰减（滑铲本体）
-    Velocity.Z = 0.f;
-    const float Speed = Velocity.Size2D();
-    if (Speed > SlideMinSpeed)
-    {
-        FVector Dir2D = Velocity.GetSafeNormal2D();
-        Velocity = Dir2D * FMath::Max(Speed - SlideFriction * deltaTime, SlideMinSpeed);
-        // 带碰撞地移动
-        FVector Delta = Velocity * deltaTime;
-        if (!SafeMoveUpdatedComponent(Delta, UpdatedComponent->GetComponentQuat(), true, HitResult))
-        {
-            // 撞墙提前结束滑铲
-            EndSlide();
-            return;
-        }
-    }
-    else
-    {
-        EndSlide();
-    }
-    UpdateComponentVelocity(); // 记得同步 ComponentVelocity
-}
-
-void UMyCharacterMovementComponent::OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode)
-{
-    Super::OnMovementModeChanged(PreviousMovementMode, PreviousCustomMode);
-
-    if (CustomMovementMode == ECustom_Slide)
-    {
-        // 进入滑铲：压低胶囊体（示例，需配合 ACharacter::Crouch 更稳妥）
-    }
-    else if (PreviousCustomMode == ECustom_Slide)
-    {
-        // 退出滑铲：恢复胶囊体高度
-    }
-}
+// 有效 CollisionRoot 已作为 Pawn 根组件建立，FloatingMovement 已创建。
+FloatingMovement->SetUpdatedComponent(CollisionRoot);
+FloatingMovement->MaxSpeed = 800.0f;     // 示例 cm/s
+FloatingMovement->Acceleration = 2000.0f;
+FloatingMovement->Deceleration = 4000.0f;
+FloatingMovement->TurningBoost = 8.0f;
 ```
 
-> 说明：判断自定义子模式直接比较 `MovementMode == MOVE_Custom && CustomMovementMode == N` 即可；示例中的 `HitResult`、`SafeMoveUpdatedComponent` 为 CMC 保护成员，子类可直接使用。
+该组件提供简单速度/加速度控制，公开类说明写明不实现重力，但仍有扫掠碰撞与去穿透相关能力；不是“无碰撞解析的直接位移”。同页一个函数摘要又出现“applies gravity”，与类 Remarks 有文字不一致，本文只按类用途作有限对照，不据此推断该函数实现。需要地面、跳跃及 CMC 那套网络角色行为时，应选择相应角色方案。[FloatingPawnMovement 5.5](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UFloatingPawnMovement?application_version=5.5)
 
-### 4.4 跳跃与落地事件（C++ + 蓝图）
+## 九、可复现纸面追踪与验证边界
 
-```cpp
-// AMyCharacter.cpp —— 构造函数中绑定落地委托
-AMyCharacter::AMyCharacter()
-{
-    // 方式一：C++ 绑定 LandedDelegate（FLandedSignature）
-    // LandedDelegate.AddDynamic(this, &AMyCharacter::HandleLanded);
-}
+下表的 `PAPER_EXPECTED` 仅表示在明确输入和前提下的纸面预期；没有启动或执行 UE。`SOURCE_CHECKED` 是已读官方选段支持的接口语义，不能替代运行。全部代码编译、资产接线、碰撞场景、事件次数、网络重演和性能验证均为 `NOT_RUN`。
 
-void AMyCharacter::HandleLanded(const FHitResult& Hit)
-{
-    // 落地表现：落地音效、尘土 VFX、硬直
-}
+| 编号 | 输入与操作 | PAPER_EXPECTED 与反例判定 | 能说明什么 |
+| --- | --- | --- | --- |
+| P1 输入/位移 | 正交平面基向量；轴 `(0, 0.5)`；只跟踪输入合成 | 前向意图大小为 0.5，不是已经走 0.5 cm；若直接报告位移即混层 | 第2/8节的输入语义；不预测 CMC 末速度 |
+| P2 请求/碰撞 | 300 cm/s，0.1 s；假定扫掠允许前进12 cm后被墙挡 | 请求30 cm，实际该段12 cm；发生过移动与阻挡可以同时成立 | 不能用 bool 返回替代 Hit 判定 |
+| P3 坡/台阶 | 无覆盖的30°和60°坡；人为门槛45°；另给20 cm台阶上方不足空间 | 单独坡角条件只放行30°；低台阶也可能因净空失败 | 可走坡与可跨台阶是不同条件；不认证完整场景结果 |
+| P4 跳跃 | 理想初速400 cm/s、恒重力1000 cm/s²，无续跳/碰撞 | 顶点0.4 s、高80 cm；有低顶或续跳时不能沿用80 cm | 跳高公式的前提，不是UE默认或帧积分结果 |
+| P5 滑行 | 训练规则初速300、减速度200、dt0.25 s、退出阈值180 | 第一步250、第二步200、第三步150后退出；不钳成180无限滑 | 终止条件与速度规则；未验证碰撞/平台/网络 |
+| P6 事件顺序 | Falling 找到有效落点，进入 Landed 回调 | 不能断言此刻已Walking；模式完成后的逻辑等模式通知 | SOURCE_CHECKED 的落地事件边界 |
+| P7 疾跑重演 | 客户端某步意图true、服务器同一步false；同一代码不同状态 | 不能保证得到同一结果；只复制当前bool不能补齐所有历史 | 同代码不足以建立可重演合同 |
+| P8 退出与空间 | 滑铲请求结束；头顶不足站立；另一路死亡已禁用移动 | 请求站起不等于成功；清理滑铲不能无条件把None改回Walking | 清理归属与高优先级状态 |
+| P9 根运动 | 动画有前移，应用设置为Ignore Root Motion | 不能仅凭根骨曲线宣称胶囊会前移；再叠Tick位移不修复设置合同 | 区分提取、应用和运动约束 |
 
-// 覆写跳跃（可选）
-void AMyCharacter::Landed(const FHitResult& Hit)
-{
-    Super::Landed(Hit);
-    // 自定义落地逻辑（C++ 虚函数优先于委托）
-}
-```
+未来接入目标项目时，应先编译最小角色并确认输入和事件接线，再验证平地、墙角、低顶、坡阶、边缘与基座；之后才验证拥有者、服务器、模拟代理和中断/销毁流程。每项应记录实际版本、初始状态、输入、输出和失败，不把预期表重命名成“测试通过”。这里没有提供已经运行的脚本、性能数字或服务器容量结论。
 
-蓝图操作（与 C++ 等价）：
+## 十、按症状定位责任层
 
-1. 在角色蓝图事件图表中添加 **On Landed** 事件（对应 `Landed(Hit)` → `OnLanded` → `LandedDelegate` 链路），从 `Hit` 引脚取法线/速度做落地表现；
-2. 添加 **On Movement Mode Changed** 事件，判断 `New Movement Mode == Falling` 播放起跳动画、`== Walking` 播放落地动画；
-3. 添加 **On Character Movement Updated** 事件，用 `Old Location` 与当前位置差计算实际位移（比用速度更稳）；
-4. 跳跃输入绑定 `Jump` / `Stop Jumping` 节点（或 C++ 调用 `ACharacter::Jump() / StopJumping()`）。
+| 症状 | 先观察哪一层 | 根据观察采取什么行动 |
+| --- | --- | --- |
+| 输入触发但角色不走 | 拥有者/Controller、输入是否到 Pawn、模式、移动对象与Tick、限速/加速度 | 意图为空先查输入；None查禁用原因；请求存在但位移为零查碰撞/状态，不立即改Actor坐标 |
+| 松手仍滑很远 | 当前模式、实际选用的摩擦与制动项 | 确认分离开关，再单独调一项；不要把Walking参数套到全部模式 |
+| 空中转向过弱或过强 | Falling横向速度、AirControl及Boost门槛 | Boost按横向速度条件理解；不要用离地高度解释低速增强 |
+| 跳跃高度不同 | 跳跃保持时间、有效重力、碰撞与外力 | 先判定理想公式前提是否成立；释放/取消必须能停止保持请求 |
+| Custom不动或走两遍 | 当前主模式/子模式，C++与蓝图位移写者 | 无写者补自定义推进；两个写者合并责任，不能靠把dt减半掩盖 |
+| 看似落地却仍Falling | 读取发生在Landed还是模式改变之后 | 在正确阶段判断状态，避免把事件时机当物理故障 |
+| 滑铲结束后卡低姿态 | 站起请求、头顶空间和蹲伏实际状态 | 保持可容纳姿态，等待项目允许的站起时机，不强行放大胶囊 |
+| 联机橡皮筋 | 意图/资格、规则版本、base和根运动状态、校正边界 | 先对比同一次移动的输入与状态，再查网络；不关闭校正来宣称问题解决 |
+| 平台抖动 | 基座身份、更新顺序和是否双重应用位移 | 消除重复写者；版本/API与时间预算是下一层问题 |
+| 动画漂移或结束回弹 | 根运动提取/应用、胶囊与Mesh位置 | 确认运动来源；不要同时用根运动和手工Tick补同一段位移 |
 
-### 4.5 简易飞行 Pawn：UFloatingPawnMovement（对照）
+参数或查询读取可用于诊断，但不要假定任意 Tick 都读到“上帧残留”，也不要把 `OnCharacterMovementUpdated` 当成已验证的每子步回调。需要对齐观测时机时，给采样记录附上本次更新前后、预测/修正阶段以及对象身份。
 
-```cpp
-// 头文件
-UCLASS()
-class AMyDronePawn : public APawn
-{
-    GENERATED_BODY()
-public:
-    AMyDronePawn();
-    virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
-    void Move(const FInputActionValue& Value);
+## 十一、来源范围与版本迁移说明
 
-    UPROPERTY(VisibleAnywhere)
-    class UFloatingPawnMovement* FloatingMovement;
-};
+本轮核对日为 2026-10-10。下表列出实际使用的公开页选段；未声称逐行读完大型 API 总表，也没有把网页上的 Source 路径视为已读取实现文件。
 
-// 实现
-AMyDronePawn::AMyDronePawn()
-{
-    FloatingMovement = CreateDefaultSubobject<UFloatingPawnMovement>(TEXT("FloatingMovement"));
-    FloatingMovement->MaxSpeed = 800.f;
-    FloatingMovement->Acceleration = 2000.f;
-    FloatingMovement->Deceleration = 4000.f;
-    FloatingMovement->TurningBoost = 8.f;
-}
+| 来源 | 实际版本与核对位置 | 支持范围与限制 |
+| --- | --- | --- |
+| [Networked Movement](https://dev.epicgames.com/documentation/en-us/unreal-engine/understanding-networked-movement-in-the-character-movement-component-for-unreal-engine?application_version=5.6) | 5.6，Basics、PerformMovement、各网络角色、Custom、Root Motion、packed扩展选段 | 责任链；不是UE5.8逐行实现、默认发送频率或完整反作弊保证 |
+| [CMC API](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent?application_version=5.5) | 5.5，继承、所用属性、公开虚函数与事件相关条目 | 符号/接口定位；5.6直接访问未得到有效正文，不能暗中改标5.6 |
+| [CMC Python API](https://dev.epicgames.com/documentation/en-us/unreal-engine/python-api/class/CharacterMovementComponent?application_version=5.6) | 5.6，movement_mode、摩擦、坡面、AirControl相关属性选段 | 属性文字；不作为C++调用实现或全部默认值清单 |
+| [MovementComponent](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/GameFramework/UMovementComponent?application_version=5.5)、[SafeMove](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UMovementComponent/SafeMoveUpdatedComponent/1?application_version=5.5)、[SlideAlongSurface](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UMovementComponent/SlideAlongSurface?application_version=5.5) | 5.5，Remarks/签名/参数 | 移动对象、穿透尝试、比例参数；未读取 cpp |
+| [AddMovementInput](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/APawn/AddMovementInput?application_version=5.5)、[CalcVelocity](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent/CalcVelocity?application_version=5.5) | 5.5，Remarks/参数 | 输入意图、速度计算不施重力；不是统一积分算法 |
+| [GroundFriction](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent/GroundFriction?application_version=5.5)、[分离制动](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent/bUseSeparateBrak-?application_version=5.5)、[倍率](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent/BrakingFrictionF-?application_version=5.5) | 5.5，Remarks | 选项语义；示例配置不是默认配置，蓝图/CDO/运行状态仍可能覆盖 |
+| [FindFloor](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent/FindFloor?application_version=5.5)、[StepUp](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent/StepUp?application_version=5.5)、[Walkable Slope](https://dev.epicgames.com/documentation/en-us/unreal-engine/walkable-slope-in-unreal-engine?application_version=5.6) | 前两者5.5；坡度指南5.6 | 地面/跨越/覆盖的接口和条件；不认证具体地图碰撞 |
+| [MaxSimulationTimeStep](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent/MaxSimulationTim-?application_version=5.5)、[UpdateBasedMovement](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent/UpdateBasedMovement?application_version=5.5) | 5.5，Remarks | 步长预算例外、基座位置更新；没有性能测量或线程安全承诺 |
+| [Character](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/GameFramework/ACharacter?application_version=5.5)、[Jump](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/ACharacter/Jump?application_version=5.5)、[DoJump](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent/DoJump?application_version=5.5)、[Landed](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/ACharacter/Landed?application_version=5.5)、[UnCrouch](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UCharacterMovementComponent/UnCrouch?application_version=5.5) | 5.5，所用属性、事件与Remarks | 跳跃请求/释放、落地时机、站起空间；个别独立事件页访问失败，依据实际返回的Character条目 |
+| [Root Motion](https://dev.epicgames.com/documentation/en-us/unreal-engine/root-motion-in-unreal-engine?application_version=5.6)、[FloatingPawnMovement](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/GameFramework/UFloatingPawnMovement?application_version=5.5) | 分别5.6与5.5，类用途/提取应用/运动模式约束 | 选择与对照；Floating页内部摘要歧义已在8.4注明 |
 
-void AMyDronePawn::Move(const FInputActionValue& Value)
-{
-    const FVector Input = Value.Get<FVector>();
-    AddMovementInput(GetActorForwardVector(), Input.X);
-    AddMovementInput(GetActorRightVector(), Input.Y);
-    AddMovementInput(GetActorUpVector(), Input.Z);
-}
-```
+历史定位 `Engine/Source/Runtime/Engine/Classes/GameFramework/CharacterMovementComponent.h`、`Engine/Source/Runtime/Engine/Private/Components/CharacterMovementComponent.cpp`、`Engine/Source/Runtime/Engine/Classes/GameFramework/Character.h`、`Engine/Source/Runtime/Engine/Classes/GameFramework/MovementComponent.h`、`Engine/Source/Runtime/Engine/Classes/GameFramework/FloatingPawnMovement.h` 与 `Engine/Source/Runtime/Engine/Classes/Engine/EngineTypes.h` 保留为授权目标 checkout 的后续阅读入口，均非本轮路径存在性或源码版本验证。
 
-`UFloatingPawnMovement` 的实现极其直白：`Velocity += 输入加速度 × DeltaTime`，无输入时按 `Deceleration` 衰减，然后 `MoveUpdatedComponent` 直接位移（不做扫掠碰撞解析）。适合"不需要地面/重力/碰撞语义"的飞行物。
+旧稿还列出 UE5.8 的基座接口迁移，以及固定 `MaxAcceleration`、JumpZVelocity、AirControl、模拟步长等默认数字。本轮不把它们当作已核实默认或迁移合同，也不复制不可见的弃用宏；迁移时以目标头文件、实际类默认对象、蓝图覆盖和项目配置核对。packed 移动在已读5.6文档中已存在，不能简单归为“5.8才有”。整篇继续为L2，但其依据明确收窄为实际公开资料静态核对，`verified` 保持空列表。
 
-## 五、最佳实践
+## 十二、关联阅读与职责分工
 
-1. **参数配置走组件属性，不写死在代码里**：`MaxWalkSpeed / AirControl / JumpZVelocity` 等优先在角色蓝图/数据资产中配置，C++ 只提供"行为"，便于策划调参。
-2. **区分"状态"与"模式"**：疾跑/受伤减速这类纯数值变化用 `GetMaxSpeed()` 覆写或动态调参；滑铲/攀爬这类"运动学变化"才用 `MOVE_Custom`。不要为每个 Buff 都开一个模式。
-3. **监听事件，别轮询**：落地、模式切换、移动更新都有现成事件/委托（`OnLanded`、`K2_OnMovementModeChanged`、`OnCharacterMovementUpdated`），避免在 `Tick` 里频繁查询状态。
-4. **网络下保持逻辑一致**：`PhysCustom` 等物理逻辑必须在服务器与客户端用同一份代码（不能只写在客户端蓝图里）；自定义模式的进入/退出要同步（`MovementMode` 会复制，但子模式状态变量需要自行复制或随移动包传递）。
-5. **Crouch 用内置接口**：`ACharacter::Crouch() / UnCrouch()` 会同时处理胶囊体缩放与 `OnStartCrouch / OnEndCrouch` 事件，比手动改 Capsule 半高安全得多。
-6. **小心修改 `TickComponent` / `PerformMovement`**：移动管线内部有子步、预测与回放机制，随意打乱顺序会破坏网络一致性；95% 的需求用 Phys\*/CalcVelocity/GetMaxSpeed 级别的覆写即可。
-7. **调试手段**：控制台 `p.VisualizeMovement`（若可用）与 `DisplayDebug`（角色调试显示）可查看移动模式/速度；`GetLastUpdateLocation() / GetLastUpdateVelocity()`（BlueprintCallable）适合做表现层预测。
-8. **5.8 迁移注意**：编译期处理弃用接口——`GetMovementBase()` → `GetMovementBaseObject()`，`CallServerMove` → `CallServerMovePacked`（网络定制时），`GetLastServerMovementBase()` → `GetLastServerMovementBaseInterfaceData()`。
-
-## 六、常见问题 FAQ
-
-**Q1：角色不走，但输入绑定正常？**
-检查三点：① 移动输入是否调用了 `AddMovementInput`（而不是直接改 `Velocity`）；② `MovementMode` 是否为 `MOVE_None`（被禁用/冻结）；③ `MaxWalkSpeed` 与 `MaxAcceleration` 是否被误设为 0，或 `GetMaxSpeed()` 覆写是否返回了 0。
-
-**Q2：跳跃高度和预期不符？**
-跳高由 `JumpZVelocity` 与 `GravityScale`（叠加 PhysicsVolume 重力）共同决定：`h ≈ JumpZVelocity² / (2 × g × GravityScale)`。调高 `JumpZVelocity` 或调低 `GravityScale` 都会变高；注意 `JumpMaxHoldTime > 0` 时按住跳跃会持续供力，手感完全不同。
-
-**Q3：空中转向"像纸片"，怎么增强？**
-调大 `AirControl`（0.05 → 0.3 等），或调大 `AirControlBoostMultiplier` 与 `AirControlBoostVelocityThreshold` 让低速时更跟手；动作游戏还可以覆写 `GetAirControl()` 按剩余滞空时间加权。
-
-**Q4：进入 Custom 模式后角色完全不动？**
-`MOVE_Custom` 模式下引擎不会自动调用 `PhysWalking` 等实现——位移必须由你的 `PhysCustom` 代码自己算（见 4.3）。这是最典型的 Custom 模式"失灵"原因。
-
-**Q5：蓝图里能写自定义移动逻辑吗？**
-纯蓝图只能做参数调整与事件响应；`PhysCustom` / `CalcVelocity` 等物理虚函数无法在蓝图覆写。若团队纯蓝图，可用"事件驱动 + `SetMovementMode`/`LaunchCharacter`/`AddImpulse` 组合"模拟，但复杂玩法（爬墙、悬挂）建议引入 C++。
-
-**Q6：MOVE_NavWalking 和 MOVE_Walking 有什么区别？**
-`NavWalking` 把角色"钉"在 NavMesh 上移动，适合 AI 寻路（避免走位漂移出导航面）；玩家角色通常用 `Walking`。切换用 `SetGroundMovementMode()`（只接受这两个值之一）。
-
-**Q7：角色移动在联机时"服务器瞬移、客户端漂移"？**
-先确认：① 服务器与客户端跑的是同一份移动组件代码（尤其自定义模式）；② 修改移动参数的时机在服务器上执行（客户端预测只预测输入，不预测参数变更）；③ `MovementMode` 变化是否通过复制/移动包同步。详见网络章节与「06-网络同步」分类。
-
-**Q8：怎么实现"按住跳得更高"或二段跳？**
-按住更高：`JumpMaxHoldTime > 0`（跳跃期间持续施加 `JumpZVelocity` 量级的力）；二段跳：`JumpMaxCount > 1`，配合 `CanJumpInternal()`（BlueprintNativeEvent）在蓝图里按 `JumpCurrentCount` 放行。
-
-**Q9：角色和移动平台一起移动为什么会抖动？**
-确认基座（base）处理：角色站在移动平台上时 `Velocity` 会叠加基座速度（`GetMovementBase()` 相关逻辑）；平台移动过快、子步不足时会出现拉扯，可调大 `MaxSimulationIterations` 或让平台用 `MoveUpdatedComponent` 规范驱动。
-
-**Q10：为什么推荐用 `OnCharacterMovementUpdated` 而不是 Tick 里读 `Velocity`？**
-该事件在每次移动更新（含网络回放、子步结束后）统一广播，参数带 `OldLocation / OldVelocity`；在 Tick 里读 `Velocity` 会读到"上帧残留值"且无法区分预测/回放阶段，做表现层（拖尾、脚步特效）容易出错。
-
-## 七、关联阅读
-
-- [系统实战/02-角色移动完整链路](../../07-网络与游戏服务端/同步预测与回放/02-角色移动完整链路.md)：输入采样、SavedMoves 队列、ServerMove 协议压缩、服务端防加速作弊校验与 Mesh 相对偏移平滑消抖 15 步端到端实战闭环。
-- [02-EnhancedInput增强输入](./02-EnhancedInput增强输入.md)：`AddMovementInput` 的输入来源（Move 动作 → 移动意图）。
-- [04-委托事件与对象通信](../../03-引擎架构与资源系统/模块化框架与对象通信/04-委托事件与对象通信.md)：`LandedDelegate` / `OnCharacterMovementUpdated` / `MovementModeChangedDelegate` 的绑定与生命周期。
-- [05-蓝图与C++协作](../玩法架构与任务协作/05-蓝图与C%2B%2B协作.md)：`BlueprintNativeEvent`（`CanJumpInternal`）、`BlueprintImplementableEvent`（`K2_OnMovementModeChanged`）的协作模式。
-- [01-GameplayAbilitySystem能力系统](../技能战斗与属性结算/01-GameplayAbilitySystem能力系统.md)：GAS 中的移动类 Ability 通常通过 `LaunchCharacter` / 动态限速 / `RootMotionSource` 影响移动。
-- [06-网络同步 · 03-客户端预测与延迟补偿](../../07-网络与游戏服务端/同步预测与回放/03-客户端预测与延迟补偿.md)：本文 3.8 节的完整展开——SavedMoves、ServerMove、ClientAdjustPosition 的原理与调参。
-- [04-动画系统](../../../游戏知识/04-动画系统/README.md)：动画蓝图依据 `Velocity`/`IsFalling`/`IsMovingOnGround` 驱动移动动画与 RootMotion。
-- [05-场景组件与变换体系](../../04-图形动画与物理仿真/空间层级与变换/05-场景组件与变换体系.md)：`UpdatedComponent`、`SafeMoveUpdatedComponent` 背后的 SceneComponent 变换与碰撞基础。
-- [09-物理系统](../../../游戏知识/09-物理系统/README.md)：PhysicsVolume 重力/浮力对 `GravityScale` 与 Swimming 模式的影响。
+- [Enhanced Input 增强输入](02-EnhancedInput增强输入.md)：动作值、方向约定、绑定与取消；本文从移动意图接收处继续
+- [角色移动完整链路](../../07-网络与游戏服务端/同步预测与回放/02-角色移动完整链路.md)：保留项目链路阅读入口；按其自己的版本与实际证据阅读，标题中的“完整”不是本篇运行证明
+- [客户端预测与延迟补偿](../../07-网络与游戏服务端/同步预测与回放/03-客户端预测与延迟补偿.md)：发送、保存、重演、校正与网络扩展的主责正文
+- [委托事件与对象通信](../../03-引擎架构与资源系统/模块化框架与对象通信/04-委托事件与对象通信.md)：观察者绑定和释放
+- [蓝图与C++协作](../玩法架构与任务协作/05-蓝图与C%2B%2B协作.md)：事件归属、蓝图接口与原生扩展
+- [Gameplay Ability System](../技能战斗与属性结算/01-GameplayAbilitySystem能力系统.md)：能力触发、取消与移动源所有权
+- [动画求值与角色表现](../../04-图形动画与物理仿真/动画求值与角色表现/README.md)：动画状态与Root Motion表现链
+- [场景组件与变换体系](../../04-图形动画与物理仿真/空间层级与变换/05-场景组件与变换体系.md)：组件层级、坐标与移动对象
+- [物理求解与动力学](../../04-图形动画与物理仿真/物理求解与动力学/README.md)：物理模拟和角色运动控制的边界
+- [Lyra核心生成移动与状态源码](53-Lyra核心生成移动与状态源码.md)：项目特有生成/状态接线；不把Lyra规则自动当成裸CMC规则
