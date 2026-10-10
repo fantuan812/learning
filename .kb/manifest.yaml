@@ -1244,8 +1244,8 @@ documents:
   "知识/04-图形动画与物理仿真/音频播放与程序化声音/04-Quartz音频时钟与节奏同步.md":
     kind: doc
     maturity: L2
-    bytes: 14911
-    lines: 305
+    bytes: 35003
+    lines: 338
   "知识/04-图形动画与物理仿真/音频播放与程序化声音/16-音频系统源码.md":
     kind: doc
     maturity: L2
@@ -1344,8 +1344,8 @@ documents:
   "知识/05-Gameplay与交互系统/玩法架构与任务协作/05-蓝图与C++协作.md":
     kind: doc
     maturity: L2
-    bytes: 17550
-    lines: 416
+    bytes: 39573
+    lines: 583
   "知识/05-Gameplay与交互系统/玩法架构与任务协作/08-ModularGameplay模块化玩法.md":
     kind: doc
     maturity: L2
