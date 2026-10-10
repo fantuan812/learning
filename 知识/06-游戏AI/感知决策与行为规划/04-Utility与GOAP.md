@@ -18,11 +18,11 @@ sources:
 ---
 # 04 效用 AI 与 GOAP（Utility AI / GOAP / HTN）
 
-> 知识成熟度：L2。主要承诺是具名原始资料的机制核对、选型边界与原创纸面正反例；保留 L2，不新增验证事件。
+> 知识成熟度：L2。以具名资料核对机制和选型边界，并提供有界静态规划的完整小例；保留 L2，不新增验证事件。
 > 知识基线：Graham 2013 第 9 章、Orkin GDC 2006 论文、Erol 等 1994 UMCP 论文；2026-10-10 核对可访问的指定章节。论文年份是版本定位，网页不是不可变源码 revision。
 > 适用范围：NPC 的多因素择优、有限确定性模型中的动作序列规划、设计者编写的层次任务分解，以及它们与 BT/FSM 的接口。服务端权威、未知观察、异步取消与资源归属另有显式合同。
-> 证据边界：下文代码是未运行的 Python 风格伪代码，数值与轨迹为手算推导；不提供完整 AI 框架。未运行算法、引擎、编译、网络、性能或遥测检查，也未核对特定 UE checkout 或插件版本。
-> 最后更新：2026-10-10，修正评分、搜索、执行与选型因果；原有概念、图示、代码教学用途、FAQ 与跨篇导航继续保留。
+> 证据边界：§2 的 Python 风格评分及 §7 的调度代码是未运行伪代码；§3.3 提供完整 C++17 静态规划程序，其有限编译/运行结果见该节。它不执行真实游戏动作，不提供完整 AI 框架。未运行引擎、网络、性能或遥测检查，也未核对特定 UE checkout 或插件版本。
+> 最后更新：2026-10-10，补齐三动作静态规划入口、输出与失败边界；正常流程在前，异步执行合同放进阶段。
 
 ## 一、先分清三个问题
 
@@ -202,70 +202,190 @@ Orkin 在 [pp.4–5、10–13](https://www.gamedevs.org/uploads/three-states-pla
 
 负例：初态 `WeaponAtShelf=false`，且动作库没有补充武器的动作，在这个封闭模型中穷尽搜索可以报告无计划；若该值只是没观察到，则应先解决输入缺口。目标一开始已满足时，空计划是成功的 `Found([])`，不是等待重规划的失败。
 
-### 3.3 有预算的前向搜索伪代码
+### 3.3 完整小例：取武器、装弹、射击
 
-```mermaid
-flowchart TD
-    A[选择目标并固定快照/模型版本] --> B[验证有限输入与动作绑定]
-    B --> C[搜索动作序列]
-    C --> D{终态}
-    D -->|Found 含空计划| E[确认当前资格后交给执行层]
-    D -->|Exhausted| F[记录本模型内无计划]
-    D -->|BudgetExceeded| G[未确定 有界等待或换策略]
-    D -->|InvalidInput/InputUnavailable| H[修正模型或补齐观察]
-    E --> I{执行结果/相关观察变化}
-    I -->|需要重新决策| A
-    I -->|Running| E
+接着把目标推进到“敌人已被击败”，用三个动作走通**输入 → 状态搜索 → 动作序列 → 预测输出**。为了让程序保持完整而小，这个练习把上一节的移动与领取合成 `TakeWeapon`：它假定武器已确认可取得，不模拟位置、路径、其他拾取者或武器丢弃。上一节的位置互斥和库存消耗规则，在展开真实移动/领取模型时仍然适用。
+
+模型只有三个位：`Weapon=1` 表示持有武器，`Ammo=2` 表示该武器已装好一发弹药，`EnemyDefeated=4` 表示敌人已被击败。三个位给出 8 个编码；其中 `Ammo` 真而 `Weapon` 假的 2、6 被 schema 拒绝，因此合法状态有 6 个。目标条件是 `(state & EnemyDefeated) != 0`。这里没有未知值；观察不齐应由调用前的适配层返回 `InputUnavailable`，不能填成 false。
+
+| 动作 / 固定 ID | 前置条件（另要求敌人未被击败） | 预测效果 | 正整数成本 |
+| --- | --- | --- | --- |
+| TakeWeapon / 0 | 没有武器，且本次模型中武器可取得 | 设置 `Weapon` | 2 |
+| LoadAmmo / 1 | 有武器、未装弹，且本次模型中弹药可取得 | 设置 `Ammo` | 1 |
+| Shoot / 2 | 有武器且已装弹 | 设置 `EnemyDefeated`，清除 `Ammo` | 3 |
+
+`Model` 的两个可用性开关在一次调用中固定，成本采用假设单位。这个模型只允许取一次武器、装一发、射一次；没有丢弃、多人争抢或第二个敌人，所以不另建货架/弹药堆计数。若扩成可重复领取，必须把剩余库存及消耗放回状态。射击效果也只是“本练习假设这一发必定击败敌人”的确定性预测；程序没有发射、伤害或世界写入接口。
+
+正常输入是 `Plan(0, {true, true}, 8)`。Dijkstra 每次从已发现且尚未确定最短代价的状态中选累计成本最小者，记为 `settled`；再按动作 ID 顺序检查前置、计算后继并松弛。这里直接扫描 8 个槽位，省去队列实现。距离相同选较小状态 ID，同成本候选不覆盖先到父指针。非负边权下，选出的最小距离可以确定；参见 [Cornell CS 2110，Shortest Paths 的 Weighted Graphs / Dijkstra’s Invariant](https://courses.cis.cornell.edu/courses/cs2110/2026sp/lectures/lec23/)。下面进一步限定所有成本严格为正。
+
+| 本轮确定的状态 | 含义 | 累计成本 `g` | 本轮结果 |
+| --- | --- | --- | --- |
+| 0 | 无武器、未装弹、敌人未被击败 | 0 | TakeWeapon 发现状态 1，成本 2 |
+| 1 | 有武器、未装弹、敌人未被击败 | 2 | LoadAmmo 发现状态 3，成本 3 |
+| 3 | 有武器、已装弹、敌人未被击败 | 3 | Shoot 发现状态 5，成本 6 |
+| 5 | 有武器、弹药已消耗、敌人已被击败 | 6 | 目标以最小距离被确定，沿父指针还原三个动作 |
+
+将下面**整个代码块**保存为 `goap_demo.cpp`，无需补辅助函数。`Plan` 的状态、父指针、动作表和 `main` 都在同一文件；返回值中的 `steps[0..count)` 是计划，只有 `Found` 时 `cost` 有意义。
+
+```cpp
+// goap_demo.cpp -- C++17, only predicts model states; no game actions run.
+#include <algorithm>
+#include <array>
+#include <iostream>
+
+constexpr int Weapon = 1, Ammo = 2, EnemyDefeated = 4;
+constexpr int StateCount = 8, ActionCount = 3, Infinity = 1000;
+
+struct Action {
+    const char* name;
+    int require_on, require_off, add, remove, cost;
+};
+constexpr std::array<Action, ActionCount> Actions{{
+    {"TakeWeapon", 0, Weapon | EnemyDefeated, Weapon, 0, 2},
+    {"LoadAmmo", Weapon, Ammo | EnemyDefeated, Ammo, 0, 1},
+    {"Shoot", Weapon | Ammo, EnemyDefeated, EnemyDefeated, Ammo, 3}
+}};
+static_assert(Actions[0].cost > 0 && Actions[1].cost > 0 &&
+              Actions[2].cost > 0);
+
+struct Model {
+    bool weapon_available;
+    bool ammunition_available;
+};
+bool ValidState(int s) {
+    return s >= 0 && s < StateCount &&
+           ((s & Ammo) == 0 || (s & Weapon) != 0);
+}
+bool Applicable(int s, int id, Model model) {
+    if (id == 0 && !model.weapon_available) return false;
+    if (id == 1 && !model.ammunition_available) return false;
+    const auto& a = Actions[id];
+    return (s & a.require_on) == a.require_on && (s & a.require_off) == 0;
+}
+int Apply(int s, int id) {
+    const auto& a = Actions[id];
+    return (s & ~a.remove) | a.add;  // Pure prediction, including ammo consumption.
+}
+
+enum class Status { Found, Exhausted, BudgetExceeded, InvalidInput };
+struct Result {
+    Status status = Status::Exhausted;
+    int cost = -1, settled = 0, count = 0;
+    std::array<int, StateCount> steps{};
+};
+Result Plan(int start, Model model, int settle_limit) {
+    Result out;
+    if (!ValidState(start) || settle_limit < 0 || settle_limit > StateCount) {
+        out.status = Status::InvalidInput;
+        return out;
+    }
+    if ((start & EnemyDefeated) != 0) {
+        out.status = Status::Found;
+        out.cost = 0;                      // Valid empty plan, even with budget 0.
+        return out;
+    }
+    std::array<int, StateCount> distance, parent, via;
+    std::array<bool, StateCount> settled{};
+    distance.fill(Infinity);
+    parent.fill(-1);
+    via.fill(-1);
+    distance[start] = 0;
+    for (;;) {
+        int u = -1;
+        for (int s = 0; s < StateCount; ++s) {
+            if (!settled[s] && distance[s] != Infinity &&
+                (u == -1 || distance[s] < distance[u])) u = s;
+        }                                 // Equal distance: smaller state ID wins.
+        if (u == -1) return out;           // Exhausted, including an empty frontier.
+        if (out.settled == settle_limit) {
+            out.status = Status::BudgetExceeded;
+            return out;                   // Do not return an incomplete prefix.
+        }
+        settled[u] = true;
+        ++out.settled;                     // Accepting a non-start goal costs one.
+        if ((u & EnemyDefeated) != 0) {
+            out.status = Status::Found;
+            out.cost = distance[u];
+            for (int v = u; v != start; v = parent[v]) {
+                out.steps[out.count++] = via[v];
+            }
+            std::reverse(out.steps.begin(), out.steps.begin() + out.count);
+            return out;
+        }
+        for (int id = 0; id < ActionCount; ++id) {
+            if (!Applicable(u, id, model)) continue;
+            const int v = Apply(u, id);
+            const int candidate = distance[u] + Actions[id].cost;
+            if (!settled[v] && candidate < distance[v]) {
+                distance[v] = candidate;   // Accumulate costs, never count steps.
+                parent[v] = u;
+                via[v] = id;              // Equal cost keeps the first parent.
+            }
+        }
+    }
+}
+const char* Name(Status status) {
+    switch (status) {
+    case Status::Found: return "Found";
+    case Status::Exhausted: return "Exhausted";
+    case Status::BudgetExceeded: return "BudgetExceeded";
+    case Status::InvalidInput: return "InvalidInput";
+    }
+    return "InvalidStatus";
+}
+void Show(const char* label, int start, Model model, int budget) {
+    const Result r = Plan(start, model, budget);
+    std::cout << label << ": " << Name(r.status) << " settled=" << r.settled;
+    if (r.status == Status::Found) {
+        int predicted = start;
+        std::cout << " cost=" << r.cost << " plan=[";
+        for (int i = 0; i < r.count; ++i) {
+            if (i != 0) std::cout << ',';
+            std::cout << Actions[r.steps[i]].name;
+            predicted = Apply(predicted, r.steps[i]);
+        }
+        std::cout << "] predicted=" << predicted;
+    }
+    std::cout << '\n';
+}
+int main() {
+    Show("normal", 0, {true, true}, 8);
+    Show("no_ammo", 0, {true, false}, 8);
+    Show("budget_3", 0, {true, true}, 3);
+    Show("already_done", EnemyDefeated, {false, false}, 0);
+    Show("bad_state", Ammo, {true, true}, 8);
+}
 ```
 
-下面保留 A* 的教学入口，默认 `h=0`，即一致代价搜索。`Queue` 按 `(f, insertion_order)` 出队，避免并列时比较状态对象；`reconstruct` 沿父指针返回动作列表。`push_checked` 在入队前检查队列容量，返回布尔值，调用者在超限时返回 `BudgetExceeded`。代码表达关键不变量，不是可直接运行的完整模块。
+在已有 C++17 编译器的终端执行：
 
-```python
-def plan(start, goal, actions, h, pop_limit, open_limit):
-    # 先验证 schema、有限绑定/状态域、非负有限成本和启发值合同
-    # 输入/配置不合法返回 InvalidInput；缺观察返回 InputUnavailable
-    if goal(start):
-        return Found([], cost=0)             # 空计划也是已找到解
-    open_set = Queue()
-    best_g = {start: 0}
-    parent = {}
-    if not push_checked(open_set, f=h(start), g=0, state=start, limit=open_limit):
-        return BudgetExceeded()
-    pops = 0
-    while not open_set.empty():
-        if pops >= pop_limit:
-            return BudgetExceeded()
-        f, g, state = open_set.pop()
-        pops += 1                           # 陈旧条目也消耗工作预算
-        if g != best_g.get(state):
-            continue
-        if goal(state):                     # 在最小有效条目出队时接受
-            return Found(reconstruct(parent, state), cost=g)
-        for action in actions:              # 本次固定的有限稳定顺序
-            if not action.applicable(state):
-                continue
-            nxt = action.apply(state)       # 新不可变值；不启动现实动作
-            cost = action.cost(state)
-            candidate_g = g + cost           # 累计成本，不是 len(plan)
-            estimate = h(nxt)
-            if not valid_transition(nxt, cost, candidate_g, estimate):
-                return InvalidInput()       # 拒绝负成本、非有限值等
-            if candidate_g < best_g.get(nxt, infinity):
-                best_g[nxt] = candidate_g
-                parent[nxt] = (state, action)
-                if not push_checked(open_set, f=candidate_g + estimate,
-                                    g=candidate_g, state=nxt, limit=open_limit):
-                    return BudgetExceeded()
-    return Exhausted()                      # 仅本次完整模型的可达图耗尽
+```sh
+g++ -std=c++17 -Wall -Wextra -Wpedantic -O0 goap_demo.cpp -o goap_demo
+./goap_demo
 ```
 
-`valid_transition` 还检查后继遵守 schema、`f=g+h` 不溢出；入队上限的失败要向上传播为终态，不能吞掉后继续声称穷尽。有限图中只有严格更小的 `g` 才更新，可避免零成本回路反复插入；找到较小代价时允许重开状态，不按“第一次见过”永久封闭。存储状态数也应有上限；省略的父表/去重表容量检查同样只能返回预算耗尽。
+固定输出如下。`predicted` 是在模型里重放计划得到的整数状态，不是实际 NPC 执行结果：
 
-默认 `h=0`、有限非负边成本、严格松弛与正确最小队列是本例讨论成本的前提。若改用一般 A*，要保证启发值有限非负、目标处为零，并证明其不高估剩余成本；不一致但可采纳的启发式需要允许重开。否则 `Found` 只表示找到了模型内计划，不能顺手标成最优。用“未满足条件数”也不天然可采纳：一个成本为 1 的动作同时满足三个条件时，计数 3 已高估。启发式选择参见[图搜索算法](../../02-数学与游戏算法/路径搜索与导航/01-图论基础与搜索算法.md)。
+```text
+normal: Found settled=4 cost=6 plan=[TakeWeapon,LoadAmmo,Shoot] predicted=5
+no_ammo: Exhausted settled=2
+budget_3: BudgetExceeded settled=3
+already_done: Found settled=0 cost=0 plan=[] predicted=4
+bad_state: InvalidInput settled=0
+```
 
-累计成本反例：一条两步链成本 `8+1=9`，另一条三步链成本 `1+1+1=3`。按步数偏爱短链就会选错；原始前缀成本必须随状态一起传播。不同目标的效用与同一目标下的路径成本也不能混作一个量。
+- 正常例沿 `0 → 1 → 3 → 5` 得到成本 `2+1+3=6`，最后弹药位确实被清除
+- `no_ammo` 是合法的封闭模型：能取武器，但没有装弹来源或替代动作，访问 0、1 后前沿为空，才可说本模型内无计划
+- `budget_3` 已发现目标 5，但预算不足以确定它，返回“未确定”，不交出前缀或把目标标成已完成。预算按确定状态次数计算，非初始目标也计一次；范围限定为 0–8。初态已满足目标不需要搜索，因此零预算也返回空计划
+- `bad_state` 把“已装弹但没武器”交给入口，得到 `InvalidInput`。超出状态域或预算范围同样拒绝；这与合法无路不同
 
-搜索预算限制的是允许做多少工作，不证明硬实时耗时。即使动作/状态有限，单次 `applicable` 的外部查询仍可能昂贵，因此本模型把它限定为纯、有界检查；导航等慢查询由适配层管理。`BudgetExceeded` 表示尚未判定，`Exhausted` 表示本次有限模型内无计划，`Found` 表示可逐步验证的模型解；三者不能统一为 `None` 后宣布“目标不可达”。预算中断时不把未到目标的前缀当完成计划。
+**本次实际验证（2026-10-10）。** 从正文原样提取此代码块，在现有 `g++ (Debian 14.2.0-19) 14.2.0` 上分别以 `-O0`、`-O2`、`-O1 -g -fsanitize=undefined -fno-sanitize-recover=undefined` 编译运行；三组均启用 `-std=c++17 -Wall -Wextra -Wpedantic`。每组运行上面五个固定案例，标准输出与所示逐字一致，编译/运行均退出 0，stderr 为空。未安装工具；未运行 UE、真实动作、网络、性能或压力实验。UBSan 未报告问题只适用于这次有限执行，不能据此证明任意输入或后续改动安全。
+
+**规模与边界。** 这是固定动作表的静态规划器，调用者不能注入负成本或任意效果函数。每个状态至多确定一次，至多 8 次；每次扫描 8 个槽位，末尾判断空前沿可能再扫描一次，所以最宽松上界为 72 次槽位检查、24 次动作适用性检查。按可变规模写是 `O(V² + V·A)` 时间、`O(V + A)` 空间，此处 `V=8、A=3`。父指针连到先确定且代价更小的状态，不形成环，最多 7 条边；每条成本至多 3，候选加法不超过 24，因此 `Infinity=1000` 和 `int` 只在本固定规模下足够。不是一份可随意改动作表、成本或位数的通用库。
+
+**从小例扩展搜索时保留的规则。** 这里的 Dijkstra 等价于 `h=0` 的一致代价搜索；在本静态正成本模型中，`Found` 给出最低累计成本的模型计划。两步链 `8+1=9` 可能输给三步链 `1+1+1=3`，不能把 `g` 换成步数。改为一般 A* 时，启发值须有限非负、目标处为零且不高估剩余成本；不一致但可采纳时需要允许重开，不能套用此处的永久 `settled` 逻辑。一个成本 1 的动作同时满足三个条件时，“未满足条件数 3”就已高估。详见[图搜索算法](../../02-数学与游戏算法/路径搜索与导航/01-图论基础与搜索算法.md)。
+
+若改用可增长队列/哈希表，仍须给前沿、父表、去重表设容量上限，检查后继 schema、有限成本以及 `g+h` 溢出；只接受严格更小的 `g`，陈旧队列条目也消耗工作预算。任何容量失败必须返回 `BudgetExceeded`，不能吞掉后声称穷尽。本例将这些结构固定为 8 槽数组，并未实现一般 A*。工作次数上界也不等于硬实时耗时保证；导航等慢查询不应藏在这个纯模型的适用性检查里。
 
 ### 3.4 模型可行与现实可执行
 
@@ -279,63 +399,24 @@ def plan(start, goal, actions, h, pop_limit, open_limit):
 
 对攻击、制作等可能失败或结果随机的动作，本文有限确定性模型只是预测。不能在发送攻击后直接写 `TargetDead=true`，或在制作启动后提前加库存。需要未知结果分支、概率优化或部分可观测信念规划时，应显式扩展问题模型；单条确定性 GOAP 计划加重规划不自动获得这些保证。
 
-## 四、把选择、计划与动作生命周期接起来
+## 四、正常流程：从选目标到确认动作效果
 
-### 4.1 三种版本与更新点
+### 4.1 先走通一条没有中断的流程
 
-以下是本文提出的单宿主串行调度合同，用来说明竞态边界；不是任何引擎 API 的默认保证。
+Utility 可以先在“准备迎敌”和“撤退”两个目标间评分；准备迎敌是一个目标候选，不是立即开枪资格。假设它的分数为 `0.72`、撤退为 `0.60`，且当前没有需保留的行为，选择准备迎敌后，把 `EnemyDefeated=true` 作为本教学模型的目标传给 `Plan`。若此时直接攻击候选因无弹药不合法，仍必须排除；选了目标不会绕过动作前置。
 
-| 数据 | 何时更新 | 作用 |
+上例返回三个动作后，执行层按下面的正常路径接手。此表是接入说明，单文件程序只完成了第 1 行：
+
+| 步骤 | 要看到的结果 | 才可继续什么 |
 | --- | --- | --- |
-| 观察快照及 `observation_revision` | 接收已验证的新观察，在决策边界发布 | 评分/搜索读取一致版本；未知、过期与 false 分开 |
-| `goal_id / goal_revision / model_revision` | 意图、参数、动作库或评分/模型配置改变 | 判断返回的候选计划是否属于当前请求 |
-| `plan_generation / action_token` | 接纳新计划或启动一次动作 | 隔离旧动作回执；不得以相同动作名字代替一次激活身份 |
+| 1. 规划 | `Found([TakeWeapon, LoadAmmo, Shoot], cost=6)` | 重查取武器的当前资格 |
+| 2. 取武器 | 启动一次；等待权威领取成功和持有武器的观察，结束并清理这次领取 | 装弹前重新确认武器和弹药来源 |
+| 3. 装弹 | 启动一次；确认一发已装入，结束并清理这次装弹 | 重查射击目标、权限与武器状态 |
+| 4. 射击 | 启动一次；确认实际结果及弹药消耗，结束并清理这次射击 | 实际观察满足目标时，才报告现实任务完成 |
 
-搜索结果带上请求时的目标、模型和观察版本。迟到结果若已不属于当前目标/模型就丢弃；观察变了则按明确策略重验全部依赖或重搜，不能直接装入。执行中的每步还要重查最新资格。自身动作成功本来就会改变观察，不能把任何 revision 增加一律视为计划错误；先按动作结果与预期效果核对，再判断后续依赖是否仍成立。
+每个 Running 更新都推进同一次动作，不重新调用启动。若装弹失败或射击没有击败敌人，保存真实变化，停止依赖该效果的后续步骤，再基于新观察决策；不能把模型的 `predicted=5` 写进世界。取消也须等旧动作实际停止、资源可交接后才让冲突动作接管。同步回调、取消超时、迟返句柄的完整处理见 §7。
 
-观察更新不直接重入正在执行的选择器；先排队，在下一调度边界处理。真实多线程宿主还需要自己的同步与对象寿命合同，本文未实现。
-
-### 4.2 启动一次，推进多次，终止后清理
-
-本节限定单宿主串行消费结果，每次外部调用须在有限时间内返回；同步回调可以发生在 `start` 调用栈内，但只收件，**不内联消费结果、推进计划或启动下一步**。若底层会无界阻塞或在其他线程直接修改本状态，本合同不适用，不能据此声称调度/取消时限已保证。
-
-外调前先登记稳定的 `operation/token`、结果接收关联及资源责任记录，并保留该操作所需的冲突资源交接权；这只表示归属与清理责任，尚未返回的句柄不能记作已经取得。`start` 同步返回的结果、同步回调和异步回执都进入同一个串行收件通道，按 operation 和事件身份去重；同一权威终态只能接纳一次。调用返回时把迟到的句柄仍挂回原 operation，记录 `start_returned`，再将返回结果入队，不能直接写回 Running。同步成功或失败可直接成为终态，不要求先经 Running。收件时终态优先于“已接受/仍在运行”通知；已接纳终态不被后者或重复回执覆盖。互相矛盾的权威终态属于适配器错误，保留清理责任且不重复推进。
-
-| 阶段/结果 | 调度器应做什么 | 不允许的捷径 |
-| --- | --- | --- |
-| Starting | 重查前置，先登记 operation/token、收件关联与资源责任，再调用一次 `start`；未返回时保留记录 | 回调先到而没有归属，或假定句柄已存在 |
-| StartRejected | 接纳拒绝结果并记录原因；待 start 返回，清理其实际取得/迟返的资源 | 将拒绝当作“绝无残留资源”而直接交接 |
-| Running | 仅在未接纳终态时进入；保留同一激活，匹配回执或 `poll` 结果也经收件通道 | 每帧重发请求，或返回后覆盖同步完成 |
-| AwaitingConfirmation | 底层报告完成但必需效果尚未确认时，等待权威结果/新观察，按限定期限转入明确失败或重新观察 | 把未知效果当 true，或把重复完成通知再推进一次 |
-| Succeeded | 接纳成功结果；效果确认、start 已返回且资源已静默后，才结束记录并推进步骤一次 | 以成功回执代替效果/资源确认；同步成功被迫再经 Running |
-| Failed | 保存失败和实际变化，终止剩余计划；start 已返回且资源已静默后才撤销记录 | 丢弃失败知识，或失败后遗失迟返句柄 |
-| Cancelling | 先记取消意图；可安全撤销时发一次 cancel，未到手句柄保留为原 operation 的待清理责任 | 清空队列、删除记录或提前启动冲突动作 |
-| Cancelled | start 已返回且旧资源实际静默后释放归属，允许新计划启动 | 把取消请求/取消回执本身等同资源静默 |
-
-结果、效果确认和资源静默是分开的条件；表中接纳终态不等于 operation 已可删除。伪代码只展示该合同，不是完整 GOAPAgent：
-
-```text
-on_decision_boundary:
-    在外调栈退出后串行消费观察与动作收件，按 operation 去重并接纳结果
-    检查目标与计划依赖；应撤销时先进入 Cancelling，再按原 operation 清理
-    若 start 尚未返回：保留记录，等待外调返回，不重入该外调
-    否则若仍 Running/AwaitingConfirmation：只推进或确认原 operation
-    否则若需清理或资源未静默：推进原 operation 的清理，继续保留记录
-    否则若终态且可退役：解除关联，仅当前计划内未撤销 activation 的成功推进一步
-    只有没有未退役 operation 时，才处理后续选择：
-        有下一步：先登记 operation/token/收件关联/资源责任，再 start 一次
-            返回时将句柄归原 operation、记已返回、返回结果入队；本栈不消费
-        否则若目标已满足：报告完成，等待相关变化
-        否则按退避/事件策略请求一次有预算规划
-```
-
-自然成功、拒绝、失败和取消都要由原 operation 幂等清理实际取得的资源，停止其工作/订阅/计时器；须保留接收完成与清理确认的关联，直到 start 已返回、资源确认静默才可解除并退役。句柄迟返时按原操作当前阶段继续清理，不能移交给新 activation。旧 token 的重复结果不能推动新计划；单纯忽略它也不会停止旧导航或动画。取消超时仍保留记录并阻塞冲突资源，按项目恢复流程处理，不能凭超时宣称静默。失败已造成的现实变化保留为新观察，不用预测状态覆盖或回滚。
-
-纸面同步轨迹：先登记 A → `start(A)` 栈内完成回调入队 → start 返回句柄 H 与“已接受”通知，H 仍归 A → 下一边界接纳 A 的成功，重复成功与“已接受”都不能再推进或改成 Running → 效果确认后清理 H，确认静默才退役 A 并启动下一步 B。A 的任何迟到结果均不能推进 B；若 start 尚未返回，即使已收成功通知也不能提前退役 A。
-
-纸面延迟成功轨迹：规划 `MoveToShelf, PickUpWeapon` → 登记并启动 A → 两次 Running 均不重发 → A 成功且观察确认在货架 → A 已返回并释放移动资源、确认静默 → 才启动拾取 B → B 同样完成确认/清理后目标满足。干扰轨迹：A Running 时切换“逃跑” → 记录取消、等待实际停止 → 新动作 C 才接管移动资源；A 的迟到成功不能让 C 跳步。货架武器被别人拿走时，拾取前检查或原子领取失败，记录 `WeaponAtShelf=false` 后再决策。
-
-### 4.3 Utility、GOAP 与行为树的组合
+### 4.2 Utility、GOAP 与行为树的组合
 
 ```mermaid
 flowchart TD
@@ -409,7 +490,73 @@ HTN 限制哪些行动组合属于允许的过程，因此能表达设计者的�
 
 Utility/GOAP 可以放在服务端，但部署依据是权威需求和实际成本。服务端权威通常由服务器决定状态变化，客户端接收需要表现的结果；不要求每个客户端用相同种子重跑所有决策。若项目确实采用确定性同步/回放，除种子外，还需固定候选顺序、浮点/取整规则、随机调用次数、观察时点、版本以及预算调度。墙钟预算和异步到达顺序可改变搜索终点，种子本身不足以保证一致。同步哪些状态取决于项目协议，不由“只同步当前行为+关键输入”一句话解决。
 
-## 七、常见问题 FAQ
+## 七、进阶：接入异步执行器时的生命周期合同
+
+本章面向要把 §3 的纯规划器接到导航、动画或攻击接口的读者。学完静态规划可先跳到 FAQ；以下是执行适配的工程合同，不是 GOAP 搜索算法的固有步骤，也不是上面单文件程序已实现的能力。
+
+### 7.1 三种版本与更新点
+
+以下是本文提出的单宿主串行调度合同，用来说明竞态边界；不是任何引擎 API 的默认保证。
+
+| 数据 | 何时更新 | 作用 |
+| --- | --- | --- |
+| 观察快照及 `observation_revision` | 接收已验证的新观察，在决策边界发布 | 评分/搜索读取一致版本；未知、过期与 false 分开 |
+| `goal_id / goal_revision / model_revision` | 意图、参数、动作库或评分/模型配置改变 | 判断返回的候选计划是否属于当前请求 |
+| `plan_generation / action_token` | 接纳新计划或启动一次动作 | 隔离旧动作回执；不得以相同动作名字代替一次激活身份 |
+
+搜索结果带上请求时的目标、模型和观察版本。迟到结果若已不属于当前目标/模型就丢弃；观察变了则按明确策略重验全部依赖或重搜，不能直接装入。执行中的每步还要重查最新资格。自身动作成功本来就会改变观察，不能把任何 revision 增加一律视为计划错误；先按动作结果与预期效果核对，再判断后续依赖是否仍成立。
+
+观察更新不直接重入正在执行的选择器；先排队，在下一调度边界处理。真实多线程宿主还需要自己的同步与对象寿命合同，本文未实现。
+
+### 7.2 启动一次，推进多次，终止后清理
+
+本节限定单宿主串行消费结果，每次外部调用须在有限时间内返回；同步回调可以发生在 `start` 调用栈内，但只收件，**不内联消费结果、推进计划或启动下一步**。若底层会无界阻塞或在其他线程直接修改本状态，本合同不适用，不能据此声称调度/取消时限已保证。
+
+围绕一次 `start`，按三个时点接线：
+
+1. **外调之前**：先登记稳定的 `operation/token`、结果接收关联及资源责任记录，并保留该操作所需的冲突资源交接权。这只表示归属与清理责任，尚未返回的句柄不能记作已经取得
+2. **收件与返回**：同步返回结果、同步回调和异步回执都进入同一串行收件通道，按 operation 和事件身份去重。返回时把迟返句柄挂回原 operation，记录 `start_returned`，再将返回结果入队；不能直接写回 Running
+3. **接纳结果**：同一权威终态只接纳一次；同步成功或失败可直接成为终态，不要求先经 Running。终态优先于“已接受/仍在运行”，不被后者或重复回执覆盖。互相矛盾的权威终态属于适配器错误，保留清理责任且不重复推进
+
+| 阶段/结果 | 调度器应做什么 | 不允许的捷径 |
+| --- | --- | --- |
+| Starting | 重查前置，先登记 operation/token、收件关联与资源责任，再调用一次 `start`；未返回时保留记录 | 回调先到而没有归属，或假定句柄已存在 |
+| StartRejected | 接纳拒绝结果并记录原因；待 start 返回，清理其实际取得/迟返的资源 | 将拒绝当作“绝无残留资源”而直接交接 |
+| Running | 仅在未接纳终态时进入；保留同一激活，匹配回执或 `poll` 结果也经收件通道 | 每帧重发请求，或返回后覆盖同步完成 |
+| AwaitingConfirmation | 底层报告完成但必需效果尚未确认时，等待权威结果/新观察，按限定期限转入明确失败或重新观察 | 把未知效果当 true，或把重复完成通知再推进一次 |
+| Succeeded | 接纳成功结果；效果确认、start 已返回且资源已静默后，才结束记录并推进步骤一次 | 以成功回执代替效果/资源确认；同步成功被迫再经 Running |
+| Failed | 保存失败和实际变化，终止剩余计划；start 已返回且资源已静默后才撤销记录 | 丢弃失败知识，或失败后遗失迟返句柄 |
+| Cancelling | 先记取消意图；可安全撤销时发一次 cancel，未到手句柄保留为原 operation 的待清理责任 | 清空队列、删除记录或提前启动冲突动作 |
+| Cancelled | start 已返回且旧资源实际静默后释放归属，允许新计划启动 | 把取消请求/取消回执本身等同资源静默 |
+
+结果、效果确认和资源静默是分开的条件；表中接纳终态不等于 operation 已可删除。伪代码只展示该合同，不是完整 GOAPAgent：
+
+```text
+on_decision_boundary:
+    在外调栈退出后串行消费观察与动作收件，按 operation 去重并接纳结果
+    检查目标与计划依赖；应撤销时先进入 Cancelling，再按原 operation 清理
+    若 start 尚未返回：保留记录，等待外调返回，不重入该外调
+    否则若仍 Running/AwaitingConfirmation：只推进或确认原 operation
+    否则若需清理或资源未静默：推进原 operation 的清理，继续保留记录
+    否则若终态且可退役：解除关联，仅当前计划内未撤销 activation 的成功推进一步
+    只有没有未退役 operation 时，才处理后续选择：
+        有下一步：先登记 operation/token/收件关联/资源责任，再 start 一次
+            返回时将句柄归原 operation、记已返回、返回结果入队；本栈不消费
+        否则若目标已满足：报告完成，等待相关变化
+        否则按退避/事件策略请求一次有预算规划
+```
+
+退役之前，还有三条资源规则：
+
+- 自然成功、拒绝、失败和取消都由原 operation 幂等清理实际取得的资源，停止工作/订阅/计时器；保留完成与清理确认的接收关联，直到 start 已返回、资源确认静默，才解除关联并退役
+- 迟返句柄仍按原 operation 当前阶段清理，不移交给新 activation。旧 token 的重复结果不能推动新计划；单纯忽略它也不会停止旧导航或动画
+- 取消超时仍保留记录并阻塞冲突资源，按项目恢复流程处理，不能凭超时宣称静默。失败已造成的现实变化保留为新观察，不用预测状态覆盖或回滚
+
+纸面同步轨迹：先登记 A → `start(A)` 栈内完成回调入队 → start 返回句柄 H 与“已接受”通知，H 仍归 A → 下一边界接纳 A 的成功，重复成功与“已接受”都不能再推进或改成 Running → 效果确认后清理 H，确认静默才退役 A 并启动下一步 B。A 的任何迟到结果均不能推进 B；若 start 尚未返回，即使已收成功通知也不能提前退役 A。
+
+纸面延迟成功轨迹：规划 `MoveToShelf, PickUpWeapon` → 登记并启动 A → 两次 Running 均不重发 → A 成功且观察确认在货架 → A 已返回并释放移动资源、确认静默 → 才启动拾取 B → B 同样完成确认/清理后目标满足。干扰轨迹：A Running 时切换“逃跑” → 记录取消、等待实际停止 → 新动作 C 才接管移动资源；A 的迟到成功不能让 C 跳步。货架武器被别人拿走时，拾取前检查或原子领取失败，记录 `WeaponAtShelf=false` 后再决策。
+
+## 八、常见问题 FAQ
 
 ### Q1：Utility 和行为树怎么分工？
 
@@ -421,7 +568,7 @@ Utility/GOAP 可以放在服务端，但部署依据是权威需求和实际成�
 
 ### Q3：规划结果多样，怎样验证？
 
-先检查计划不变量：每步前置成立、效果/消耗正确、累计成本一致、终态满足目标。只有并列政策和最优性前提都固定时才断言唯一序列；有多条合法计划时不应把其他正确解误报失败。运行集成还需验证启动一次、实际效果、取消静默和旧回执隔离。本次只有静态核对与纸面推导，没有执行这些测试。
+先检查计划不变量：每步前置成立、效果/消耗正确、累计成本一致、终态满足目标。只有并列政策和最优性前提都固定时才断言唯一序列；有多条合法计划时不应把其他正确解误报失败。§3.3 的有限编译/运行只覆盖静态模型；启动一次、实际效果、取消静默和旧回执隔离仍需运行集成验证。
 
 ### Q4：Utility 怎么调参？
 
@@ -443,15 +590,16 @@ Utility/GOAP 可以放在服务端，但部署依据是权威需求和实际成�
 
 检查同一快照、输入噪声、评分交叉、每帧重抽随机和冷却起算点。保持合法当前行为，只有挑战者超过阈值才切换；行为已不合法时必须退出，迟滞不能掩盖失效。减少决策频率或平滑输入也会增加反应延迟，应保留紧急路径。
 
-## 八、来源定位与关联阅读
+## 九、来源定位与关联阅读
 
 | 来源 | 本次实际核对范围 | 不据此声称 |
 | --- | --- | --- |
 | [Graham，Game AI Pro，第 9 章，2013](https://www.gameaipro.com/GameAIPro/GameAIPro_Chapter09_An_Introduction_to_Utility_Theory.pdf) | §9.4 因素；§9.5 曲线；§9.6 选择/分桶；§9.7 惯性；PDF pp.3–10 | 本文伪代码来自该书源码、本文阈值是标准参数、最新《模拟人生》实现已核对 |
 | [Orkin，GDC 2006](https://www.gamedevs.org/uploads/three-states-plan-ai-of-fear.pdf) | 公开镜像中的作者论文：pp.4–5 前置/效果；pp.10–13 成本、表示、程序化检查与执行；pp.13–15 队伍/表现边界 | 官方镜像认证、现成通用框架、任何给定动作数下的性能保证 |
 | [Erol/Hendler/Nau，UMCP，1994](https://www.cs.umd.edu/~nau/papers/erol1994umcp.pdf) | 作者所在院系托管 PDF pp.1–3 的 task、network、method 与约束定义 | 全文证明已复核、SHOP2 实现已读、本文 HTN 例已运行 |
+| [Cornell CS 2110，2026 Spring，Shortest Paths](https://courses.cis.cornell.edu/courses/cs2110/2026sp/lectures/lec23/) | Weighted Graphs、Dijkstra’s Invariant 的非负权与最小距离规则；2026-10-10 读取课程页面相关段落 | 本文 C++ 程序来自课程源码、通用 A* 已实现、真实 NPC 已执行成功 |
 
-作者原站的 Orkin 历史入口本次未能读取；现引用明确标识的作者论文镜像，不能写成成功访问原站。三篇资料支持各自机制，本文的数值防护、版本/token、预算终态与取消合同是有边界的工程推导，不是引用论文所实现的统一标准。
+作者原站的 Orkin 历史入口本次未能读取；现引用明确标识的作者论文镜像，不能写成成功访问原站。三篇 AI 资料支持各自机制；新增 Cornell 课程材料只用于核对 Dijkstra 的非负边权和最小距离确定规则。本文的数值防护、版本/token、预算终态与取消合同是有边界的工程推导，不是引用论文所实现的统一标准。
 
 - [01-AI总体架构与感知](01-AI总体架构与感知.md)：感知与黑板提供输入；更新、过期和未知语义要先确定
 - [02-状态机与层次状态机](02-状态机与层次状态机.md)：阶段、转换和混合模式
