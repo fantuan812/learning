@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-10 (Path smoothing geometry and steering state updates; original contributions retained).
+# Generated: 2026-10-10 (Utility scoring and GOAP execution lifecycle; original contributions retained).
 version: 4
 
 okf:
@@ -1604,8 +1604,8 @@ documents:
   "知识/06-游戏AI/感知决策与行为规划/04-Utility与GOAP.md":
     kind: doc
     maturity: L2
-    bytes: 27924
-    lines: 567
+    bytes: 40970
+    lines: 465
   "知识/06-游戏AI/感知决策与行为规划/05-StateTree状态树.md":
     kind: doc
     maturity: L2
