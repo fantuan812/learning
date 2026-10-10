@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-10 (Network and AI debugging; observation, diagnosis and target-runtime limits retained).
+# Generated: 2026-10-10 (Complete RNG and shuffle teaching example; one observed finite run; initial checkpoint; count increment 0).
 version: 4
 
 okf:
@@ -759,8 +759,8 @@ documents:
   "知识/02-数学与游戏算法/随机采样与程序化生成/01-随机数与洗牌算法.md":
     kind: doc
     maturity: L2
-    bytes: 89218
-    lines: 1486
+    bytes: 94516
+    lines: 1533
   "知识/02-数学与游戏算法/随机采样与程序化生成/02-程序化生成.md":
     kind: doc
     maturity: L2
