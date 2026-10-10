@@ -929,8 +929,8 @@ documents:
   "知识/03-引擎架构与资源系统/运行架构与任务调度/04-引擎启动流程与模块架构.md":
     kind: doc
     maturity: L2
-    bytes: 47960
-    lines: 583
+    bytes: 49106
+    lines: 584
   "知识/03-引擎架构与资源系统/运行架构与任务调度/06-定时器与引擎Ticker.md":
     kind: doc
     maturity: L2
@@ -969,8 +969,8 @@ documents:
   "知识/04-图形动画与物理仿真/动画求值与角色表现/03-IK与程序化动画.md":
     kind: doc
     maturity: L2
-    bytes: 43694
-    lines: 406
+    bytes: 49463
+    lines: 446
   "知识/04-图形动画与物理仿真/动画求值与角色表现/04-动画性能与预算分配.md":
     kind: doc
     maturity: L2
@@ -1044,8 +1044,8 @@ documents:
   "知识/04-图形动画与物理仿真/材质地形与世界表现/07-虚拟纹理与材质混合.md":
     kind: doc
     maturity: L2
-    bytes: 45590
-    lines: 478
+    bytes: 54677
+    lines: 544
   "知识/04-图形动画与物理仿真/材质地形与世界表现/08-体积渲染与云.md":
     kind: doc
     maturity: L2
@@ -1104,7 +1104,7 @@ documents:
   "知识/04-图形动画与物理仿真/渲染管线与光照/11-RenderTarget与SceneCapture实战.md":
     kind: doc
     maturity: L2
-    bytes: 45388
+    bytes: 45850
     lines: 510
   "知识/04-图形动画与物理仿真/渲染管线与光照/30-Lumen与MegaLights源码.md":
     kind: doc
