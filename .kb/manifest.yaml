@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-10 (Complete RVO numerics and audio gain teaching; initial checkpoint; completed count increment 0; RVO candidate 1).
+# Generated: 2026-10-10 (Final RVO numerics and loop audio gain teaching on PR147 main; RVO candidate 1; audio existing primary 0).
 version: 4
 
 okf:
@@ -99,7 +99,7 @@ documents:
   "00_Index/UE专题.md":
     kind: doc
     maturity: L0
-    bytes: 27484
+    bytes: 27483
     lines: 208
   "00_Index/axes/README.md":
     kind: README
@@ -629,8 +629,8 @@ documents:
   "知识/02-数学与游戏算法/数学与数值计算/02-概率线性代数与数值计算.md":
     kind: doc
     maturity: L2
-    bytes: 17854
-    lines: 375
+    bytes: 45786
+    lines: 530
   "知识/02-数学与游戏算法/数学与数值计算/03-插值与曲线.md":
     kind: doc
     maturity: L2
@@ -714,8 +714,8 @@ documents:
   "知识/02-数学与游戏算法/路径搜索与导航/01-图论基础与搜索算法.md":
     kind: doc
     maturity: L2
-    bytes: 56370
-    lines: 858
+    bytes: 66812
+    lines: 996
   "知识/02-数学与游戏算法/路径搜索与导航/02-A星算法与优化.md":
     kind: doc
     maturity: L2
@@ -764,8 +764,8 @@ documents:
   "知识/02-数学与游戏算法/随机采样与程序化生成/02-程序化生成.md":
     kind: doc
     maturity: L2
-    bytes: 52874
-    lines: 685
+    bytes: 62203
+    lines: 838
   "知识/02-数学与游戏算法/随机采样与程序化生成/07-概率分布与采样工程.md":
     kind: doc
     maturity: L2
@@ -844,8 +844,8 @@ documents:
   "知识/03-引擎架构与资源系统/对象模型与生命周期/10-FName与FString底层.md":
     kind: doc
     maturity: L2
-    bytes: 21818
-    lines: 340
+    bytes: 41237
+    lines: 413
   "知识/03-引擎架构与资源系统/对象模型与生命周期/README.md":
     kind: README
     maturity: L0
@@ -1149,8 +1149,8 @@ documents:
   "知识/04-图形动画与物理仿真/物理求解与动力学/06-Chaos车辆系统.md":
     kind: doc
     maturity: L2
-    bytes: 17099
-    lines: 307
+    bytes: 35610
+    lines: 316
   "知识/04-图形动画与物理仿真/物理求解与动力学/15-物理系统源码.md":
     kind: doc
     maturity: L2
@@ -1394,8 +1394,8 @@ documents:
   "知识/05-Gameplay与交互系统/界面设置与无障碍/08-Slate自定义控件与样式系统.md":
     kind: doc
     maturity: L2
-    bytes: 24946
-    lines: 360
+    bytes: 40139
+    lines: 420
   "知识/05-Gameplay与交互系统/界面设置与无障碍/10-本地化无障碍与多端体验验收.md":
     kind: doc
     maturity: L2
@@ -1684,8 +1684,8 @@ documents:
   "知识/06-游戏AI/评测安全与运行预算/08-AI调试与性能分析.md":
     kind: doc
     maturity: L2
-    bytes: 22005
-    lines: 326
+    bytes: 38758
+    lines: 338
   "知识/06-游戏AI/评测安全与运行预算/README.md":
     kind: README
     maturity: L0
@@ -1949,8 +1949,8 @@ documents:
   "知识/07-网络与游戏服务端/状态复制与兴趣管理/08-网络调试与性能分析.md":
     kind: doc
     maturity: L2
-    bytes: 28465
-    lines: 350
+    bytes: 51073
+    lines: 419
   "知识/07-网络与游戏服务端/状态复制与兴趣管理/09-网络复制与RPC源码.md":
     kind: doc
     maturity: L2
@@ -2024,7 +2024,7 @@ documents:
   "知识/08-工程实践与质量/README.md":
     kind: README
     maturity: L0
-    bytes: 8137
+    bytes: 8136
     lines: 110
   "知识/08-工程实践与质量/安全与防护/02-TLS认证授权与反作弊.md":
     kind: doc
@@ -2089,12 +2089,12 @@ documents:
   "知识/08-工程实践与质量/持续交付与发布治理/13-本地化发布工作流.md":
     kind: doc
     maturity: L2
-    bytes: 22762
-    lines: 321
+    bytes: 39689
+    lines: 318
   "知识/08-工程实践与质量/持续交付与发布治理/README.md":
     kind: README
     maturity: L0
-    bytes: 902
+    bytes: 901
     lines: 23
   "知识/08-工程实践与质量/构建编译与制品/01-UBT构建系统与编译配置.md":
     kind: doc
@@ -2214,8 +2214,8 @@ documents:
   "知识/08-工程实践与质量/调试与性能分析/05-GameplayDebugger与运行时调试.md":
     kind: doc
     maturity: L2
-    bytes: 33988
-    lines: 602
+    bytes: 38064
+    lines: 401
   "知识/08-工程实践与质量/调试与性能分析/10-UE Dedicated Server运行参数与性能调优.md":
     kind: doc
     maturity: L2
