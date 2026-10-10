@@ -1199,8 +1199,8 @@ documents:
   "知识/04-图形动画与物理仿真/空间层级与变换/05-场景组件与变换体系.md":
     kind: doc
     maturity: L2
-    bytes: 40926
-    lines: 564
+    bytes: 65876
+    lines: 752
   "知识/04-图形动画与物理仿真/空间层级与变换/README.md":
     kind: README
     maturity: L0
@@ -1619,8 +1619,8 @@ documents:
   "知识/06-游戏AI/感知决策与行为规划/06-模糊逻辑与连续决策.md":
     kind: doc
     maturity: L2
-    bytes: 16858
-    lines: 321
+    bytes: 30397
+    lines: 415
   "知识/06-游戏AI/感知决策与行为规划/07-GameplayTasks-StateTree-GAS-AI协同.md":
     kind: doc
     maturity: L2
