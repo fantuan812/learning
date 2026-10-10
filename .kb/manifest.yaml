@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-09 (Montage instance identities, section and notify boundaries, blend-space sampling; original history retained).
+# Generated: 2026-10-09 (Procedural generation domains, bounded search outcomes and versioned candidate publication; original history retained).
 version: 4
 
 okf:
@@ -764,8 +764,8 @@ documents:
   "知识/02-数学与游戏算法/随机采样与程序化生成/02-程序化生成.md":
     kind: doc
     maturity: L2
-    bytes: 22763
-    lines: 454
+    bytes: 52874
+    lines: 685
   "知识/02-数学与游戏算法/随机采样与程序化生成/07-概率分布与采样工程.md":
     kind: doc
     maturity: L2
