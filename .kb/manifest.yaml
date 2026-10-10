@@ -679,8 +679,8 @@ documents:
   "知识/02-数学与游戏算法/确定性与基准/05-联机确定性与基准工程.md":
     kind: doc
     maturity: L2
-    bytes: 18988
-    lines: 579
+    bytes: 42632
+    lines: 400
   "知识/02-数学与游戏算法/确定性与基准/README.md":
     kind: README
     maturity: L0
@@ -974,8 +974,8 @@ documents:
   "知识/04-图形动画与物理仿真/动画求值与角色表现/04-动画性能与预算分配.md":
     kind: doc
     maturity: L2
-    bytes: 34848
-    lines: 594
+    bytes: 47125
+    lines: 472
   "知识/04-图形动画与物理仿真/动画求值与角色表现/05-AnimNext动画框架.md":
     kind: doc
     maturity: L2
