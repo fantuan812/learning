@@ -1,6 +1,6 @@
 # Knowledge Base Manifest
 # Index only; canonical content remains in each Markdown document.
-# Generated: 2026-10-10 (Three existing primary teaching repairs; complete examples and layered contracts; count increment 0).
+# Generated: 2026-10-10 (Complete finite Python BFS path teaching example; existing primary repair; count increment 0).
 version: 4
 
 okf:
@@ -714,8 +714,8 @@ documents:
   "知识/02-数学与游戏算法/路径搜索与导航/01-图论基础与搜索算法.md":
     kind: doc
     maturity: L2
-    bytes: 56370
-    lines: 858
+    bytes: 61854
+    lines: 937
   "知识/02-数学与游戏算法/路径搜索与导航/02-A星算法与优化.md":
     kind: doc
     maturity: L2
