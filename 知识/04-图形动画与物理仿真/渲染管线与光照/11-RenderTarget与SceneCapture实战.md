@@ -395,9 +395,9 @@ bool ReadLdrPreview(UObject* WorldContext, UTextureRenderTarget2D* Target,
 
 调用方需保证目标是约定的 LDR 颜色纹理、期间无其他写者或 Resize；输出不作为高度/深度算法输入。接口文档明确标为慢操作，没有支持固定“10–30ms”或“所有平台必排空整条 GPU 管线”的数据。把 ReadSurfaceData 放进渲染线程 lambda 只改变阻塞发生的位置，不自动获得异步 staging 与 ready 轮询协议。
 
-### 6.2 异步读回的有限状态合同
+### 6.2 异步读回接入设计：生产者依赖尚未实现
 
-纹理应研究 `FRHIGPUTextureReadback`；`FRHIGPUBufferReadback` 是缓冲的对应类型，不能只因都叫 readback 就互换。本次确实读到 `EnqueueCopy`、`IsReady`、纹理 `Lock(OutRowPitchInPixels, OutBufferHeight)` 和 Unlock 的公开签名，但没有读到这些函数的底层实现、RDG 捕获集成和平台线程约束。所以下面是完整的单槽设计合同，不冒充可直接粘贴的跨平台异步 C++ 实现。[S14][S14] [S15][S15]
+纹理应研究 `FRHIGPUTextureReadback`；`FRHIGPUBufferReadback` 是缓冲的对应类型，不能只因都叫 readback 就互换。已读取的公开签名包括 `EnqueueCopy`、`IsReady`、纹理 `Lock(OutRowPitchInPixels, OutBufferHeight)` 和 Unlock；尚未取得同一目标版本的捕获生产者、RDG/RHI 复制接入及平台线程约束实现。下面只给单槽接入设计：读者可以据此审查所有权、完成条件和行拷贝，不能据此完成一条已经接通的异步截图链路。第 6.3 节的退场分支也属于这份未实现设计。[S14][S14] [S15][S15]
 
 固定条件：单 GPU、一次只允许一个任务；源为已确认支持拷贝的固定 512×512 BGRA8 二维纹理、mip 0、单采样；若实际格式、尺寸、GPU mask 或能力不符则拒绝，不能静默套用每像素 4 字节。该源由任务独占调度，关闭其他自动捕获与外部写者，在这次捕获与复制之间不能被下一次写入覆盖。队列满返回 Busy，不创建第二个 readback。任务有 RequestId、Generation、ExpectedSize/Format、独立结果缓冲、弱接收者及“结果是否已派发”状态。
 
@@ -414,7 +414,7 @@ bool ReadLdrPreview(UObject* WorldContext, UTextureRenderTarget2D* Target,
 | Retiring | 在已确认所有 GPU 使用及 CPU 命令退场后释放任务资源 | 不把 CPU 已拿到数组推广成源纹理所有其他消费者均退场 |
 | Idle 或 Stopped | 释放单槽，或关闭服务 | 只有安全退场才能复用这个槽 |
 
-AwaitProducer 是工程接入点：需要目标版本中“捕获写入 → 复制”的同一有序命令链或明确的图依赖。本次公开声明不足以证明 `CaptureScene(); ENQUEUE_RENDER_COMMAND(...)` 在任意 renderer/Deferred/分块模式下都复制刚请求的图像，因此不提供这个未经核验的捷径。
+尚缺的实现正是 AwaitProducer → CopySubmitted：需要在固定引擎 revision、renderer 和 RHI 路径中，找到本次捕获实际写入的纹理及其生产位置，把该请求的复制接在生产者之后，并核对依赖、资源状态与持有期限。只有接通并验证这一步，后面的 ready 才能代表“请求 N 的副本可读”。本次没有对应源码证据，因此不提供虚构回调、RDG pass 或 `CaptureScene(); ENQUEUE_RENDER_COMMAND(...)` 捷径；下一 Tick 或固定延迟也不能补上这条依赖。保留这项实现缺口，不把状态表或行跨度算例计为异步读回实战完成。
 
 行拷贝的纸面算法：Lock 返回行跨度以**像素**计，先核对 rowPitch≥W、bufferHeight≥H、乘法未溢出以及实际格式仍为 BGRA8。逐行把 `base + y*rowPitch*4` 开始的 `W*4` 字节拷到紧密 CPU 行 `out + y*W*4`，最后 Unlock。任何检查失败都沿已建立的锁状态清理并报告失败，不能返回半张成功图。字节通道顺序来自本例已声明格式，不从 FColor 类型名猜测所有 RT 的布局。[S14][S14]
 
