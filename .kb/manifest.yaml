@@ -1449,8 +1449,8 @@ documents:
   "知识/05-Gameplay与交互系统/背包装备与存档/13-背包与装备系统.md":
     kind: doc
     maturity: L2
-    bytes: 21917
-    lines: 325
+    bytes: 32627
+    lines: 398
   "知识/05-Gameplay与交互系统/背包装备与存档/43-Lyra-背包装备消息与UI源码.md":
     kind: doc
     maturity: L2
@@ -2109,8 +2109,8 @@ documents:
   "知识/08-工程实践与质量/构建编译与制品/07-Shader编译管线与PSO.md":
     kind: doc
     maturity: L2
-    bytes: 20786
-    lines: 334
+    bytes: 35805
+    lines: 386
   "知识/08-工程实践与质量/构建编译与制品/09-UE Dedicated Server构建烘焙与运行.md":
     kind: doc
     maturity: L2
