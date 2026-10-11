@@ -794,8 +794,8 @@ documents:
   "知识/03-引擎架构与资源系统/世界组织与资源加载/09-WorldPartition大世界.md":
     kind: doc
     maturity: L2
-    bytes: 29225
-    lines: 439
+    bytes: 29391
+    lines: 265
   "知识/03-引擎架构与资源系统/世界组织与资源加载/13-资源加载与异步加载源码.md":
     kind: doc
     maturity: L2
@@ -1024,8 +1024,8 @@ documents:
   "知识/04-图形动画与物理仿真/材质地形与世界表现/02-材质系统详解.md":
     kind: doc
     maturity: L2
-    bytes: 97479
-    lines: 1178
+    bytes: 104577
+    lines: 1224
   "知识/04-图形动画与物理仿真/材质地形与世界表现/02-植被Foliage与实例化渲染.md":
     kind: doc
     maturity: L2
@@ -2179,8 +2179,8 @@ documents:
   "知识/08-工程实践与质量/编辑器工具与资产自动化/06-Interchange与DataValidation.md":
     kind: doc
     maturity: L2
-    bytes: 21179
-    lines: 425
+    bytes: 36309
+    lines: 510
   "知识/08-工程实践与质量/编辑器工具与资产自动化/14-Python编辑器脚本与资产自动化.md":
     kind: doc
     maturity: L2
